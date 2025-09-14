@@ -1,0 +1,58 @@
+/*
+    Модальное окно (modalbox) позиционируется поверх всего на странице, его ширина фиксированна, а по высоте оно
+    растягивается на все доступное место на экране. На данный момент внутри modalbox находится только контейнер для табов - e-pane.
+*/
+/* ----- common ----- */
+html, body {
+    height: 100%;
+}
+/* ----- /common ----- */
+
+/* ----- modalbox ----- */
+.e-modalbox {
+    position: fixed;
+    left: 50%;
+    top: 5%;
+    z-index: 1001;
+    max-width: 90%;
+    margin-left: -45%;
+    width: 90%;
+    height: 90%;
+    background: white;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: Tahoma, sans-serif;
+}
+.e-modalbox-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1001;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    background: #d2322d url(../images/close_white.png) no-repeat;
+    line-height: 0;
+    font-size: 0;
+    cursor: pointer;
+}
+.e-modalbox .highlighted {
+    background-color: #d2322d;
+    background-image: url(../images/close_white.png);
+}
+.e-modalbox-frame {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+}
+/* --- media queries ---*/
+@media screen and (max-width: 870px) {
+    .e-modalbox {
+        margin-left: 0;
+        left: 5%;
+    }
+}
+/* ----- /modalbox ----- */

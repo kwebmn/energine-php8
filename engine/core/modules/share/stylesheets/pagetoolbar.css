@@ -1,0 +1,205 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+    //font-family: 'Roboto', Tahoma, sans-serif;
+    background: #f7f7f7;
+}
+
+/* Top Toolbar */
+.e-topframe {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 42px;
+    min-height: 42px;
+    background: #eeeeee;
+    border-bottom: 1px solid #cccccc;
+    display: flex;
+    align-items: center;
+    z-index: 1040;
+}
+
+.pagetb_logo {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+    transition: transform 0.5s;
+    z-index: 1050;
+}
+
+.pagetb_logo:hover {
+    transform: rotate(90deg);
+}
+
+ul.docked_toolbar {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0 0 0 50px;
+    height: 39px;
+    list-style: none;
+    background: none;
+    border: none;
+    z-index: 1;
+    width: 100%;
+    padding-left: 40px !important;
+    margin-top: 0px !important;
+}
+
+ul.docked_toolbar li {
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 16px;
+    margin: 0;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    color: #222;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+    user-select: none;
+    white-space: nowrap;
+}
+
+ul.docked_toolbar li:hover,
+ul.docked_toolbar li:focus {
+    background: #d9edf7;
+    color: #111;
+}
+
+ul.docked_toolbar li.separator {
+    width: 1px;
+    background: #ccc;
+    height: 22px;
+    margin: 0 8px;
+    padding: 0 0px !important;
+    pointer-events: none;
+}
+
+/* Custom toolbar buttons (highlight, pressed, etc.) */
+ul.docked_toolbar li.highlighted { background-color: #ecf3f8; }
+ul.docked_toolbar li.pressed {
+    background: #bcdff1;
+    border: 1px solid #b3e0ff;
+}
+
+ul.docked_toolbar li.add_btn    { background-color: #5cb85c !important; color: #fff; }
+ul.docked_toolbar li.edit_btn   { background-color: #f0ad4e !important; color: #fff; }
+ul.docked_toolbar li.delete_btn { background-color: #d9534f !important; color: #fff; }
+
+@media (max-width: 900px) {
+    ul.docked_toolbar li { font-size: 14px; padding: 0 8px; }
+}
+
+/* Side Frame */
+.e-sideframe {
+    position: fixed;
+    left: 0;
+    top: 22px;
+    width: 300px;
+    height: calc(100% - 22px);
+    background: #eee;
+    border-right: 1px solid #ddd;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.04);
+    z-index: 1030;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.e-sideframe-content {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 0;
+}
+
+.e-sideframe iframe {
+    width: 100%;
+    height: 99%;
+    border: none;
+    background: #fff;
+}
+
+.e-sideframe-border {
+    position: absolute;
+    top: 0; right: 0;
+    width: 2px; height: 100%;
+    background: #ccc;
+}
+
+/* Main Content Frame */
+.e-mainframe {
+    position: absolute;
+    top: 42px;
+    left: 300px;
+    width: calc(100% - 300px);
+    height: calc(100% - 42px);
+    background: #fff;
+    overflow-y: auto;
+    z-index: 1;
+}
+
+/* If sideframe is hidden, use full width */
+body:not(.e-has-sideframe) .e-mainframe,
+html:not(.e-has-sideframe) .e-mainframe {
+    left: 0;
+    width: 100%;
+}
+
+/* If topframe is hidden, use full height */
+body:not(.e-has-topframe1):not(.e-has-topframe2):not(.e-has-topframe3) .e-mainframe,
+html:not(.e-has-topframe1):not(.e-has-topframe2):not(.e-has-topframe3) .e-mainframe {
+    top: 50;
+    height: 100%;
+}
+
+/* Responsive: Sideframe on mobile becomes overlay */
+@media (max-width: 900px) {
+    .e-sideframe {
+        width: 80vw;
+        min-width: 220px;
+        max-width: 98vw;
+        left: 0;
+        top: 42px;
+        height: calc(100% - 42px);
+        z-index: 1050;
+    }
+    .e-mainframe {
+        left: 0;
+        width: 100vw;
+    }
+}
+
+/* Hide sideframe when not present */
+.e-sideframe { display: none; }
+.e-has-sideframe .e-sideframe { display: flex; }
+
+.e-topframe {
+    display: flex;
+    flex-direction: row; /* или просто убери column, будет row по умолчанию */
+    align-items: center;  /* чтобы выровнять по вертикали, если надо */
+}
+
+ul.feed_toolbar
+{
+    position: absolute !important;
+    top: 41px !important;
+    background-color: #eeeeee;
+    border-bottom: 1px solid #cccccc;
+}
+
+
+
+.e-has-sideframe ul.wysiwyg_toolbar, .e-has-sideframe ul.feed_toolbar {
+    margin-left: 300px !important;
+}

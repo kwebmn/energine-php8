@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<content type="admin">
+
+    <component name="textBlock_1" module="share" class="TextBlock">
+        <params>
+            <param name="num">1</param>
+        </params>
+    </component>
+
+    <component name="default_template_name" module="auto" class="default_template_class" right="3">
+        <params>
+        </params>
+    </component>
+
+</content>

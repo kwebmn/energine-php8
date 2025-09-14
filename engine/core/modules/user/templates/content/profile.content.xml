@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<content>
+    <container name="profile">
+        <component name="userProfileMain" module="user" class="UserProfile">
+            <params>
+                <param name="config">UserProfileMain.component.xml</param>
+            </params>
+        </component>
+
+
+        <component name="userProfilePassword" module="user" class="UserProfile">
+            <params>
+                <param name="config">UserProfilePassword.component.xml</param>
+            </params>
+        </component>
+
+
+        <component name="userProfileEmail" module="user" class="UserProfile">
+            <params>
+                <param name="config">UserProfileEmail.component.xml</param>
+            </params>
+        </component>
+    </container>
+
+</content>

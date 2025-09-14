@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <state name="main">
+        <javascript>
+            <behavior name="UserProfile" />
+        </javascript>
+        <fields>
+            <field name="u_id"></field>
+            <field name="u_fullname"></field>
+        </fields>
+        <toolbar>
+            <control id="change" title="BTN_CHANGE" type="submit" />
+        </toolbar>
+        <translations>
+            <translation const="TXT_PROFILE_CHANGE_MY_DATA" />
+        </translations>
+    </state>
+    <state name="save">
+        <uri_patterns>
+            <pattern>/save/</pattern>
+        </uri_patterns>
+    </state>
+</configuration>

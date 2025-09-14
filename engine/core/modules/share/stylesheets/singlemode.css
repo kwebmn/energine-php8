@@ -1,0 +1,46 @@
+/* ----- common ----- */
+html, body {
+    height: 100%;            
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: white;
+    font-size: 13px;
+}
+.e-singlemode-layout {
+    overflow: hidden;
+    font-family: Tahoma, sans-serif;
+}
+
+:not(.e-divtree-panel) .e-singlemode-layout > .e-grid-form
+{
+    overflow: auto;
+}
+/* ----- /common ----- */
+
+/* ----- grid form ----- */
+.e-grid-form {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+/* ----- /grid form ----- */
+@media screen and (max-width: 680px){
+    .e-singlemode-layout {
+        margin: 0;
+    }
+}
+
+.clearfix:after {
+    clear: both;
+    display: block;
+    visibility: hidden;
+    height: 0;
+    content: ".";
+    line-height: 0;
+    font-size: 0;
+}
+
+.hidden {
+    display: none !important;
+}

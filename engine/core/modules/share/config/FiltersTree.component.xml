@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <state name="main">
+       <fields>
+           <field name="filter_id" key="1"/>
+           <field name="filter_name"/>
+           <field name="filter_count"/>
+           <field name="filter_value"/>
+           <field name="filter_is_active"/>
+           <field name="filter_descr_rtf"/>
+           <field name="filter_seo_url"/>
+       </fields>
+
+        <translations>
+            <translation const="TXT_ACTIVE_FILTERS"/>
+            <translation const="TXT_CLEAR"/>
+        </translations>
+    </state>
+
+</configuration>

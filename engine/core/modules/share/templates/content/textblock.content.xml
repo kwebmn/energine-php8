@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<content>
+    <component name="textBlock_1" module="share" class="TextBlock">
+	    <params>
+	        <param name="num">1</param>
+	    </params>
+	</component>
+
+	<component name="navMenu" module="share" class="SiteProperties" >
+		<params>
+			<param name="id">123</param>
+		</params>
+	</component>
+<!--	<component name="commentsForm" module="comments" class="CommentsForm">-->
+<!--		<params>-->
+<!--			<param name="active">1</param>-->
+<!--			<param name="allows_anonymous">1</param>-->
+<!--			<param name="bind">textBlock_1</param>-->
+<!--			<param name="bind_state">main</param>-->
+<!--			<param name="comment_tables">share_sitemap_comment</param>-->
+<!--			<param name="show_comments">1</param>-->
+<!--			<param name="show_form">1</param>-->
+<!--			<param name="is_tree">1</param>-->
+<!--		</params>-->
+<!--	</component>-->
+</content>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+		<state name="main">
+			<javascript>
+				<behavior name="PageEditor"/>
+			</javascript>
+<!--			<toolbar>-->
+<!--				<control type="button" id="update" title="BTN_UPDATE" onclick="update" />-->
+<!--				<control type="button" id="cancel" title="BTN_CANCEL" onclick="cancel" />-->
+<!--			</toolbar>-->
+			<translations>
+				<translation const="TXT_ARE_YOU_SURE_SAVE"/>
+			</translations>
+	    </state>
+		<state name="save" rights="3">
+			<uri_patterns>
+				<pattern>/save-text/</pattern>
+			</uri_patterns>
+		</state>
+		<state name="cleanup" rights="3">
+			<uri_patterns>
+				<pattern>/cleanup/</pattern>
+			</uri_patterns>
+		</state>
+        <state name="source" rights="3">
+            <uri_patterns>
+                <pattern>/source/</pattern>
+            </uri_patterns>
+        </state>
+		<state name="imageManager" rights="3">
+			<uri_patterns>
+				<pattern>/imagemanager/</pattern>
+			</uri_patterns>
+		</state>
+		<!-- Сквозной метод -->
+		<state name="fileLibrary" rights="3">
+			<uri_patterns>
+				<pattern>/file-library/[any]/</pattern>
+			</uri_patterns>
+		</state>
+
+</configuration>

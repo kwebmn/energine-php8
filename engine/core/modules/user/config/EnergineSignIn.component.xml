@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <state name="main">
+        <translations>
+            <translation const="TXT_EMAIL"/>
+            <translation const="TXT_YOUR_COUNTRY"/>
+            <translation const="TXT_YOUR_NAME"/>
+            <translation const="TXT_YOUR_CITY"/>
+            <translation const="TXT_PASSWORD"/>
+            <translation const="TXT_ONLY_EMAIL"/>
+            <translation const="TXT_SIGN_UP"/>
+            <translation const="TXT_SIGN_IN_ONLY"/>
+            <translation const="TXT_SIGN_IN"/>
+            <translation const="TXT_FORGOT_PASSWORD"/>
+            <translation const="TXT_LOGOUT"/>
+            <translation const="TXT_SIGN_WITH"/>
+        </translations>
+        <javascript>
+            <behavior name="SignIn"/>
+        </javascript>
+    </state>
+
+    <state name="google">
+        <uri_patterns>
+            <pattern>/google/</pattern>
+        </uri_patterns>
+    </state>
+
+    <state name="signUpFast">
+        <uri_patterns>
+            <pattern>/sign-up-fast/</pattern>
+        </uri_patterns>
+    </state>
+
+    <state name="signUp">
+        <uri_patterns>
+            <pattern>/sign-up/</pattern>
+        </uri_patterns>
+    </state>
+
+    <state name="logout">
+        <uri_patterns>
+            <pattern>/logout/</pattern>
+        </uri_patterns>
+    </state>
+
+    <state name="signIn">
+        <uri_patterns>
+            <pattern>/sign-in/</pattern>
+        </uri_patterns>
+    </state>
+
+</configuration>

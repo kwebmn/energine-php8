@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+
+        <state name="main">
+            <fields>
+                <field name="ld_id"/>
+                <field name="ld_body"/>
+            </fields>
+        </state>
+
+</configuration>

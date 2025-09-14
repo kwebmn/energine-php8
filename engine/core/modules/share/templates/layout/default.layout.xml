@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page>
+
+    <component name="mainMenu" module="share" class="PageList">
+       <params>
+           <param name="tags">menu</param>
+           <param name="recursive">1</param>
+           <param name="config">core/modules/share/MainMenu.component.xml</param>
+       </params>
+    </component>
+
+<!--    <component name="userMenu" module="share" class="PageList">-->
+<!--        <params>-->
+<!--&lt;!&ndash;            <param name="tags">user</param>&ndash;&gt;-->
+<!--            <param name="recursive">1</param>-->
+<!--            <param name="config">core/modules/share/MainMenu.component.xml</param>-->
+<!--        </params>-->
+<!--    </component>-->
+
+<!--    <component name="footerMenu" module="share" class="PageList">-->
+<!--        <params>-->
+<!--            <param name="tags">footer</param>-->
+<!--            <param name="recursive">1</param>-->
+<!--            <param name="config">core/modules/share/MainMenu.component.xml</param>-->
+<!--        </params>-->
+<!--    </component>-->
+
+	<component name="langSwitcher" module="share" class="LangSwitcher"/>
+	<component name="footerTextBlock" module="share" class="TextBlock">
+		<params>
+			<param name="num">footerTextBlock</param>
+		</params>
+	</component>
+    <component name="adminPanel" module="share" class="DivisionEditor">
+        <params>
+            <param name="state">showPageToolbar</param>
+            <param name="rights">3</param>
+       </params>
+    </component>
+    <!--<component name="slider" module="default" class="Slider">-->
+        <!--<params>-->
+            <!--<param name="onlyCurrentLang">1</param>-->
+        <!--</params>-->
+    <!--</component>-->
+
+    <!--<component name="productBasket" module="kwebshop" class="ProductBasket">-->
+
+    <!--</component>   -->
+
+<!--    <component name="topMenu" module="share" class="FiltersTree">-->
+<!--        <params>-->
+<!--            <param name="tableName">site_product</param>-->
+<!--            <param name="config">FiltersTreee.component.xml</param>-->
+<!--            <param name="const">CATALOG</param>-->
+<!--        </params>-->
+<!--    </component>-->
+
+<!--    <component name="searchForm" module="default" class="SearchForm">-->
+
+<!--    </component>-->
+
+<!--    <component name="userShortProfile" module="default" class="UserShortProfile">-->
+
+<!--    </component>-->
+
+    <component name="translationList" module="default" class="TranslationList">
+    </component>
+    
+</page>

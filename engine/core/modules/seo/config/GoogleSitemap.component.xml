@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+	<state name="main">
+	</state>
+    <state name="map">
+        <uri_patterns>
+            <pattern>/map/</pattern>
+        </uri_patterns>
+    </state>
+    <state name="videomap">
+        <uri_patterns>
+            <pattern>/videomap/[mapNumber]/</pattern>
+        </uri_patterns>
+    </state>
+</configuration>
