@@ -11,7 +11,7 @@ class SitemapTree;
  * @author dr.Pavka
  * @copyright Energine 2006
  *
- * @version 1.0.0
+ * @version 1.0.0 68326f5
  */
 
 
@@ -25,33 +25,43 @@ class SitemapTree;
 class SitemapTree extends DataSet {
     //todo VZ: This can be removed.
     /**
-     * @copydoc DataSet::__construct
+     * Initialize site map dataset.
+     *
+     * @param string     $name   Имя компонента.
+     * @param string     $module Имя модуля.
+     * @param array|null $params Параметры компонента.
      */
-    public function __construct($name, $module,   array $params = null) {
-        parent::__construct($name, $module,  $params);
+    public function __construct($name, $module, ?array $params = null) {
+        parent::__construct($name, $module, $params);
 
     }
+
     /**
-     * @copydoc DataSet::loadData
+     * Load information about site map tree.
+     *
+     * @return array|false|null Массив узлов дерева сайта.
      */
-    // Загружает данные о дереве разделов
-    protected function loadData() {
+    protected function loadData(): array|false|null {
         $sitemap = E()->getMap();
         $res = $sitemap->getInfo();
+        $result = [];
 
         foreach ($res as $id => $info) {
-        	$result [] = array(
-        	   'Id' => $id,
-        	   'Pid' =>$info['Pid'],
-        	   'Name' => $info['Name'],
-        	   'Segment' => $sitemap->getURLByID($id)
-        	);
+            $result[] = [
+                'Id' => $id,
+                'Pid' => $info['Pid'],
+                'Name' => $info['Name'],
+                'Segment' => $sitemap->getURLByID($id)
+            ];
         }
+
         return $result;
     }
 
     /**
-     * @copydoc DataSet::createBuilder
+     * Create builder for tree representation.
+     *
+     * @return TreeBuilder Настроенный построитель дерева.
      */
     protected function createBuilder() {
         $builder  = new TreeBuilder();
