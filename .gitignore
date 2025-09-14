@@ -1,0 +1,16 @@
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Логи и временные
+*.log
+var/
+cache/
+tmp/
+
+# Секреты
+.env
+
+# PHP/Composer (под ваш кейс: для приложений lock обычно коммитят)
+vendor/
