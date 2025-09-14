@@ -371,6 +371,8 @@ return array(
         'base_url' => '/img',
         'sign_key' => null, // например 'your-secret' (тогда ссылки подписываем)
         'defaults' => array('fit' => 'max', 'q' => 80),
+        'cache_max_age' => 604800,
+        'gc_interval'   => 3600,
     ),
 
     // Переводы (Symfony Translation)
