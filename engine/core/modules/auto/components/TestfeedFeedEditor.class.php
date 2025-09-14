@@ -1,13 +1,31 @@
 <?php
-
+/**
+ * Testfeed feed editor component.
+ *
+ * Provides CRUD operations for the `auto_Testfeed` table.
+ *
+ * @version 68326f5
+ */
 class TestfeedFeedEditor extends ExtendedFeedEditor
 {
-    public function __construct($name, $module, array $params = null)
+    /**
+     * Construct testfeed editor.
+     *
+     * @param string     $name   Имя компонента.
+     * @param string     $module Имя модуля.
+     * @param array|null $params Параметры компонента.
+     */
+    public function __construct(string $name, string $module, ?array $params = null)
     {
-        parent::__construct($name, $module, $params); 
+        parent::__construct($name, $module, $params);
         $this->setTableName('auto_Testfeed');
     }
 
+    /**
+     * Build component output.
+     *
+     * @return DOMDocument Построенный DOM-документ.
+     */
     public function build() : DOMDocument {
         switch ($this->getState()) {
             case 'showSmapSelector':
@@ -21,6 +39,11 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
         return $result;
     }
 
+    /**
+     * Load dataset with additional smap identifier on add state.
+     *
+     * @return array|false|null Загруженные данные.
+     */
     public function loadData() : array|false|null
     {
         $res = parent::loadData();
@@ -36,6 +59,9 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
         return $res;
     }
 
+    /**
+     * Display site map selector for choosing division.
+     */
     protected function showSmapSelector() {
         $this->request->shiftPath(1);
         $this->divisionEditor = ComponentManager::createBlockFromDescription(
@@ -43,6 +69,11 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
         $this->divisionEditor->run();
     }
 
+    /**
+     * Describe dataset fields.
+     *
+     * @return DataDescription Описание полей данных.
+     */
     protected function createDataDescription() : DataDescription
     {
         $dd = LinkingEditor::createDataDescription();
@@ -52,6 +83,9 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
         return $dd;
     }
 
+    /**
+     * Fill site map names for editing state.
+     */
     protected function edit() : void
     {
         parent::edit();
@@ -66,11 +100,21 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
     }
 
 
+    /**
+     * Create data for saving.
+     *
+     * @return Data Подготовленные данные.
+     */
     protected function createData() : Data
     {
         return LinkingEditor::createData();
     }
 
+    /**
+     * Save dataset via linking editor.
+     *
+     * @return mixed Результат сохранения.
+     */
     protected function saveData() : mixed
     {
         return LinkingEditor::saveData();

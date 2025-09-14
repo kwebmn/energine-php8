@@ -1,14 +1,32 @@
 <?php
-
+/**
+ * Test feed editor component.
+ *
+ * Handles CRUD operations for the `auto_test` table.
+ *
+ * @version 68326f5
+ */
 class TestFeedEditor extends ExtendedFeedEditor
 {
-    public function __construct($name, $module, array $params = null)
+    /**
+     * Construct test feed editor.
+     *
+     * @param string     $name   Имя компонента.
+     * @param string     $module Имя модуля.
+     * @param array|null $params Параметры компонента.
+     */
+    public function __construct(string $name, string $module, ?array $params = null)
     {
-        parent::__construct($name, $module, $params); 
+        parent::__construct($name, $module, $params);
         $this->setTableName('auto_test');
     }
 
-    public function build() {
+    /**
+     * Build component output.
+     *
+     * @return DOMDocument Построенный DOM-документ.
+     */
+    public function build(): DOMDocument {
         switch ($this->getState()) {
             case 'showSmapSelector':
                 $result = $this->divisionEditor->build();
@@ -21,7 +39,12 @@ class TestFeedEditor extends ExtendedFeedEditor
         return $result;
     }
 
-    public function loadData()
+    /**
+     * Load dataset with additional smap identifier on add state.
+     *
+     * @return array|false|null Загруженные данные.
+     */
+    public function loadData(): array|false|null
     {
         $res = parent::loadData();
         if ($this->getState() == 'add')
@@ -36,6 +59,9 @@ class TestFeedEditor extends ExtendedFeedEditor
         return $res;
     }
 
+    /**
+     * Display site map selector for choosing division.
+     */
     protected function showSmapSelector() {
         $this->request->shiftPath(1);
         $this->divisionEditor = ComponentManager::createBlockFromDescription(
@@ -43,7 +69,12 @@ class TestFeedEditor extends ExtendedFeedEditor
         $this->divisionEditor->run();
     }
 
-    protected function createDataDescription() {
+    /**
+     * Describe dataset fields.
+     *
+     * @return DataDescription Описание полей данных.
+     */
+    protected function createDataDescription(): DataDescription {
         $dd = LinkingEditor::createDataDescription();
         if (in_array($this->getState(), array('add', 'edit'))) {
             $dd->getFieldDescriptionByName('smap_id')->setType(FieldDescription::FIELD_TYPE_SMAP_SELECTOR);
@@ -51,7 +82,10 @@ class TestFeedEditor extends ExtendedFeedEditor
         return $dd;
     }
 
-    protected function edit() {
+    /**
+     * Fill site map names for editing state.
+     */
+    protected function edit(): void {
         parent::edit();
         $smapField = $this->getData()->getFieldByName('smap_id');
 
@@ -64,11 +98,23 @@ class TestFeedEditor extends ExtendedFeedEditor
     }
 
 
-    protected function createData() {
+    /**
+     * Create data for saving.
+     *
+     * @return Data Подготовленные данные.
+     */
+    protected function createData(): Data
+    {
         return LinkingEditor::createData();
     }
 
-    protected function saveData() {
+    /**
+     * Save dataset via linking editor.
+     *
+     * @return mixed Результат сохранения.
+     */
+    protected function saveData()
+    {
         return LinkingEditor::saveData();
     }
 }

@@ -7,11 +7,15 @@ declare(strict_types=1);
  * Механика:
  *  - Вызовы eSomething(...) автоматически маппятся на onSomething(...), если он определён в классе-хосте.
  *  - Для run(): вызываются eBefore<State>State() и e<State>State() (если обработчики есть).
+ *
+ * @version 68326f5
  */
 trait EventHandler
 {
     /**
      * Define parameters with event hooks.
+     *
+     * @return array Массив параметров компонента.
      */
     protected function defineParams(): array
     {
@@ -30,8 +34,10 @@ trait EventHandler
 
     /**
      * Load data description with event hooks.
+     *
+     * @return array|false|null Описание данных или {@c null/false}, если описание недоступно.
      */
-    protected function loadDataDescription(): mixed
+    protected function loadDataDescription(): array|false|null
     {
         $this->eBeforeLoadMetaData();
         $result = parent::loadDataDescription();
@@ -42,8 +48,10 @@ trait EventHandler
 
     /**
      * Create data description with event hooks.
+     *
+     * @return DataDescription Сформированное описание данных.
      */
-    protected function createDataDescription(): mixed
+    protected function createDataDescription(): DataDescription
     {
         $this->eBeforeCreateDataDescription();
         $dataDescription = parent::createDataDescription();
@@ -54,8 +62,10 @@ trait EventHandler
 
     /**
      * Create data with event hooks.
+     *
+     * @return Data Сформированные данные.
      */
-    protected function createData(): mixed
+    protected function createData(): Data
     {
         $this->eBeforeCreateData();
         $data = parent::createData();
@@ -66,8 +76,10 @@ trait EventHandler
 
     /**
      * Load data with event hooks.
+     *
+     * @return array|false|null Загруженные данные или {@c null/false}, если данных нет.
      */
-    protected function loadData(): mixed
+    protected function loadData(): array|false|null
     {
         $this->eBeforeLoadData();
         $result = parent::loadData();
@@ -104,7 +116,11 @@ trait EventHandler
     /**
      * Magic call: eXxx(...) → onXxx(...)
      *
+     * @param string $name Имя вызываемого метода.
+     * @param array  $args Аргументы вызова.
+     *
      * @throws SystemException 'ERR_NO_METHOD'
+     * @return mixed Результат вызова обработчика.
      */
     public function __call(string $name, array $args): mixed
     {
