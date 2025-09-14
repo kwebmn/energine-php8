@@ -65,9 +65,9 @@
 
                 <!-- MDB -->
                 <xsl:if test="not(//property[@name='single'])">
-<!--                    <script async="async" type="text/javascript" src="scripts/default/mdb/mdb.umd.min.js"></script>-->
-<!--                    <script async="async" type="text/javascript" src="scripts/default/sweetalert2.min.js"></script>-->
-                    <!--                    SweetAlert2-->
+                    <script async="async" type="text/javascript" src="scripts/default/mdb/mdb.umd.min.js"></script>
+                    <script async="async" type="text/javascript" src="scripts/default/sweetalert2.min.js"></script>
+                    <!-- SweetAlert2 -->
                     <link href="stylesheets/default/sweetalert2.css" rel="stylesheet"/>
                 </xsl:if>
 
