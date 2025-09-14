@@ -369,7 +369,9 @@ return array(
         'source'   => $_SERVER['DOCUMENT_ROOT'].'/var/storage/images',
         'cache'    => $_SERVER['DOCUMENT_ROOT'].'/var/cache/glide',
         'base_url' => '/img',
-        'sign_key' => null, // например 'your-secret' (тогда ссылки подписываем)
+        'sign_key' => 'change-me', // секрет для HMAC-подписей
+        'cache_max_age' => 604800, // TTL файлов кеша (сек)
+        'gc_interval'   => 3600,   // минимальный интервал между чистками (сек)
         'defaults' => array('fit' => 'max', 'q' => 80),
     ),
 

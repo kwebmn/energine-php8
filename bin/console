@@ -1,0 +1,30 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+$_SERVER['DOCUMENT_ROOT'] = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__);
+if ($_SERVER['DOCUMENT_ROOT'] === '') {
+    $_SERVER['DOCUMENT_ROOT'] = dirname(__DIR__);
+}
+$_SERVER['HTTP_HOST'] = $_SERVER['HTTP_HOST'] ?? 'localhost';
+if ($_SERVER['HTTP_HOST'] === '') {
+    $_SERVER['HTTP_HOST'] = 'localhost';
+}
+
+require __DIR__.'/../bootstrap.php';
+
+use Symfony\Component\Console\Application;
+use App\Image\Command\ClearCacheCommand;
+
+$container = E()->container ?? null;
+$app = new Application('App CLI');
+
+if ($container && $container->has(ClearCacheCommand::class)) {
+    $app->add($container->get(ClearCacheCommand::class));
+} else {
+    $cache = (string)E()->getConfigValue('images.cache');
+    $alts  = HTDOCS_DIR . '/uploads/alts/resizer';
+    $app->add(new ClearCacheCommand($cache, is_dir($alts) ? $alts : null));
+}
+
+$app->run();
