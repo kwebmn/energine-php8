@@ -36,7 +36,7 @@
                 />
                 <!-- MDB -->
                 <link
-                        href="stylesheets/default/mdb.min.css"
+                        href="stylesheets/default/mdb/mdb.min.css"
                         rel="stylesheet"
                 />
         	</head>
@@ -76,7 +76,7 @@
                 <!-- MDB -->
                 <script
                         type="text/javascript"
-                        src="scripts/default/mdb.umd.min.js"
+                        src="scripts/default/mdb/mdb.umd.min.js"
                 ></script>
         	</body>
         </html>
