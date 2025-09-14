@@ -5,7 +5,6 @@ declare(strict_types=1);
  * Role editor (редактор ролей/групп пользователей).
  * Совместимо с PHP 8.3, аккуратные проверки и типы.
  */
-#[\AllowDynamicProperties]
 final class RoleEditor extends Grid
 {
     /**

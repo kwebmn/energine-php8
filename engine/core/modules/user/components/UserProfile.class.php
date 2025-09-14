@@ -5,7 +5,6 @@ declare(strict_types=1);
  * UserProfile — форма редактирования профиля текущего пользователя.
  * Совместимо с PHP 8.3: строгие типы, аккуратные проверки и JSON-ответ.
  */
-#[\AllowDynamicProperties]
 final class UserProfile extends DBDataSet
 {
     /**

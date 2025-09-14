@@ -92,7 +92,7 @@ abstract class DataSet extends Component
     /**
      * @copydoc Component::__construct
      */
-    public function __construct($name, $module, array $params = null)
+    public function __construct(string $name, string $module, ?array $params = null)
     {
         parent::__construct($name, $module, $params);
         $this->setType(self::COMPONENT_TYPE_FORM);
