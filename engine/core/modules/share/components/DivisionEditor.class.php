@@ -699,10 +699,10 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
             throw new SystemException('ERR_404', SystemException::ERR_404);
         }
 
-        $sql = 'SELECT smap_name, smap_pid, smap_order_num
+        $sql = 'SELECT st.smap_name, s.smap_pid, s.smap_order_num
                 FROM share_sitemap s
                 LEFT JOIN share_sitemap_translation st ON s.smap_id = st.smap_id
-                WHERE s.smap_id = ' . $id . ' AND lang_id = ' . $langID;
+                WHERE s.smap_id = ' . $id . ' AND st.lang_id = ' . $langID;
 
         $data = $this->dbh->selectRequest($sql);
         $row  = $data ? current($data) : [];

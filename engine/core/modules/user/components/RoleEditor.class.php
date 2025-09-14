@@ -120,10 +120,10 @@ final class RoleEditor extends Grid
         // Данные по разделам с именем и сайтом
         $data = convertDBResult(
             $this->dbh->selectRequest(
-                'SELECT s.smap_id AS Id, smap_pid AS Pid, site_id AS Site, smap_name AS Name
+                'SELECT s.smap_id AS Id, s.smap_pid AS Pid, s.site_id AS Site, st.smap_name AS Name
                  FROM share_sitemap s
                  LEFT JOIN share_sitemap_translation st ON st.smap_id = s.smap_id
-                 WHERE lang_id=' . (int)E()->getLanguage()->getCurrent()
+                 WHERE st.lang_id=' . (int)E()->getLanguage()->getCurrent()
             ),
             'Id'
         );
