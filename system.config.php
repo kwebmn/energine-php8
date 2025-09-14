@@ -33,6 +33,8 @@ return array(
         'db' => 'c1phpbase',
         'username' => 'c1phpbase',
         'password' => 'NfEq@pS8',
+        // использовать ли persistent-соединение
+        'persistent' => 0,
         /**
          * Подготовленый запрос
          */
@@ -69,6 +71,16 @@ return array(
         'aliases' => 0,
         'apcu' => 0,
         'apcu_ttl' => 3600,
+        // список доменов для дев-окружения
+        'dev_domains' => array(),
+        // базовый URL для статических файлов
+        'static' => '',
+        // базовый URL для медиафайлов
+        'media' => '',
+        // базовый URL ресайзера изображений
+        'resizer' => '',
+        // включать ли сжатие ответа
+        'compress' => 0,
     ),
     // настройки документа
     'document' => array(
@@ -76,6 +88,18 @@ return array(
         'transformer' => 'main.xslt',
         // насткойка кеширования xslt (при использовании XSLTCache)
         'xslcache' => 0,
+        // тип контента по умолчанию для XML-ответов
+        'xml_content_type' => 'application/xml; charset=UTF-8',
+        // выводить XML с форматированием
+        'pretty_xml' => 0,
+        // выводить JSON с форматированием
+        'pretty_json' => 0,
+    ),
+
+    // настройки миниатюр в интерфейсе
+    'thumbnail' => array(
+        'width' => 100,
+        'height' => 100,
     ),
 
     // перечень дополнительнх полей с превьюшками в виде отдельной вкладки в файловом менеджере
@@ -142,24 +166,37 @@ return array(
         // адрес менеджера
         'manager' => 'webmaster@mbase.kweb.biz',
         // адрес для сообщений обратной связи
-        'feedback' => 'webmaster@mbase.kweb.biz'
+        'feedback' => 'webmaster@mbase.kweb.biz',
+        // строка подключения к транспортной системе
+        'dsn' => '',
     ),
 
     // настройки google
-//    'google' => array(
-//        'verify' => '',
-//        'analytics' => ''
-//    ),
+    'google' => array(
+        // код подтверждения сайта в Google
+        'verify' => '',
+        // код Google Analytics
+        'analytics' => '',
+    ),
 
     // настройки recaptcha
-//    'recaptcha' => array(
-////        'public' => '6LfkCeASAAAAALl-av9HM_RG1AU-tcta3teX7Z2u',
-////        'private' => '6LfkCeASAAAAABPo4F3GoXULR2w5EgHjjd3RDjXk'
-//
-//        'public' => '6LelY_wSAAAAALMZi4Z4zNG6sL6N6_UXdZerTWw4',
-//        'private' => '6LelY_wSAAAAABzZ5HAubJI-kGgwqkF8xr4xQtKx'
-//
-//    ),
+    'recaptcha' => array(
+        // публичный ключ
+        'public' => '',
+        // приватный ключ
+        'private' => '',
+    ),
+
+    // пути к различным директориям
+    'paths' => array(
+        // папка для логов
+        'log_dir' => $_SERVER['DOCUMENT_ROOT'].'/var/log',
+    ),
+
+    // карта соответствия устаревших URI
+    'uri' => array(
+        'legacy_path_map' => array(),
+    ),
 
     // настройки файловых репозитариев
     'repositories' => array(
@@ -187,7 +224,9 @@ return array(
                     'port' => 21,
                     'username' => 'username',
                     'password' => 'password',
-                )
+                ),
+                // использовать ли безопасное подключение
+                'secure' => 0,
             ),
             // конфигурация FTP доступа для репозитария с share_uploads.upl_path uploads/ftpro
             'uploads/ftpro' => array(
@@ -202,7 +241,9 @@ return array(
                     'port' => 21,
                     'username' => 'username',
                     'password' => 'password',
-                )
+                ),
+                // использовать ли безопасное подключение
+                'secure' => 0,
             )
         ),
     ),
@@ -384,10 +425,17 @@ return array(
             'enabled' => 1,
             'dir'     => $_SERVER['DOCUMENT_ROOT'].'/var/cache/trans',
         ),
+        // время жизни кеша переводов
+        'cache_ttl'     => 3600,
         // источники переводов можно описать здесь, если не из БД
         'resources'      => array(
             // ['locale'=>'uk','domain'=>'messages','file'=>$_SERVER['DOCUMENT_ROOT'].'/app/trans/messages.uk.php'],
         ),
+    ),
+
+    // настройки языкового кеша
+    'language' => array(
+        'cache_ttl' => 3600,
     ),
 
     // Валидация (Symfony Validator)
