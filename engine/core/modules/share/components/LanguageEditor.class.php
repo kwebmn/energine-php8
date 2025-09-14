@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Совместимо с PHP 8.3. Безопасные обращения к полям/данным,
  * единственный язык по умолчанию, валидация lang_abbr.
  */
-#[\AllowDynamicProperties]
 final class LanguageEditor extends Grid
 {
     /**

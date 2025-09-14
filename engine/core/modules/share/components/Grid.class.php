@@ -12,7 +12,6 @@ declare(strict_types=1);
 /**
  * Grid.
  */
-#[\AllowDynamicProperties]
 class Grid extends DBDataSet {
     /**
      * Direction: up.
@@ -69,7 +68,7 @@ class Grid extends DBDataSet {
     /**
      * @copydoc DBDataSet::__construct
      */
-    public function __construct($name, $module, array $params = null) {
+    public function __construct(string $name, string $module, ?array $params = null) {
         parent::__construct($name, $module, $params);
 
         $this->setProperty('exttype', 'grid');

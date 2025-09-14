@@ -5,7 +5,6 @@ declare(strict_types=1);
  * ImageManager — менеджер вставки/редактирования изображений.
  * Совместимо с PHP 8.3: строгие типы, аккуратные проверки.
  */
-#[\AllowDynamicProperties]
 final class ImageManager extends DataSet
 {
     /**

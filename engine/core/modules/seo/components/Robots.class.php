@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @file
  * Robots
@@ -25,7 +26,7 @@ class Robots extends DataSet {
     /**
      * @copydoc DataSet::__construct
      */
-    public function __construct($name, $module, array $params = null) {
+    public function __construct(string $name, string $module, ?array $params = null) {
         parent::__construct($name, $module, $params);
         E()->getResponse()->setHeader('Content-Type', 'text/plain; charset=utf-8');
     }

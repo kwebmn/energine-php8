@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Совместимо с PHP 8.3. Добавлены строгие типы, аккуратные проверки входных данных,
  * безопасная работа с репозиторием и JSON-ответами.
  */
-#[\AllowDynamicProperties]
 final class FileRepository extends Grid implements SampleFileRepository
 {
     /** Путь к временной директории. */

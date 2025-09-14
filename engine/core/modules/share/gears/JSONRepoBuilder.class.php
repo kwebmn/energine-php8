@@ -5,7 +5,6 @@ declare(strict_types=1);
  * JSONRepoBuilder — билдер JSON-ответа для файлового репозитория.
  * Совместимо с PHP 8.3. Добавлены строгие типы, аккуратная работа с null.
  */
-#[\AllowDynamicProperties]
 final class JSONRepoBuilder extends JSONBuilder
 {
     /**

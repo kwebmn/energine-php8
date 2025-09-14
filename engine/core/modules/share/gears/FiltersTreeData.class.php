@@ -192,7 +192,7 @@ class FiltersTreeData extends DBWorker
      *
      * @return array<int>
      */
-    public function getIds(int|string $filterId = null): array
+    public function getIds(int|string|null $filterId = null): array
     {
         if ($filterId !== null) {
             return $this->filterCurrent[$filterId] ?? [];

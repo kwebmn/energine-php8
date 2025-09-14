@@ -10,7 +10,6 @@ declare(strict_types=1);
  *  - Data, содержащую строки с этим ключом,
  *  - TreeNodeList с иерархией узлов (id => TreeNode).
  */
-#[\AllowDynamicProperties]
 final class TreeBuilder extends AbstractBuilder
 {
     /**

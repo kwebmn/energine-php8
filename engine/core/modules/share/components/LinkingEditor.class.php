@@ -11,7 +11,7 @@ class LinkingEditor extends Grid
     /**
      * @copydoc Grid::__construct
      */
-    public function __construct($name, $module, array $params = null)
+    public function __construct(string $name, string $module, ?array $params = null)
     {
         parent::__construct($name, $module, $params);
 
@@ -72,7 +72,7 @@ class LinkingEditor extends Grid
      * @copydoc Grid::changeOrder
      * Читаем фильтры из куки, записанные другим компонентом (Feed).
      */
-    protected function changeOrder($direction) : void
+    protected function changeOrder(string $direction) : void
     {
         $cookieName = md5($this->getName());
 
