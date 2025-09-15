@@ -1,8 +1,25 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Компонент RecoverPassword.
+ *
+ * Предоставляет API для восстановления пароля пользователя по
+ * электронной почте.
+ *
+ * Использование:
+ * - {@see main()} — выводит форму восстановления;
+ * - {@see check()} — отправляет письмо со ссылкой восстановления;
+ * - {@see change()} — сохраняет новый пароль;
+ * - {@see recover()} — проверяет код и отображает форму смены пароля.
+ */
 class RecoverPassword extends DataSet
 {
+    /**
+     * Определяет параметры компонента.
+     *
+     * @return array Список параметров.
+     */
     protected function defineParams(): array
     {
         return array_merge(
@@ -11,11 +28,21 @@ class RecoverPassword extends DataSet
         );
     }
 
+    /**
+     * Главный режим компонента.
+     *
+     * @return void
+     */
     public function main(): void
     {
         parent::main(); // ничего не возвращаем
     }
 
+    /**
+     * Проверяет существование пользователя и отправляет ссылку для восстановления.
+     *
+     * @return void
+     */
     public function check(): void
     {
         $data = ['result' => false];
@@ -38,8 +65,8 @@ class RecoverPassword extends DataSet
             $code = uniqid() . uniqid();
 
             $this->dbh->modifyRequest(
-                'UPDATE user_users 
-                   SET u_recovery_code = %s, 
+                'UPDATE user_users
+                   SET u_recovery_code = %s,
                        u_recovery_date = DATE_ADD(NOW(), INTERVAL 1 DAY)
                  WHERE u_id = %s',
                 $code,
@@ -65,6 +92,11 @@ class RecoverPassword extends DataSet
         $this->writeJson($data);
     }
 
+    /**
+     * Сохраняет новый пароль по коду из письма.
+     *
+     * @return void
+     */
     public function change(): void
     {
         $data = [
@@ -112,6 +144,11 @@ class RecoverPassword extends DataSet
         $this->writeJson($data);
     }
 
+    /**
+     * Проверяет код восстановления и отображает форму смены пароля.
+     *
+     * @return void
+     */
     public function recover(): void
     {
         $code = $this->getStateParams();
@@ -126,8 +163,14 @@ class RecoverPassword extends DataSet
         parent::main(); // ничего не возвращаем
     }
 
-    /* ===== Helpers ===== */
+    /* ===== Вспомогательные методы ===== */
 
+    /**
+     * Отправляет JSON-ответ клиенту.
+     *
+     * @param array $data Данные для отправки.
+     * @return void
+     */
     private function writeJson(array $data): void
     {
         $this->response->setHeader('Content-Type', 'text/javascript; charset=utf-8');
