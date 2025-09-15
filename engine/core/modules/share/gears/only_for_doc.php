@@ -79,6 +79,7 @@ cp -r /var/www/energine/starter www.mynewsite.com
  * -# If you use @c apache2, remove the permissions to write to the directories: <tt>htdocs, htdocs/core/modules</tt>.
  * -# Turn off debug mode in configuration file.
  */
+declare(strict_types=1);
 
 
 /**

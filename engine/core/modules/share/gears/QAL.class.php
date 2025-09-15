@@ -3,6 +3,7 @@
  * Query Abstraction Layer (улучшенная версия).
  * Совместима с имеющимся кодом, новые методы — опциональны.
  */
+declare(strict_types=1);
 final class QAL extends DBA {
     // Режимы
     const INSERT         = 'INSERT';

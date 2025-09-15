@@ -11,6 +11,7 @@ class Filter;
  * @author
  * @version 2.0.0 (PHP 8-compatible, safer string handling)
  */
+declare(strict_types=1);
 
 /**
  * Filters.

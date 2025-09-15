@@ -12,6 +12,7 @@
  * - {@see signIn()} — авторизация пользователя;
  * - {@see logout()} — завершение текущей сессии.
  */
+declare(strict_types=1);
 class SignInUpApi extends DBWorker
 {
     /**

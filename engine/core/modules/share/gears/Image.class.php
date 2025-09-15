@@ -13,6 +13,7 @@ class Image;
  *
  * @version 1.0.0
  */
+declare(strict_types=1);
 
 /**
  * Class for work with images.

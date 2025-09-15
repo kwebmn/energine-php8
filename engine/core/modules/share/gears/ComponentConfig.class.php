@@ -8,6 +8,7 @@
 class ComponentConfig;
 @endcode
  */
+declare(strict_types=1);
 
 /**
  * Component configuration manager.

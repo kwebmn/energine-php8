@@ -8,6 +8,7 @@
  * @author
  * @version 2.0.0
  */
+declare(strict_types=1);
 
 /**
  * Generates a list of OpenGraph properties. Обычно вызывается из Document.

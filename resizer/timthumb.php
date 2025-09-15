@@ -12,6 +12,7 @@
  * 
  * $Rev: 218 $
  */
+declare(strict_types=1);
 
 /*
  * --- TimThumb CONFIGURATION ---

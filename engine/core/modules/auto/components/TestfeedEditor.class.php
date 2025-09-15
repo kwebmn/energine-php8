@@ -1,5 +1,6 @@
 <?php
 
+declare(strict_types=1);
 class TestfeedEditor extends Grid
 {
     public function __construct($name, $module, array $params = null)

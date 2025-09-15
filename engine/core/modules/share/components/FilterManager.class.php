@@ -1,5 +1,6 @@
 <?php
 
+declare(strict_types=1);
 class FilterManager extends DBWorker
 {
     const FILTER_TABLE_SUFFIX = '_filter';

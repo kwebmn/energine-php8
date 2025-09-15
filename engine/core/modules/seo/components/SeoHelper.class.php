@@ -1,6 +1,5 @@
 <?php
-
-
+declare(strict_types=1);
 class SeoHelper extends DBWorker
 {
     const TABLE_CONST_CACHE = 'SEO_TABLE';

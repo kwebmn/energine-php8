@@ -12,6 +12,7 @@ final class Setup;
  *
  * @version 1.0.0
  */
+declare(strict_types=1);
 
 require_once('JSqueeze.php');
 

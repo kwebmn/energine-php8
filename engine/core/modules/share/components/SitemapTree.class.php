@@ -13,6 +13,7 @@ class SitemapTree;
  *
  * @version 1.0.0 68326f5
  */
+declare(strict_types=1);
 
 
 /**

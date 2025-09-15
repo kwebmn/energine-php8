@@ -6,6 +6,7 @@
  *
  * @version 68326f5
  */
+declare(strict_types=1);
 class TestfeedFeedEditor extends ExtendedFeedEditor
 {
     /**

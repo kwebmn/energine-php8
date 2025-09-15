@@ -5,6 +5,7 @@
  * Требует пакеты: symfony/mailer, symfony/mime, symfony/http-client
  * DSN берётся из конфигурации 'mail.dsn' или переменной окружения MAILER_DSN.
  */
+declare(strict_types=1);
 
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\MailerInterface;

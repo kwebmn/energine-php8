@@ -1,5 +1,6 @@
 <?php
 
+declare(strict_types=1);
 class Test extends DBDataSet
 {
     public function __construct($name, $module, array $params = null)

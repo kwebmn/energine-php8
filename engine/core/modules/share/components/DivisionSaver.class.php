@@ -3,6 +3,7 @@
  * @file
  * DivisionSaver (без AdsManager и smap_content_xml)
  */
+declare(strict_types=1);
 
 /**
  * Saver для редактора разделов (share_sitemap).
