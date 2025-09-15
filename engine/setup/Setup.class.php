@@ -144,10 +144,10 @@ final class Setup {
         $this->title('Проверка системного окружения');
 
         //А что за PHP версия используется?
-        if (floatval(phpversion()) < MIN_PHP_VERSION) {
+        if (version_compare(PHP_VERSION, MIN_PHP_VERSION, '<')) {
             throw new Exception('Вашему РНР нужно еще немного подрости. Минимальная допустимая версия ' . MIN_PHP_VERSION);
         }
-        $this->text('Версия РНР ', floatval(phpversion()), ' соответствует требованиям');
+        $this->text('Версия РНР ', PHP_VERSION, ' соответствует требованиям');
 
         //При любом действии без конфига нам не обойтись
         if (!file_exists($configName = implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, 'system.config.php')))) {

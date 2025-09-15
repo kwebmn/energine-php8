@@ -5,7 +5,7 @@ ob_start();
 define('CHARSET', 'UTF-8');
 
 //Минимальная версия РНР
-define('MIN_PHP_VERSION', 5.3);
+define('MIN_PHP_VERSION', 8.3);
 
 require_once('bootstrap.php');
 
