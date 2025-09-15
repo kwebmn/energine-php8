@@ -1,18 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
+namespace Energine\Setup;
+
+use RuntimeException;
+use Throwable;
+
 ob_start();
 
 define('CHARSET', 'UTF-8');
 
-//Минимальная версия РНР
-define('MIN_PHP_VERSION', 5.3);
+//Минимальная версия PHP
+define('MIN_PHP_VERSION', '5.3');
+define('CORE_COMPONENTS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/core/modules/*/components');
+define('CORE_GEARS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/core/modules/*/gears');
+define('SITE_COMPONENTS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/site/modules/*/components');
+define('SITE_GEARS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/site/modules/*/gears');
 
-require_once('bootstrap.php');
+if (version_compare(PHP_VERSION, MIN_PHP_VERSION, '<')) {
+    throw new RuntimeException('Требуется версия PHP не ниже ' . MIN_PHP_VERSION . '.');
+}
+
+require_once '../bootstrap.php';
 
 //Название директории в которой содержатся модули(как ядра, так и модули проекта)
 define('MODULES', 'modules');
 
-$acceptableActions = array(
+
+$acceptableActions = [
     'install',
     'linker',
     'clearCache',
@@ -22,7 +38,7 @@ $acceptableActions = array(
     'exportTrans',
     'untranslated',
     'minify',
-);
+];
 
 //вариант запуска приложения
 $isConsole = false;
@@ -38,20 +54,19 @@ if (isset($argv)) {
     $isConsole = true;
     array_shift($args); // имя скрипта (index.php)
     array_shift($args); // ключевое слово setup
-}
-else {
+} else {
     //веб
     $args = array_keys($_GET);
 }
 
-$additionalArgs  = array();
+$additionalArgs  = [];
 //если нам в параметрах пришло что то очень похожее на допустимое действие
 //то считаем, что это оно и есть
 if (!empty($args)) {
     list($action) = $args;
 
 
-    if(sizeof($args)>1){
+    if (sizeof($args) > 1) {
         $additionalArgs = $args;
         unset($additionalArgs[0]);
     }
@@ -71,15 +86,17 @@ try {
     //Запускаем одноименную функцию
     //Тут позволили себе использваоть переменное имя функции поскольку все равно это точно одно из приемлимых значений
     //впрочем наверное возможны варианты
-
-}
-catch (Exception $e) {
-    if(ob_get_length()) ob_end_clean();
+} catch (Throwable $e) {
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
     echo 'При установке все пошло не так.', PHP_EOL, 'А точнее :', PHP_EOL, $e->getMessage();
 }
 
 $data = ob_get_contents();
-if(ob_get_length())ob_end_clean();
+if (ob_get_length()) {
+    ob_end_clean();
+}
 
 echo PHP_EOL, $data, PHP_EOL, PHP_EOL;
 exit;
