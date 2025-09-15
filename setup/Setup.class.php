@@ -128,11 +128,13 @@ final class Setup
     {
         $this->title('Проверка системного окружения');
 
+
         // Проверяем версию PHP
         if (version_compare(PHP_VERSION, (string) MIN_PHP_VERSION, '<')) {
             throw new RuntimeException('Вашему PHP нужно ещё немного подрасти. Минимальная допустимая версия ' . MIN_PHP_VERSION);
         }
         $this->text('Версия PHP ', PHP_VERSION, ' соответствует требованиям');
+
 
         //При любом действии без конфига нам не обойтись
         if (!file_exists($configName = implode(DIRECTORY_SEPARATOR, [HTDOCS_DIR, 'system.config.php']))) {

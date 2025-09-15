@@ -11,12 +11,14 @@ ob_start();
 
 define('CHARSET', 'UTF-8');
 
+
 //Минимальная версия PHP
-define('MIN_PHP_VERSION', '5.3');
+define('MIN_PHP_VERSION', 8.3);
 define('CORE_COMPONENTS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/core/modules/*/components');
 define('CORE_GEARS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/core/modules/*/gears');
 define('SITE_COMPONENTS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/site/modules/*/components');
 define('SITE_GEARS_DIR', $_SERVER['DOCUMENT_ROOT'] . '/site/modules/*/gears');
+
 
 if (version_compare(PHP_VERSION, MIN_PHP_VERSION, '<')) {
     throw new RuntimeException('Требуется версия PHP не ниже ' . MIN_PHP_VERSION . '.');
