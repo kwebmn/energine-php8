@@ -2,12 +2,15 @@
 namespace App\Image;
 
 /**
- * Service for dynamic image rendering and cache maintenance.
+ * Класс ImageService.
+ * Предоставляет возможности для динамической генерации изображений
+ * и обслуживания файлового кэша.
+ * Использование: $service = new ImageService(); $service->render();
  */
 final class ImageService
 {
     /**
-     * Render image and trigger cache garbage collection.
+     * Генерирует изображение и при необходимости запускает очистку кэша.
      *
      * @return void
      */
