@@ -1,10 +1,29 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Компонент EnergineSignIn.
+ *
+ * Обрабатывает действия регистрации, авторизации и работы с сессией
+ * через AJAX-запросы.
+ *
+ * Использование:
+ * - {@see signUpFast()} — быстрая регистрация;
+ * - {@see signUp()} — стандартная регистрация;
+ * - {@see signIn()} — авторизация пользователя;
+ * - {@see upload()} — загрузка файла (заглушка);
+ * - {@see logout()} — выход из системы;
+ * - {@see google()} — авторизация через Google.
+ */
 class EnergineSignIn extends DataSet
 {
     public const COOKIE_LIFETIME = 3600;
 
+    /**
+     * Определяет параметры компонента.
+     *
+     * @return array Список параметров.
+     */
     protected function defineParams(): array
     {
         return array_merge(
@@ -15,6 +34,11 @@ class EnergineSignIn extends DataSet
         );
     }
 
+    /**
+     * Быстрая регистрация пользователя.
+     *
+     * @return void
+     */
     public function signUpFast(): void
     {
         $data = ['result' => false];
@@ -33,6 +57,11 @@ class EnergineSignIn extends DataSet
         $this->writeJson($data);
     }
 
+    /**
+     * Стандартная регистрация пользователя.
+     *
+     * @return void
+     */
     public function signUp(): void
     {
         $data = ['result' => false];
@@ -51,6 +80,11 @@ class EnergineSignIn extends DataSet
         $this->writeJson($data);
     }
 
+    /**
+     * Авторизация пользователя.
+     *
+     * @return void
+     */
     public function signIn(): void
     {
         $data = ['result' => false];
@@ -66,15 +100,25 @@ class EnergineSignIn extends DataSet
         $this->writeJson($data);
     }
 
+    /**
+     * Заглушка обработки загрузки файлов.
+     *
+     * @return void
+     */
     public function upload(): void
     {
         // Заглушка вместо debug-вывода; при необходимости реализуйте загрузку.
         $this->writeJson([
             'result'  => false,
-            'message' => 'Not implemented',
+            'message' => 'Не реализовано',
         ]);
     }
 
+    /**
+     * Завершает сессию пользователя.
+     *
+     * @return void
+     */
     public function logout(): void
     {
         $data = ['result' => false];
@@ -91,9 +135,14 @@ class EnergineSignIn extends DataSet
         $this->writeJson($data);
     }
 
+    /**
+     * Авторизация пользователя через Google.
+     *
+     * @return void
+     */
     public function google(): void
     {
-        // Google Auth
+        // Авторизация через Google
         $response = E()->getResponse();
         $response->disableCache();
 
@@ -163,8 +212,14 @@ class EnergineSignIn extends DataSet
         $this->response->setRedirect($redirect);
     }
 
-    /* ===== Helpers ===== */
+    /* ===== Вспомогательные методы ===== */
 
+    /**
+     * Отправляет ответ в формате JSON.
+     *
+     * @param array $data Данные для отправки.
+     * @return void
+     */
     private function writeJson(array $data): void
     {
         $this->response->setHeader('Content-Type', 'text/javascript; charset=utf-8');

@@ -1,7 +1,25 @@
 <?php
 
+/**
+ * Класс SignInUpApi.
+ *
+ * Предоставляет методы для регистрации, авторизации и завершения
+ * сессии пользователя через API.
+ *
+ * Использование:
+ * - {@see signUpFast()} — быстрая регистрация без задания пароля;
+ * - {@see signUp()} — стандартная регистрация;
+ * - {@see signIn()} — авторизация пользователя;
+ * - {@see logout()} — завершение текущей сессии.
+ */
 class SignInUpApi extends DBWorker
 {
+    /**
+     * Быстрая регистрация пользователя без ввода пароля.
+     *
+     * @param array $data Данные пользователя.
+     * @return array Результат выполнения с сообщением и редиректом.
+     */
     public function signUpFast($data)
     {
         if (!$this->isEmailValid($data['email']))
@@ -66,6 +84,12 @@ class SignInUpApi extends DBWorker
         );
     }
 
+    /**
+     * Стандартная регистрация пользователя.
+     *
+     * @param array $data Данные пользователя.
+     * @return array Результат регистрации.
+     */
     public function signUp($data)
     {
         if (!$this->isEmailValid($data['email']))
@@ -128,6 +152,12 @@ class SignInUpApi extends DBWorker
         );
     }
 
+    /**
+     * Авторизация пользователя.
+     *
+     * @param array $data Массив с адресом e-mail и паролем.
+     * @return array Результат авторизации и возможный редирект.
+     */
     public function signIn($data)
     {
         if ($userId = AuthUser::authenticate($data['email'], $data['password'])) {
@@ -152,6 +182,12 @@ class SignInUpApi extends DBWorker
         );
     }
 
+    /**
+     * Проверяет корректность формата e-mail.
+     *
+     * @param string $email Проверяемый адрес.
+     * @return bool true, если адрес валиден.
+     */
     public function isEmailValid($email)
     {
         if( !preg_match("/^[_a-z0-9-]+(.[_a-z0-9-]+)*@[a-z0-9-]+(.[a-z0-9-]+)*(.[a-z]{2,3})$/i", $email) )
@@ -165,6 +201,12 @@ class SignInUpApi extends DBWorker
         return $result;
     }
 
+    /**
+     * Проверяет, существует ли пользователь с указанным e-mail.
+     *
+     * @param string $email Адрес пользователя.
+     * @return bool true при наличии пользователя.
+     */
     public function isUserExists($email)
     {
         $res = $this->dbh->select(
@@ -182,10 +224,15 @@ class SignInUpApi extends DBWorker
         }
     }
 
+    /**
+     * Завершает сессию пользователя и удаляет cookie.
+     *
+     * @return void
+     */
     public function logout()
     {
         UserSession::manuallyDeleteSessionInfo();
-        //просто удаляем куку
+        // Удаляем cookie с идентификатором сессии.
         E()->getResponse()->deleteCookie(UserSession::DEFAULT_SESSION_NAME);
     }
 }
