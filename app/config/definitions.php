@@ -1,32 +1,33 @@
 <?php
+declare(strict_types=1);
 use DI\ContainerBuilder;
-use Monolog\Logger;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
-use Doctrine\DBAL\DriverManager;
-use Doctrine\DBAL\Connection;
-use Symfony\Contracts\Translation\TranslatorInterface;
-use Symfony\Component\Translation\Translator;
 use Symfony\Component\Translation\Loader\ArrayLoader;
+use Symfony\Component\Translation\Translator;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
-return function (ContainerBuilder $cb): void {
+return static function (ContainerBuilder $cb): void {
     $cb->addDefinitions([
 
-        LoggerInterface::class => function () {
+        LoggerInterface::class => static function (): LoggerInterface {
             $log = new Logger('app');
             $log->pushHandler(new StreamHandler(__DIR__ . '/../../var/log/app.log'));
             return $log;
         },
 
-        TagAwareCacheInterface::class => function () {
+        TagAwareCacheInterface::class => static function (): TagAwareCacheInterface {
             $fs = new FilesystemAdapter(namespace: 'app', defaultLifetime: 3600, directory: __DIR__.'/../../var/cache');
             return new TagAwareAdapter($fs);
         },
 
-        Connection::class => function () {
+        Connection::class => static function (): Connection {
             // возьми из system.config.php или ENV
             $params = [
                 'dbname'   => E()->getConfigValue('database.db'),
@@ -40,7 +41,7 @@ return function (ContainerBuilder $cb): void {
             return DriverManager::getConnection($params);
         },
 
-        TranslatorInterface::class => function () {
+        TranslatorInterface::class => static function (): TranslatorInterface {
             $t = new Translator('uk');
             $t->addLoader('array', new ArrayLoader());
             // Подключите свои источники (DB/файлы) и кеш
