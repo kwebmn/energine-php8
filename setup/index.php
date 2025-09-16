@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 ob_start();
 
@@ -46,19 +47,24 @@ if (isset($argv)) {
 }
 else {
     //веб
-    $args = array_keys($_GET);
+    $getArgs = filter_input_array(INPUT_GET, FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: [];
+    $args    = array_keys($getArgs);
 }
+
+//значения аргументов приводим к строкам, чтобы избежать неожиданностей
+$args = array_map(
+    static fn(string|int $value): string => (string) $value,
+    $args
+);
 
 $additionalArgs  = array();
 //если нам в параметрах пришло что то очень похожее на допустимое действие
 //то считаем, что это оно и есть
 if (!empty($args)) {
-    list($action) = $args;
+    $action = (string) $args[0];
 
-
-    if(sizeof($args)>1){
-        $additionalArgs = $args;
-        unset($additionalArgs[0]);
+    if (count($args) > 1) {
+        $additionalArgs = array_slice($args, 1);
     }
 }
 
