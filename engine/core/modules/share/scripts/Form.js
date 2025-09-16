@@ -37,7 +37,7 @@ class Form {
 
     constructor(element) {
         // Загрузка стилей (имитируем Asset.css)
-        Form.loadCSS('stylesheets/form.css');
+        Form.loadCSS('stylesheets/form.mdb.css');
 
         // this.overlay = new Overlay();
 
@@ -59,7 +59,6 @@ class Form {
 
         // Внешний элемент формы
         this.form = this.componentElement.closest('form');
-        this.form.classList.add('form');
 
         // Состояние формы
         this.state = this.form.querySelector('#componentAction')?.value;
@@ -74,13 +73,13 @@ class Form {
 
         // Рич-редакторы
         this.richEditors = [];
-        this.form.querySelectorAll('textarea.richEditor').forEach(textarea => {
+        this.form.querySelectorAll('[data-role="rich-editor"]').forEach(textarea => {
             this.richEditors.push(new Form.RichEditor(textarea, this));
         });
 
         // CodeMirror
         this.codeEditors = [];
-        this.form.querySelectorAll('textarea.code').forEach(textarea => {
+        this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
             this.codeEditors.push(
                 CodeMirror.fromTextArea(textarea, {
                     mode: "text/html",
@@ -92,41 +91,29 @@ class Form {
         });
 
         // Acpl поля
-        this.form.querySelectorAll('input.acpl').forEach(el => {
+        this.form.querySelectorAll('[data-role="acpl"]').forEach(el => {
             new AcplField(el);
         });
 
-        // Показ/скрытие поля
-        const showHideFunc = (e) => {
-            e.preventDefault();
-            let el = e.target;
-            let field = el.closest('.field');
-            if (field) {
-                if (field.classList.contains('min')) {
-                    field.classList.remove('min');
-                    field.classList.add('max');
-                } else if (el.classList.contains('icon_min_max') && field.classList.contains('max')) {
-                    field.classList.remove('max');
-                    field.classList.add('min');
-                }
-            }
-        };
-
-        this.form.querySelectorAll('.field .control.toggle').forEach(el => {
-            el.addEventListener('click', showHideFunc);
-        });
-        this.form.querySelectorAll('.icon_min_max').forEach(el => {
-            el.addEventListener('click', showHideFunc);
-        });
-
         // SmapSelector
-        this.form.querySelectorAll('.smap_selector').forEach(el => {
+        this.form.querySelectorAll('[data-action="open-smap"]').forEach(el => {
             new Form.SmapSelector(el, this);
         });
 
         // AttachmentSelector
-        this.form.querySelectorAll('.attachment_selector').forEach(el => {
+        this.form.querySelectorAll('[data-action="open-attachment"]').forEach(el => {
             new Form.AttachmentSelector(el, this);
+        });
+
+        // File field actions
+        this.form.querySelectorAll('[data-action="open-filelib"]').forEach(button => {
+            button.addEventListener('click', () => this.openFileLib(button));
+        });
+        this.form.querySelectorAll('[data-action="quick-upload"]').forEach(button => {
+            button.addEventListener('click', () => this.openQuickUpload(button));
+        });
+        this.form.querySelectorAll('[data-action="clear-file"]').forEach(button => {
+            button.addEventListener('click', () => this.clearFileField(button));
         });
 
         // Uploaders
@@ -137,13 +124,10 @@ class Form {
 
         // Date controls
         this.dateControls = [];
-        let dates = [
-            ...this.componentElement.querySelectorAll('.inp_date'),
-            ...this.componentElement.querySelectorAll('.inp_datetime')
-        ];
-        dates.forEach(dateControl => {
-            let isNullable = !dateControl.closest('.field')?.classList.contains('required');
-            if (dateControl.classList.contains('inp_datetime')) {
+        this.componentElement.querySelectorAll('[data-role="date"], [data-role="datetime"]').forEach(dateControl => {
+            const wrapper = dateControl.closest('[data-role="form-field"]');
+            const isNullable = wrapper ? wrapper.getAttribute('data-required') !== 'true' : true;
+            if (dateControl.getAttribute('data-role') === 'datetime') {
                 this.dateControls.push(Energine.createDateTimePicker(dateControl, isNullable));
             } else {
                 this.dateControls.push(Energine.createDatePicker(dateControl, isNullable));
@@ -247,22 +231,6 @@ class Form {
             });
         });
 
-        // Controls с доп. элементами
-        this.appendedControls = Array.from(this.form.querySelectorAll('.with_append'));
-        this.appendedControls.forEach(el => {
-            el.isOnFocus = false;
-            el.controlEl = el;
-            el.addEventListener('mouseenter', this.glow.bind(this));
-            el.addEventListener('mouseleave', this.glow.bind(this));
-        });
-
-        this.appendedControls.forEach((parentEl, id) => {
-            parentEl.querySelectorAll('input,select').forEach(el => {
-                el.controlEl = parentEl;
-                el.addEventListener('focus', this.glow.bind(this));
-                el.addEventListener('blur', this.glow.bind(this));
-            });
-        });
     }
 
     // onTabChange
@@ -277,26 +245,6 @@ class Form {
             iframe.style.height = '89%';
             tab.pane.appendChild(iframe);
             tab.loaded = true;
-        }
-    }
-
-    // Glow effect
-    glow(ev) {
-        switch (ev.type) {
-            case 'focus':
-                ev.target.controlEl.isOnFocus = true;
-            case 'mouseenter':
-                ev.target.controlEl.classList.add('focus_block');
-                ev.stopPropagation?.();
-                break;
-            case 'blur':
-                ev.target.controlEl.isOnFocus = false;
-            case 'mouseleave':
-                if (!ev.target.controlEl.isOnFocus) {
-                    ev.target.controlEl.classList.remove('focus_block');
-                    ev.stopPropagation?.();
-                }
-                break;
         }
     }
 
@@ -368,15 +316,28 @@ class Form {
     }
 
     // clearFileField
-    clearFileField(fieldId, lnk) {
-        let preview;
-        this.form.querySelector(`#${fieldId}`).value = '';
-        preview = this.form.querySelector(`#${fieldId}_preview`);
-        if (preview) {
-            preview.removeAttribute('href');
-            preview.style.display = 'none';
+    clearFileField(button) {
+        const targetId = button?.dataset?.target;
+        const previewId = button?.dataset?.preview;
+        const linkInput = targetId ? document.getElementById(targetId) : null;
+        if (linkInput) {
+            linkInput.value = '';
         }
-        lnk.style.display = 'none';
+        const preview = previewId ? document.getElementById(previewId) : null;
+        if (preview) {
+            const anchor = preview.tagName.toLowerCase() === 'a' ? preview : preview.querySelector('a');
+            if (anchor) {
+                anchor.removeAttribute('href');
+            }
+            const image = preview.querySelector('img');
+            if (image) {
+                image.removeAttribute('src');
+            }
+            preview.setAttribute('hidden', 'hidden');
+        }
+        if (button) {
+            button.setAttribute('hidden', 'hidden');
+        }
     }
 
     // processFileResult
@@ -384,20 +345,26 @@ class Form {
         if (!result) return;
 
         // получаем элемент по id, если передано id
-        let linkId = button.getAttribute('link');
-        let linkInput = document.getElementById(linkId);
+        const linkId = button?.dataset?.link;
+        const linkInput = linkId ? document.getElementById(linkId) : null;
         if (linkInput) {
             linkInput.value = result['upl_path'];
         } else {
             console.warn('processFileResult: Не найден элемент для id:', linkId, button, result);
         }
 
-        let previewId = button.getAttribute('preview');
-        let previewEl = document.getElementById(previewId);
-
-        let image = previewEl && previewEl.tagName.toLowerCase() === 'img'
+        const previewId = button?.dataset?.preview;
+        const previewEl = previewId ? document.getElementById(previewId) : null;
+        const anchor = previewEl && previewEl.tagName.toLowerCase() === 'a'
             ? previewEl
-            : previewEl?.querySelector('img');
+            : previewEl?.querySelector('a');
+        let image = null;
+        if (previewEl) {
+            image = previewEl.querySelector('img');
+            if (!image && previewEl.tagName.toLowerCase() === 'img') {
+                image = previewEl;
+            }
+        }
         if (image) {
             let src;
             switch (result['upl_internal_type']) {
@@ -411,27 +378,23 @@ class Form {
                     src = Energine['static'] + 'images/icons/icon_undefined.gif';
             }
             image.setAttribute('src', src);
-            if (previewEl) {
-                previewEl.setAttribute('href', Energine.media + result['upl_path']);
-                previewEl.style.display = '';
+            if (anchor) {
+                anchor.setAttribute('href', Energine.media + result['upl_path']);
             }
+            previewEl?.removeAttribute('hidden');
         }
 
-        let nextClear = button.nextElementSibling;
-        if (nextClear && nextClear.classList.contains('lnk_clear')) {
-            nextClear.style.display = 'inline';
-        }
+        const clearButton = linkId
+            ? this.form.querySelector(`[data-action="clear-file"][data-target="${linkId}"]`)
+            : null;
+        clearButton?.removeAttribute('hidden');
     }
 
     // openFileLib
     openFileLib(button) {
-        let selector = button.getAttribute('link');
-        let linkInput = document.querySelector(selector);
-
-        let path = null;
-        if (linkInput) {
-            path = linkInput.value || null;
-        }
+        const linkId = button?.dataset?.link;
+        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const path = linkInput ? (linkInput.value || null) : null;
 
         ModalBox.open({
             url: this.singlePath + 'file-library/',
@@ -444,15 +407,15 @@ class Form {
 
     // openTagEditor
     openTagEditor(button) {
-        // Получаем id связанного поля из атрибута link
-        let fieldId = button.getAttribute('link');
-        let linkInput = document.getElementById(fieldId);
+        // Получаем id связанного поля из data-атрибута
+        const fieldId = button?.dataset?.target;
+        const linkInput = fieldId ? document.getElementById(fieldId) : null;
 
         ModalBox.open({
             url: this.singlePath + 'tags/show/',
             //extraData: data.data,
             onClose: (result) => {
-                if (result) {
+                if (result && linkInput) {
                     // Устанавливаем новое значение тегов в input
                     linkInput.value = result;
                 }
@@ -463,17 +426,18 @@ class Form {
 
     // openQuickUpload
     openQuickUpload(button) {
-        let linkInput = document.querySelector(button.getAttribute('link'));
-        let path = linkInput.value || null;
-        let quick_upload_pid = button.getAttribute('quick_upload_pid');
-        let quick_upload_enabled = button.getAttribute('quick_upload_enabled');
+        const linkId = button?.dataset?.link;
+        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const path = linkInput ? (linkInput.value || null) : null;
+        const quickUploadPid = button?.dataset?.quickUploadPid;
+        const quickUploadEnabled = button?.dataset?.quickUploadEnabled === '1';
         // let overlay = this.overlay;
         let processResult = this.processFileResult.bind(this);
 
-        if (!quick_upload_enabled) return;
+        if (!quickUploadEnabled || !quickUploadPid) return;
 
         ModalBox.open({
-            url: this.singlePath + 'file-library/' + quick_upload_pid + '/add',
+            url: this.singlePath + 'file-library/' + quickUploadPid + '/add',
             extraData: path,
             onClose: (result) => {
                 if (result && result.data) {
@@ -481,7 +445,7 @@ class Form {
                     if (upl_id) {
                         // overlay.show();
                         showLoader();
-                        fetch(this.singlePath + `file-library/${quick_upload_pid}/get-data/`, {
+                        fetch(this.singlePath + `file-library/${quickUploadPid}/get-data/`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                             body: `json=1&filter=${encodeURIComponent(JSON.stringify({
@@ -689,13 +653,14 @@ class FormSmapSelector {
         // Вешаем клик
         this.selector.addEventListener('click', (e) => {
             e.preventDefault();
-            // Найдем target по data-атрибуту (как было через getProperty('smap_id') и getProperty('smap_name'))
-            let smapIdName = e.target.getAttribute('smap_id') || e.target.dataset.smapId;
-            let smapNameName = e.target.getAttribute('smap_name') || e.target.dataset.smapName;
+            const target = e.currentTarget;
+            // Найдем target по data-атрибуту
+            const smapIdName = target.dataset.id || target.getAttribute('smap_id');
+            const smapNameName = target.dataset.name || target.getAttribute('smap_name');
 
             // Поля для записи результатов (элементы input или т.п.)
-            this.smap.id = document.getElementById(smapIdName);
-            this.smap.name = document.getElementById(smapNameName);
+            this.smap.id = smapIdName ? document.getElementById(smapIdName) : null;
+            this.smap.name = smapNameName ? document.getElementById(smapNameName) : null;
 
             this.showSelector();
         });
@@ -754,8 +719,9 @@ class FormAttachmentSelector {
             e.preventDefault();
 
             // Определяем id полей из data-атрибутов или обычных атрибутов
-            const uplNameId = e.target.getAttribute('upl_name') || e.target.dataset.uplName;
-            const uplIdId   = e.target.getAttribute('upl_id')   || e.target.dataset.uplId;
+            const target = e.currentTarget;
+            const uplNameId = target.dataset.name || target.getAttribute('upl_name');
+            const uplIdId   = target.dataset.id || target.getAttribute('upl_id');
 
             // Получаем реальные элементы (input'ы и т.п.)
             this.uplName = uplNameId ? document.getElementById(uplNameId) : null;
