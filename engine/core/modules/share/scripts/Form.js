@@ -20,8 +20,7 @@ ScriptLoader.load('ckeditor/ckeditor', 'TabPane', 'Toolbar', 'Validator', 'Modal
  * @requires ModalBox
  * @requires Overlay
  * @requires datepicker
- * @requires Swiff.Uploader
- *
+*
  * @author Pavel Dubenko
  *
  * @version 1.0.1
@@ -118,8 +117,15 @@ class Form {
 
         // Uploaders
         this.uploaders = [];
-        this.componentElement.querySelectorAll('.uploader').forEach(uploader => {
-            this.uploaders.push(new Form.Uploader(uploader, this, 'upload/'));
+        this.uploadersMap = new Map();
+        this.componentElement.querySelectorAll('[data-role="file-uploader"]').forEach(uploader => {
+            const instance = new Form.Uploader(uploader, this, 'upload/');
+            if (instance) {
+                this.uploaders.push(instance);
+                if (instance.targetId) {
+                    this.uploadersMap.set(instance.targetId, instance);
+                }
+            }
         });
 
         // Date controls
@@ -338,6 +344,15 @@ class Form {
         if (button) {
             button.setAttribute('hidden', 'hidden');
         }
+
+        const inputId = button?.dataset?.input;
+        const fileInput = inputId ? document.getElementById(inputId) : null;
+        if (fileInput) {
+            fileInput.value = '';
+        }
+
+        const uploader = targetId ? this.uploadersMap?.get(targetId) : null;
+        uploader?.reset();
     }
 
     // processFileResult
@@ -426,6 +441,13 @@ class Form {
 
     // openQuickUpload
     openQuickUpload(button) {
+        const inputId = button?.dataset?.input;
+        const fileInput = inputId ? document.getElementById(inputId) : null;
+        if (fileInput) {
+            fileInput.click();
+            return;
+        }
+
         const linkId = button?.dataset?.link;
         const linkInput = linkId ? document.getElementById(linkId) : null;
         const path = linkInput ? (linkInput.value || null) : null;
@@ -502,115 +524,317 @@ class FormUploader {
      * @param {string} path
      */
     constructor(uploaderElement, form, path) {
-        this.element = (typeof uploaderElement === 'string')
+        this.container = (typeof uploaderElement === 'string')
             ? document.querySelector(uploaderElement)
             : uploaderElement;
-        if (!this.element) return;
+        if (!this.container) {
+            return;
+        }
 
         this.form = form;
+        this.path = path;
 
-        // Для сохранения совместимости
-        const extraData = typeof ModalBox.getExtraData === 'function'
-            ? ModalBox.getExtraData()
-            : '';
+        this.fileInput = this.container.querySelector('input[type="file"][data-action="upload-file"]')
+            || this.container.querySelector('input[type="file"]');
 
-        this.swfUploader = new Swiff.Uploader({
-            path: 'scripts/Swiff.Uploader.swf',
-            url: `${this.form.singlePath}${path}?json`,
-            verbose: !!Energine.debug,
-            queued: false,
-            multiple: false,
-            target: this.element,
-            instantStart: true,
-            appendCookieData: false,
-            timeLimit: 0,
-            data: {
-                'NRGNCookie': document.cookie,
-                'path': (typeof extraData === 'string' ? extraData : ''),
-                'element': this.element.getAttribute('nrgn:input')
-            },
-            typeFilter: {
-                'All files (*.*)': '*.*',
-                'Images (*.jpg, *.jpeg, *.gif, *.png)': '*.jpg; *.jpeg; *.gif; *.png',
-                'Flash video (*.flv)': '*.flv'
-            },
-            onFileComplete: this.afterUpload.bind(this),
-            onFileProgress: (uploadInfo) => {
-                const indicator = this.form.form.querySelector('#indicator');
-                if (indicator) indicator.textContent = uploadInfo.progress.percentLoaded + "%";
-            },
-            onFileOpen: () => {
-                const loader = this.form.form.querySelector('#loader');
-                const indicator = this.form.form.querySelector('#indicator');
-                if (loader) loader.classList.remove('hidden');
-                if (indicator) indicator.classList.remove('hidden');
-            },
-            onComplete: () => {
-                const loader = this.form.form.querySelector('#loader');
-                const indicator = this.form.form.querySelector('#indicator');
-                if (loader) loader.classList.add('hidden');
-                if (indicator) indicator.classList.add('hidden');
-            },
-            onFail: this.handleError.bind(this),
-            onSelectFail: this.handleError.bind(this)
-        });
-    }
+        if (!this.fileInput) {
+            return;
+        }
 
-    /**
-     * Callback after upload.
-     * @param {Object} uploadInfo
-     */
-    afterUpload(uploadInfo) {
-        this._show_preview(uploadInfo);
-    }
+        this.targetId = this.fileInput.dataset.target || this.container.dataset.target || null;
+        this.hiddenInput = this.targetId ? document.getElementById(this.targetId) : null;
+        this.previewId = this.fileInput.dataset.preview || this.container.dataset.preview || null;
 
-    /**
-     * Callback for error handling.
-     */
-    handleError() {
-        this.form.validator.showError(this.element, 'При загрузке файла произошла ошибка');
-    }
+        const progressSelector = this.targetId
+            ? `[data-role="upload-progress"][data-target="${this.targetId}"]`
+            : null;
+        this.progressElement = progressSelector
+            ? this.form.componentElement.querySelector(progressSelector)
+            : null;
+        this.progressBar = this.progressElement ? this.progressElement.querySelector('.progress-bar') : null;
 
-    /**
-     * Show file preview after upload.
-     * @param {Object} file
-     */
-    _show_preview(file) {
-        if (!file.response.error) {
-            let data = {};
-            try {
-                data = JSON.parse(file.response.text);
-            } catch (e) {
-                this.handleError();
-                return;
-            }
-            const preview = document.querySelector(`${data.element}_preview`);
-            const input = document.querySelector(`${data.element}`);
-            if (preview && input) {
-                input.value = data.file;
-                const uplName = document.querySelector('#upl_name');
-                if (uplName && !uplName.value) {
-                    uplName.value = data.title;
-                }
-                let previewImg = preview.querySelector('img');
-                if (!previewImg) {
-                    previewImg = document.createElement('img');
-                    previewImg.setAttribute('border', 0);
-                    preview.appendChild(previewImg);
-                }
-                previewImg.src = data.preview;
-            }
-        } else {
-            this.handleError();
+        const errorSelector = this.targetId
+            ? `[data-role="upload-error"][data-target="${this.targetId}"]`
+            : null;
+        this.errorElement = errorSelector
+            ? this.form.componentElement.querySelector(errorSelector)
+            : null;
+
+        this.quickUploadButton = this.targetId
+            ? this.form.form.querySelector(`[data-action="quick-upload"][data-link="${this.targetId}"]`)
+            : null;
+
+        this.clearButton = this.targetId
+            ? this.form.form.querySelector(`[data-action="clear-file"][data-target="${this.targetId}"]`)
+            : null;
+
+        this.quickUploadPid = this.fileInput.dataset.quickUploadPid
+            || this.container.dataset.quickUploadPid
+            || '';
+        this.quickUploadPath = this.fileInput.dataset.quickUploadPath
+            || this.container.dataset.quickUploadPath
+            || '';
+        const enabledAttr = this.fileInput.dataset.quickUploadEnabled
+            || this.container.dataset.quickUploadEnabled
+            || '1';
+        this.quickUploadEnabled = ['1', 'true', 'yes'].includes((enabledAttr || '').toString().toLowerCase());
+
+        if (!this.quickUploadPid) {
+            this.quickUploadEnabled = false;
+        }
+
+        this.fileInput.addEventListener('change', this.handleFileChange);
+
+        if (!this.quickUploadEnabled) {
+            this.fileInput.disabled = true;
         }
     }
 
-    /**
-     * Remove the file preview.
-     * @param {string} fieldId
-     * @param {Element} control
-     */
-    removeFilePreview(fieldId, control) {
+    handleFileChange = (event) => {
+        const files = event?.target?.files;
+        if (!files || !files.length) {
+            return;
+        }
+
+        if (!this.quickUploadEnabled) {
+            this.showError('Быстрая загрузка недоступна для этого поля');
+            event.target.value = '';
+            return;
+        }
+
+        const file = files[0];
+        if (!file) {
+            return;
+        }
+
+        this.resetError();
+        this.setButtonsDisabled(true);
+        this.toggleProgress(true);
+        this.setProgress(0);
+
+        this.uploadTempFile(file)
+            .then((temp) => this.saveTempFile(temp, file))
+            .then((record) => {
+                this.form.processFileResult(record, this.quickUploadButton || this.container);
+                this.fileInput.value = '';
+                this.resetError();
+            })
+            .catch((error) => {
+                const message = error instanceof Error ? error.message : 'Не удалось загрузить файл';
+                this.showError(message);
+            })
+            .finally(() => {
+                this.toggleProgress(false);
+                this.setButtonsDisabled(false);
+            });
+    };
+
+    uploadTempFile(file) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const url = `${this.form.singlePath}file-library/upload-temp/?json`;
+            xhr.open('POST', url);
+            xhr.responseType = 'json';
+            xhr.withCredentials = true;
+
+            if (this.progressBar) {
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        this.setProgress(percent);
+                    }
+                });
+            }
+
+            xhr.addEventListener('load', () => {
+                const response = xhr.response ?? this.safeParseJSON(xhr.responseText);
+                if (xhr.status >= 200 && xhr.status < 300 && response && !response.error) {
+                    resolve(response);
+                } else {
+                    const message = this.extractErrorMessage(response, `Ошибка загрузки файла (HTTP ${xhr.status})`);
+                    reject(new Error(message));
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                reject(new Error('Ошибка сети при загрузке файла'));
+            });
+
+            xhr.addEventListener('abort', () => {
+                reject(new Error('Загрузка файла была отменена'));
+            });
+
+            const formData = new FormData();
+            formData.append('key', 'file');
+            if (this.quickUploadPid) {
+                formData.append('pid', this.quickUploadPid);
+            }
+            formData.append('file', file);
+
+            xhr.send(formData);
+        });
+    }
+
+    saveTempFile(tempResponse, file) {
+        const fileName = tempResponse?.name || file.name;
+        const title = this.extractTitle(fileName);
+
+        const formData = new FormData();
+        formData.append('json', '1');
+        if (this.quickUploadPid) {
+            formData.append('share_uploads[upl_pid]', this.quickUploadPid);
+        }
+        formData.append('share_uploads[upl_title]', title);
+        formData.append('share_uploads[upl_name]', fileName);
+        formData.append('share_uploads[upl_filename]', fileName);
+        formData.append('share_uploads[upl_path]', tempResponse.tmp_name);
+
+        return fetch(`${this.form.singlePath}file-library/save/?json`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+            .then((response) => this.parseJsonResponse(response, 'Не удалось сохранить файл'))
+            .then((data) => {
+                if (!data || !data.result || !data.data) {
+                    throw new Error('Не удалось сохранить файл');
+                }
+                return this.fetchFileRecord(data.data);
+            });
+    }
+
+    fetchFileRecord(uploadId) {
+        const filter = {
+            condition: '=',
+            share_uploads: { upl_id: [Number(uploadId)] }
+        };
+        const body = `json=1&filter=${encodeURIComponent(JSON.stringify(filter))}`;
+        const url = `${this.form.singlePath}file-library/${this.quickUploadPid}/get-data/`;
+
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body,
+            credentials: 'same-origin'
+        })
+            .then((response) => this.parseJsonResponse(response, 'Не удалось получить данные файла'))
+            .then((result) => {
+                if (result && Array.isArray(result.data) && result.data.length >= 2) {
+                    return result.data[1];
+                }
+                throw new Error('Не удалось получить данные файла');
+            });
+    }
+
+    parseJsonResponse(response, errorMessage) {
+        if (!response.ok) {
+            throw new Error(`${errorMessage} (HTTP ${response.status})`);
+        }
+        return response.json().catch(() => {
+            throw new Error('Сервер вернул некорректный ответ');
+        });
+    }
+
+    safeParseJSON(text) {
+        if (!text) {
+            return null;
+        }
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    extractErrorMessage(response, defaultMessage) {
+        if (!response) {
+            return defaultMessage;
+        }
+        if (typeof response === 'string') {
+            return response;
+        }
+        if (response.error_message) {
+            return response.error_message;
+        }
+        if (response.message) {
+            return response.message;
+        }
+        return defaultMessage;
+    }
+
+    extractTitle(fileName) {
+        if (!fileName) {
+            return '';
+        }
+        const position = fileName.lastIndexOf('.');
+        return position > 0 ? fileName.substring(0, position) : fileName;
+    }
+
+    setButtonsDisabled(disabled) {
+        if (disabled) {
+            this.fileInput.disabled = true;
+        } else {
+            this.fileInput.disabled = this.quickUploadEnabled ? false : true;
+        }
+        if (this.quickUploadButton) {
+            this.quickUploadButton.disabled = disabled;
+        }
+    }
+
+    toggleProgress(visible) {
+        if (!this.progressElement) {
+            return;
+        }
+        if (visible) {
+            this.progressElement.classList.remove('d-none');
+        } else {
+            this.progressElement.classList.add('d-none');
+            this.setProgress(0);
+        }
+    }
+
+    setProgress(value) {
+        if (!this.progressBar) {
+            return;
+        }
+        const percent = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+        this.progressBar.style.width = `${percent}%`;
+        this.progressBar.textContent = `${percent}%`;
+        this.progressBar.setAttribute('aria-valuenow', String(percent));
+    }
+
+    showError(message) {
+        if (this.errorElement) {
+            this.errorElement.textContent = message;
+            this.errorElement.classList.remove('d-none');
+        }
+        if (this.form.validator && typeof this.form.validator.showError === 'function') {
+            this.form.validator.showError(this.fileInput, message);
+        }
+    }
+
+    resetError() {
+        if (this.errorElement) {
+            this.errorElement.textContent = '';
+            this.errorElement.classList.add('d-none');
+        }
+        if (this.form.validator && typeof this.form.validator.removeError === 'function') {
+            this.form.validator.removeError(this.fileInput);
+        }
+    }
+
+    reset() {
+        this.resetError();
+        this.toggleProgress(false);
+        if (this.fileInput) {
+            this.fileInput.value = '';
+            if (!this.quickUploadEnabled) {
+                this.fileInput.disabled = true;
+            }
+        }
+    }
+
+    removeFilePreview(fieldId) {
         const field = document.getElementById(fieldId) || document.querySelector(fieldId);
         if (field) field.value = '';
         const preview = document.querySelector(`${fieldId}_preview`);

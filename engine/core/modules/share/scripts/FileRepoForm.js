@@ -1,4 +1,4 @@
-ScriptLoader.load('Form', 'FileAPI/FileAPI.min');
+ScriptLoader.load('Form', 'FileAPI/FileAPI');
 
 // FileRepoForm.js
 
