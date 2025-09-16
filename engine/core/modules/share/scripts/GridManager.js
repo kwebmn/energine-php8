@@ -33,11 +33,10 @@ class Grid {
             header.addEventListener('click', this.onChangeSort.bind(this))
         );
 
-        if (document.querySelector('.e-singlemode-layout')) {
-            window.addEventListener('resize', this.fitGridSize.bind(this));
-        } else {
-            window.addEventListener('resize', this.fitGridFormSize.bind(this));
-        }
+        this.handleWindowResize = () => {
+            this.fitGridFormSize();
+        };
+        window.addEventListener('resize', this.handleWindowResize);
 
         // Поддержка событий
         this.on('dirty', () => {
@@ -93,14 +92,15 @@ class Grid {
     selectItem(item) {
         this.deselectItem();
         if (item) {
-            item.classList.add('selected');
+            item.classList.add('table-active');
             this.selectedItem = item;
             this.fireEvent('select', item);
         }
     }
     deselectItem() {
         if (this.selectedItem) {
-            this.selectedItem.classList.remove('selected');
+            this.selectedItem.classList.remove('table-active');
+            this.selectedItem = null;
         }
     }
     getSelectedItem() { return this.selectedItem; }
@@ -152,22 +152,16 @@ class Grid {
         this.gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
         this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
+        this.pane = this.element.closest('[data-role="pane"]');
+        this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
 
         this.adjustColumns();
-        this.fitGridSize();
+        this.fitGridFormSize();
 
         if (!this.minGridHeight) {
             let h = this.gridContainer.style.height;
-            this.minGridHeight = h ? parseInt(h) : 300;
-        }
-
-        if (!document.querySelector('.e-singlemode-layout')) {
-            this.pane = this.element.closest('[data-role="pane"]');
-            this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
+            this.minGridHeight = h ? parseInt(h, 10) : 300;
             this.fitGridFormSize();
-            // if (document.querySelectorAll('.grid')[0] === this.element) {
-            //     (document.querySelector('.e-mainframe') || window).scrollTo(0, this.pane.offsetTop);
-            // }
         }
     }
 
@@ -181,7 +175,6 @@ class Grid {
         }
 
         let row = document.createElement('tr');
-        row.className = (id % 2 === 0) ? 'odd' : 'even';
         row.setAttribute('unselectable', 'on');
         this.tbody.appendChild(row);
 
@@ -347,38 +340,52 @@ class Grid {
     }
 
     fitGridFormSize() {
-        return;
-        if (this.pane) {
-            let toolbarH = (this.gridToolbar) ? this.gridToolbar.offsetHeight : 0;
-            let gridHeadH = (this.gridHeadContainer) ? this.gridHeadContainer.offsetHeight : 0;
-            let paneToolbarT = this.pane.querySelector('[data-pane-part="header"]');
-            let paneToolbarTH = (paneToolbarT) ? paneToolbarT.offsetHeight : 0;
-            let paneToolbarB = this.pane.querySelector('[data-pane-part="footer"]');
-            let paneToolbarBH = (paneToolbarB) ? paneToolbarB.offsetHeight : 0;
-            let paneH = this.pane.offsetHeight;
-            let margin = parseInt(this.element.style.marginTop) || 0;
-            let gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
-            let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
-                + parseInt(window.getComputedStyle(this.gridContainer).borderTopWidth || 0)
-                + parseInt(window.getComputedStyle(this.gridContainer).borderBottomWidth || 0);
-
-            if (gridBodyHeight < this.minGridHeight) {
-                gridBodyHeight = this.minGridHeight;
-            }
-
-            let totalH = toolbarH + gridHeadH + gridBodyHeight + paneToolbarTH + paneToolbarBH + margin + 3;
-            let w = window.innerHeight;
-            let freespace = w;
-
-            if ((document.body.scrollHeight - 16 - 81) < w) {
-                freespace -= (this.pane.offsetTop + 16 + 81);
-            }
-            if (totalH > paneH) {
-                this.pane.style.height = ((totalH > freespace) ? freespace : totalH) + 'px';
-            }
-            this.fitGridSize();
-
+        if (!this.gridContainer) {
+            return;
         }
+
+        if (!this.pane) {
+            this.fitGridSize();
+            return;
+        }
+
+        const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
+        const gridHeadHeight = this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0;
+        const paneToolbarTop = this.pane.querySelector('[data-pane-part="header"]');
+        const paneToolbarBottom = this.pane.querySelector('[data-pane-part="footer"]');
+        const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
+        const paneToolbarBottomHeight = paneToolbarBottom ? paneToolbarBottom.offsetHeight : 0;
+        const paneHeight = this.pane.offsetHeight;
+        const margin = parseInt(this.element.style.marginTop, 10) || 0;
+        const gridBodyContainer = this.gridBodyContainer
+            || this.element.querySelector('[data-grid-section="body-inner"]');
+        let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
+            + parseInt(window.getComputedStyle(this.gridContainer).borderTopWidth || 0, 10)
+            + parseInt(window.getComputedStyle(this.gridContainer).borderBottomWidth || 0, 10);
+
+        if (this.minGridHeight && gridBodyHeight < this.minGridHeight) {
+            gridBodyHeight = this.minGridHeight;
+        }
+
+        const totalHeight = toolbarHeight
+            + gridHeadHeight
+            + gridBodyHeight
+            + paneToolbarTopHeight
+            + paneToolbarBottomHeight
+            + margin
+            + 3;
+        const viewportHeight = window.innerHeight;
+        let freeSpace = viewportHeight;
+
+        if ((document.body.scrollHeight - 16 - 81) < viewportHeight) {
+            freeSpace -= (this.pane.offsetTop + 16 + 81);
+        }
+
+        if (totalHeight > paneHeight) {
+            this.pane.style.height = ((totalHeight > freeSpace) ? freeSpace : totalHeight) + 'px';
+        }
+
+        this.fitGridSize();
     }
 
     // --- Sorting
@@ -705,7 +712,7 @@ class GridManager {
     }
     del() {
         let MSG_CONFIRM_DELETE = (Energine.translations && Energine.translations.get('MSG_CONFIRM_DELETE')) ||
-            'Do you really want to delete selected record?';
+            'Do you really want to delete the chosen record?';
         if (confirm(MSG_CONFIRM_DELETE)) {
             // this.overlay.show();
             showLoader();
