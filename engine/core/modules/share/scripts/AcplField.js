@@ -197,7 +197,7 @@ class ActiveList {
         this.unselectItem(this.selected);
 
         if (this.items[id]) {
-            this.items[id].classList.add('selected');
+            this.items[id].classList.add('selected', 'active');
             this.selected = id;
             // Скроллинг, если список длиннее экрана
             // if (document.body.scrollHeight > window.innerHeight) {
@@ -212,7 +212,7 @@ class ActiveList {
      */
     unselectItem(id) {
         if (this.items[id]) {
-            this.items[id].classList.remove('selected');
+            this.items[id].classList.remove('selected', 'active');
         }
     }
 
@@ -230,6 +230,12 @@ class ActiveList {
     _fireEvent(event, ...args) {
         if (this._events[event]) {
             this._events[event].forEach(fn => fn.apply(this, args));
+        }
+
+        if (typeof CustomEvent === 'function') {
+            const detail = args.length <= 1 ? args[0] : args;
+            const customEvent = new CustomEvent(event, { detail, bubbles: true });
+            this.container.dispatchEvent(customEvent);
         }
     }
 }
@@ -255,6 +261,12 @@ class DropBoxList extends ActiveList {
             ? document.getElementById(input)
             : input;
 
+        this.container.classList.remove('hidden');
+        this.container.classList.add('d-none');
+        this.container.setAttribute('role', 'listbox');
+
+        this.ul.classList.add('list-group');
+
         // Прячем по дефолту
         this.hide();
 
@@ -267,7 +279,7 @@ class DropBoxList extends ActiveList {
      * @returns {boolean}
      */
     isOpen() {
-        return !this.container.classList.contains('hidden');
+        return !this.container.classList.contains('d-none');
     }
 
     /**
@@ -282,21 +294,25 @@ class DropBoxList extends ActiveList {
      * Показать выпадающий список и активировать обработчики
      */
     show() {
-        this.container.classList.remove('hidden');
-        // Установить ширину по input (минус border, если нужен)
-        const inputRect = this.input.getBoundingClientRect();
-        const computed = window.getComputedStyle(this.container);
-        const borderLeft = parseInt(computed.borderLeftWidth, 10) || 0;
-        const borderRight = parseInt(computed.borderRightWidth, 10) || 0;
-        this.container.style.width = (inputRect.width - borderLeft - borderRight) + 'px';
+        const group = this.input.closest('.acpl-field');
+        const rect = group ? group.getBoundingClientRect() : this.input.getBoundingClientRect();
+
+        this.container.style.width = rect.width + 'px';
+        this.container.classList.remove('d-none');
+        this.container.classList.add('show');
         this.activate();
+        this._fireEvent('show');
     }
 
     /**
      * Спрятать список
      */
     hide() {
-        this.container.classList.add('hidden');
+        this.container.classList.add('d-none');
+        this.container.classList.remove('show');
+        this.active = false;
+        this.selected = -1;
+        this._fireEvent('hide');
     }
 
     /**
@@ -316,6 +332,7 @@ class DropBoxList extends ActiveList {
         const li = document.createElement('li');
         li.textContent = data.value;
         li.dataset.key = data.key;
+        li.classList.add('list-group-item', 'list-group-item-action', 'py-2');
         return li;
     }
 
@@ -333,6 +350,8 @@ class DropBoxList extends ActiveList {
 window.DropBoxList = DropBoxList;
 
 class AcplField {
+    static selector = '[data-role="acpl"]';
+
     /**
      * @param {HTMLElement|string} element - основной input
      * @param {Object} [options]
@@ -345,44 +364,48 @@ class AcplField {
         this.element = (typeof element === 'string') ? document.getElementById(element) : element;
         this.options = Object.assign({ startFrom: 1 }, options);
 
-        if (!this.element.dataset.role) {
+        if (!this.element.matches(AcplField.selector)) {
             this.element.dataset.role = 'acpl';
         }
         this.element.classList.add('form-control');
 
-        // Контейнер для input-group
-        const parent = this.element.parentNode;
-        this.container = document.createElement('div');
-        this.container.classList.add('input-group', 'acpl-field');
-        if (parent) {
-            parent.insertBefore(this.container, this.element);
-        }
-        this.container.appendChild(this.element);
+        this.componentId = this.element.getAttribute('component_id');
 
-        // Кнопка "..." для тегов
+        this.container = this.element.closest('.input-group');
+        if (this.container) {
+            this.container.classList.add('input-group', 'acpl-field');
+        } else {
+            const parent = this.element.parentNode;
+            this.container = document.createElement('div');
+            this.container.classList.add('input-group', 'acpl-field');
+            if (parent) {
+                parent.insertBefore(this.container, this.element);
+            }
+            this.container.appendChild(this.element);
+        }
+
+        this.button = document.createElement('button');
+        this.button.type = 'button';
+        this.button.className = 'btn btn-outline-secondary';
+        this.button.dataset.action = 'acpl-open';
+        this.button.textContent = '…';
+        this.button.setAttribute('aria-haspopup', 'listbox');
+        this.button.setAttribute('aria-expanded', 'false');
+
         if (this.element.name === 'tags') {
-            this.button = document.createElement('button');
-            this.button.type = 'button';
-            this.button.className = 'btn btn-outline-secondary';
-            this.button.dataset.action = 'tag-editor';
             const targetId = this.element.id || this.element.name || 'tags';
             this.button.dataset.target = targetId;
-            const componentId = this.element.getAttribute('component_id');
-            this.button.addEventListener('click', () => {
-                const component = componentId ? window[componentId] : null;
-                if (component && typeof component.openTagEditor === 'function') {
-                    component.openTagEditor(this.button);
-                }
-            });
-            this.button.textContent = '…';
-
-            this.container.appendChild(this.button);
         }
+
+        this.button.addEventListener('click', () => this.handleButtonClick());
+        this.container.appendChild(this.button);
+
         // DropBoxList (должен быть глобально подключен)
         this.list = new DropBoxList(this.element);
+        this.list.on('choose', (item) => this.select(item));
+        this.list.on('show', () => this.syncButtonState());
+        this.list.on('hide', () => this.syncButtonState());
         this.container.appendChild(this.list.get());
-
-        this.list.get().addEventListener('choose', (e) => this.select(e.detail));
 
         this.url = this.element.getAttribute('nrgn:url');
         this.separator = this.element.getAttribute('nrgn:separator');
@@ -393,6 +416,71 @@ class AcplField {
 
         // input keyup
         this.element.addEventListener('keyup', this.enter.bind(this));
+
+        this.syncButtonState();
+    }
+
+    handleButtonClick() {
+        this.element.focus();
+
+        if (this.tryOpenTagEditor()) {
+            return;
+        }
+
+        if (!this.url) {
+            return;
+        }
+
+        if (this.list.isOpen()) {
+            this.list.hide();
+            return;
+        }
+
+        if (this.list.items.length) {
+            this.list.show();
+            return;
+        }
+
+        this.updateSuggestionsFromInput();
+        this.syncButtonState();
+    }
+
+    tryOpenTagEditor() {
+        if (this.element.name !== 'tags') {
+            return false;
+        }
+
+        const component = this.componentId ? window[this.componentId] : null;
+        if (component && typeof component.openTagEditor === 'function') {
+            component.openTagEditor(this.button);
+            return true;
+        }
+
+        return false;
+    }
+
+    updateSuggestionsFromInput() {
+        this.value = this.element.value;
+        this.words = new Words(this.value, this.separator);
+
+        const cursorPos = (typeof this.element.selectionStart === 'number')
+            ? this.element.selectionStart
+            : this.value.length;
+        const word = this.words.findWord(cursorPos);
+
+        if (word.str.length > this.options.startFrom) {
+            this.words.setCurrentIndex(word.index);
+            this.putInQueue(word.str, this.value);
+            return true;
+        }
+
+        return false;
+    }
+
+    syncButtonState() {
+        if (this.button) {
+            this.button.setAttribute('aria-expanded', this.list.isOpen() ? 'true' : 'false');
+        }
     }
 
     static assetCss(file) {
@@ -407,8 +495,6 @@ class AcplField {
     enter(e) {
         if (!this.url) return;
 
-        const val = this.element.value;
-
         switch (e.key) {
             case 'Escape':
                 this.list.hide();
@@ -420,17 +506,7 @@ class AcplField {
                 this.list.keyPressed(e);
                 break;
             default:
-                this.value = val;
-                this.words = new Words(this.value, this.separator);
-
-                // Определяем позицию курсора в input
-                let cursorPos = this.element.selectionStart || 0;
-                let word = this.words.findWord(cursorPos);
-
-                if (word.str.length > this.options.startFrom) {
-                    this.words.setCurrentIndex(word.index);
-                    this.putInQueue(word.str, this.value);
-                }
+                this.updateSuggestionsFromInput();
         }
     }
 
@@ -461,6 +537,8 @@ class AcplField {
                 this.list.add(this.list.create(row));
             });
             this.list.show();
+        } else {
+            this.list.hide();
         }
     }
 

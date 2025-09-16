@@ -69,6 +69,7 @@ class Form {
 
         // Валидатор
         this.validator = new Validator(this.form, this.tabPane);
+        this.configureValidatorStyling();
 
         // Рич-редакторы
         this.richEditors = [];
@@ -116,14 +117,14 @@ class Form {
         });
 
         // Uploaders
-        this.uploaders = [];
-        this.uploadersMap = new Map();
+        this.fileUploaders = [];
+        this.fileUploaderMap = new Map();
         this.componentElement.querySelectorAll('[data-role="file-uploader"]').forEach(uploader => {
             const instance = new Form.Uploader(uploader, this, 'upload/');
             if (instance) {
-                this.uploaders.push(instance);
+                this.fileUploaders.push(instance);
                 if (instance.targetId) {
-                    this.uploadersMap.set(instance.targetId, instance);
+                    this.fileUploaderMap.set(instance.targetId, instance);
                 }
             }
         });
@@ -140,12 +141,6 @@ class Form {
             }
         });
 
-        // Оформление .pane
-        this.componentElement.querySelectorAll('.pane').forEach(pane => {
-            pane.style.border = '1px dotted #777';
-            pane.style.overflow = 'auto';
-        });
-
         // Если открыто в ModalBox
         if (window.parent.ModalBox?.initialized && window.parent.ModalBox.getCurrent()) {
             document.body.addEventListener('keypress', evt => {
@@ -156,34 +151,79 @@ class Form {
         }
 
         // GOOGLE TRANSLATE Ctrl + *
-        window.addEventListener('keypress', function (evt) {
+        window.addEventListener('keypress', (evt) => {
+            if (!(evt.target instanceof Element)) {
+                return;
+            }
+
             if (evt.code === 'Digit8' && evt.shiftKey) { // shift + *
                 const fieldId = evt.target.id;
-                const fieldBase = fieldId.substring(0, fieldId.length - 2);
-                const parent = $(evt.target).closest('[data-role="pane-item"]');
-                if (parent.length) {
-                    const parentId = parent.attr('id');
-                    let toLangAbbr = $(`a[href="#${parentId}"]`).attr('lang_abbr');
-                    if (toLangAbbr === 'ua') toLangAbbr = 'uk';
-                    const srcText = $(`#${fieldBase}_1`).val();
-                    $.ajax({
-                        url: 'https://translate.googleapis.com/translate_a/single',
-                        data: {
-                            client: 'gtx',
-                            sl: 'ru',
-                            tl: toLangAbbr,
-                            dt: 't',
-                            q: srcText
-                        },
-                        success: function (result) {
-                            result = result.substring(4);
-                            result = result.substring(0, result.indexOf('","'));
-                            result = result.charAt(0).toUpperCase() + result.slice(1);
-                            $(evt.target).val(result);
-                        },
-                        dataType: 'text'
-                    });
+                if (!fieldId || fieldId.length < 2) {
+                    return;
                 }
+
+                const fieldBase = fieldId.substring(0, fieldId.length - 2);
+                const parent = evt.target.closest('[data-role="pane-item"]');
+                if (!parent || !parent.id) {
+                    return;
+                }
+
+                const anchors = document.querySelectorAll('a[lang_abbr]');
+                const parentHref = `#${parent.id}`;
+                const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
+                let toLangAbbr = anchor?.getAttribute('lang_abbr');
+                if (!toLangAbbr) {
+                    return;
+                }
+
+                if (toLangAbbr === 'ua') {
+                    toLangAbbr = 'uk';
+                }
+
+                const srcTextElement = document.getElementById(`${fieldBase}_1`);
+                if (!srcTextElement || !('value' in srcTextElement)) {
+                    return;
+                }
+
+                const srcText = srcTextElement.value;
+                if (!srcText) {
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    client: 'gtx',
+                    sl: 'ru',
+                    tl: toLangAbbr,
+                    dt: 't',
+                    q: srcText
+                });
+
+                fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`)
+                    .then((response) => response.text())
+                    .then((resultText) => {
+                        if (!resultText) {
+                            return;
+                        }
+
+                        let translated = resultText.substring(4);
+                        const endIndex = translated.indexOf('","');
+                        if (endIndex !== -1) {
+                            translated = translated.substring(0, endIndex);
+                        }
+
+                        if (!translated) {
+                            return;
+                        }
+
+                        translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+
+                        if ('value' in evt.target) {
+                            evt.target.value = translated;
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Google Translate request failed', error);
+                    });
             }
         });
 
@@ -242,14 +282,18 @@ class Form {
     // onTabChange
     onTabChange(tab) {
         if (tab && tab.getAttribute('data-src') && !tab.loaded) {
-            tab.pane.innerHTML = '';
+            const pane = tab['pane'];
+            if (!pane) {
+                return;
+            }
+            pane.innerHTML = '';
             let iframe = document.createElement('iframe');
             iframe.src = Energine['base'] + tab.getAttribute('data-src');
             iframe.frameBorder = 0;
             iframe.scrolling = 'no';
             iframe.style.width = '99%';
             iframe.style.height = '89%';
-            tab.pane.appendChild(iframe);
+            pane.appendChild(iframe);
             tab.loaded = true;
         }
     }
@@ -351,7 +395,7 @@ class Form {
             fileInput.value = '';
         }
 
-        const uploader = targetId ? this.uploadersMap?.get(targetId) : null;
+        const uploader = targetId ? this.fileUploaderMap?.get(targetId) : null;
         uploader?.reset();
     }
 
@@ -507,6 +551,218 @@ class Form {
         return Array.from(data.entries())
             .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
             .join('&');
+    }
+
+    configureValidatorStyling() {
+        if (!this.validator) {
+            return;
+        }
+
+        const originalShowError = this.validator.showError?.bind(this.validator);
+        const originalRemoveError = this.validator.removeError?.bind(this.validator);
+
+        this.validator.showError = (field, message = 'Ошибка заполнения') => {
+            const control = this.resolveControlElement(field);
+            if (!control || !this.applyInvalidAppearance(control, message)) {
+                originalShowError?.(field, message);
+            }
+        };
+
+        this.validator.removeError = (field) => {
+            const control = this.resolveControlElement(field);
+            if (!control || !this.resetInvalidAppearance(control)) {
+                originalRemoveError?.(field);
+            }
+        };
+    }
+
+    resolveControlElement(field) {
+        if (!field || !(field instanceof Element)) {
+            return null;
+        }
+        const tagName = field.tagName?.toLowerCase();
+        if (['input', 'textarea', 'select'].includes(tagName)) {
+            return field;
+        }
+        return field.querySelector?.('input, textarea, select') || null;
+    }
+
+    applyInvalidAppearance(control, message) {
+        if (!this.isValidatableControl(control)) {
+            return false;
+        }
+
+        this.resetInvalidAppearance(control);
+
+        control.classList.add('is-invalid');
+        control.setAttribute('aria-invalid', 'true');
+
+        const feedback = this.getInvalidFeedbackElement(control, true);
+        if (feedback) {
+            feedback.textContent = message ?? feedback.textContent ?? '';
+            this.showInvalidFeedback(feedback);
+        }
+        return true;
+    }
+
+    resetInvalidAppearance(control) {
+        if (!this.isValidatableControl(control)) {
+            return false;
+        }
+
+        control.classList.remove('is-invalid');
+        control.removeAttribute('aria-invalid');
+
+        const feedback = this.getInvalidFeedbackElement(control, false);
+        if (feedback) {
+            feedback.textContent = '';
+            this.hideInvalidFeedback(feedback);
+        }
+        return true;
+    }
+
+    isValidatableControl(control) {
+        if (!control || !(control instanceof Element)) {
+            return false;
+        }
+        const tagName = control.tagName?.toLowerCase();
+        return ['input', 'textarea', 'select'].includes(tagName);
+    }
+
+    getInvalidFeedbackElement(control, create = true) {
+        if (!control) {
+            return null;
+        }
+
+        const existingById = this.lookupFeedbackById(control.dataset.feedbackId);
+        if (existingById) {
+            return existingById;
+        }
+
+        const wrapper = control.closest('[data-role="form-field"]') || control.parentElement;
+        if (!wrapper) {
+            return null;
+        }
+
+        const existing = this.findExistingInvalidFeedback(wrapper, control);
+        if (existing) {
+            if (existing.id && !control.dataset.feedbackId) {
+                control.dataset.feedbackId = existing.id;
+            }
+            return existing;
+        }
+
+        if (!create) {
+            return null;
+        }
+
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+
+        const feedbackId = Form.generateFeedbackId(control);
+        feedback.id = feedbackId;
+        control.dataset.feedbackId = feedbackId;
+
+        if (control.id) {
+            feedback.dataset.feedbackFor = control.id;
+        } else if (control.name) {
+            feedback.dataset.feedbackFor = control.name;
+        }
+
+        const reference = control.closest('.input-group')
+            || control.closest('.form-check')
+            || control;
+        const parent = reference.parentNode || wrapper;
+        if (parent) {
+            if (reference.nextSibling) {
+                parent.insertBefore(feedback, reference.nextSibling);
+            } else {
+                parent.appendChild(feedback);
+            }
+        }
+
+        return feedback;
+    }
+
+    lookupFeedbackById(feedbackId) {
+        if (!feedbackId) {
+            return null;
+        }
+        try {
+            return document.getElementById(feedbackId) || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    findExistingInvalidFeedback(wrapper, control) {
+        const selectorParts = [];
+        if (control.id) {
+            selectorParts.push(`[data-feedback-for="${Form.escapeSelector(control.id)}"]`);
+        }
+        if (control.name) {
+            selectorParts.push(`[data-feedback-for="${Form.escapeSelector(control.name)}"]`);
+        }
+
+        for (const part of selectorParts) {
+            try {
+                const candidate = wrapper.querySelector(`.invalid-feedback${part}`);
+                if (candidate) {
+                    return candidate;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+
+        const direct = wrapper.querySelector('.invalid-feedback');
+        return direct || null;
+    }
+
+    showInvalidFeedback(feedback) {
+        if (!feedback) {
+            return;
+        }
+        if (feedback.hasAttribute('hidden')) {
+            feedback.dataset.wasHidden = feedback.dataset.wasHidden || 'true';
+            feedback.removeAttribute('hidden');
+        }
+        if (feedback.classList.contains('d-none')) {
+            feedback.dataset.wasDnone = feedback.dataset.wasDnone || 'true';
+            feedback.classList.remove('d-none');
+        }
+    }
+
+    hideInvalidFeedback(feedback) {
+        if (!feedback) {
+            return;
+        }
+        if (feedback.dataset.wasHidden === 'true') {
+            feedback.setAttribute('hidden', 'hidden');
+        }
+        if (feedback.dataset.wasDnone === 'true') {
+            feedback.classList.add('d-none');
+        }
+    }
+
+    static escapeSelector(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+        if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+            return CSS.escape(value);
+        }
+        return value.replace(/([\\:.#\[\],=])/g, '\\$1');
+    }
+
+    static generateFeedbackId(control) {
+        const baseRaw = (control.id || control.name || 'field').toString();
+        const base = baseRaw.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
+        let id = `${base}-feedback`;
+        while (document.getElementById(id)) {
+            id = `${base}-feedback-${Math.random().toString(36).slice(2, 8)}`;
+        }
+        return id;
     }
 }
 /**

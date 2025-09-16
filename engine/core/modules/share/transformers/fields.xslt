@@ -4,61 +4,28 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
 
-    <!-- Секция 1. Обвязка для полей формы. -->
     <!--
-        Шаблон-контроллер для обработки любого поля из компонента типа форма.
-        Создает стандартную обвязку вокруг элемента формы:
-        <div class="mb-3" data-role="form-field" data-type="...">
-            <label class="form-label">Имя поля</label>
-            <div><input/></div>
-        </div>
-    -->
-    <xsl:template match="field[ancestor::component[@type='form']]">
-        <div class="mb-3" data-role="form-field">
-            <xsl:attribute name="data-type"><xsl:value-of select="@type"/></xsl:attribute>
-            <xsl:attribute name="data-required">
-                <xsl:choose>
-                    <xsl:when test="not(@nullable) and @type!='boolean'">true</xsl:when>
-                    <xsl:otherwise>false</xsl:otherwise>
-                </xsl:choose>
-            </xsl:attribute>
-            <xsl:apply-templates select="." mode="field_name"/>
-            <xsl:apply-templates select="." mode="field_content"/>
-        </div>
-    </xsl:template>
-
-    <xsl:template match="field[ancestor::component[@type='form']]" mode="field_name">
-        <xsl:if test="@title and @type!='boolean'">
-            <label for="{@name}" class="form-label">
-                <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="not(@nullable) and not(ancestor::component/@exttype='grid')">
-                    <span class="text-danger">*</span>
-                </xsl:if>
-            </label>
-        </xsl:if>
-    </xsl:template>
-
-    <xsl:template match="field[ancestor::component[@type='form']]" mode="field_content">
-        <div id="control_{@language}_{@name}">
-            <xsl:apply-templates select="." mode="field_input"/>
-        </div>
-    </xsl:template>
-
-
-    <!--
-        Секция 2. Инпуты.
+        Секция 1. Инпуты.
         В этой секции собраны правила вывода полей формы, которые создают сам html-элемент (input, select, etc.).
     -->
     <!-- строковое поле (string), или поле, к которому не нашлось шаблона -->
     <xsl:template match="field[ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control">
+        <input>
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
     </xsl:template>
 
     <!-- поле для почтового адреса (email) -->
     <xsl:template match="field[@type='email'][ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control">
+        <input>
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">email</xsl:attribute>
         </input>
@@ -66,7 +33,11 @@
 
     <!-- поле для телефона (phone)-->
     <xsl:template match="field[@type='phone'][ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control">
+        <input>
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">tel</xsl:attribute>
         </input>
@@ -76,7 +47,11 @@
     <xsl:template match="field[@type='textbox'][ancestor::component[@type='form']]" mode="field_input">
         <xsl:variable name="SEPARATOR" select="@separator"/>
 <!--        <script type="text/javascript" src="scripts/AcplField.js"></script>-->
-        <input class="form-control" data-role="acpl">
+        <input data-role="acpl">
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="nrgn:url" xmlns:nrgn="http://energine.org">
                 <xsl:value-of select="$BASE"/><xsl:value-of
@@ -103,7 +78,11 @@
 
     <!-- числовое поле (integer) -->
     <xsl:template match="field[@type='integer'][ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control">
+        <input>
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">number</xsl:attribute>
             <xsl:attribute name="step">1</xsl:attribute>
@@ -112,7 +91,11 @@
 
     <!-- числовое поле (float) -->
     <xsl:template match="field[@type='float'][ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control">
+        <input>
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">number</xsl:attribute>
             <xsl:attribute name="step">any</xsl:attribute>
@@ -121,7 +104,11 @@
 
     <!-- поле пароля (password) -->
     <xsl:template match="field[@type='password' and ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control">
+        <input>
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">password</xsl:attribute>
             <xsl:attribute name="name"><xsl:choose>
@@ -141,9 +128,17 @@
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
+        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
         <div class="form-check">
             <input type="hidden" name="{$FIELD_NAME}" value="0"/>
-            <input class="form-check-input" type="checkbox" id="{@name}" name="{$FIELD_NAME}" value="1">
+            <input type="checkbox" id="{@name}" name="{$FIELD_NAME}" value="1">
+                <xsl:attribute name="class">
+                    <xsl:text>form-check-input</xsl:text>
+                    <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                </xsl:attribute>
+                <xsl:if test="$IS_REQUIRED">
+                    <xsl:attribute name="required">required</xsl:attribute>
+                </xsl:if>
                 <xsl:if test=". = 1">
                     <xsl:attribute name="checked">checked</xsl:attribute>
                 </xsl:if>
@@ -159,7 +154,7 @@
     <!-- поле загрузки файла (file) -->
     <xsl:template match="field[@type='file'][ancestor::component[@type='form']]" mode="field_input">
         <xsl:variable name="BASE_ID" select="generate-id(.)"/>
-        <xsl:variable name="PATH_ID" select="$BASE_ID"/>
+        <xsl:variable name="PATH_ID" select="concat($BASE_ID, '_path')"/>
         <xsl:variable name="FILE_INPUT_ID" select="concat($BASE_ID, '_file')"/>
         <xsl:variable name="PREVIEW_ID" select="concat($BASE_ID, '_preview')"/>
         <xsl:variable name="HAS_VALUE" select="string-length(.) &gt; 0"/>
@@ -186,11 +181,6 @@
                 </xsl:otherwise>
             </xsl:choose>
         </div>
-        <input>
-            <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
-            <xsl:attribute name="type">hidden</xsl:attribute>
-            <xsl:attribute name="id"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
-        </input>
         <div class="input-group" data-role="file-uploader">
             <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
             <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
@@ -203,48 +193,67 @@
             <xsl:if test="@quickUploadEnabled">
                 <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
             </xsl:if>
-            <input type="file" class="form-control">
-                <xsl:attribute name="id"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
-                <xsl:attribute name="data-action">upload-file</xsl:attribute>
-                <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
-                <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
-                <xsl:if test="@quickUploadPid">
-                    <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
-                </xsl:if>
-                <xsl:if test="@quickUploadPath">
-                    <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
-                </xsl:if>
-                <xsl:if test="@quickUploadEnabled">
-                    <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
-                </xsl:if>
-                <xsl:if test="@quickUploadEnabled!='1'">
-                    <xsl:attribute name="disabled">disabled</xsl:attribute>
+            <input id="{$PATH_ID}" readonly="readonly">
+                <xsl:attribute name="class">
+                    <xsl:text>form-control</xsl:text>
+                    <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                </xsl:attribute>
+                <xsl:attribute name="name">
+                    <xsl:choose>
+                        <xsl:when test="@tableName">
+                            <xsl:value-of select="@tableName"/>
+                            <xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>
+                            [<xsl:value-of select="@name"/>]
+                        </xsl:when>
+                        <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+                    </xsl:choose>
+                </xsl:attribute>
+                <xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute>
+                <xsl:if test="not(@nullable) or @nullable='0'">
+                    <xsl:attribute name="required">required</xsl:attribute>
                 </xsl:if>
             </input>
             <button class="btn btn-outline-secondary" type="button" data-action="open-filelib">
                 <xsl:attribute name="data-link"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                 <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
-                <xsl:text>…</xsl:text>
+                <xsl:text>Файл…</xsl:text>
             </button>
             <xsl:if test="@quickUploadPid">
                 <button class="btn btn-outline-secondary" type="button" data-action="quick-upload">
                     <xsl:attribute name="data-link"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                     <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
-                    <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
-                    <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
-                    <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
                     <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
+                    <xsl:if test="@quickUploadPath">
+                        <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
+                    </xsl:if>
+                    <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
                     <xsl:if test="@quickUploadEnabled!='1'">
                         <xsl:attribute name="disabled">disabled</xsl:attribute>
                     </xsl:if>
                     <xsl:value-of select="$TRANSLATION[@const='BTN_QUICK_UPLOAD']"/>
                 </button>
+                <input type="file" class="d-none" hidden="hidden" data-action="upload-file">
+                    <xsl:attribute name="id"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
+                    <xsl:if test="@quickUploadPath">
+                        <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
+                    </xsl:if>
+                    <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
+                    <xsl:if test="@quickUploadEnabled!='1'">
+                        <xsl:attribute name="disabled">disabled</xsl:attribute>
+                    </xsl:if>
+                </input>
             </xsl:if>
             <xsl:if test="@nullable">
                 <button class="btn btn-link" type="button" data-action="clear-file">
                     <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                     <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
-                    <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
+                    <xsl:if test="@quickUploadPid">
+                        <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
+                    </xsl:if>
                     <xsl:if test="not($HAS_VALUE)">
                         <xsl:attribute name="hidden">hidden</xsl:attribute>
                     </xsl:if>
@@ -263,11 +272,18 @@
 
     <!-- поле выбора из списка (select) -->
     <xsl:template match="field[@type='select'][ancestor::component[@type='form']]" mode="field_input">
-        <select id="{@name}" class="form-select">
+        <select id="{@name}">
+            <xsl:attribute name="class">
+                <xsl:text>form-select</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="name"><xsl:choose>
                 <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
                 <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
             </xsl:choose></xsl:attribute>
+            <xsl:if test="not(@nullable) or @nullable='0'">
+                <xsl:attribute name="required">required</xsl:attribute>
+            </xsl:if>
             <xsl:if test="@nullable='1'">
                 <option></option>
             </xsl:if>
@@ -276,11 +292,18 @@
     </xsl:template>
 
     <xsl:template match="field[@type='select' and @editor][ancestor::component[@exttype='grid' or @exttype='feed']]" mode="field_input">
-        <select id="{@name}" class="form-select">
+        <select id="{@name}">
+            <xsl:attribute name="class">
+                <xsl:text>form-select</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="name"><xsl:choose>
                 <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
                 <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
             </xsl:choose></xsl:attribute>
+            <xsl:if test="not(@nullable) or @nullable='0'">
+                <xsl:attribute name="required">required</xsl:attribute>
+            </xsl:if>
             <xsl:if test="@nullable='1'">
                 <option></option>
             </xsl:if>
@@ -300,11 +323,20 @@
             <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
             <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
         </xsl:choose>[]</xsl:variable>
+        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="HAS_ERROR" select="boolean(error)"/>
         <div>
             <xsl:for-each select="options/option">
                 <xsl:variable name="OPTION_ID" select="generate-id(.)"/>
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="{$OPTION_ID}" name="{$NAME}" value="{@id}">
+                    <input type="checkbox" id="{$OPTION_ID}" name="{$NAME}" value="{@id}">
+                        <xsl:attribute name="class">
+                            <xsl:text>form-check-input</xsl:text>
+                            <xsl:if test="$HAS_ERROR"><xsl:text> is-invalid</xsl:text></xsl:if>
+                        </xsl:attribute>
+                        <xsl:if test="$IS_REQUIRED and position()=1">
+                            <xsl:attribute name="required">required</xsl:attribute>
+                        </xsl:if>
                         <xsl:if test="@selected">
                             <xsl:attribute name="checked">checked</xsl:attribute>
                         </xsl:if>
@@ -317,7 +349,11 @@
 
     <!-- текстовое поле (text) -->
     <xsl:template match="field[@type='text'][ancestor::component[@type='form']]" mode="field_input">
-        <textarea class="form-control">
+        <textarea>
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
         </textarea>
@@ -325,7 +361,11 @@
 
     <!-- текстовое поле (text) -->
     <xsl:template match="field[@type='code'][ancestor::component[@type='form']]" mode="field_input">
-        <textarea class="form-control" data-role="code-editor">
+        <textarea data-role="code-editor">
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
         </textarea>
@@ -333,7 +373,11 @@
 
     <!-- поле типа rtf текст (htmlblock) -->
     <xsl:template match="field[@type='htmlblock'][ancestor::component[@type='form']]" mode="field_input">
-        <textarea class="form-control" data-role="rich-editor">
+        <textarea data-role="rich-editor">
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
         </textarea>
@@ -341,7 +385,11 @@
 
     <!-- поле для даты (datetime) -->
     <xsl:template match="field[@type='datetime'][ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control" data-role="datetime">
+        <input data-role="datetime">
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
 <!--        <script type="text/javascript">-->
@@ -354,7 +402,11 @@
 
     <!-- поле для даты (date) -->
     <xsl:template match="field[@type='date'][ancestor::component[@type='form']]" mode="field_input">
-        <input class="form-control" data-role="date">
+        <input data-role="date">
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
 <!--        <script type="text/javascript">-->
@@ -371,14 +423,22 @@
 
     <!-- поле для даты в гридах (datetime)  -->
     <xsl:template match="field[@type='datetime'][ancestor::component[@type='form' and @exttype='grid']]" mode="field_input">
-        <input class="form-control" data-role="datetime">
+        <input data-role="datetime">
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
     </xsl:template>
 
     <!-- поле для даты в гридах (date) -->
     <xsl:template match="field[@type='date'][ancestor::component[@type='form' and @exttype='grid']]" mode="field_input">
-        <input class="form-control" data-role="date">
+        <input data-role="date">
+            <xsl:attribute name="class">
+                <xsl:text>form-control</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
     </xsl:template>
@@ -392,7 +452,12 @@
             <xsl:attribute name="id"><xsl:value-of select="$BASE_ID"/>_id</xsl:attribute>
         </input>
         <div class="input-group">
-            <input type="text" class="form-control" id="{$BASE_ID}_name" value="{@smap_name}" readonly="readonly"/>
+            <input type="text" id="{$BASE_ID}_name" value="{@smap_name}" readonly="readonly">
+                <xsl:attribute name="class">
+                    <xsl:text>form-control</xsl:text>
+                    <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                </xsl:attribute>
+            </input>
             <button class="btn btn-outline-secondary" type="button" data-action="open-smap">
                 <xsl:attribute name="data-name"><xsl:value-of select="$BASE_ID"/>_name</xsl:attribute>
                 <xsl:attribute name="data-id"><xsl:value-of select="$BASE_ID"/>_id</xsl:attribute>
@@ -440,12 +505,20 @@
     <!-- шаблон-обвязка для любого поля, на которое права только чтение -->
     <xsl:template match="field[@mode='1'][ancestor::component[@type='form']]">
         <xsl:if test=".!=''">
+            <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
             <div class="mb-3" data-role="form-field">
-                <xsl:attribute name="data-type"><xsl:value-of select="@type"/></xsl:attribute>
+                <xsl:attribute name="data-type">
+                    <xsl:choose>
+                        <xsl:when test="@type"><xsl:value-of select="@type"/></xsl:when>
+                        <xsl:otherwise>string</xsl:otherwise>
+                    </xsl:choose>
+                </xsl:attribute>
+                <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
                 <xsl:apply-templates select="." mode="field_name_readonly"/>
                 <div id="control_{@language}_{@name}">
                     <xsl:apply-templates select="." mode="field_input_readonly"/>
                 </div>
+                <xsl:call-template name="render-field-messages"/>
             </div>
         </xsl:if>
     </xsl:template>
@@ -528,10 +601,12 @@
     <xsl:template match="field[@type='select'][@mode='1'][ancestor::component[@type='form']]">
         <div class="mb-3" data-role="form-field">
             <xsl:attribute name="data-type"><xsl:value-of select="@type"/></xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
             <xsl:apply-templates select="." mode="field_name_readonly"/>
             <div id="control_{@language}_{@name}">
                 <xsl:apply-templates select="." mode="field_input_readonly"/>
             </div>
+            <xsl:call-template name="render-field-messages"/>
         </div>
     </xsl:template>
 
@@ -547,10 +622,12 @@
     <xsl:template match="field[@type='multi'][@mode='1'][ancestor::component[@type='form']]">
         <div class="mb-3" data-role="form-field">
             <xsl:attribute name="data-type"><xsl:value-of select="@type"/></xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
             <xsl:apply-templates select="." mode="field_name_readonly"/>
             <div id="control_{@language}_{@name}">
                 <xsl:apply-templates select="." mode="field_input_readonly"/>
             </div>
+            <xsl:call-template name="render-field-messages"/>
         </div>
     </xsl:template>
 
@@ -616,9 +693,11 @@
 
     <xsl:template match="field[@type='captcha'][ancestor::component[@type='form']]">
         <div class="mb-3" data-role="form-field" data-type="captcha">
+            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
             <div id="control_{@language}_{@name}">
                 <xsl:value-of select="." disable-output-escaping="yes"/>
             </div>
+            <xsl:call-template name="render-field-messages"/>
         </div>
     </xsl:template>
 
@@ -657,6 +736,7 @@
 
     <xsl:template match="field[@name='upl_path'][@mode='1'][ancestor::component[@sample='FileRepository' and @type='form']]">
         <div class="mb-3" data-role="form-field" data-type="file">
+            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
             <label for="{@name}" class="form-label">
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
             </label>
@@ -670,6 +750,7 @@
                     <xsl:attribute name="id">data</xsl:attribute>
                 </input>
             </div>
+            <xsl:call-template name="render-field-messages"/>
         </div>
     </xsl:template>
 
@@ -678,8 +759,15 @@
         <div class="form-check">
             <input type="checkbox" class="form-check-input" onchange="document.getElementById('{@name}').disabled = !this.checked;" id="{@name}_toggle"/>
         </div>
-        <select id="{@name}" disabled="disabled" class="form-select">
+        <select id="{@name}" disabled="disabled">
+            <xsl:attribute name="class">
+                <xsl:text>form-select</xsl:text>
+                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
+            <xsl:if test="not(@nullable) or @nullable='0'">
+                <xsl:attribute name="required">required</xsl:attribute>
+            </xsl:if>
             <xsl:apply-templates mode="field_input"/>
         </select>
     </xsl:template>
@@ -718,7 +806,12 @@
             <xsl:attribute name="id"><xsl:value-of select="$BASE_ID"/>_id</xsl:attribute>
         </input>
         <div class="input-group">
-            <input type="text" id="{$BASE_ID}_name" value="{@upl_path}" readonly="readonly" class="form-control"/>
+            <input type="text" id="{$BASE_ID}_name" value="{@upl_path}" readonly="readonly">
+                <xsl:attribute name="class">
+                    <xsl:text>form-control</xsl:text>
+                    <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                </xsl:attribute>
+            </input>
             <button type="button" class="btn btn-outline-secondary" data-action="open-attachment">
                 <xsl:attribute name="data-name"><xsl:value-of select="$BASE_ID"/>_name</xsl:attribute>
                 <xsl:attribute name="data-id"><xsl:value-of select="$BASE_ID"/>_id</xsl:attribute>
@@ -736,6 +829,7 @@
     </xsl:template>
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_content">
+        <xsl:param name="is-outline" select="false()"/>
         <div id="{generate-id(.)}" class="tab-pane" data-role="pane-item"></div>
     </xsl:template>
 

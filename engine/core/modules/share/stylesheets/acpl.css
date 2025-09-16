@@ -1,35 +1,19 @@
-.alist{
-    border: 1px solid gray;
-    overflow-y: auto;
-    overflow-x: hidden;
-    max-height:200px;
-    position: absolute;
-    font-family: Tahoma, sans-serif;
-}
-.alist ul{
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-.alist ul li{
-    padding:5px;
-}
-.alist ul li.selected{
-    background-color: silver;
-}
-*[unselectable="on"], .unselectable {-moz-user-select: none;-khtml-user-select: none;-webkit-user-select: none;user-select: none;}
-
-.acpl_variants{
-
-}
-
-.input-group.acpl-field {
+.acpl-field {
     position: relative;
 }
 
-.input-group.acpl-field .acpl_variants {
-    top: 100%;
+.acpl-field .acpl_variants {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: 0;
     left: 0;
+    right: 0;
+    width: 100%;
     margin-top: 0.25rem;
+    z-index: 1020;
 }
 
+.acpl-field .acpl_variants .list-group {
+    max-height: 16rem;
+    overflow-y: auto;
+}
