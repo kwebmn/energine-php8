@@ -1,4 +1,4 @@
-ScriptLoader.load('GridManager', 'Cookie', 'FileAPI/FileAPI.min');
+ScriptLoader.load('GridManager', 'Cookie', 'FileAPI/FileAPI');
 
 // Глобальное имя cookie для файла
 const FILE_COOKIE_NAME = 'NRGNFRPID';

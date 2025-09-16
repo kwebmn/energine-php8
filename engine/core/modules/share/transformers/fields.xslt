@@ -160,6 +160,7 @@
     <xsl:template match="field[@type='file'][ancestor::component[@type='form']]" mode="field_input">
         <xsl:variable name="BASE_ID" select="generate-id(.)"/>
         <xsl:variable name="PATH_ID" select="$BASE_ID"/>
+        <xsl:variable name="FILE_INPUT_ID" select="concat($BASE_ID, '_file')"/>
         <xsl:variable name="PREVIEW_ID" select="concat($BASE_ID, '_preview')"/>
         <xsl:variable name="HAS_VALUE" select="string-length(.) &gt; 0"/>
         <div class="mb-2 preview">
@@ -185,10 +186,40 @@
                 </xsl:otherwise>
             </xsl:choose>
         </div>
-        <div class="input-group">
-            <input class="form-control" readonly="readonly">
-                <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
-                <xsl:attribute name="id"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
+        <input>
+            <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
+            <xsl:attribute name="type">hidden</xsl:attribute>
+            <xsl:attribute name="id"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
+        </input>
+        <div class="input-group" data-role="file-uploader">
+            <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
+            <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
+            <xsl:if test="@quickUploadPid">
+                <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@quickUploadPath">
+                <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@quickUploadEnabled">
+                <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
+            </xsl:if>
+            <input type="file" class="form-control">
+                <xsl:attribute name="id"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
+                <xsl:attribute name="data-action">upload-file</xsl:attribute>
+                <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
+                <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
+                <xsl:if test="@quickUploadPid">
+                    <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
+                </xsl:if>
+                <xsl:if test="@quickUploadPath">
+                    <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
+                </xsl:if>
+                <xsl:if test="@quickUploadEnabled">
+                    <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
+                </xsl:if>
+                <xsl:if test="@quickUploadEnabled!='1'">
+                    <xsl:attribute name="disabled">disabled</xsl:attribute>
+                </xsl:if>
             </input>
             <button class="btn btn-outline-secondary" type="button" data-action="open-filelib">
                 <xsl:attribute name="data-link"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
@@ -202,6 +233,7 @@
                     <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
                     <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
                     <xsl:attribute name="data-quick-upload-enabled"><xsl:value-of select="@quickUploadEnabled"/></xsl:attribute>
+                    <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
                     <xsl:if test="@quickUploadEnabled!='1'">
                         <xsl:attribute name="disabled">disabled</xsl:attribute>
                     </xsl:if>
@@ -212,6 +244,7 @@
                 <button class="btn btn-link" type="button" data-action="clear-file">
                     <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                     <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
                     <xsl:if test="not($HAS_VALUE)">
                         <xsl:attribute name="hidden">hidden</xsl:attribute>
                     </xsl:if>
@@ -219,8 +252,13 @@
                 </button>
             </xsl:if>
         </div>
-        <img src="images/loading.gif" alt="" width="32" height="32" class="hidden" id="loader"/>
-        <span class="progress_indicator hidden" id="indicator">0%</span>
+        <div class="progress mt-2 d-none" data-role="upload-progress">
+            <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">0%</div>
+        </div>
+        <div class="form-text text-danger d-none" data-role="upload-error">
+            <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
+        </div>
     </xsl:template>
 
     <!-- поле выбора из списка (select) -->

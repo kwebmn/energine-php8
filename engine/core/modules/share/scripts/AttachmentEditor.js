@@ -1,4 +1,4 @@
-ScriptLoader.load('GridManager', 'FileAPI/FileAPI.min');
+ScriptLoader.load('GridManager', 'FileAPI/FileAPI');
 
 /**
  * AttachmentEditor

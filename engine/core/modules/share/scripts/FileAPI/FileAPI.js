@@ -294,8 +294,8 @@
 
 			staticPath: './dist/',
 
-			flashUrl: 0, // @default: './FileAPI.flash.swf'
-			flashImageUrl: 0, // @default: './FileAPI.flash.image.swf'
+                    flashUrl: null,
+                    flashImageUrl: null,
 
 			postNameConcat: function (name, idx){
 				return	name + (idx != null ? '['+ idx +']' : '');
@@ -1781,9 +1781,9 @@
 
 
 	// @configuration
-	if( !api.flashUrl ){ api.flashUrl = api.staticPath + 'FileAPI.flash.swf'; }
-	if( !api.flashImageUrl ){ api.flashImageUrl = api.staticPath + 'FileAPI.flash.image.swf'; }
-	if( !api.flashWebcamUrl ){ api.flashWebcamUrl = api.staticPath + 'FileAPI.flash.camera.swf'; }
+   api.flashUrl = null;
+   api.flashImageUrl = null;
+   api.flashWebcamUrl = null;
 })(window, void 0);
 
 /*global window, FileAPI, document */
@@ -3408,7 +3408,7 @@
 					el.innerHTML = _makeFlashHTML({
 						  id: id
 						, src: _getUrl(api.flashUrl, 'r=' + api.version)
-//						, src: _getUrl('http://v.demidov.boom.corp.mail.ru/uploaderfileapi/FlashFileAPI.swf?1')
+//						, src: _getUrl('http://v.demidov.boom.corp.mail.ru/uploaderfileapi/FlashFileAPI?1')
 						, wmode: opts.camera ? '' : 'transparent'
 						, flashvars: 'callback=' + (opts.onEvent || 'FileAPI.Flash.onEvent')
 							+ '&flashId='+ id
