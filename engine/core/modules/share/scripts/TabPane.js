@@ -54,13 +54,6 @@ class TabPane {
                 tab.pane.tab = tab;
             }
 
-            // --- События на вкладках ---
-            tab.addEventListener('mouseover', () => {
-                if (tab !== this.currentTab) tab.classList.add('highlighted');
-            });
-            tab.addEventListener('mouseout', () => {
-                tab.classList.remove('highlighted');
-            });
             tab.addEventListener('click', () => {
                 if (tab !== this.currentTab && !tab.classList.contains('disabled')) {
                     this.show(tab);
@@ -111,10 +104,11 @@ class TabPane {
         tab.pane.classList.add('show', 'active');
         this.currentTab = tab;
 
-        // Фокус на первый input/textarea (если есть)
-        const inp = tab.pane.querySelector('div.field div.control input[type=text]')
-            || tab.pane.querySelector('div.field div.control textarea');
-        if (inp) inp.focus();
+        // Фокус на первый элемент формы (если есть)
+        const firstControl = tab.pane.querySelector('.form-control');
+        if (firstControl && typeof firstControl.focus === 'function') {
+            firstControl.focus();
+        }
     }
 
     getTabs() {
@@ -165,12 +159,6 @@ class TabPane {
         tabElement.pane = tabPane;
         tabPane.tab = tabElement;
 
-        tabElement.addEventListener('mouseover', function() {
-            if (tabElement !== this.currentTab) tabElement.classList.add('highlighted');
-        }.bind(this));
-        tabElement.addEventListener('mouseout', function() {
-            tabElement.classList.remove('highlighted');
-        });
         tabElement.addEventListener('click', function() {
             if (tabElement !== this.currentTab) this.show(tabElement);
         }.bind(this));
