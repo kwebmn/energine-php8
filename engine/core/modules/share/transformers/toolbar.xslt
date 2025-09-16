@@ -13,36 +13,60 @@
     
     <!-- Элемент панели управления -->
     <xsl:template match="toolbar/control">
-    	<xsl:variable name="CONTROL">
-    		<xsl:choose>
-    			<xsl:when test="@type = 'button'">button</xsl:when>
-    			<xsl:when test="@type = 'submit'">button</xsl:when>
-    			<xsl:otherwise>button</xsl:otherwise>
-    		</xsl:choose>
-    	</xsl:variable>
-    	<xsl:variable name="CONTROL_TYPE">
-    		<xsl:choose>
-    			<xsl:when test="@type = 'button'">button</xsl:when>
-    			<xsl:when test="@type = 'submit'">submit</xsl:when>
-    			<xsl:otherwise>button</xsl:otherwise>
-    		</xsl:choose>
-    	</xsl:variable>
-    
-    	<xsl:element name="{$CONTROL}">
+        <xsl:variable name="CONTROL">
+                <xsl:choose>
+                        <xsl:when test="@type = 'button'">button</xsl:when>
+                        <xsl:when test="@type = 'submit'">button</xsl:when>
+                        <xsl:otherwise>button</xsl:otherwise>
+                </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="CONTROL_TYPE">
+                <xsl:choose>
+                        <xsl:when test="@type = 'button'">button</xsl:when>
+                        <xsl:when test="@type = 'submit'">submit</xsl:when>
+                        <xsl:otherwise>button</xsl:otherwise>
+                </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="CONTROL_KEY" select="translate(concat(@id, '|', @click, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="BUTTON_VARIANT">
+            <xsl:choose>
+                <xsl:when test="contains($CONTROL_KEY, 'save') or contains($CONTROL_KEY, 'submit') or contains($CONTROL_KEY, 'apply') or contains($CONTROL_KEY, 'update') or contains($CONTROL_KEY, 'add') or contains($CONTROL_KEY, 'create') or contains($CONTROL_KEY, 'change') or contains($CONTROL_KEY, 'select') or contains($CONTROL_KEY, 'activate') or contains($CONTROL_KEY, 'confirm') or contains($CONTROL_KEY, 'ok') or contains($CONTROL_KEY, 'upload') or contains($CONTROL_KEY, 'send') or contains($CONTROL_KEY, 'build')">btn-primary</xsl:when>
+                <xsl:when test="contains($CONTROL_KEY, 'delete') or contains($CONTROL_KEY, 'remove') or contains($CONTROL_KEY, 'cancel') or contains($CONTROL_KEY, 'close') or contains($CONTROL_KEY, 'list') or contains($CONTROL_KEY, 'back') or contains($CONTROL_KEY, 'move') or contains($CONTROL_KEY, 'down') or contains($CONTROL_KEY, 'up') or contains($CONTROL_KEY, 'exit')">btn-outline-secondary</xsl:when>
+                <xsl:otherwise>btn-secondary</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+
+        <xsl:element name="{$CONTROL}">
             <xsl:if test="@mode=1">
                 <xsl:attribute name="disabled">disabled</xsl:attribute>
             </xsl:if>
-    		<xsl:attribute name="name"><xsl:value-of select="@id"/></xsl:attribute>
-    		<xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
-    		<xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
+                <xsl:attribute name="name"><xsl:value-of select="@id"/></xsl:attribute>
+                <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
+                <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
+            <xsl:attribute name="class">
+                <xsl:text>btn btn-sm </xsl:text>
+                <xsl:value-of select="$BUTTON_VARIANT"/>
+            </xsl:attribute>
             <xsl:if test="@click!=''">
                 <xsl:attribute name="onclick"><xsl:value-of select="@click"/></xsl:attribute>
             </xsl:if>
-    		<xsl:value-of select="@title"/>
-    	</xsl:element>
+                <xsl:value-of select="@title"/>
+        </xsl:element>
     </xsl:template>
     <xsl:template match="toolbar/control[(@type='link') and (@mode != 0) and not(@disabled)]">
+        <xsl:variable name="LINK_KEY" select="translate(concat(@id, '|', @click, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="LINK_VARIANT">
+            <xsl:choose>
+                <xsl:when test="contains($LINK_KEY, 'save') or contains($LINK_KEY, 'submit') or contains($LINK_KEY, 'apply') or contains($LINK_KEY, 'update') or contains($LINK_KEY, 'add') or contains($LINK_KEY, 'create') or contains($LINK_KEY, 'change') or contains($LINK_KEY, 'select') or contains($LINK_KEY, 'activate') or contains($LINK_KEY, 'confirm') or contains($LINK_KEY, 'ok') or contains($LINK_KEY, 'upload') or contains($LINK_KEY, 'send') or contains($LINK_KEY, 'build')">btn-primary</xsl:when>
+                <xsl:when test="contains($LINK_KEY, 'delete') or contains($LINK_KEY, 'remove') or contains($LINK_KEY, 'cancel') or contains($LINK_KEY, 'close') or contains($LINK_KEY, 'list') or contains($LINK_KEY, 'back') or contains($LINK_KEY, 'move') or contains($LINK_KEY, 'down') or contains($LINK_KEY, 'up') or contains($LINK_KEY, 'exit')">btn-outline-secondary</xsl:when>
+                <xsl:otherwise>btn-secondary</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <a href="{$BASE}{$LANG_ABBR}{@click}" id="{@id}">
+            <xsl:attribute name="class">
+                <xsl:text>btn btn-sm </xsl:text>
+                <xsl:value-of select="$LINK_VARIANT"/>
+            </xsl:attribute>
             <xsl:value-of select="@title"/>
         </a>
     </xsl:template>
