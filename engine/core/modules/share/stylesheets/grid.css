@@ -148,22 +148,6 @@ div.grid table tr .firstColumn { border-left: 0; }
 
 /* Для FA-иконки видео, например: <i class="fas fa-video video_file"></i> */
 
-.properties table {
-    padding: 0;
-    margin: 0;
-    border: none;
-}
-.properties table td {
-    font-size: 13px;
-    border: none;
-    background: none;
-}
-
-/* Responsive: hide filter on mobile, table scroll */
-@media screen and (max-width: 768px) {
-    div.grid div.filter { display: none; }
-}
-
 .hidden {
     display: none !important;
 }
