@@ -7,15 +7,6 @@ html, body {
     background: white;
     font-size: 13px;
 }
-.e-singlemode-layout {
-    overflow: hidden;
-    font-family: Tahoma, sans-serif;
-}
-
-.e-singlemode-layout > .e-grid-form
-{
-    overflow: auto;
-}
 /* ----- /common ----- */
 
 /* ----- grid form ----- */
@@ -25,12 +16,6 @@ html, body {
     padding: 0;
 }
 /* ----- /grid form ----- */
-@media screen and (max-width: 680px){
-    .e-singlemode-layout {
-        margin: 0;
-    }
-}
-
 .clearfix:after {
     clear: both;
     display: block;
