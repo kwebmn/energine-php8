@@ -104,11 +104,7 @@ class TabPane {
         tab.pane.classList.add('show', 'active');
         this.currentTab = tab;
 
-        // Фокус на первый элемент формы (если есть)
-        const firstControl = tab.pane.querySelector('.form-control');
-        if (firstControl && typeof firstControl.focus === 'function') {
-            firstControl.focus();
-        }
+        this.focusFirstControl(tab.pane);
     }
 
     getTabs() {
@@ -116,6 +112,19 @@ class TabPane {
     }
     getCurrentTab() {
         return this.currentTab;
+    }
+
+    focusFirstControl(pane) {
+        if (!pane) return;
+
+        const firstControl = pane.querySelector('.form-control');
+        if (!firstControl || typeof firstControl.focus !== 'function') return;
+
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => firstControl.focus());
+        } else {
+            firstControl.focus();
+        }
     }
 
     setTabTitle(title, tab) {
