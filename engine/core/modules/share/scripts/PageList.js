@@ -13,7 +13,8 @@ class PageList extends EventTarget {
 
         // Основной элемент списка
         this.element = document.createElement('ul');
-        this.element.className = 'e-pane-toolbar e-pagelist';
+        this.element.className = 'pagination pagination-sm mb-0 flex-wrap';
+        this.element.setAttribute('data-role', 'page-list');
         this.element.setAttribute('unselectable', 'on');
 
         // Мержим опции (если есть)
@@ -82,7 +83,11 @@ class PageList extends EventTarget {
 
         // выделяем текущую страницу
         const currentLi = this.element.querySelector(`li[data-index="${this.currentPage}"]`);
-        if (currentLi) currentLi.classList.add('current');
+        if (currentLi) {
+            currentLi.classList.add('current', 'active');
+            const link = currentLi.querySelector('.page-link');
+            if (link) link.setAttribute('aria-current', 'page');
+        }
 
         // Кнопки prev/next
         if (currentPage !== 1) {
@@ -98,9 +103,15 @@ class PageList extends EventTarget {
     selectPage(listItem) {
 
         const prevCurrent = this.element.querySelector('li.current');
-        if (prevCurrent) prevCurrent.classList.remove('current');
+        if (prevCurrent) {
+            prevCurrent.classList.remove('current', 'active');
+            const prevLink = prevCurrent.querySelector('.page-link');
+            if (prevLink) prevLink.removeAttribute('aria-current');
+        }
         this.currentPage = parseInt(listItem.dataset.index, 10);
-        listItem.classList.add('current');
+        listItem.classList.add('current', 'active');
+        const link = listItem.querySelector('.page-link');
+        if (link) link.setAttribute('aria-current', 'page');
         // Генерируем событие
         // this.dispatchEvent(new CustomEvent('pageSelect', { detail: this.currentPage }));
         this.options.onPageSelect();
@@ -120,26 +131,22 @@ class PageList extends EventTarget {
      */
     _createPageLink(title, index = 0, icon = '') {
         const li = document.createElement('li');
+        li.className = 'page-item';
+
+        const link = document.createElement('a');
+        link.className = 'page-link';
+        link.href = '#';
 
         if (icon) {
-            // --- Material Symbols ---
-            // const span = document.createElement('span');
-            // span.className = 'material-symbols-outlined page-link';
-            // span.textContent = icon; // Пример: 'chevron_left'
-            // li.appendChild(span);
-
-            // --- Font Awesome ---
-            const span = document.createElement('span');
-            span.className = 'page-link';
-            const i = document.createElement('i');
-            i.className = icon; // Например: 'fas fa-angle-left'
-            i.setAttribute('aria-label', title);
-            span.appendChild(i);
-            li.appendChild(span);
-
+            const iconElement = document.createElement('i');
+            iconElement.className = icon;
+            iconElement.setAttribute('aria-label', title);
+            link.appendChild(iconElement);
         } else {
-            li.textContent = title;
+            link.textContent = title;
         }
+
+        li.appendChild(link);
 
         if (index) {
             li.setAttribute('data-index', index);
@@ -156,9 +163,19 @@ class PageList extends EventTarget {
                     this.selectPage(li);
                 }
             });
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (!this.disabled && String(li.dataset.index) !== String(this.currentPage)) {
+                    this.selectPage(li);
+                }
+            });
             li.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') li.click();
             });
+        } else {
+            li.classList.add('disabled');
+            link.setAttribute('tabindex', '-1');
+            link.setAttribute('aria-disabled', 'true');
         }
 
         li.appendTo = (parent) => { parent.appendChild(li); return li; };

@@ -202,7 +202,7 @@ form div.richEditor ol, form div.richEditor ul { margin-left: 2em; }
 }
 
 
-.e-pane-content, .e-pane-item {
+[data-pane-part="body"], [data-role="pane-item"] {
     position: relative;
     width: 100%;
     height: 100%;
@@ -211,7 +211,7 @@ form div.richEditor ol, form div.richEditor ul { margin-left: 2em; }
     overflow: hidden;
     box-sizing: border-box;
 }
-.e-pane-item iframe {
+[data-role="pane-item"] iframe {
     display: block;
     width: 100%;
     height: 100%;
@@ -220,22 +220,22 @@ form div.richEditor ol, form div.richEditor ul { margin-left: 2em; }
     padding: 0;
 }
 
-.e-pane-content {
+[data-pane-part="body"] {
     padding: 0 !important;
 }
 
 
 form.e-grid-form,
-.e-pane {
+[data-role="pane"] {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
     height: 100vh;
 }
-.e-pane-content {
+[data-pane-part="body"] {
     flex: 1 1 auto;
     min-height: 0;
 }
-.e-pane-b-toolbar {
+[data-pane-part="footer"] {
     flex: 0 0 auto;
 }

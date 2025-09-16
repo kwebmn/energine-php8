@@ -732,13 +732,13 @@
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]"/>
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_name">
-        <li data-src="{ancestor::component/@single_template}{.}">
-            <a href="#{generate-id(.)}"><xsl:value-of select="@title" /></a>
+        <li class="nav-item" data-role="tab" data-src="{ancestor::component/@single_template}{.}">
+            <a href="#{generate-id(.)}" class="nav-link" data-role="tab-link"><xsl:value-of select="@title" /></a>
         </li>
     </xsl:template>
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_content">
-        <div id="{generate-id(.)}"></div>
+        <div id="{generate-id(.)}" class="tab-pane" data-role="pane-item"></div>
     </xsl:template>
 
 </xsl:stylesheet>

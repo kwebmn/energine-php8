@@ -24,17 +24,14 @@ class Grid {
         this.events = {};
 
         // --- DOM привязка ---
-        this.headOff = this.element.querySelector('.gridContainer thead');
+        this.headOff = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] thead');
         if (this.headOff) this.headOff.style.display = 'none';
 
-        this.tbody = this.element.querySelector('.gridContainer tbody');
-        this.headers = Array.from(this.element.querySelectorAll('.gridHeadContainer table.gridTable th'));
+        this.tbody = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] tbody');
+        this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
         this.headers.forEach(header =>
             header.addEventListener('click', this.onChangeSort.bind(this))
         );
-
-        let pane = this.element.closest('.e-pane');
-        if (pane) pane.classList.add('e-grid-pane');
 
         if (document.querySelector('.e-singlemode-layout')) {
             window.addEventListener('resize', this.fitGridSize.bind(this));
@@ -151,10 +148,10 @@ class Grid {
             this.tbody.appendChild(document.createElement('tr'));
         }
 
-        this.paneContent = this.element.closest('.e-pane-item');
-        this.gridToolbar = this.element.querySelector('.grid_toolbar');
-        this.gridHeadContainer = this.element.querySelector('.gridHeadContainer');
-        this.gridContainer = this.element.querySelector('.gridContainer');
+        this.paneContent = this.element.closest('[data-role="pane-item"]');
+        this.gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
+        this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
+        this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
 
         this.adjustColumns();
         this.fitGridSize();
@@ -165,8 +162,8 @@ class Grid {
         }
 
         if (!document.querySelector('.e-singlemode-layout')) {
-            this.pane = this.element.closest('.e-pane');
-            this.gridBodyContainer = this.element.querySelector('.gridBodyContainer');
+            this.pane = this.element.closest('[data-role="pane"]');
+            this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
             this.fitGridFormSize();
             // if (document.querySelectorAll('.grid')[0] === this.element) {
             //     (document.querySelector('.e-mainframe') || window).scrollTo(0, this.pane.offsetTop);
@@ -277,15 +274,15 @@ class Grid {
         // NOTE: This is a simplified version, needs adaptation for your layout.
         let gridHeadContainer = this.gridHeadContainer;
         if (!gridHeadContainer) return;
-        let table = this.element.querySelector('table.gridTable');
+        let table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
         if (!table) return;
-        let fixedColumns = table.classList.contains('fixed_columns');
+        let fixedColumns = table.dataset.fixedColumns === 'true';
         let tbodyTr = this.tbody.querySelector('tr');
         if (!tbodyTr) return;
         let tds = Array.from(tbodyTr.children);
         let ths = Array.from(gridHeadContainer.querySelectorAll('th'));
         let headCols = Array.from(gridHeadContainer.querySelectorAll('col'));
-        let bodyCols = Array.from(this.element.querySelectorAll('.gridContainer col'));
+        let bodyCols = Array.from(this.element.querySelectorAll('[data-role="grid-table"][data-grid-part="body"] col'));
 
         // Padding for scrollbar
         let ScrollBarWidth = 16;
@@ -331,7 +328,7 @@ class Grid {
     fitGridSize() {
         if (this.paneContent) {
             let margin = parseInt(this.element.style.marginTop) || 0;
-            let eBToolbar = document.body.querySelector('.e-pane-b-toolbar');
+            let eBToolbar = document.body.querySelector('[data-pane-part="footer"]');
             let gridHeight = this.paneContent.offsetHeight
                 - (this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0)
                 - (this.gridToolbar ? this.gridToolbar.offsetHeight : 0)
@@ -354,13 +351,13 @@ class Grid {
         if (this.pane) {
             let toolbarH = (this.gridToolbar) ? this.gridToolbar.offsetHeight : 0;
             let gridHeadH = (this.gridHeadContainer) ? this.gridHeadContainer.offsetHeight : 0;
-            let paneToolbarT = this.pane.querySelector('.e-pane-t-toolbar');
+            let paneToolbarT = this.pane.querySelector('[data-pane-part="header"]');
             let paneToolbarTH = (paneToolbarT) ? paneToolbarT.offsetHeight : 0;
-            let paneToolbarB = this.pane.querySelector('.e-pane-b-toolbar');
+            let paneToolbarB = this.pane.querySelector('[data-pane-part="footer"]');
             let paneToolbarBH = (paneToolbarB) ? paneToolbarB.offsetHeight : 0;
             let paneH = this.pane.offsetHeight;
             let margin = parseInt(this.element.style.marginTop) || 0;
-            let gridBodyContainer = this.element.querySelector('.gridBodyContainer');
+            let gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
             let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
                 + parseInt(window.getComputedStyle(this.gridContainer).borderTopWidth || 0)
                 + parseInt(window.getComputedStyle(this.gridContainer).borderBottomWidth || 0);
@@ -449,7 +446,7 @@ class GridManager {
         this.pageList = new PageList({ onPageSelect: this.loadPage.bind(this) });
 
         // --- Grid ---
-        this.grid = new Grid(this.element.querySelector('.grid'), {
+        this.grid = new Grid(this.element.querySelector('[data-role="grid"]'), {
             onSelect: this.onSelect.bind(this),
             onSortChange: this.onSortChange.bind(this),
             onDoubleClick: this.onDoubleClick.bind(this),
@@ -459,11 +456,9 @@ class GridManager {
         this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
 
         // --- Toolbar placement ---
-        let toolbarContainer = this.tabPane.element.querySelector('.e-pane-b-toolbar');
+        let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
         if (toolbarContainer) {
             toolbarContainer.appendChild(this.pageList.getElement());
-            this.tabPane.element.classList.remove('e-pane-has-b-toolbar1');
-            this.tabPane.element.classList.add('e-pane-has-b-toolbar2');
         } else {
             this.tabPane.element.appendChild(this.pageList.getElement());
         }
@@ -502,7 +497,7 @@ class GridManager {
     // --- Toolbar ---
     attachToolbar(toolbar) {
         this.toolbar = toolbar;
-        let toolbarContainer = this.tabPane.element.querySelector('.e-pane-b-toolbar');
+        let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
         if (toolbarContainer) {
             toolbarContainer.appendChild(this.toolbar.getElement());
         } else {
@@ -517,7 +512,7 @@ class GridManager {
     onTabChange(data) {
         if (data instanceof Element) {
             // Ищем внутри .data
-            const span = data.querySelector('span.data');
+            const span = data.querySelector('[data-role="tab-meta"]');
             if (span) {
                 // Преобразуем строку к валидному JSON
                 const jsonString = span.textContent.replace(/(\w+)\s*:/g, '"$1":');
@@ -786,26 +781,26 @@ class Filter {
      */
     constructor(gridManager) {
         // Найти элемент фильтра
-        this.element = gridManager.element.querySelector('.filter');
+        this.element = gridManager.element.querySelector('[data-role="grid-filter"]');
         if (!this.element) {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
         // Привязки к основным элементам управления
-        const applyButton = this.element.querySelector('.f_apply');
-        const resetLink = this.element.querySelector('.f_reset');
+        const applyButton = this.element.querySelector('[data-action="apply-filter"]');
+        const resetLink = this.element.querySelector('[data-action="reset-filter"]');
         this.active = false;
 
         // Поля фильтра
-        this.fields = this.element.querySelector('.f_fields');
-        this.condition = this.element.querySelector('.f_condition');
+        this.fields = this.element.querySelector('[data-role="filter-field"]');
+        this.condition = this.element.querySelector('[data-role="filter-condition"]');
 
-        if (!this.fields) throw new Error('Filter: .f_fields not found!');
-        if (!this.condition) throw new Error('Filter: .f_condition not found!');
+        if (!this.fields) throw new Error('Filter: data-role="filter-field" not found!');
+        if (!this.condition) throw new Error('Filter: data-role="filter-condition" not found!');
 
         // Инициализация QueryControls
         this.inputs = new GridManager.Filter.QueryControls(
-            Array.from(this.element.querySelectorAll('.f_query_container')),
+            Array.from(this.element.querySelectorAll('[data-role="filter-query"]')),
             applyButton
         );
 
@@ -840,15 +835,15 @@ class Filter {
     // Проверка условий фильтрации
     checkCondition() {
         if (!this.fields) {
-            console.warn('Filter: .f_fields не найден!');
+            console.warn('Filter: data-role="filter-field" не найден!');
             return;
         }
         if (!this.condition) {
-            console.warn('Filter: .f_condition не найден!');
+            console.warn('Filter: data-role="filter-condition" не найден!');
             return;
         }
         if (!this.condition.options || this.condition.options.length === 0) {
-            console.warn('Filter: .f_condition.options пуст!');
+            console.warn('Filter: options списка условий пусты!');
             return;
         }
 

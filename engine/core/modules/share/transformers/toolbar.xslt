@@ -65,10 +65,10 @@
                 <xsl:apply-templates />
             if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
             var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
-                content = holder.querySelector('.e-pane-content');
+                content = holder.querySelector('[data-pane-part="body"]');
             if (content <xsl:text disable-output-escaping="yes">&amp;&amp;</xsl:text> parseInt(document.body.clientWidth) <xsl:text disable-output-escaping="yes">&lt;</xsl:text>= 680) {
-                var tToolbar = holder.querySelector('.e-pane-t-toolbar'),
-                    bToolbar = holder.querySelector('.e-pane-b-toolbar'),
+                var tToolbar = holder.querySelector('[data-pane-part="header"]'),
+                    bToolbar = holder.querySelector('[data-pane-part="footer"]'),
                     contentHeight = document.body.clientHeight;
                 if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
                 if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;

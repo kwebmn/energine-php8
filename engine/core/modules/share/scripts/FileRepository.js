@@ -158,7 +158,7 @@ class GridWithPopImage extends Grid {
 class FileRepository extends GridManager {
     constructor(element) {
         super(element);
-        this.grid = new GridWithPopImage(this.element.querySelector('.grid'), {
+        this.grid = new GridWithPopImage(this.element.querySelector('[data-role="grid"]'), {
             onSelect: this.onSelect.bind(this),
             onSortChange: this.onSortChange.bind(this),
             onDoubleClick: this.onDoubleClick.bind(this)
@@ -289,7 +289,7 @@ class FileRepository extends GridManager {
 
         if (result.pager) {
             this.pageList.build(result.pager.count, result.pager.current, result.pager.records);
-            const toolbarContainer = this.tabPane.element.querySelector('.e-pane-b-toolbar');
+            const toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
             if (toolbarContainer) toolbarContainer.insertBefore(this.pageList.getElement(), toolbarContainer.firstChild);
         }
         if (!this.grid.isEmpty()) {

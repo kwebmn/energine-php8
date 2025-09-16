@@ -1,22 +1,11 @@
 /* --- Grid CSS modern, MDBootstrap-style --- */
 
-/* Reset link for filter reset */
-a.f_reset,
-a.f_reset:hover,
-a.f_reset:active {
-    font-family: 'Roboto', Tahoma, sans-serif;
-    color: #0d6efd;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-}
-
 /* Highlighted/selected rows */
 div.grid table tr.highlighted td { background: #ecf3f8 !important; }
 div.grid table tr.selected td { background: #428bca !important; color: #fff !important; }
 
 /* Breadcrumbs */
-.grid_breadcrumbs {
+.grid-breadcrumbs {
     margin: 10px 0;
     border-radius: 0.4rem;
     padding: 13px 18px;
@@ -24,7 +13,7 @@ div.grid table tr.selected td { background: #428bca !important; color: #fff !imp
     font-size: 15px;
     font-family: 'Roboto', Tahoma, sans-serif;
 }
-.grid_breadcrumbs a {
+.grid-breadcrumbs a {
     color: #0d6efd;
     text-decoration: none;
     font-weight: 500;
@@ -37,69 +26,34 @@ div.grid table tr.selected td { background: #428bca !important; color: #fff !imp
     font-size: 15px;
 }
 
-.grid_toolbar {
+.grid-toolbar {
     padding: 14px 0;
 }
 
-div.grid div.filter {
+[data-role="grid-filter"] {
     background: #f8f9fa;
     margin: 0;
     padding: 12px 18px;
     border-radius: 0.4rem;
     font-family: inherit;
     font-size: 15px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    align-items: center;
 }
-div.grid div.filter.active {
+[data-role="grid-filter"].active {
     background: #ecf3f8;
 }
-
-div.grid div.filter select,
-div.grid div.filter input,
-div.grid div.filter button {
-    font-family: inherit;
-    font-size: 15px;
-    color: #495057;
-    margin: 0 8px 0 0;
-    line-height: 1.4;
-    padding: 6px 12px;
-    border: 1px solid #ced4da;
-    border-radius: 0.3rem;
-    background: #fff;
-    transition: border-color .13s;
+[data-role="grid-filter"] [data-role="filter-query"] {
+    margin-right: 10px;
 }
-div.grid div.filter select.f_condition { width: 150px; }
-div.grid div.filter button {
-    background: #0d6efd;
-    color: #fff;
-    border: 1px solid #0a58ca;
-    padding: 7px 14px;
-    border-radius: 0.3rem;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background .15s, color .15s, border .15s;
-}
-div.grid div.filter button:hover {
-    background: #084298;
-    border-color: #052c65;
-}
-div.grid div.filter input { width: 145px; height: 38px; margin-right: 0; }
-div.grid div.filter input.small { width: 72px; margin-right: 8px; }
-div.grid div.filter .f_query_container,
-div.grid div.filter .f_query_date_container { margin-right: 10px; }
 
 /* Table wrappers */
-.gridHeadContainer {
+[data-grid-section="head"] {
     padding-right: 17px;
     border-radius: 0.4rem 0.4rem 0 0;
     background: #f0f2f6;
     font-family: inherit;
     overflow: hidden;
 }
-.gridHeadContainer th {
+[data-grid-section="head"] th {
     background: #f0f2f6;
     font-family: inherit;
     cursor: pointer;
@@ -115,14 +69,14 @@ div.grid div.filter .f_query_date_container { margin-right: 10px; }
 }
 
 /* Сортировка — Unicode стрелки */
-.gridHeadContainer th.asc::after {
+[data-grid-section="head"] th.asc::after {
     content: "▲";
     color: #0d6efd;
     font-size: 13px;
     margin-left: 8px;
     vertical-align: middle;
 }
-.gridHeadContainer th.desc::after {
+[data-grid-section="head"] th.desc::after {
     content: "▼";
     color: #0d6efd;
     font-size: 13px;
@@ -130,7 +84,7 @@ div.grid div.filter .f_query_date_container { margin-right: 10px; }
     vertical-align: middle;
 }
 /* Для неотсортированных столбцов — нейтральная стрелка (по желанию) */
-.gridHeadContainer th:not(.asc):not(.desc)::after {
+[data-grid-section="head"] th:not(.asc):not(.desc)::after {
     color: #b0b0b0;
     font-size: 13px;
     margin-left: 8px;
@@ -138,14 +92,14 @@ div.grid div.filter .f_query_date_container { margin-right: 10px; }
 }
 
 /* Основная таблица */
-.gridContainer {
+[data-grid-section="body"] {
     overflow: auto;
     font-family: inherit;
     border-radius: 0 0 0.4rem 0.4rem;
     background: #fff;
 }
 
-table.gridTable {
+[data-role="grid-table"] {
     width: 100%;
     margin: 0;
     border-collapse: separate;
@@ -154,7 +108,7 @@ table.gridTable {
     background: #fff;
     font-family: inherit;
 }
-.gridTable th {
+[data-role="grid-table"] th {
     padding: 8px 10px;
     background: #f0f2f6;
     text-align: center;
@@ -164,7 +118,7 @@ table.gridTable {
     border-right: 1px solid #e5e7eb;
     user-select: none;
 }
-.gridTable td {
+[data-role="grid-table"] td {
     padding: 8px 10px;
     background: #fff;
     color: #222;
@@ -176,7 +130,7 @@ table.gridTable {
     cursor: default;
     user-select: text;
 }
-.gridTable tr.even td { background: #f7f8fa; }
+[data-role="grid-table"] tr.even td { background: #f7f8fa; }
 
 div.grid table tr .firstColumn { border-left: 0; }
 
@@ -219,4 +173,15 @@ div.grid table tr .firstColumn { border-left: 0; }
 
 .hidden {
     display: none !important;
+}
+
+[data-role="page-list"] .highlighted .page-link {
+    background-color: #e9ecef;
+}
+
+[data-role="page-list"] .current .page-link,
+[data-role="page-list"] .active .page-link {
+    background-color: #0d6efd;
+    color: #fff;
+    border-color: #0a58ca;
 }

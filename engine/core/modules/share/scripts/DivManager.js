@@ -71,7 +71,7 @@ class DivManager {
 
 
     attachToolbar(toolbar) {
-        const toolbarContainer = this.element.querySelector('.e-pane-b-toolbar');
+        const toolbarContainer = this.element.querySelector('[data-pane-part="footer"]');
         this.toolbar = toolbar;
         if (toolbarContainer) {
             toolbarContainer.appendChild(this.toolbar.getElement());
@@ -120,7 +120,7 @@ class DivManager {
                 // 4. Остальная логика
                 if (!document.querySelector('.e-singlemode-layout')) {
                     this.pane = this.element;
-                    this.paneContent = this.pane.querySelector('.e-pane-item');
+                    this.paneContent = this.pane.querySelector('[data-role="pane-item"]');
                     this.treeContainer = this.pane.querySelector('.e-divtree-select') || this.pane;
                     this.minPaneHeight = 300;
                     this.fitTreeFormSize();

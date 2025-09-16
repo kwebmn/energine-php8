@@ -70,39 +70,38 @@
     <!-- форма как часть grid-а выводится в другом стиле -->
     <xsl:template match="recordset[parent::component[@type='form' and @exttype='grid']]">
         <xsl:variable name="FIELDS" select="record/field"/>
-        <div id="{generate-id(.)}" class="e-pane e-pane-has-t-toolbar1" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
-            <xsl:if test="../toolbar">
-                <xsl:attribute name="class">e-pane e-pane-has-t-toolbar1 e-pane-has-b-toolbar1</xsl:attribute>
-            </xsl:if>
-            <div class="e-pane-t-toolbar">
-                <ul class="e-pane-toolbar e-tabs">
+        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+                <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                         <xsl:variable name="TAB_NAME" select="."></xsl:variable>
                         <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME]))&gt;0">
-                            <li>
-                                <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}"><xsl:value-of select="$TAB_NAME" /></a>
+                            <li class="nav-item" data-role="tab">
+                                <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}" class="nav-link" data-role="tab-link"><xsl:value-of select="$TAB_NAME" /></a>
                                 <xsl:if test="$FIELDS[@tabName=$TAB_NAME][1]/@language">
-                                    <span class="data">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME][1]/@language" /> }</span>                                
+                                    <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME][1]/@language" /> }</span>
                                 </xsl:if>
                             </li>
                         </xsl:if>
                     </xsl:for-each>
                     <xsl:apply-templates select="$FIELDS[@type='tab']" mode="field_name"/>
                 </ul>
-            </div>            
-            <div class="e-pane-content">
-                <xsl:for-each select="set:distinct($FIELDS/@tabName)">
-                    <xsl:variable name="TAB_NAME" select="."/>
-                    <div id="{generate-id(.)}">
-                        <xsl:apply-templates select="$FIELDS[@tabName=$TAB_NAME]"/>
-                    </div>
-                </xsl:for-each>
-                <xsl:apply-templates select="$FIELDS[@type='tab']" mode="field_content"/>
+            </div>
+            <div class="card-body" data-pane-part="body">
+                <div class="tab-content" data-role="tab-content">
+                    <xsl:for-each select="set:distinct($FIELDS/@tabName)">
+                        <xsl:variable name="TAB_NAME" select="."/>
+                        <div id="{generate-id(.)}" class="tab-pane" data-role="pane-item">
+                            <xsl:apply-templates select="$FIELDS[@tabName=$TAB_NAME]"/>
+                        </div>
+                    </xsl:for-each>
+                    <xsl:apply-templates select="$FIELDS[@type='tab']" mode="field_content"/>
+                </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="e-pane-b-toolbar"></div>
+                <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             </xsl:if>
-        </div>        
+        </div>
     </xsl:template>
     <!-- обработка сообщения об отправке данных формы -->
     <xsl:template match="component[@type='form'][@componentAction='send']" mode="custom">
