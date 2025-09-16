@@ -2,7 +2,6 @@
 
 /* Highlighted/selected rows */
 div.grid table tr.highlighted td { background: #ecf3f8 !important; }
-div.grid table tr.selected td { background: #428bca !important; color: #fff !important; }
 
 /* Breadcrumbs */
 .grid-breadcrumbs {
@@ -130,7 +129,6 @@ div.grid table tr.selected td { background: #428bca !important; color: #fff !imp
     cursor: default;
     user-select: text;
 }
-[data-role="grid-table"] tr.even td { background: #f7f8fa; }
 
 div.grid table tr .firstColumn { border-left: 0; }
 
@@ -164,11 +162,6 @@ div.grid table tr .firstColumn { border-left: 0; }
 /* Responsive: hide filter on mobile, table scroll */
 @media screen and (max-width: 768px) {
     div.grid div.filter { display: none; }
-    .gridContainer { overflow-x: auto; }
-    .gridTable th, .gridTable td {
-        font-size: 13px;
-        padding: 8px 6px;
-    }
 }
 
 .hidden {
