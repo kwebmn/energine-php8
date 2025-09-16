@@ -130,6 +130,11 @@ final class URI extends BaseObject
         restore_error_handler();
 
         if ($parts === false || $error !== null) {
+            if ($error !== null) {
+                error_log(sprintf('URI::validate(): parse_url failed for "%s": %s', $uri, $error));
+            } elseif ($parts === false) {
+                error_log(sprintf('URI::validate(): parse_url returned false for "%s"', $uri));
+            }
             return false;
         }
 
@@ -152,14 +157,48 @@ final class URI extends BaseObject
 
             // Хост может содержать порт (host:port)
             $hostHeader = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost');
-            $hostHeader = (string)$hostHeader;
+            $hostHeader = trim((string)$hostHeader);
+            if ($hostHeader === '') {
+                $hostHeader = 'localhost';
+            }
 
-            // Разделим host:port, если в HTTP_HOST уже есть порт
+            // Разделим host:port, поддерживая IPv6 ([::1]:8080)
             $hostOnly = $hostHeader;
             $port = null;
-            if (strpos($hostHeader, ':') !== false && substr_count($hostHeader, ':') === 1) {
-                [$hostOnly, $portPart] = explode(':', $hostHeader, 2);
-                $port = (int)$portPart;
+
+            if ($hostHeader !== '') {
+                if ($hostHeader[0] === '[') {
+                    $closingBracket = strpos($hostHeader, ']');
+                    if ($closingBracket !== false) {
+                        $hostOnly = substr($hostHeader, 0, $closingBracket + 1);
+                        $portPart = substr($hostHeader, $closingBracket + 1);
+                        if ($portPart !== '' && $portPart[0] === ':') {
+                            $portDigits = substr($portPart, 1);
+                            if ($portDigits !== '' && ctype_digit($portDigits)) {
+                                $candidate = (int)$portDigits;
+                                if ($candidate > 0) {
+                                    $port = $candidate;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    $colonPos = strrpos($hostHeader, ':');
+                    if ($colonPos !== false) {
+                        $portPart = substr($hostHeader, $colonPos + 1);
+                        if ($portPart !== '' && ctype_digit($portPart)) {
+                            $candidate = (int)$portPart;
+                            if ($candidate > 0) {
+                                $hostOnly = substr($hostHeader, 0, $colonPos);
+                                $port = $candidate;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($hostOnly === '') {
+                $hostOnly = 'localhost';
             }
 
             if ($port === null) {
@@ -173,6 +212,11 @@ final class URI extends BaseObject
             }
 
             $requestUri = (string)($_SERVER['REQUEST_URI'] ?? '/');
+            if ($requestUri === '') {
+                $requestUri = '/';
+            } elseif ($requestUri[0] !== '/' && $requestUri[0] !== '?') {
+                $requestUri = '/' . $requestUri;
+            }
 
             $uriString = sprintf('%s://%s:%d%s', $scheme, $hostOnly, $port, $requestUri);
         }
