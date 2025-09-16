@@ -8,7 +8,96 @@ class ModalBoxClass {
         this.initialized = true;
     }
 
+    _getFocusableElements(container) {
+        if (!container) {
+            return [];
+        }
 
+        const selectors = [
+            'a[href]',
+            'area[href]',
+            'input:not([disabled]):not([type="hidden"])',
+            'select:not([disabled])',
+            'textarea:not([disabled])',
+            'button:not([disabled])',
+            'iframe',
+            'object',
+            'embed',
+            '[contenteditable="true"]',
+            '[tabindex]:not([tabindex="-1"])',
+        ];
+
+        return Array.from(container.querySelectorAll(selectors.join(',')))
+            .filter((el) => {
+                if (!(el instanceof HTMLElement)) {
+                    return false;
+                }
+
+                if (el.hasAttribute('disabled') || el.getAttribute('aria-hidden') === 'true') {
+                    return false;
+                }
+
+                if (el.tabIndex === -1) {
+                    return false;
+                }
+
+                if (el.hasAttribute('hidden')) {
+                    return false;
+                }
+
+                return el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0;
+            });
+    }
+
+    _closeInstance(instance, returnValue) {
+        if (!instance || instance.isClosing) {
+            return;
+        }
+
+        instance.isClosing = true;
+
+        if (returnValue !== undefined) {
+            instance.returnValue = returnValue;
+        }
+
+        document.removeEventListener('keydown', instance.escHandler);
+        document.removeEventListener('focusin', instance.focusInHandler);
+
+        if (instance.focusTrapHandler) {
+            instance.modal.removeEventListener('keydown', instance.focusTrapHandler);
+        }
+
+        if (instance.backdropHandler) {
+            instance.backdrop.removeEventListener('click', instance.backdropHandler);
+        }
+
+        const index = this.boxes.indexOf(instance);
+        if (index !== -1) {
+            this.boxes.splice(index, 1);
+        }
+
+        instance.modal.classList.remove('show');
+        instance.modal.style.display = 'none';
+        instance.modal.setAttribute('aria-hidden', 'true');
+        instance.backdrop.remove();
+
+        setTimeout(() => {
+            instance.modal.remove();
+
+            if (typeof instance.options.onClose === 'function') {
+                instance.options.onClose(instance.returnValue);
+            }
+
+            const { previousActiveElement } = instance;
+            if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                try {
+                    previousActiveElement.focus();
+                } catch (err) {
+                    // ignore
+                }
+            }
+        }, 150);
+    }
 
     /**
      * Открыть модальное окно с iframe
@@ -22,6 +111,8 @@ class ModalBoxClass {
             throw new Error('ModalBox.open: required parameter "url" missing');
         }
 
+        const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
         // Создаем backdrop (оверлей MDB)
         const backdrop = document.createElement('div');
         backdrop.className = 'modal-backdrop fade show';
@@ -31,10 +122,12 @@ class ModalBoxClass {
 
         // Создаем модал
         const modal = document.createElement('div');
-        modal.className = 'modal top  show';
+        modal.className = 'modal top show';
         modal.style.display = 'block';
         modal.tabIndex = -1;
         modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-hidden', 'false');
         modal.style.zIndex = 1050 + this.boxes.length * 10;
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
@@ -58,6 +151,7 @@ class ModalBoxClass {
         iframe.style.width = '100%';
         iframe.style.height = '100vh';
         iframe.style.position = 'relative';
+        iframe.tabIndex = 0;
         modalBody.appendChild(iframe);
 
         iframe.onload = () => {
@@ -66,32 +160,97 @@ class ModalBoxClass {
 
         document.body.appendChild(modal);
 
-        // Закрытие
-        const closeModal = () => {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            backdrop.remove();
-            setTimeout(() => {
-                modal.remove();
-                if (typeof options.onClose === 'function') options.onClose();
-            }, 150);
+        const instance = {
+            modal,
+            backdrop,
+            options,
+            previousActiveElement,
+            returnValue: undefined,
+            isClosing: false,
         };
 
+        const closeModal = (returnValue) => {
+            this._closeInstance(instance, returnValue);
+        };
+        instance.close = closeModal;
+
+        // Закрытие
         // Кнопка закрытия (крестик)
         const btnClose = modal.querySelector('.btn-close');
-        btnClose.onclick = closeModal;
+        btnClose.addEventListener('click', () => closeModal());
 
-        // ESC
-        setTimeout(() => { modal.focus(); }, 10);
-        const escHandler = (e) => {
-            if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+        const backdropHandler = () => {
+            if (this.getCurrent() === instance) {
                 closeModal();
             }
         };
-        document.addEventListener('keydown', escHandler, { once: true });
+        instance.backdropHandler = backdropHandler;
+        backdrop.addEventListener('click', backdropHandler);
+
+        const focusTrapHandler = (event) => {
+            if (event.key !== 'Tab' || this.getCurrent() !== instance) {
+                return;
+            }
+
+            const focusable = this._getFocusableElements(modal);
+            if (!focusable.length) {
+                event.preventDefault();
+                modal.focus();
+                return;
+            }
+
+            const firstElement = focusable[0];
+            const lastElement = focusable[focusable.length - 1];
+
+            if (event.shiftKey) {
+                if (document.activeElement === firstElement || !modal.contains(document.activeElement)) {
+                    event.preventDefault();
+                    lastElement.focus();
+                }
+            } else if (document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
+            }
+        };
+        instance.focusTrapHandler = focusTrapHandler;
+        modal.addEventListener('keydown', focusTrapHandler);
+
+        const focusInHandler = (event) => {
+            if (this.getCurrent() !== instance) {
+                return;
+            }
+
+            if (!modal.contains(event.target)) {
+                const focusable = this._getFocusableElements(modal);
+                const fallback = focusable[0] || modal;
+                fallback.focus();
+            }
+        };
+        instance.focusInHandler = focusInHandler;
+        document.addEventListener('focusin', focusInHandler);
+
+        // ESC
+        const escHandler = (e) => {
+            if (this.getCurrent() !== instance) {
+                return;
+            }
+
+            if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+                e.preventDefault();
+                closeModal();
+            }
+        };
+        instance.escHandler = escHandler;
+        document.addEventListener('keydown', escHandler);
 
         // В стек (для модал в модале)
-        this.boxes.push({ modal, backdrop, options, escHandler });
+        this.boxes.push(instance);
+
+        const focusable = this._getFocusableElements(modal);
+        const initialFocusTarget = focusable[0] || modal;
+        setTimeout(() => {
+            initialFocusTarget.focus();
+        }, 10);
     }
 
     // Получить текущий (верхний) модал
@@ -102,7 +261,6 @@ class ModalBoxClass {
 
     getExtraData() {
         const cur = this.getCurrent();
-        console.log(cur);
         return cur ? cur.options.extraData : undefined;
     }
 
@@ -112,22 +270,8 @@ class ModalBoxClass {
         if (cur) cur.returnValue = value;
     }
 
-    close() {
-        if (!this.boxes.length) return;
-        const cur = this.getCurrent();
-        const { modal, backdrop, options, escHandler } = this.boxes.pop();
-        if (modal) {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            backdrop.remove();
-            setTimeout(() => {
-                modal.remove();
-                if (typeof options.onClose === 'function') {
-                    options.onClose(cur ? cur.returnValue : undefined);
-                }
-            }, 150);
-        }
-        document.removeEventListener('keydown', escHandler);
+    close(returnValue) {
+        this._closeInstance(this.getCurrent(), returnValue);
     }
 }
 
