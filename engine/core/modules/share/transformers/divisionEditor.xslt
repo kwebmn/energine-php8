@@ -67,12 +67,14 @@
                             <td class="group_name"><xsl:value-of select="field[@name='group_id']"/></td>
                             <xsl:for-each select="field[@name='right_id']/options/option">
                                 <td>
-                                    <input type="radio" style="border:none; width:auto;" value="{@id}">
-                                        <xsl:attribute name="name">right_id[<xsl:value-of select="../../../field[@name='group_id']/@group_id"/>]</xsl:attribute>
-                                        <xsl:if test="@selected">
-                                            <xsl:attribute name="checked">checked</xsl:attribute>
-                                        </xsl:if>
-                                    </input>
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="radio" value="{@id}">
+                                            <xsl:attribute name="name">right_id[<xsl:value-of select="../../../field[@name='group_id']/@group_id"/>]</xsl:attribute>
+                                            <xsl:if test="@selected">
+                                                <xsl:attribute name="checked">checked</xsl:attribute>
+                                            </xsl:if>
+                                        </input>
+                                    </div>
                                 </td>
                             </xsl:for-each>
                         </tr>
@@ -97,27 +99,29 @@
                 </xsl:choose>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
-            <xsl:if test="@title">
-                <label class="form-label" for="{$DISPLAY_ID}">
-                    <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                    <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
-                        <span class="text-danger">*</span>
-                    </xsl:if>
-                </label>
-            </xsl:if>
             <div class="input-group">
-                <input type="text" id="{$DISPLAY_ID}" readonly="readonly">
-                    <xsl:attribute name="class">
-                        <xsl:text>form-control</xsl:text>
-                        <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                    </xsl:attribute>
-                    <xsl:attribute name="value"><xsl:value-of select="@data_name"/></xsl:attribute>
-                </input>
+                <div class="form-outline flex-grow-1" data-mdb-input-init="1">
+                    <input type="text" id="{$DISPLAY_ID}" readonly="readonly">
+                        <xsl:attribute name="class">
+                            <xsl:text>form-control</xsl:text>
+                            <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                        </xsl:attribute>
+                        <xsl:attribute name="value"><xsl:value-of select="@data_name"/></xsl:attribute>
+                    </input>
+                    <xsl:if test="@title">
+                        <label class="form-label" for="{$DISPLAY_ID}">
+                            <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                            <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
+                                <span class="text-danger">*</span>
+                            </xsl:if>
+                        </label>
+                    </xsl:if>
+                </div>
                 <input type="hidden" id="{$HIDDEN_ID}" value="{.}">
                     <xsl:attribute name="name"><xsl:choose>
                         <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name" />]</xsl:when>
-                        <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-                    </xsl:choose></xsl:attribute>
+                            <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+                        </xsl:choose></xsl:attribute>
                 </input>
                 <button type="button" class="btn btn-outline-secondary" id="sitemap_selector" hidden_field="{$HIDDEN_ID}" span_field="{$DISPLAY_ID}">
                     <xsl:text>Выбрать…</xsl:text>
@@ -298,7 +302,7 @@
     <xsl:template match="component[@class='SiteList' and (following::component[@sample='DivisionEditor'] or preceding::component[@sample='DivisionEditor'])]" />
 
     <xsl:template match="component[@class='SiteList' and (following::component[@sample='DivisionEditor'] or preceding::component[@sample='DivisionEditor'])]"  mode="insideEditor">
-        <select onchange="document.location = '{$BASE}{$LANG_ABBR}{@template}show/' + this.options[this.selectedIndex].value + '/';" id="site_selector">
+        <select class="form-select" onchange="document.location = '{$BASE}{$LANG_ABBR}{@template}show/' + this.options[this.selectedIndex].value + '/';" id="site_selector">
             <xsl:for-each select="recordset/record">
                 <option value="{field[@name='site_id']}">
                     <xsl:if test="field[@name='site_id'] = $COMPONENTS[@sample='DivisionEditor']/@site">
