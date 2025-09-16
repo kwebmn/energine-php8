@@ -7,9 +7,6 @@ class DivManager {
             ? document.querySelector(element) || document.getElementById(element)
             : element;
 
-        if (!document.querySelector('.e-singlemode-layout')) {
-            window.addEventListener('resize', this.fitTreeFormSize.bind(this));
-        }
         this.selectOnStart = false;
 
         this.initManager();
@@ -26,12 +23,14 @@ class DivManager {
         this.langId = this.element.getAttribute('lang_id');
 
         // --- Создание структуры дерева (div для jsTree) ---
-        let treeContainer = document.getElementById('treeContainer') || document.querySelector('#treeContainer') || this.element;
-        let divTree = treeContainer.querySelector('#divTree');
+        this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
+            || this.element.querySelector('#treeContainer')
+            || this.element;
+        let divTree = this.treeContainer.querySelector('#divTree');
         if (!divTree) {
             divTree = document.createElement('div');
             divTree.id = 'divTree';
-            treeContainer.appendChild(divTree);
+            this.treeContainer.appendChild(divTree);
         }
 
         this.singlePath = this.element.getAttribute('single_template');
@@ -52,7 +51,7 @@ class DivManager {
 
 
 
-        showLoader(document.getElementById('treeContainer'));
+        showLoader(this.treeContainer);
         this.loadTree();
 
         this.jstree.on('refresh.jstree', function(e, data) {
@@ -62,10 +61,6 @@ class DivManager {
                 $(this).jstree(true).open_node(firstNode);
             }
         });
-
-        if (!document.querySelector('.e-singlemode-layout')) {
-            window.addEventListener('resize', this.fitTreeFormSize.bind(this));
-        }
     }
 
 
@@ -88,7 +83,7 @@ class DivManager {
     }
 
     loadTree() {
-        showLoader(document.getElementById('treeContainer'));
+        showLoader(this.treeContainer);
         Energine.request(
             this.singlePath + this.site + '/get-data/',
             'languageID=' + this.langId,
@@ -118,22 +113,7 @@ class DivManager {
                 }
 
                 // 4. Остальная логика
-                if (!document.querySelector('.e-singlemode-layout')) {
-                    this.pane = this.element;
-                    this.paneContent = this.pane.querySelector('[data-role="pane-item"]');
-                    this.treeContainer = this.pane.querySelector('.e-divtree-select') || this.pane;
-                    this.minPaneHeight = 300;
-                    this.fitTreeFormSize();
-
-                    const mainFrame = document.querySelector('.e-mainframe');
-                    if (mainFrame) {
-                        mainFrame.scrollTo({ top: this.pane.offsetTop });
-                    } else {
-                        window.scrollTo(0, this.pane.offsetTop);
-                    }
-                }
-
-                hideLoader(document.getElementById('treeContainer'));
+                hideLoader(this.treeContainer);
             }
         );
     }
@@ -154,19 +134,6 @@ class DivManager {
             }
         }));
 
-    }
-
-    fitTreeFormSize() {
-        const windowHeight = window.innerHeight - 10;
-        const treeContainerHeight = this.treeContainer?.offsetHeight || 0;
-        const paneOthersHeight = (this.pane?.offsetHeight || 0) - (this.paneContent?.offsetHeight || 0) + 22;
-
-        if (windowHeight > this.minPaneHeight) {
-            const tree_pane = treeContainerHeight + paneOthersHeight;
-            this.pane.style.height = (tree_pane > windowHeight ? windowHeight : tree_pane) + 'px';
-        } else {
-            this.pane.style.height = this.minPaneHeight + 'px';
-        }
     }
 
     reload() {

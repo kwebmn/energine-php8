@@ -7,18 +7,8 @@ class DivSidebar extends DivManager {
     constructor(element) {
         super(element); // Можно вызвать super(), затем переопределить специфичное
 
-        // Переопределяем структуру дерева для сайдбара
-        this.element = typeof element === 'string'
-            ? document.querySelector(element) || document.getElementById(element)
-            : element;
-
-        this.langId = this.element.getAttribute('lang_id');
-        this.singlePath = this.element.getAttribute('single_template');
-        this.site = this.element.getAttribute('site');
-
-        document.documentElement.classList.add('e-divtree-panel');
-
-
+        this.contentPanel = this.element ? this.element.querySelector('[data-role="editor-content"]') : null;
+        this.organizeContentPanel();
     }
 
     initManager() {
@@ -32,12 +22,14 @@ class DivSidebar extends DivManager {
         this.langId = this.element.getAttribute('lang_id');
 
         // --- Создание структуры дерева (div для jsTree) ---
-        let treeContainer = document.getElementById('treeContainer') || document.querySelector('#treeContainer') || this.element;
-        let divTree = treeContainer.querySelector('#divTree');
+        this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
+            || this.element.querySelector('#treeContainer')
+            || this.element;
+        let divTree = this.treeContainer.querySelector('#divTree');
         if (!divTree) {
             divTree = document.createElement('div');
             divTree.id = 'divTree';
-            treeContainer.appendChild(divTree);
+            this.treeContainer.appendChild(divTree);
         }
 
         this.singlePath = this.element.getAttribute('single_template');
@@ -152,7 +144,7 @@ class DivSidebar extends DivManager {
 
 
 
-        showLoader(document.getElementById('treeContainer'));
+        showLoader(this.treeContainer);
         this.loadTree();
 
         this.jstree.on('refresh.jstree', function(e, data) {
@@ -162,10 +154,6 @@ class DivSidebar extends DivManager {
                 $(this).jstree(true).open_node(firstNode);
             }
         });
-
-        if (!document.querySelector('.e-singlemode-layout')) {
-            window.addEventListener('resize', this.fitTreeFormSize.bind(this));
-        }
     }
 
 
@@ -186,6 +174,28 @@ class DivSidebar extends DivManager {
             if (selectBtn) selectBtn.enable();
             toolbar.bindTo(this);
             this.toolbar = toolbar;
+        }
+    }
+
+    organizeContentPanel() {
+        if (!this.contentPanel) return;
+
+        const panesToMove = [];
+        let sibling = this.element.nextElementSibling;
+        while (sibling) {
+            const next = sibling.nextElementSibling;
+            if (sibling.matches && sibling.matches('[data-role="pane"]')) {
+                panesToMove.push(sibling);
+            }
+            sibling = next;
+        }
+
+        panesToMove.forEach(node => this.contentPanel.appendChild(node));
+
+        if (this.contentPanel.children.length === 0) {
+            this.contentPanel.classList.add('division-editor__content--empty');
+        } else {
+            this.contentPanel.classList.remove('division-editor__content--empty');
         }
     }
 }
