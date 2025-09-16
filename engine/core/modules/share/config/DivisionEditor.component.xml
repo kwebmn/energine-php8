@@ -44,7 +44,7 @@
             <field name="lang_id"/>
             <field name="smap_name"/>
         </fields>
-        <toolbar name="e-divtree-toolbar">
+        <toolbar name="division-editor-toolbar">
             <control id="add" title="BTN_ADD" type="button" icon="&#x2795;" onclick="add"/>
             <control id="edit" title="BTN_EDIT" type="button" icon="&#9998;" onclick="edit"/>
             <control id="delete" title="BTN_DELETE" type="button" icon="&#128473;" onclick="del"/>

@@ -12,7 +12,7 @@ html, body {
     font-family: Tahoma, sans-serif;
 }
 
-:not(.e-divtree-panel) .e-singlemode-layout > .e-grid-form
+.e-singlemode-layout > .e-grid-form
 {
     overflow: auto;
 }
