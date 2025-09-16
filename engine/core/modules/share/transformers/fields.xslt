@@ -723,7 +723,9 @@
 
     <!-- поле error -->
     <xsl:template match="field[@name='error_message'][ancestor::component[@type='form']]">
-        <div class="error"><xsl:value-of select="." disable-output-escaping="yes"/></div>
+        <div class="invalid-feedback d-block" role="alert">
+            <xsl:value-of select="." disable-output-escaping="yes"/>
+        </div>
     </xsl:template>
 
 
