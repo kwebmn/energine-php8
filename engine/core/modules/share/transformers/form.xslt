@@ -123,7 +123,7 @@
                         <xsl:variable name="TAB_NAME" select="."></xsl:variable>
                         <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME]))&gt;0">
                             <li class="nav-item" data-role="tab">
-                                <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}" class="nav-link" data-role="tab-link"><xsl:value-of select="$TAB_NAME" /></a>
+                                <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="$TAB_NAME" /></a>
                                 <xsl:if test="$FIELDS[@tabName=$TAB_NAME][1]/@language">
                                     <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME][1]/@language" /> }</span>
                                 </xsl:if>
