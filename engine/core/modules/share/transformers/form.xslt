@@ -10,20 +10,31 @@
     <!--or descendant::field[@type='pfile']
      or descendant::field[@type='prfile']-->
     <xsl:template match="component[@type='form']">
-        <form method="post" action="{@action}">
-            <xsl:if test="descendant::field[@type='image'] or descendant::field[@type='file']">
-            	<xsl:attribute name="enctype">multipart/form-data</xsl:attribute>
-            </xsl:if>
-<!--			<xsl:choose>-->
+        <xsl:variable name="FORM_ID" select="concat('form-', generate-id())"/>
+        <section class="card" data-role="pane">
+            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+                <xsl:apply-templates select="toolbar[@position='top']"/>
+            </div>
+            <div class="card-body" data-pane-part="body">
+                <form method="post" action="{@action}" id="{$FORM_ID}">
+                    <xsl:if test="descendant::field[@type='image'] or descendant::field[@type='file']">
+                        <xsl:attribute name="enctype">multipart/form-data</xsl:attribute>
+                    </xsl:if>
+<!--                    <xsl:choose>-->
 <!--                <xsl:when test="@class='RestorePassword'"><xsl:attribute name="class">base_form restore_password_form</xsl:attribute></xsl:when>-->
 <!--                <xsl:when test="@class='Register'"><xsl:attribute name="class">base_form registration_form</xsl:attribute></xsl:when>-->
-<!--				<xsl:when test="@class='UserProfile'"><xsl:attribute name="class">base_form profile_form</xsl:attribute></xsl:when>-->
+<!--                            <xsl:when test="@class='UserProfile'"><xsl:attribute name="class">base_form profile_form</xsl:attribute></xsl:when>-->
 <!--                <xsl:when test="@class='FeedbackForm'"><xsl:attribute name="class">base_form feedback_form</xsl:attribute></xsl:when>-->
 <!--                <xsl:when test="@class='Form'"><xsl:attribute name="class">base_form forms_form</xsl:attribute></xsl:when>-->
-<!--			</xsl:choose>-->
-            <input type="hidden" name="componentAction" value="{@componentAction}" id="componentAction"/>
-    		<xsl:apply-templates/>
-        </form>
+<!--                    </xsl:choose>-->
+                    <input type="hidden" name="componentAction" value="{@componentAction}" id="componentAction"/>
+                    <xsl:apply-templates select="node()[not(self::toolbar)]"/>
+                </form>
+            </div>
+            <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom">
+                <xsl:apply-templates select="toolbar[not(@position='top')]"/>
+            </div>
+        </section>
     </xsl:template>
     
     <xsl:template match="component[@type='form' and @exttype='grid']">
@@ -62,9 +73,44 @@
 
     
     <xsl:template match="toolbar[parent::component[@type='form']]">
-        <div class="controlset">
-            <xsl:apply-templates/>
+        <xsl:variable name="FORM_ID" select="concat('form-', generate-id(..))"/>
+        <div class="card-toolbar d-flex flex-wrap align-items-center gap-2">
+            <xsl:apply-templates>
+                <xsl:with-param name="form-id" select="$FORM_ID"/>
+            </xsl:apply-templates>
         </div>
+    </xsl:template>
+
+    <xsl:template match="toolbar[parent::component[@type='form']]/control[not(@type) or @type='button' or @type='submit']">
+        <xsl:param name="form-id" select="concat('form-', generate-id(ancestor::component[@type='form'][1]))"/>
+        <xsl:variable name="CONTROL">
+            <xsl:choose>
+                <xsl:when test="@type = 'button'">button</xsl:when>
+                <xsl:when test="@type = 'submit'">button</xsl:when>
+                <xsl:otherwise>button</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="CONTROL_TYPE">
+            <xsl:choose>
+                <xsl:when test="@type = 'button'">button</xsl:when>
+                <xsl:when test="@type = 'submit'">submit</xsl:when>
+                <xsl:otherwise>button</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+
+        <xsl:element name="{$CONTROL}">
+            <xsl:if test="@mode=1">
+                <xsl:attribute name="disabled">disabled</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="name"><xsl:value-of select="@id"/></xsl:attribute>
+            <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
+            <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
+            <xsl:attribute name="form"><xsl:value-of select="$form-id"/></xsl:attribute>
+            <xsl:if test="@click!=''">
+                <xsl:attribute name="onclick"><xsl:value-of select="@click"/></xsl:attribute>
+            </xsl:if>
+            <xsl:value-of select="@title"/>
+        </xsl:element>
     </xsl:template>
     
     <!-- форма как часть grid-а выводится в другом стиле -->
