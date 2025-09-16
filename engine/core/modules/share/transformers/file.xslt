@@ -25,7 +25,7 @@
             <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
-                        <a href="#{$IDD}" class="nav-link" data-role="tab-link"><xsl:value-of select="$TRANSLATION[@const='TXT_IMG_MANAGER']"/></a>
+                        <a href="#{$IDD}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="$TRANSLATION[@const='TXT_IMG_MANAGER']"/></a>
                     </li>
                 </ul>
             </div>

@@ -95,7 +95,7 @@
             </h1>
             <xsl:if test="$IN_DEBUG_MODE = 1">
                 <div class="error_text m-t-20">
-                    <div class="alert alert-notice">
+                    <div class="alert alert-notice" data-mdb-alert-init="1">
                         <div><strong>File: </strong><xsl:value-of select="@file"/></div>
                         <div><strong>Line: </strong><xsl:value-of select="@line"/></div>
                     </div>
