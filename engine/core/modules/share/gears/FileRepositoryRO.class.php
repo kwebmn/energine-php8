@@ -46,12 +46,19 @@ class FileRepositoryRO extends FileRepositoryLocal implements IFileRepository
         );
 
         $dir = \dirname($altPath);
-        if (!is_dir($dir) && !@mkdir($dir, 0777, true)) {
-            throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir);
+        if (!is_dir($dir)) {
+            [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
+            if ($created === false && !is_dir($dir)) {
+                $context = $error !== null ? ['error' => $error] : [];
+                throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir, null, $context);
+            }
         }
 
-        if (!@copy((string)$sourceFilename, $altPath)) {
-            throw new SystemException('ERR_COPY_UPLOADED_FILE', SystemException::ERR_CRITICAL, $altPath);
+        $source = (string)$sourceFilename;
+        [$copied, $copyError] = $this->callFs(static fn(): bool => copy($source, $altPath));
+        if ($copied === false) {
+            $context = $copyError !== null ? ['error' => $copyError] : [];
+            throw new SystemException('ERR_COPY_UPLOADED_FILE', SystemException::ERR_CRITICAL, $altPath, null, $context);
         }
 
         return $this->analyze($altPath);

@@ -13,6 +13,36 @@ declare(strict_types=1);
 /* --------------------------------------------------------------------------
  * ВСПОМОГАТЕЛЬНОЕ: определение каталога логов и запись
  * -------------------------------------------------------------------------- */
+if (!function_exists('_utils_fs_call')) {
+    /**
+     * Выполнить файловую операцию, превратив предупреждения в ErrorException.
+     *
+     * @return array{0:mixed,1:?string} [результат, сообщение об ошибке]
+     */
+    function _utils_fs_call(callable $operation): array {
+        $result = null;
+        $error  = null;
+
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool {
+            throw new \ErrorException($message, 0, $severity, $file, $line);
+        });
+
+        try {
+            $result = $operation();
+        } catch (\ErrorException $e) {
+            $result = false;
+            $error  = $e->getMessage();
+        } finally {
+            restore_error_handler();
+        }
+
+        return [$result, $error];
+    }
+}
+
+/* --------------------------------------------------------------------------
+ * ВСПОМОГАТЕЛЬНОЕ: определение каталога логов и запись
+ * -------------------------------------------------------------------------- */
 if (!function_exists('_utils_log_dir')) {
     function _utils_log_dir(): string {
         // 1) Конфиг, если доступен
@@ -41,7 +71,11 @@ if (!function_exists('_utils_log_dir')) {
             $dir = getcwd() . '/logs';
         }
         if (!is_dir($dir)) {
-            @mkdir($dir, 0775, true);
+            [$created, $error] = _utils_fs_call(static fn(): bool => mkdir($dir, 0775, true));
+            if ($created === false && !is_dir($dir)) {
+                $details = $error ? ': ' . $error : '';
+                throw new \RuntimeException(sprintf('Unable to create log directory "%s"%s', $dir, $details));
+            }
         }
         return $dir;
     }
@@ -51,9 +85,18 @@ if (!function_exists('_utils_log_write')) {
     function _utils_log_write(string $file, string $content, bool $append = true): void {
         $path = rtrim(_utils_log_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . ltrim($file, DIRECTORY_SEPARATOR);
         $flags = $append ? FILE_APPEND : 0;
-        @file_put_contents($path, $content, $flags);
-        // chmod не всегда имеет смысл на проде; оставим мягко
-        @chmod($path, 0664);
+        [$written, $writeError] = _utils_fs_call(static fn() => file_put_contents($path, $content, $flags));
+        if ($written === false) {
+            $details = $writeError ? ': ' . $writeError : '';
+            throw new \RuntimeException(sprintf('Unable to write log file "%s"%s', $path, $details));
+        }
+
+        if (is_file($path)) {
+            [$chmodOk, $chmodError] = _utils_fs_call(static fn(): bool => chmod($path, 0664));
+            if ($chmodOk === false && $chmodError) {
+                error_log(sprintf('Failed to chmod log file "%s": %s', $path, $chmodError));
+            }
+        }
     }
 }
 
@@ -420,8 +463,13 @@ function withLibxml(callable $op, string $context = 'XML/XSLT error', ?string $f
  */
 function file_snippet(string $path, int $line, int $radius = 3): string {
     $out = '';
-    $lines = @file($path, FILE_IGNORE_NEW_LINES);
-    if (!$lines) return $out;
+    [$lines, $error] = _utils_fs_call(static fn() => file($path, FILE_IGNORE_NEW_LINES));
+    if (!is_array($lines)) {
+        if ($error) {
+            error_log(sprintf('Unable to read snippet from "%s": %s', $path, $error));
+        }
+        return $out;
+    }
     $i0 = max(1, $line - $radius);
     $i1 = min(count($lines), $line + $radius);
     for ($i = $i0; $i <= $i1; $i++) {
