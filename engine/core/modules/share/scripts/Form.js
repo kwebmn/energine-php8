@@ -151,34 +151,79 @@ class Form {
         }
 
         // GOOGLE TRANSLATE Ctrl + *
-        window.addEventListener('keypress', function (evt) {
+        window.addEventListener('keypress', (evt) => {
+            if (!(evt.target instanceof Element)) {
+                return;
+            }
+
             if (evt.code === 'Digit8' && evt.shiftKey) { // shift + *
                 const fieldId = evt.target.id;
-                const fieldBase = fieldId.substring(0, fieldId.length - 2);
-                const parent = $(evt.target).closest('[data-role="pane-item"]');
-                if (parent.length) {
-                    const parentId = parent.attr('id');
-                    let toLangAbbr = $(`a[href="#${parentId}"]`).attr('lang_abbr');
-                    if (toLangAbbr === 'ua') toLangAbbr = 'uk';
-                    const srcText = $(`#${fieldBase}_1`).val();
-                    $.ajax({
-                        url: 'https://translate.googleapis.com/translate_a/single',
-                        data: {
-                            client: 'gtx',
-                            sl: 'ru',
-                            tl: toLangAbbr,
-                            dt: 't',
-                            q: srcText
-                        },
-                        success: function (result) {
-                            result = result.substring(4);
-                            result = result.substring(0, result.indexOf('","'));
-                            result = result.charAt(0).toUpperCase() + result.slice(1);
-                            $(evt.target).val(result);
-                        },
-                        dataType: 'text'
-                    });
+                if (!fieldId || fieldId.length < 2) {
+                    return;
                 }
+
+                const fieldBase = fieldId.substring(0, fieldId.length - 2);
+                const parent = evt.target.closest('[data-role="pane-item"]');
+                if (!parent || !parent.id) {
+                    return;
+                }
+
+                const anchors = document.querySelectorAll('a[lang_abbr]');
+                const parentHref = `#${parent.id}`;
+                const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
+                let toLangAbbr = anchor?.getAttribute('lang_abbr');
+                if (!toLangAbbr) {
+                    return;
+                }
+
+                if (toLangAbbr === 'ua') {
+                    toLangAbbr = 'uk';
+                }
+
+                const srcTextElement = document.getElementById(`${fieldBase}_1`);
+                if (!srcTextElement || !('value' in srcTextElement)) {
+                    return;
+                }
+
+                const srcText = srcTextElement.value;
+                if (!srcText) {
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    client: 'gtx',
+                    sl: 'ru',
+                    tl: toLangAbbr,
+                    dt: 't',
+                    q: srcText
+                });
+
+                fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`)
+                    .then((response) => response.text())
+                    .then((resultText) => {
+                        if (!resultText) {
+                            return;
+                        }
+
+                        let translated = resultText.substring(4);
+                        const endIndex = translated.indexOf('","');
+                        if (endIndex !== -1) {
+                            translated = translated.substring(0, endIndex);
+                        }
+
+                        if (!translated) {
+                            return;
+                        }
+
+                        translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+
+                        if ('value' in evt.target) {
+                            evt.target.value = translated;
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Google Translate request failed', error);
+                    });
             }
         });
 
