@@ -523,7 +523,7 @@ class DBDataSet extends DataSet
         $this->pk = $primaryColumnName;
     }
 
-    protected function createBuilder()
+    protected function createBuilder(): AbstractBuilder
     {
         if (!$this->getTranslationTableName()) {
             return parent::createBuilder();

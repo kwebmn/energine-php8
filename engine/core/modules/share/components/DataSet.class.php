@@ -233,7 +233,7 @@ abstract class DataSet extends Component
     /**
      * Create builder.
      */
-    protected function createBuilder()
+    protected function createBuilder(): AbstractBuilder
     {
         if (!isset($this->builder) || !$this->builder) {
             return new Builder($this->getTitle());

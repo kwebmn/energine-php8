@@ -57,7 +57,7 @@ class ComponentConfig {
      * @throws SystemException 'ERR_DEV_BAD_CONFIG_FILE'
      * @throws SystemException 'ERR_DEV_STRANGE'
      */
-    public function __construct($config, $className, $moduleName) {
+    public function __construct(mixed $config, string $className, string $moduleName) {
         //Если это строка(с именем файла) или false
         if (!$config || is_string($config)) {
             $config = ($param = $this->getConfigPath($config, $moduleName)) ? $param
