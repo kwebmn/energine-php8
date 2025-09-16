@@ -48,26 +48,23 @@
     
     <xsl:template match="field[@name='page_rights'][@type='custom']">
         <xsl:variable name="RECORDS" select="recordset/record"/>
-        <div class="table_data">
-            <table width="100%" border="0">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped table-hover">
                 <thead>
                     <tr>
-                        <td><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></td>
+                        <th scope="col"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></th>
                         <xsl:for-each select="$RECORDS[position()=1]/field[@name='right_id']/options/option">
-                            <td><xsl:value-of select="."/></td>
+                            <th scope="col"><xsl:value-of select="."/></th>
                         </xsl:for-each>
                     </tr>
                 </thead>
                 <tbody>
                     <xsl:for-each select="$RECORDS">
                         <tr>
-    						<xsl:if test="floor(position() div 2) = position() div 2">
-                                <xsl:attribute name="class">even</xsl:attribute>
-                            </xsl:if>
-                            <td class="group_name"><xsl:value-of select="field[@name='group_id']"/></td>
+                            <th scope="row"><xsl:value-of select="field[@name='group_id']"/></th>
                             <xsl:for-each select="field[@name='right_id']/options/option">
                                 <td>
-                                    <div class="form-check mb-0">
+                                    <div class="form-check">
                                         <input class="form-check-input" type="radio" value="{@id}">
                                             <xsl:attribute name="name">right_id[<xsl:value-of select="../../../field[@name='group_id']/@group_id"/>]</xsl:attribute>
                                             <xsl:if test="@selected">
@@ -82,7 +79,7 @@
                 </tbody>
             </table>
         </div>
-    </xsl:template>    
+    </xsl:template>
     
     <!-- поле выбора родительского раздела -->
     <xsl:template match="field[@name='smap_pid'][@mode='2'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
