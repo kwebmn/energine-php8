@@ -345,31 +345,42 @@ class AcplField {
         this.element = (typeof element === 'string') ? document.getElementById(element) : element;
         this.options = Object.assign({ startFrom: 1 }, options);
 
+        if (!this.element.dataset.role) {
+            this.element.dataset.role = 'acpl';
+        }
+        this.element.classList.add('form-control');
+
         // Контейнер для input-group
         const parent = this.element.parentNode;
         this.container = document.createElement('div');
-        this.container.className = 'input-group';
-        this.container.style.position = 'relative';
+        this.container.classList.add('input-group', 'acpl-field');
         if (parent) {
             parent.insertBefore(this.container, this.element);
         }
         this.container.appendChild(this.element);
-
 
         // Кнопка "..." для тегов
         if (this.element.name === 'tags') {
             this.button = document.createElement('button');
             this.button.type = 'button';
             this.button.className = 'btn btn-outline-secondary';
-            this.button.dataset.target = this.element.id || this.element.name || 'tags';
-            this.button.onclick = () => window[this.element.getAttribute('component_id')].openTagEditor(this.button);
-            this.button.textContent = '...';
+            this.button.dataset.action = 'tag-editor';
+            const targetId = this.element.id || this.element.name || 'tags';
+            this.button.dataset.target = targetId;
+            const componentId = this.element.getAttribute('component_id');
+            this.button.addEventListener('click', () => {
+                const component = componentId ? window[componentId] : null;
+                if (component && typeof component.openTagEditor === 'function') {
+                    component.openTagEditor(this.button);
+                }
+            });
+            this.button.textContent = '…';
 
             this.container.appendChild(this.button);
         }
         // DropBoxList (должен быть глобально подключен)
         this.list = new DropBoxList(this.element);
-        this.list.get().after(this.element);
+        this.container.appendChild(this.list.get());
 
         this.list.get().addEventListener('choose', (e) => this.select(e.detail));
 
