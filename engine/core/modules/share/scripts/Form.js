@@ -1265,10 +1265,16 @@ Form.Label = {
             const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
 
             if (hiddenField) hiddenField.value = id;
-            if (spanField) spanField.innerHTML = name;
+            if (spanField) {
+                if ('value' in spanField) {
+                    spanField.value = name;
+                } else {
+                    spanField.textContent = name;
+                }
+            }
 
             const segmentObject = document.getElementById('smap_pid_segment');
-            if (segmentObject) segmentObject.innerHTML = segment;
+            if (segmentObject) segmentObject.textContent = segment;
 
             Cookie.write(
                 'last_selected_smap',
@@ -1325,10 +1331,16 @@ Form.Label = {
             const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
 
             if (hiddenField) hiddenField.value = savedData.id;
-            if (spanField) spanField.innerHTML = savedData.name;
+            if (spanField) {
+                if ('value' in spanField) {
+                    spanField.value = savedData.name;
+                } else {
+                    spanField.textContent = savedData.name;
+                }
+            }
 
             const segmentObject = document.getElementById('smap_pid_segment');
-            if (segmentObject) segmentObject.innerHTML = savedData.segment;
+            if (segmentObject) segmentObject.textContent = savedData.segment;
         }
     }
 };
