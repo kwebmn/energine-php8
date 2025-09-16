@@ -14,10 +14,13 @@
         <div data-role="form-field">
             <xsl:attribute name="class">
                 <xsl:choose>
-                    <xsl:when test="$IS_OUTLINE">form-outline</xsl:when>
+                    <xsl:when test="$IS_OUTLINE">form-outline mb-3</xsl:when>
                     <xsl:otherwise>mb-3</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
+            <xsl:if test="$IS_OUTLINE">
+                <xsl:attribute name="data-mdb-input-init">1</xsl:attribute>
+            </xsl:if>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
