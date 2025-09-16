@@ -215,12 +215,50 @@ if ($wantCache && $okDebug && empty($reg->psrCache)) {
     $docRoot  = rtrim($_SERVER['DOCUMENT_ROOT'] ?? HTDOCS_DIR, '/');
     $cacheDir = rtrim((string)($config['site']['cache_dir'] ?? ($docRoot . '/var/cache')), '/');
 
-    if (!is_dir($cacheDir))               { @mkdir($cacheDir, 0777, true); }
-    if (!is_dir($cacheDir . '/tags'))     { @mkdir($cacheDir . '/tags', 0777, true); }
+    $fsCall = static function (callable $operation): array {
+        $result = null;
+        $error  = null;
+
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool {
+            throw new \ErrorException($message, 0, $severity, $file, $line);
+        });
+
+        try {
+            $result = $operation();
+        } catch (\ErrorException $e) {
+            $result = false;
+            $error  = $e->getMessage();
+        } finally {
+            restore_error_handler();
+        }
+
+        return [$result, $error];
+    };
+
+    if (!is_dir($cacheDir)) {
+        [$created, $error] = $fsCall(static fn(): bool => mkdir($cacheDir, 0777, true));
+        if ($created === false && !is_dir($cacheDir)) {
+            $details = $error ? ' (' . $error . ')' : '';
+            throw new \RuntimeException('Unable to create cache directory: ' . $cacheDir . $details);
+        }
+    }
+
+    $tagsDir = $cacheDir . '/tags';
+    if (!is_dir($tagsDir)) {
+        [$createdTags, $tagsError] = $fsCall(static fn(): bool => mkdir($tagsDir, 0777, true));
+        if ($createdTags === false && !is_dir($tagsDir)) {
+            $details = $tagsError ? ' (' . $tagsError . ')' : '';
+            throw new \RuntimeException('Unable to create cache tags directory: ' . $tagsDir . $details);
+        }
+    }
 
     $gi = $cacheDir . '/.gitignore';
     if (!is_file($gi)) {
-        @file_put_contents($gi, "*\n!.gitignore\n");
+        [$written, $writeError] = $fsCall(static fn() => file_put_contents($gi, "*\n!.gitignore\n"));
+        if ($written === false) {
+            $details = $writeError ? ' (' . $writeError . ')' : '';
+            throw new \RuntimeException('Unable to write cache gitignore file: ' . $gi . $details);
+        }
     }
 
     // обновим рантайм-конфиг, чтобы Cache увидел директорию

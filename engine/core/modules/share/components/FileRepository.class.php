@@ -633,8 +633,16 @@ final class FileRepository extends Grid implements SampleFileRepository
             $fileName   = tempnam(self::TEMPORARY_DIR, 'zip');
             $tmpFile    = (string)$_POST['data'];
 
-            if (!@copy($tmpFile, $fileName)) {
-                throw new SystemException('ERR_CANT_CREATE_FILE', SystemException::ERR_CRITICAL);
+            $copyError = null;
+            set_error_handler(static function (int $severity, string $message) use (&$copyError): bool {
+                $copyError = $message;
+                return true;
+            });
+            $copied = copy($tmpFile, $fileName);
+            restore_error_handler();
+            if ($copied === false) {
+                $context = $copyError !== null ? ['error' => $copyError] : [];
+                throw new SystemException('ERR_CANT_CREATE_FILE', SystemException::ERR_CRITICAL, null, null, $context);
             }
 
             $uplPID = (int)$_POST['PID'];

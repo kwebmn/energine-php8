@@ -85,7 +85,7 @@ final class URI extends BaseObject
      */
     public static function validate(string $uri)
     {
-        $parts = @parse_url($uri);
+        $parts = self::parseUrlSafe($uri);
         if ($parts === false) {
             return false;
         }
@@ -114,6 +114,26 @@ final class URI extends BaseObject
 
         // Формируем массив в том же порядке, который использовался раньше
         return [$scheme, $host, $port, $path, $query, $frag];
+    }
+
+    private static function parseUrlSafe(string $uri): array|false
+    {
+        $error = null;
+
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$error): bool {
+            $error = $message;
+            return true;
+        });
+
+        $parts = parse_url($uri);
+
+        restore_error_handler();
+
+        if ($parts === false || $error !== null) {
+            return false;
+        }
+
+        return $parts;
     }
 
     /**
