@@ -30,6 +30,114 @@ class Form {
     // Класс Energine.request как статическое свойство
     static request = Energine.request;
 
+    /**
+     * Legacy helper. Initializes forms or re-triggers MDB input styling.
+     * @param {Element|NodeList|string|Array<Element>} [target]
+     * @returns {Form|Form[]|null}
+     */
+    static init(target) {
+        if (typeof target === 'string' || target instanceof Element) {
+            return new Form(target);
+        }
+
+        if (Form.isNodeCollection(target)) {
+            return Array.from(target).map((item) => new Form(item));
+        }
+
+        Form.initializeInputs();
+        return null;
+    }
+
+    /**
+     * Проверяет, является ли аргумент коллекцией DOM-элементов.
+     * @param {*} value
+     * @returns {boolean}
+     */
+    static isNodeCollection(value) {
+        if (!value) {
+            return false;
+        }
+        if (Array.isArray(value)) {
+            return true;
+        }
+        if (typeof NodeList !== 'undefined' && value instanceof NodeList) {
+            return true;
+        }
+        if (typeof HTMLCollection !== 'undefined' && value instanceof HTMLCollection) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Переинициализирует floating labels из MDB.
+     * @param {Document|DocumentFragment|Element|Array<Element>|NodeList} [context=document]
+     */
+    static initializeInputs(context = document) {
+        const inputModule = window?.mdb?.Input;
+        if (!inputModule || typeof inputModule.init !== 'function') {
+            return;
+        }
+
+        const collectTargets = (source) => {
+            const result = [];
+            if (!source) {
+                return result;
+            }
+
+            if ((source instanceof Element || source instanceof DocumentFragment) && typeof source.matches === 'function') {
+                if (source.matches('.form-outline')) {
+                    result.push(source);
+                }
+            }
+
+            if (typeof source.querySelectorAll === 'function') {
+                result.push(...source.querySelectorAll('.form-outline'));
+            }
+
+            return result;
+        };
+
+        let nodes = [];
+        if (Form.isNodeCollection(context)) {
+            nodes = context ? Array.from(context).flatMap((item) => collectTargets(item)) : [];
+        } else {
+            nodes = collectTargets(context);
+        }
+
+        const uniqueNodes = Array.from(new Set(nodes));
+
+        if (!uniqueNodes.length) {
+            try {
+                inputModule.init();
+            } catch (error) {
+                console.warn('Form.init: failed to initialize MDB inputs', error);
+            }
+            return;
+        }
+
+        let lastError = null;
+        const attempts = [
+            () => inputModule.init(uniqueNodes),
+            () => uniqueNodes.forEach((node) => inputModule.init(node)),
+            () => inputModule.init(),
+        ];
+
+        for (const attempt of attempts) {
+            try {
+                attempt();
+                lastError = null;
+                break;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        if (lastError) {
+            console.warn('Form.init: failed to initialize MDB inputs', lastError);
+        }
+    }
+
     request(...args) {
         return Energine.request(...args);
     }
@@ -228,54 +336,63 @@ class Form {
         });
 
         // CRUD
-        this.componentElement.querySelectorAll('.crud').forEach(crudEl => {
-            crudEl.addEventListener('click', (e) => {
-                let dataField = e.target.getAttribute('data-field');
-                let dataEditor = e.target.getAttribute('data-editor');
-                let control = this.form.querySelector(`[name="${dataField}"], [id="${dataField}"]`);
-                if (control) {
-                    ModalBox.open({
-                        url: `${this.singlePath}${dataField}-${dataEditor}/crud/`,
-                        onClose: (result) => {
-                            const selectedValue = result.key;
-                            if (result.dirty) {
-                                Energine.request(
-                                    `${this.singlePath}${dataField}/fk-values/`,
-                                    null,
-                                    (data) => {
-                                        if (data.result) {
-                                            control.innerHTML = '';
-                                            const id = data.result[1];
-                                            const title = data.result[2];
-                                            data.result[0].forEach(row => {
-                                                let option = document.createElement('option');
-                                                Object.entries(row).forEach(([key, value]) => {
-                                                    if (key === id) {
-                                                        option.value = value;
-                                                    } else if (key === title) {
-                                                        option.textContent = value;
-                                                    } else {
-                                                        option.setAttribute(key, value);
-                                                    }
-                                                });
-                                                control.appendChild(option);
-                                            });
-                                            if (selectedValue) {
-                                                control.value = selectedValue;
-                                            }
-                                        }
-                                    },
-                                    this.processServerError.bind(this),
-                                    this.processServerError.bind(this)
-                                );
-                            } else if (selectedValue) {
-                                control.value = selectedValue;
-                            }
-                        }
-                    });
+        this.componentElement.querySelectorAll('[data-action="crud"]').forEach(crudEl => {
+            crudEl.addEventListener('click', (event) => {
+                const target = event.currentTarget || event.target;
+                const dataField = target?.getAttribute('data-field');
+                const dataEditor = target?.getAttribute('data-editor');
+                if (!dataField || !dataEditor) {
+                    return;
                 }
+
+                const control = this.form.querySelector(`[name="${dataField}"], [id="${dataField}"]`);
+                if (!control) {
+                    return;
+                }
+
+                ModalBox.open({
+                    url: `${this.singlePath}${dataField}-${dataEditor}/crud/`,
+                    onClose: (result) => {
+                        const selectedValue = result?.key;
+                        if (result?.dirty) {
+                            Energine.request(
+                                `${this.singlePath}${dataField}/fk-values/`,
+                                null,
+                                (data) => {
+                                    if (data.result) {
+                                        control.innerHTML = '';
+                                        const id = data.result[1];
+                                        const title = data.result[2];
+                                        data.result[0].forEach(row => {
+                                            let option = document.createElement('option');
+                                            Object.entries(row).forEach(([key, value]) => {
+                                                if (key === id) {
+                                                    option.value = value;
+                                                } else if (key === title) {
+                                                    option.textContent = value;
+                                                } else {
+                                                    option.setAttribute(key, value);
+                                                }
+                                            });
+                                            control.appendChild(option);
+                                        });
+                                        if (selectedValue) {
+                                            control.value = selectedValue;
+                                        }
+                                    }
+                                },
+                                this.processServerError.bind(this),
+                                this.processServerError.bind(this)
+                            );
+                        } else if (selectedValue) {
+                            control.value = selectedValue;
+                        }
+                    }
+                });
             });
         });
+
+        Form.initializeInputs(this.form || this.componentElement);
 
     }
 
