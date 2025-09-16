@@ -850,7 +850,7 @@
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_name">
         <li class="nav-item" data-role="tab" data-src="{ancestor::component/@single_template}{.}">
-            <a href="#{generate-id(.)}" class="nav-link" data-role="tab-link"><xsl:value-of select="@title" /></a>
+            <a href="#{generate-id(.)}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="@title" /></a>
         </li>
     </xsl:template>
 
