@@ -345,10 +345,10 @@ class AcplField {
         this.element = (typeof element === 'string') ? document.getElementById(element) : element;
         this.options = Object.assign({ startFrom: 1 }, options);
 
-        // Контейнер с .with_append
+        // Контейнер для input-group
         const parent = this.element.parentNode;
         this.container = document.createElement('div');
-        this.container.className = 'with_append';
+        this.container.className = 'input-group';
         this.container.style.position = 'relative';
         if (parent) {
             parent.insertBefore(this.container, this.element);
@@ -360,21 +360,12 @@ class AcplField {
         if (this.element.name === 'tags') {
             this.button = document.createElement('button');
             this.button.type = 'button';
-            this.button.setAttribute('link', 'tags');
-            this.button.style.height = '18px';
+            this.button.className = 'btn btn-outline-secondary';
+            this.button.dataset.target = this.element.id || this.element.name || 'tags';
             this.button.onclick = () => window[this.element.getAttribute('component_id')].openTagEditor(this.button);
-            this.button.innerHTML = '...';
+            this.button.textContent = '...';
 
-            const appendedBlock = document.createElement('div');
-            appendedBlock.className = 'appended_block';
-            appendedBlock.appendChild(this.button);
-
-            // вставить appendedBlock после input (т.е. в .container)
-            if (this.element.nextSibling) {
-                this.container.insertBefore(appendedBlock, this.element.nextSibling);
-            } else {
-                this.container.appendChild(appendedBlock);
-            }
+            this.container.appendChild(this.button);
         }
         // DropBoxList (должен быть глобально подключен)
         this.list = new DropBoxList(this.element);

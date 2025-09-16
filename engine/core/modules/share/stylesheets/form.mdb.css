@@ -1,0 +1,26 @@
+.form-control-plaintext {
+    padding-top: .375rem;
+    padding-bottom: .375rem;
+}
+
+.preview {
+    margin-bottom: .5rem;
+}
+
+.preview[hidden] {
+    display: none !important;
+}
+
+.preview img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+[data-action="clear-file"][hidden] {
+    display: none !important;
+}
+
+.preview a {
+    display: inline-flex;
+}
