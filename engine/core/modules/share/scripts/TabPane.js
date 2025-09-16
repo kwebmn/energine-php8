@@ -18,21 +18,20 @@ class TabPane {
             return;
         }
 
-        // Ищем ul.e-tabs
-        const tabsList = this.element.querySelector('ul.e-tabs');
+        // Ищем контейнер вкладок
+        const tabsList = this.element.querySelector('[data-role="tabs"]');
         if (!tabsList) {
             this.tabs = [];
             this.currentTab = null;
             return;
         }
 
-        tabsList.classList.add('clearfix');
-        this.tabs = Array.from(tabsList.querySelectorAll('li'));
+        this.tabs = Array.from(tabsList.querySelectorAll('[data-role="tab"]'));
         this.currentTab = this.tabs[0];
 
         this.tabs.forEach(tab => {
             tab.setAttribute('unselectable', 'on');
-            const anchor = tab.querySelector('a');
+            const anchor = tab.querySelector('[data-role="tab-link"]') || tab.querySelector('a');
             if (!anchor) return;
 
             const href = anchor.getAttribute('href');
@@ -43,14 +42,15 @@ class TabPane {
             });
 
             // --- Поддержка старого и нового формата данных ---
-            const tabData = tab.querySelector('span.data');
+            const tabData = tab.querySelector('[data-role="tab-meta"]');
             tab.data = tabData ? TabPane.safeJsonParse(tabData.textContent.trim()) : {};
 
             // --- Привязка панели к вкладке ---
             tab.pane = this.element.querySelector(`div${paneId}`);
             if (tab.pane) {
-                tab.pane.classList.add('e-pane-item');
-                tab.pane.style.display = 'none';
+                tab.pane.classList.add('tab-pane');
+                tab.pane.setAttribute('data-role', 'pane-item');
+                tab.pane.classList.remove('show', 'active');
                 tab.pane.tab = tab;
             }
 
@@ -95,11 +95,20 @@ class TabPane {
 
     selectTab(tab) {
         if (!tab || !tab.pane) return;
-        this.currentTab?.classList.remove('current');
-        this.currentTab?.pane && (this.currentTab.pane.style.display = 'none');
 
-        tab.classList.add('current');
-        tab.pane.style.display = '';
+        if (this.currentTab) {
+            this.currentTab.classList.remove('current', 'active');
+            const currentLink = this.currentTab.querySelector('[data-role="tab-link"]') || this.currentTab.querySelector('a');
+            if (currentLink) currentLink.classList.remove('active');
+            if (this.currentTab.pane) {
+                this.currentTab.pane.classList.remove('show', 'active');
+            }
+        }
+
+        tab.classList.add('current', 'active');
+        const link = tab.querySelector('[data-role="tab-link"]') || tab.querySelector('a');
+        if (link) link.classList.add('active');
+        tab.pane.classList.add('show', 'active');
         this.currentTab = tab;
 
         // Фокус на первый input/textarea (если есть)
@@ -117,7 +126,7 @@ class TabPane {
 
     setTabTitle(title, tab) {
         tab = tab || this.getCurrentTab();
-        const a = tab.querySelector('a');
+        const a = tab.querySelector('[data-role="tab-link"]') || tab.querySelector('a');
         if (a) a.innerHTML = title;
     }
 
@@ -130,16 +139,21 @@ class TabPane {
 
         const tabPane = document.createElement('div');
         tabPane.id = tabID;
-        tabPane.className = 'e-pane-item';
-        tabPane.style.display = 'none';
-        const paneContent = this.element.querySelector('.e-pane-content');
+        tabPane.className = 'tab-pane';
+        tabPane.setAttribute('data-role', 'pane-item');
+        tabPane.classList.remove('show', 'active');
+        const paneContent = this.element.querySelector('[data-role="tab-content"]');
         paneContent.appendChild(tabPane);
 
         const tabElement = document.createElement('li');
         tabElement.setAttribute('unselectable', 'on');
+        tabElement.className = 'nav-item';
+        tabElement.setAttribute('data-role', 'tab');
+        titleElement.classList.add('nav-link');
+        titleElement.setAttribute('data-role', 'tab-link');
         tabElement.appendChild(titleElement);
 
-        const tabsList = this.element.querySelector('ul.e-tabs');
+        const tabsList = this.element.querySelector('[data-role="tabs"]');
         tabsList.appendChild(tabElement);
         this.tabs.push(tabElement);
 
@@ -167,7 +181,7 @@ class TabPane {
     whereIs(element) {
         let el = typeof element === 'string' ? document.querySelector(element) : element;
         while (el = el.parentElement) {
-            if (el.classList.contains('e-pane-item') && el.tab) {
+            if (el?.getAttribute('data-role') === 'pane-item' && el.tab) {
                 return el.tab;
             }
         }

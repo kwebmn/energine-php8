@@ -170,7 +170,7 @@ class Form {
             if (evt.code === 'Digit8' && evt.shiftKey) { // shift + *
                 const fieldId = evt.target.id;
                 const fieldBase = fieldId.substring(0, fieldId.length - 2);
-                const parent = $(evt.target).closest('.e-pane-item');
+                const parent = $(evt.target).closest('[data-role="pane-item"]');
                 if (parent.length) {
                     const parentId = parent.attr('id');
                     let toLangAbbr = $(`a[href="#${parentId}"]`).attr('lang_abbr');
@@ -303,7 +303,7 @@ class Form {
     // attachToolbar
     attachToolbar(toolbar) {
         this.toolbar = toolbar;
-        let toolbarContainer = this.componentElement.querySelector('.e-pane-b-toolbar');
+        let toolbarContainer = this.componentElement.querySelector('[data-pane-part="footer"]');
         let afterSaveActionSelect = this.toolbar.getControlById('after_save_action');
         if (toolbarContainer) {
             toolbarContainer.appendChild(this.toolbar.getElement());

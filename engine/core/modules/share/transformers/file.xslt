@@ -21,33 +21,32 @@
     
     <xsl:template match="recordset[parent::component[@class='ImageManager']]">
         <xsl:variable name="IDD"><xsl:value-of select="generate-id(record)"/></xsl:variable>
-        <div id="{generate-id(.)}" class="e-pane e-pane-has-t-toolbar1" template="{$BASE}{$LANG_ABBR}{../@template}"  single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
-            <xsl:if test="../toolbar">
-                <xsl:attribute name="class">e-pane e-pane-has-t-toolbar1 e-pane-has-b-toolbar1</xsl:attribute>
-            </xsl:if>
-            <div class="e-pane-t-toolbar">
-                <ul class="e-pane-toolbar e-tabs">
-                    <li>
-                        <a href="#{$IDD}"><xsl:value-of select="$TRANSLATION[@const='TXT_IMG_MANAGER']"/></a>
+        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}"  single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+                <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
+                    <li class="nav-item" data-role="tab">
+                        <a href="#{$IDD}" class="nav-link" data-role="tab-link"><xsl:value-of select="$TRANSLATION[@const='TXT_IMG_MANAGER']"/></a>
                     </li>
                 </ul>
             </div>
-            <div class="e-pane-content">
-                <div id="{$IDD}">
-                    <div style="max-height:300px; max-width:650px; overflow:auto;border: thin inset; width: auto;">
-                        <img id="thumbnail" alt=""  style="display: block;"/>
+            <div class="card-body" data-pane-part="body">
+                <div class="tab-content" data-role="tab-content">
+                    <div id="{$IDD}" class="tab-pane" data-role="pane-item">
+                        <div style="max-height:300px; max-width:650px; overflow:auto;border: thin inset; width: auto;">
+                            <img id="thumbnail" alt=""  style="display: block;"/>
+                        </div>
+                        <!--
+                        <div style="padding-top:20px;">
+                            <input type="checkbox" id="insThumbnail" name="insThumbnail" value="1" style="width: auto;" disabled="disabled"/><label for="insThumbnail">вставить&#160;превью</label>
+                        </div>
+                        -->
+                        <xsl:apply-templates/>
                     </div>
-                    <!--
-                    <div style="padding-top:20px;">
-                        <input type="checkbox" id="insThumbnail" name="insThumbnail" value="1" style="width: auto;" disabled="disabled"/><label for="insThumbnail">вставить&#160;превью</label>
-                    </div>
-                    -->
-                    <xsl:apply-templates/>
                 </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="e-pane-b-toolbar"></div>
-            </xsl:if>            
+                <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            </xsl:if>
         </div>
     </xsl:template>
     

@@ -94,7 +94,6 @@
         <base href="{$BASE}"/>
         <xsl:apply-templates select="." mode="favicon"/>
 
-<!--        <link rel="stylesheet" type="text/css" href="{$STATIC_URL}stylesheets/energine.css"/>-->
         <xsl:choose>
             <xsl:when test="not($DOC_PROPS[@name='single'])">
                 <xsl:apply-templates select="." mode="stylesheets"/>

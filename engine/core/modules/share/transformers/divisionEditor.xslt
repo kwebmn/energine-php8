@@ -15,27 +15,25 @@
     <!-- вывод дерева разделов -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
-        <div id="{generate-id(.)}" class="e-pane e-pane-has-t-toolbar1" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
-            <xsl:if test="../toolbar">
-                <xsl:attribute name="class">e-pane e-pane-has-t-toolbar1 e-pane-has-b-toolbar1</xsl:attribute>
-            </xsl:if>
-            <div class="e-pane-t-toolbar">
-                <ul class="e-pane-toolbar e-tabs">
-                    <li>
-                        <a href="#{$TAB_ID}"><xsl:value-of select="record[1]/field[1]/@tabName" /></a>
-                        <!--<span class="data">{ lang: <xsl:value-of select="$LANG_ID" /> }</span>-->
+        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+                <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
+                    <li class="nav-item" data-role="tab">
+                        <a href="#{$TAB_ID}" class="nav-link" data-role="tab-link"><xsl:value-of select="record[1]/field[1]/@tabName" /></a>
                     </li>
                 </ul>
             </div>
-            <div class="e-pane-content">
-                <div id="{$TAB_ID}">                    
-                    <div id="treeContainer" class="e-divtree-select">
-                        <xsl:apply-templates select="$COMPONENTS[@class='SiteList']" mode="insideEditor"/>
+            <div class="card-body" data-pane-part="body">
+                <div class="tab-content" data-role="tab-content">
+                    <div id="{$TAB_ID}" class="tab-pane" data-role="pane-item">
+                        <div id="treeContainer" class="e-divtree-select">
+                            <xsl:apply-templates select="$COMPONENTS[@class='SiteList']" mode="insideEditor"/>
+                        </div>
                     </div>
                 </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="e-pane-b-toolbar"></div>
+                <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             </xsl:if>
         </div>
     </xsl:template>
