@@ -36,7 +36,7 @@ final class BreadCrumbs extends DataSet
      *
      * @return AbstractBuilder
      */
-    protected function createBuilder()
+    protected function createBuilder(): AbstractBuilder
     {
         return new SimpleBuilder();
     }

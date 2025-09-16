@@ -31,7 +31,7 @@ class SitemapTree extends DataSet {
      * @param string     $module Имя модуля.
      * @param array|null $params Параметры компонента.
      */
-    public function __construct($name, $module, ?array $params = null) {
+    public function __construct(string $name, string $module, ?array $params = null) {
         parent::__construct($name, $module, $params);
 
     }
@@ -63,7 +63,7 @@ class SitemapTree extends DataSet {
      *
      * @return TreeBuilder Настроенный построитель дерева.
      */
-    protected function createBuilder() {
+    protected function createBuilder(): AbstractBuilder {
         $builder  = new TreeBuilder();
         $builder->setTree(E()->getMap()->getTree());
         return $builder;

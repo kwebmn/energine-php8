@@ -13,7 +13,7 @@ class SiteEditorConfig extends GridConfig
      * @param string $className  Component class name.
      * @param string $moduleName Module name.
      */
-    public function __construct($config, string $className, string $moduleName)
+    public function __construct(mixed $config, string $className, string $moduleName)
     {
         parent::__construct($config, $className, $moduleName);
 

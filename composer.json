@@ -43,6 +43,7 @@
   "minimum-stability": "stable",
   "prefer-stable": true,
   "require-dev": {
-    "filp/whoops": "^2.18"
+    "filp/whoops": "^2.18",
+    "phpstan/phpstan": "^2.1"
   }
 }
