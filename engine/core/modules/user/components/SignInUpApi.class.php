@@ -1,238 +1,204 @@
 <?php
+declare(strict_types=1);
 
 /**
- * Класс SignInUpApi.
- *
- * Предоставляет методы для регистрации, авторизации и завершения
- * сессии пользователя через API.
- *
- * Использование:
- * - {@see signUpFast()} — быстрая регистрация без задания пароля;
- * - {@see signUp()} — стандартная регистрация;
- * - {@see signIn()} — авторизация пользователя;
- * - {@see logout()} — завершение текущей сессии.
+ * API для регистрации и авторизации пользователей.
  */
 class SignInUpApi extends DBWorker
 {
     /**
-     * Быстрая регистрация пользователя без ввода пароля.
+     * Быстрая регистрация пользователя без задания пароля.
      *
-     * @param array $data Данные пользователя.
-     * @return array Результат выполнения с сообщением и редиректом.
+     * @param array<string, mixed> $data
+     * @return array{result:bool,message:string,field?:string,redirect?:string}
      */
-    public function signUpFast($data)
+    public function signUpFast(array $data): array
     {
-        if (!$this->isEmailValid($data['email']))
-        {
-            return array(
-                'result' => false,
+        $email = $this->normalizeEmail($data['email'] ?? null);
+        if ($email === null) {
+            return [
+                'result'  => false,
                 'message' => $this->translate('MSG_BAD_EMAIL_FORMAT'),
-                'field' => 'email'
-            );
-
+                'field'   => 'email',
+            ];
         }
 
-        if (strlen($data['country']) == 0)
-        {
-            return array(
-                'result' => false,
+        $country = trim((string)($data['country'] ?? ''));
+        if ($country === '') {
+            return [
+                'result'  => false,
                 'message' => $this->translate('MSG_BAD_EMAIL_FORMAT'),
-                'field' => 'country'
-            );
+                'field'   => 'country',
+            ];
         }
 
-        if ($this->isUserExists($data['email']))
-        {
-            return array(
-                'result' => false,
+        if ($this->isUserExists($email)) {
+            return [
+                'result'  => false,
                 'message' => $this->translate('TXT_ERR_EMAIL_EXISTS'),
-                'field' => 'country'
-            );
+                'field'   => 'country',
+            ];
         }
 
-        $user = new User();
+        $user     = new User();
         $password = $user->generatePassword(8);
-        $user->create(
-            array(
-                'u_name' => $data['email'],
-                'u_password' => $password,
-                'u_fullname' => ' ',
-                'u_country' => $data['country']
-            )
-        );
+        $user->create([
+            'u_name'     => $email,
+            'u_password' => $password,
+            'u_fullname' => ' ',
+            'u_country'  => $country,
+        ]);
+
         $userId = $user->getID();
         call_user_func_array(
-            array(E()->getResponse(), 'addCookie'),
-            $cookieInfo = UserSession::manuallyCreateSessionInfo($userId)
+            [E()->getResponse(), 'addCookie'],
+            UserSession::manuallyCreateSessionInfo($userId)
         );
-        $msgData = array(
-            'login' => $data['email'],
-            'password' => $password
-        );
-        E()->MailMessage->sendMessage(
-                $data['email'],
-                $this->translate('TXT_SUBJ_REGISTER'),
-                $this->translate('TXT_BODY_REGISTER_FAST'),
-                $msgData
-        );
-        $redirect = 'my/';
 
-        return array(
-            'result' => true,
-            'message' => $this->translate('TXT_USER_REGISTRED'),
-            'redirect' => $redirect
+        $msgData = [
+            'login'    => $email,
+            'password' => $password,
+        ];
+        E()->MailMessage->sendMessage(
+            $email,
+            $this->translate('TXT_SUBJ_REGISTER'),
+            $this->translate('TXT_BODY_REGISTER_FAST'),
+            $msgData
         );
+
+        return [
+            'result'   => true,
+            'message'  => $this->translate('TXT_USER_REGISTRED'),
+            'redirect' => 'my/',
+        ];
     }
 
     /**
      * Стандартная регистрация пользователя.
      *
-     * @param array $data Данные пользователя.
-     * @return array Результат регистрации.
+     * @param array<string, mixed> $data
+     * @return array{result:bool,message:string,field?:string,redirect?:string}
      */
-    public function signUp($data)
+    public function signUp(array $data): array
     {
-        if (!$this->isEmailValid($data['email']))
-        {
-            return array(
-                'result' => false,
+        $email = $this->normalizeEmail($data['email'] ?? null);
+        if ($email === null) {
+            return [
+                'result'  => false,
                 'message' => $this->translate('MSG_BAD_EMAIL_FORMAT'),
-                'field' => 'email'
-            );
+                'field'   => 'email',
+            ];
         }
 
-        if ($this->isUserExists($data['email']))
-        {
-            return array(
-                'result' => false,
+        if ($this->isUserExists($email)) {
+            return [
+                'result'  => false,
                 'message' => $this->translate('TXT_ERR_EMAIL_EXISTS'),
-                'field' => 'country'
-            );
+                'field'   => 'country',
+            ];
         }
-        if (strlen($data['password']) < 6)
-        {
+
+        $password = (string)($data['password'] ?? '');
+        if (mb_strlen($password) < 6) {
             throw new SystemException('MSG_PASSWORD_SHORT');
         }
+
+        $fullName = trim((string)($data['name'] ?? ''));
+
         $user = new User();
-        $password = $data['password'];
-        $user->create(
-            array(
-                'u_name' => $data['email'],
-                'u_password' => $password,
-                'u_fullname' => $data['name'],
-		        'u_is_active' => 1,
-//                'u_country' => $data['country'],
-//                'u_city'    =>  $data['city']
-            )
-        );
+        $user->create([
+            'u_name'     => $email,
+            'u_password' => $password,
+            'u_fullname' => $fullName,
+            'u_is_active'=> 1,
+        ]);
+
         $userId = $user->getID();
-//        E()->StatsApi->makeStat($userId, StatsApi::STAT_TYPE_USER_REGISTER);
-//        E()->StatsApi->makeStat($userId, StatsApi::STAT_TYPE_USER_AUTH);
         call_user_func_array(
-            array(E()->getResponse(), 'addCookie'),
-            $cookieInfo = UserSession::manuallyCreateSessionInfo($userId)
+            [E()->getResponse(), 'addCookie'],
+            UserSession::manuallyCreateSessionInfo($userId)
         );
-        $msgData = array(
-            'login' => $data['email'],
+
+        $msgData = [
+            'login'    => $email,
             'password' => $password,
-            'name' => $data['name']
-        );
+            'name'     => $fullName,
+        ];
         E()->MailMessage->sendMessage(
-            $data['email'],
+            $email,
             $this->translate('TXT_SUBJ_REGISTER'),
             $this->translate('TXT_BODY_REGISTER'),
             $msgData
         );
-        $redirect = 'my/';
 
-        return array(
-            'result' => true,
-            'message' => $this->translate('TXT_USER_REGISTRED'),
-            'redirect' =>  $redirect
-        );
+        return [
+            'result'   => true,
+            'message'  => $this->translate('TXT_USER_REGISTRED'),
+            'redirect' => 'my/',
+        ];
     }
 
     /**
      * Авторизация пользователя.
      *
-     * @param array $data Массив с адресом e-mail и паролем.
-     * @return array Результат авторизации и возможный редирект.
+     * @param array<string, mixed> $data
+     * @return array{result:bool,message:string,redirect?:string}
      */
-    public function signIn($data)
+    public function signIn(array $data): array
     {
-        if ($userId = AuthUser::authenticate($data['email'], $data['password'])) {
+        $email    = $this->normalizeEmail($data['email'] ?? null);
+        $password = (string)($data['password'] ?? '');
+        if ($email === null || $password === '') {
+            return [
+                'result'  => false,
+                'message' => $this->translate('ERR_BAD_LOGIN'),
+            ];
+        }
+
+        $userId = AuthUser::authenticate($email, $password);
+        if ($userId) {
             call_user_func_array(
-                array(E()->getResponse(), 'addCookie'),
-                $cookieInfo = UserSession::manuallyCreateSessionInfo($userId)
+                [E()->getResponse(), 'addCookie'],
+                UserSession::manuallyCreateSessionInfo($userId)
             );
-            $redirect = 'my/';
 
-//            E()->StatsApi->makeStat($userId, StatsApi::STAT_TYPE_USER_AUTH);
-
-            return array(
-                'result' => true,
-                'message' => $this->translate('TXT_LOGIN_SUCCESS'),
-                'redirect' => $redirect
-            );
+            return [
+                'result'   => true,
+                'message'  => $this->translate('TXT_LOGIN_SUCCESS'),
+                'redirect' => 'my/',
+            ];
         }
-//        E()->StatsApi->makeStat(0, StatsApi::STAT_TYPE_USER_AUTH_FAIL);
-        return array(
-            'result' => false,
-            'message' => $this->translate('ERR_BAD_LOGIN')
-        );
+
+        return [
+            'result'  => false,
+            'message' => $this->translate('ERR_BAD_LOGIN'),
+        ];
     }
 
-    /**
-     * Проверяет корректность формата e-mail.
-     *
-     * @param string $email Проверяемый адрес.
-     * @return bool true, если адрес валиден.
-     */
-    public function isEmailValid($email)
+    public function logout(): void
     {
-        if( !preg_match("/^[_a-z0-9-]+(.[_a-z0-9-]+)*@[a-z0-9-]+(.[a-z0-9-]+)*(.[a-z]{2,3})$/i", $email) )
-        {
-            $result = false;
-        }
-        else
-        {
-            $result = true;
-        }
-        return $result;
+        UserSession::manuallyDeleteSessionInfo();
+        E()->getResponse()->deleteCookie(UserSession::DEFAULT_SESSION_NAME);
     }
 
-    /**
-     * Проверяет, существует ли пользователь с указанным e-mail.
-     *
-     * @param string $email Адрес пользователя.
-     * @return bool true при наличии пользователя.
-     */
-    public function isUserExists($email)
+    private function isUserExists(string $email): bool
     {
         $res = $this->dbh->select(
             'user_users',
-            array('u_id'),
-            array('u_name' => $email)
+            ['u_id'],
+            ['u_name' => $email]
         );
-        if (is_array($res) and sizeof($res) > 0 )
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+
+        return is_array($res) && count($res) > 0;
     }
 
-    /**
-     * Завершает сессию пользователя и удаляет cookie.
-     *
-     * @return void
-     */
-    public function logout()
+    private function normalizeEmail(mixed $email): ?string
     {
-        UserSession::manuallyDeleteSessionInfo();
-        // Удаляем cookie с идентификатором сессии.
-        E()->getResponse()->deleteCookie(UserSession::DEFAULT_SESSION_NAME);
+        $value = trim((string)($email ?? ''));
+        if ($value === '') {
+            return null;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_EMAIL) ? $value : null;
     }
 }

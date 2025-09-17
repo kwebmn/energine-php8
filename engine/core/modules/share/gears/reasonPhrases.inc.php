@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @file
  * HTTP status codes and their short descriptions.
