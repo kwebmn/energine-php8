@@ -21,11 +21,11 @@ if (isset($_SERVER['SCRIPT_FILENAME'])) {
 $DEBUG = (defined('DEBUG') && DEBUG) || filter_var(getenv('APP_DEBUG') ?: '0', FILTER_VALIDATE_BOOL);
 
 error_reporting(E_ALL);
-@ini_set('display_errors', $DEBUG ? '1' : '0');
-@ini_set('html_errors', '0');
-@ini_set('log_errors', '1');
+nrgnIniSet('display_errors', $DEBUG ? '1' : '0');
+nrgnIniSet('html_errors', '0');
+nrgnIniSet('log_errors', '1');
 
-@date_default_timezone_set('Europe/Kyiv');
+nrgnSetDefaultTimezone('Europe/Kyiv');
 
 // Для аккуратной диагностики XSLT/libxml
 libxml_use_internal_errors(true);
@@ -65,6 +65,72 @@ defined('ACCESS_FULL') || define('ACCESS_FULL', 3);
 // Обработчик ошибок → исключения
 // ------------------------------------------------------------------
 set_error_handler('nrgnErrorHandler');
+
+/**
+ * Выполняет переданный колбэк, перехватывая предупреждение PHP (например, от ini_set).
+ *
+ * @template T
+ * @param callable():T $operation
+ * @return array{0:T,1:?string}
+ */
+function nrgnCapturePhpWarning(callable $operation): array
+{
+    $warning = null;
+    set_error_handler(static function (int $errno, string $errstr) use (&$warning): bool {
+        if ($warning === null) {
+            $warning = $errstr;
+        }
+
+        return true;
+    }, E_WARNING | E_NOTICE);
+
+    try {
+        $result = $operation();
+    } finally {
+        restore_error_handler();
+    }
+
+    return [$result, $warning];
+}
+
+/**
+ * Гарантирует успешную установку ini-параметра.
+ */
+function nrgnIniSet(string $option, string $value): void
+{
+    [$result, $warning] = nrgnCapturePhpWarning(static fn () => ini_set($option, $value));
+
+    if ($result === false) {
+        nrgnHandleInitFailure(sprintf('Не удалось установить php.ini параметр "%s" в значение "%s"', $option, $value), $warning);
+    }
+}
+
+/**
+ * Устанавливает таймзону и валидирует результат.
+ */
+function nrgnSetDefaultTimezone(string $timezone): void
+{
+    [$success, $warning] = nrgnCapturePhpWarning(static fn () => date_default_timezone_set($timezone));
+
+    if ($success === false) {
+        nrgnHandleInitFailure(sprintf('Не удалось установить таймзону "%s"', $timezone), $warning);
+    }
+}
+
+/**
+ * Логирует ошибку и выбрасывает исключение с понятным сообщением.
+ */
+function nrgnHandleInitFailure(string $message, ?string $phpWarning): never
+{
+    $fullMessage = $message;
+    if ($phpWarning !== null && $phpWarning !== '') {
+        $fullMessage .= sprintf('; предупреждение PHP: %s', $phpWarning);
+    }
+
+    error_log($fullMessage);
+
+    throw new \RuntimeException($fullMessage);
+}
 
 /**
  * Преобразует все ошибки PHP в исключения.
