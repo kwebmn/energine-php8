@@ -157,7 +157,7 @@ class GoogleSitemap extends SitemapTree
     /**
      * @copydoc SitemapTree::loadData
      */
-    protected function loadData(): array
+    protected function loadData(): array|false|null
     {
         $site = E()->getSiteManager()->getCurrentSite();
         $sitePath = (string)$site->base;

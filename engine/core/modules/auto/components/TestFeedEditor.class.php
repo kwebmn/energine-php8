@@ -51,7 +51,7 @@ class TestFeedEditor extends ExtendedFeedEditor
      *
      * @return array|false|null Загруженные данные.
      */
-    public function loadData(): array|false|null
+    protected function loadData(): array|false|null
     {
         $res = parent::loadData();
         if ($this->getState() == 'add')
