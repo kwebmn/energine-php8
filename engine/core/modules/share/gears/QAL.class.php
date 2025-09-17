@@ -143,7 +143,13 @@ final class QAL extends DBA {
             $parts = [];
 
             foreach ($cond as $key => $val) {
-                $upper = strtoupper((string)$key);
+                $keyStr = (string)$key;
+                $upper = strtoupper($keyStr);
+
+                if ($keyStr !== '' && preg_match('/^-?\d+$/', $keyStr) === 1 && is_string($val)) {
+                    $parts[] = $val;
+                    continue;
+                }
 
                 // Группы: OR / AND => массив подусловий
                 if ($upper === 'OR' || $upper === 'AND') {
@@ -164,10 +170,10 @@ final class QAL extends DBA {
 
                 // Пары FIELD [OP]
                 // поддержка: =, !=, <>, >, <, >=, <=, LIKE, NOT LIKE, IN, NOT IN, BETWEEN
-                $field = $key;
+                $field = $keyStr;
                 $op    = '=';
 
-                if (preg_match('~^(.+?)\s+(=|!=|<>|>|<|>=|<=|LIKE|NOT LIKE|IN|NOT IN|BETWEEN)$~i', $key, $m)) {
+                if (preg_match('~^(.+?)\s+(=|!=|<>|>|<|>=|<=|LIKE|NOT LIKE|IN|NOT IN|BETWEEN)$~i', $keyStr, $m)) {
                     $field = $m[1];
                     $op    = strtoupper($m[2]);
                 }
