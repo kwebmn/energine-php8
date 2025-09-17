@@ -118,6 +118,77 @@
         </input>
     </xsl:template>
 
+    <xsl:template name="RENDER_CHECKBOX">
+        <xsl:param name="id"/>
+        <xsl:param name="name" select="''"/>
+        <xsl:param name="value" select="'1'"/>
+        <xsl:param name="label-node" select="''"/>
+        <xsl:param name="label-disable-output" select="false()"/>
+        <xsl:param name="is-checked" select="false()"/>
+        <xsl:param name="is-invalid" select="false()"/>
+        <xsl:param name="is-required" select="false()"/>
+        <xsl:param name="is-disabled" select="false()"/>
+        <xsl:param name="hidden-value" select="''"/>
+        <xsl:param name="onchange" select="''"/>
+        <xsl:param name="input-extra-class" select="''"/>
+        <div class="form-check">
+            <xsl:if test="string($hidden-value)!=''">
+                <input type="hidden">
+                    <xsl:if test="string($name)!=''">
+                        <xsl:attribute name="name"><xsl:value-of select="$name"/></xsl:attribute>
+                    </xsl:if>
+                    <xsl:attribute name="value"><xsl:value-of select="$hidden-value"/></xsl:attribute>
+                </input>
+            </xsl:if>
+            <input type="checkbox">
+                <xsl:attribute name="class">
+                    <xsl:text>form-check-input</xsl:text>
+                    <xsl:if test="string($input-extra-class)!=''">
+                        <xsl:text> </xsl:text>
+                        <xsl:value-of select="$input-extra-class"/>
+                    </xsl:if>
+                    <xsl:if test="$is-invalid">
+                        <xsl:text> is-invalid</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
+                <xsl:if test="string($id)!=''">
+                    <xsl:attribute name="id"><xsl:value-of select="$id"/></xsl:attribute>
+                </xsl:if>
+                <xsl:if test="string($name)!=''">
+                    <xsl:attribute name="name"><xsl:value-of select="$name"/></xsl:attribute>
+                </xsl:if>
+                <xsl:attribute name="value"><xsl:value-of select="$value"/></xsl:attribute>
+                <xsl:if test="$is-required">
+                    <xsl:attribute name="required">required</xsl:attribute>
+                </xsl:if>
+                <xsl:if test="$is-disabled">
+                    <xsl:attribute name="disabled">disabled</xsl:attribute>
+                </xsl:if>
+                <xsl:if test="$is-checked">
+                    <xsl:attribute name="checked">checked</xsl:attribute>
+                </xsl:if>
+                <xsl:if test="string($onchange)!=''">
+                    <xsl:attribute name="onchange"><xsl:value-of select="$onchange"/></xsl:attribute>
+                </xsl:if>
+            </input>
+            <xsl:if test="string($label-node)!=''">
+                <label class="form-check-label">
+                    <xsl:if test="string($id)!=''">
+                        <xsl:attribute name="for"><xsl:value-of select="$id"/></xsl:attribute>
+                    </xsl:if>
+                    <xsl:choose>
+                        <xsl:when test="$label-disable-output">
+                            <xsl:value-of select="$label-node" disable-output-escaping="yes"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="$label-node"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </label>
+            </xsl:if>
+        </div>
+    </xsl:template>
+
     <!-- поле логического типа (boolean) -->
     <xsl:template match="field[@type='boolean'][ancestor::component[@type='form']]" mode="field_input">
         <xsl:variable name="FIELD_NAME">
@@ -133,26 +204,16 @@
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
         </xsl:variable>
-        <div class="form-check">
-            <input type="hidden" name="{$FIELD_NAME}" value="0"/>
-            <input type="checkbox" id="{$FIELD_ID}" name="{$FIELD_NAME}" value="1">
-                <xsl:attribute name="class">
-                    <xsl:text>form-check-input</xsl:text>
-                    <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                </xsl:attribute>
-                <xsl:if test="$IS_REQUIRED">
-                    <xsl:attribute name="required">required</xsl:attribute>
-                </xsl:if>
-                <xsl:if test=". = 1">
-                    <xsl:attribute name="checked">checked</xsl:attribute>
-                </xsl:if>
-            </input>
-            <xsl:if test="@title">
-                <label class="form-check-label" for="{$FIELD_ID}">
-                    <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                </label>
-            </xsl:if>
-        </div>
+        <xsl:call-template name="RENDER_CHECKBOX">
+            <xsl:with-param name="id" select="$FIELD_ID"/>
+            <xsl:with-param name="name" select="$FIELD_NAME"/>
+            <xsl:with-param name="is-checked" select=". = 1"/>
+            <xsl:with-param name="is-invalid" select="error"/>
+            <xsl:with-param name="is-required" select="$IS_REQUIRED"/>
+            <xsl:with-param name="hidden-value" select="'0'"/>
+            <xsl:with-param name="label-node" select="@title"/>
+            <xsl:with-param name="label-disable-output" select="true()"/>
+        </xsl:call-template>
     </xsl:template>
 
     <!-- поле загрузки файла (file) -->
@@ -345,26 +406,22 @@
         </xsl:choose>[]</xsl:variable>
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
         <xsl:variable name="HAS_ERROR" select="boolean(error)"/>
-        <div>
-            <xsl:for-each select="options/option">
-                <xsl:variable name="OPTION_ID" select="generate-id(.)"/>
-                <div class="form-check">
-                    <input type="checkbox" id="{$OPTION_ID}" name="{$NAME}" value="{@id}">
-                        <xsl:attribute name="class">
-                            <xsl:text>form-check-input</xsl:text>
-                            <xsl:if test="$HAS_ERROR"><xsl:text> is-invalid</xsl:text></xsl:if>
-                        </xsl:attribute>
-                        <xsl:if test="$IS_REQUIRED and position()=1">
-                            <xsl:attribute name="required">required</xsl:attribute>
-                        </xsl:if>
-                        <xsl:if test="@selected">
-                            <xsl:attribute name="checked">checked</xsl:attribute>
-                        </xsl:if>
-                    </input>
-                    <label class="form-check-label" for="{$OPTION_ID}"><xsl:value-of select="."/></label>
-                </div>
-            </xsl:for-each>
-        </div>
+        <xsl:variable name="FIELD_ID">
+            <xsl:value-of select="@name"/>
+            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+        </xsl:variable>
+        <xsl:for-each select="options/option">
+            <xsl:variable name="OPTION_ID" select="concat($FIELD_ID, '_', position())"/>
+            <xsl:call-template name="RENDER_CHECKBOX">
+                <xsl:with-param name="id" select="$OPTION_ID"/>
+                <xsl:with-param name="name" select="$NAME"/>
+                <xsl:with-param name="value" select="@id"/>
+                <xsl:with-param name="is-checked" select="@selected"/>
+                <xsl:with-param name="is-invalid" select="$HAS_ERROR"/>
+                <xsl:with-param name="is-required" select="$IS_REQUIRED and position()=1"/>
+                <xsl:with-param name="label-node" select="."/>
+            </xsl:call-template>
+        </xsl:for-each>
     </xsl:template>
 
     <!-- текстовое поле (text) -->
@@ -564,14 +621,13 @@
             <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name"/>]</xsl:when>
             <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
         </xsl:choose></xsl:variable>
-        <input type="hidden" name="{$FIELD_NAME}" value="{.}"/>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="{@name}" name="{$FIELD_NAME}" disabled="disabled" value="1">
-                <xsl:if test=".=1">
-                    <xsl:attribute name="checked">checked</xsl:attribute>
-                </xsl:if>
-            </input>
-        </div>
+        <xsl:call-template name="RENDER_CHECKBOX">
+            <xsl:with-param name="id" select="@name"/>
+            <xsl:with-param name="name" select="$FIELD_NAME"/>
+            <xsl:with-param name="is-checked" select=".=1"/>
+            <xsl:with-param name="is-disabled" select="true()"/>
+            <xsl:with-param name="hidden-value" select="."/>
+        </xsl:call-template>
     </xsl:template>
 
     <!-- для полей HTMLBLOCK и TEXT на которые права только чтение -->
@@ -782,9 +838,14 @@
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
         </xsl:variable>
-        <div class="form-check">
-            <input type="checkbox" class="form-check-input" onchange="document.getElementById('{$FIELD_ID}').disabled = !this.checked;" id="{$FIELD_ID}_toggle"/>
-        </div>
+        <xsl:call-template name="RENDER_CHECKBOX">
+            <xsl:with-param name="id" select="concat($FIELD_ID, '_toggle')"/>
+            <xsl:with-param name="onchange">
+                <xsl:text>document.getElementById('</xsl:text>
+                <xsl:value-of select="$FIELD_ID"/>
+                <xsl:text>').disabled = !this.checked;</xsl:text>
+            </xsl:with-param>
+        </xsl:call-template>
         <select id="{$FIELD_ID}" disabled="disabled">
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
