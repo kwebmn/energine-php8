@@ -129,9 +129,13 @@
             </xsl:choose>
         </xsl:variable>
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="FIELD_ID">
+            <xsl:value-of select="@name"/>
+            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+        </xsl:variable>
         <div class="form-check">
             <input type="hidden" name="{$FIELD_NAME}" value="0"/>
-            <input type="checkbox" id="{@name}" name="{$FIELD_NAME}" value="1">
+            <input type="checkbox" id="{$FIELD_ID}" name="{$FIELD_NAME}" value="1">
                 <xsl:attribute name="class">
                     <xsl:text>form-check-input</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
@@ -144,7 +148,7 @@
                 </xsl:if>
             </input>
             <xsl:if test="@title">
-                <label class="form-check-label" for="{@name}">
+                <label class="form-check-label" for="{$FIELD_ID}">
                     <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 </label>
             </xsl:if>
@@ -272,13 +276,21 @@
 
     <!-- поле выбора из списка (select) -->
     <xsl:template match="field[@type='select'][ancestor::component[@type='form']]" mode="field_input">
-        <select id="{@name}">
+        <xsl:variable name="FIELD_ID">
+            <xsl:value-of select="@name"/>
+            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+        </xsl:variable>
+        <select id="{$FIELD_ID}">
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
             </xsl:attribute>
             <xsl:attribute name="name"><xsl:choose>
-                <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
+                <xsl:when test="@tableName">
+                    <xsl:value-of select="@tableName"/>
+                    <xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>
+                    [<xsl:value-of select="@name"/>]
+                </xsl:when>
                 <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
             </xsl:choose></xsl:attribute>
             <xsl:if test="not(@nullable) or @nullable='0'">
@@ -292,13 +304,21 @@
     </xsl:template>
 
     <xsl:template match="field[@type='select' and @editor][ancestor::component[@exttype='grid' or @exttype='feed']]" mode="field_input">
-        <select id="{@name}">
+        <xsl:variable name="FIELD_ID">
+            <xsl:value-of select="@name"/>
+            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+        </xsl:variable>
+        <select id="{$FIELD_ID}">
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
             </xsl:attribute>
             <xsl:attribute name="name"><xsl:choose>
-                <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
+                <xsl:when test="@tableName">
+                    <xsl:value-of select="@tableName"/>
+                    <xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>
+                    [<xsl:value-of select="@name"/>]
+                </xsl:when>
                 <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
             </xsl:choose></xsl:attribute>
             <xsl:if test="not(@nullable) or @nullable='0'">
@@ -703,7 +723,9 @@
 
     <!-- поле error -->
     <xsl:template match="field[@name='error_message'][ancestor::component[@type='form']]">
-        <div class="error"><xsl:value-of select="." disable-output-escaping="yes"/></div>
+        <div class="invalid-feedback d-block" role="alert">
+            <xsl:value-of select="." disable-output-escaping="yes"/>
+        </div>
     </xsl:template>
 
 
@@ -756,10 +778,14 @@
 
     <!-- поле копирования структуры в редакторе сайтов -->
     <xsl:template match="field[@name='copy_site_structure']" mode="field_input">
+        <xsl:variable name="FIELD_ID">
+            <xsl:value-of select="@name"/>
+            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+        </xsl:variable>
         <div class="form-check">
-            <input type="checkbox" class="form-check-input" onchange="document.getElementById('{@name}').disabled = !this.checked;" id="{@name}_toggle"/>
+            <input type="checkbox" class="form-check-input" onchange="document.getElementById('{$FIELD_ID}').disabled = !this.checked;" id="{$FIELD_ID}_toggle"/>
         </div>
-        <select id="{@name}" disabled="disabled">
+        <select id="{$FIELD_ID}" disabled="disabled">
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
@@ -824,7 +850,7 @@
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_name">
         <li class="nav-item" data-role="tab" data-src="{ancestor::component/@single_template}{.}">
-            <a href="#{generate-id(.)}" class="nav-link" data-role="tab-link"><xsl:value-of select="@title" /></a>
+            <a href="#{generate-id(.)}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="@title" /></a>
         </li>
     </xsl:template>
 

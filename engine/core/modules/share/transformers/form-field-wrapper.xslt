@@ -10,14 +10,24 @@
     -->
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
-        <xsl:variable name="IS_OUTLINE" select="not(@type='boolean' or @type='select' or @type='multi' or @type='file' or @type='smap' or @type='thumb') and not(@name='copy_site_structure') and not(@name='upl_id') and not(@name='upl_path')"/>
+        <xsl:variable name="FIELD_TYPE" select="translate(@type, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="OUTLINE_SETTING" select="translate(normalize-space(@outline), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="IS_TYPE_WITHOUT_OUTLINE"
+            select="string-length($FIELD_TYPE) &gt; 0 and contains('|boolean|select|multi|file|smap|thumb|captcha|tab|', concat('|', $FIELD_TYPE, '|'))"/>
+        <xsl:variable name="IS_NAME_WITHOUT_OUTLINE"
+            select="contains('|copy_site_structure|upl_id|upl_path|', concat('|', @name, '|'))"/>
+        <xsl:variable name="IS_OUTLINE"
+            select="not($IS_TYPE_WITHOUT_OUTLINE or $IS_NAME_WITHOUT_OUTLINE or $OUTLINE_SETTING='0' or $OUTLINE_SETTING='false')"/>
         <div data-role="form-field">
             <xsl:attribute name="class">
                 <xsl:choose>
-                    <xsl:when test="$IS_OUTLINE">form-outline</xsl:when>
+                    <xsl:when test="$IS_OUTLINE">form-outline mb-3</xsl:when>
                     <xsl:otherwise>mb-3</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
+            <xsl:if test="$IS_OUTLINE">
+                <xsl:attribute name="data-mdb-input-init">1</xsl:attribute>
+            </xsl:if>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
@@ -75,11 +85,11 @@
     </xsl:template>
 
     <xsl:template name="render-field-messages">
-        <xsl:if test="error">
+        <xsl:for-each select="error[normalize-space(.)!='']">
             <div class="invalid-feedback">
-                <xsl:value-of select="error" disable-output-escaping="yes"/>
+                <xsl:value-of select="." disable-output-escaping="yes"/>
             </div>
-        </xsl:if>
+        </xsl:for-each>
         <xsl:if test="hint">
             <div class="form-text">
                 <xsl:value-of select="hint" disable-output-escaping="yes"/>

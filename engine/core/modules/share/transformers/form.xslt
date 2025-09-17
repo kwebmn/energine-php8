@@ -104,6 +104,9 @@
             </xsl:if>
             <xsl:attribute name="name"><xsl:value-of select="@id"/></xsl:attribute>
             <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
+            <xsl:if test="@tooltip != ''">
+                <xsl:attribute name="data-mdb-tooltip-init">1</xsl:attribute>
+            </xsl:if>
             <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
             <xsl:attribute name="form"><xsl:value-of select="$form-id"/></xsl:attribute>
             <xsl:if test="@click!=''">
@@ -123,7 +126,7 @@
                         <xsl:variable name="TAB_NAME" select="."></xsl:variable>
                         <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME]))&gt;0">
                             <li class="nav-item" data-role="tab">
-                                <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}" class="nav-link" data-role="tab-link"><xsl:value-of select="$TAB_NAME" /></a>
+                                <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="$TAB_NAME" /></a>
                                 <xsl:if test="$FIELDS[@tabName=$TAB_NAME][1]/@language">
                                     <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME][1]/@language" /> }</span>
                                 </xsl:if>

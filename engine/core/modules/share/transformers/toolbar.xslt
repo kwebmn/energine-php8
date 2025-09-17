@@ -42,6 +42,9 @@
             </xsl:if>
                 <xsl:attribute name="name"><xsl:value-of select="@id"/></xsl:attribute>
                 <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
+                <xsl:if test="@tooltip != ''">
+                    <xsl:attribute name="data-mdb-tooltip-init">1</xsl:attribute>
+                </xsl:if>
                 <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
@@ -63,6 +66,10 @@
             </xsl:choose>
         </xsl:variable>
         <a href="{$BASE}{$LANG_ABBR}{@click}" id="{@id}">
+            <xsl:if test="@tooltip != ''">
+                <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
+                <xsl:attribute name="data-mdb-tooltip-init">1</xsl:attribute>
+            </xsl:if>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
                 <xsl:value-of select="$LINK_VARIANT"/>

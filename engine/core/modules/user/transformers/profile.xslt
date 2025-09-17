@@ -108,7 +108,7 @@
     </xsl:template>
 
     <xsl:template match="component[@class='UserProfile']/toolbar/control">
-        <button type="{@type}"  class="btn btn-primary py-2" data-mdb-ripple-init="1" >
+        <button type="{@type}"  class="btn btn-primary py-2" >
             <xsl:value-of select="@title" />
         </button>
     </xsl:template>

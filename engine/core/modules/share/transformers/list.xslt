@@ -89,7 +89,7 @@
                         <xsl:for-each select="set:distinct($FIELDS[@language]/@tabName)">
                             <xsl:variable name="TAB_NAME" select="."/>
                             <li class="nav-item" data-role="tab">
-                                <a href="#{$TAB_ID}" class="nav-link" data-role="tab-link">
+                                <a href="#{$TAB_ID}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link">
                                     <xsl:value-of select="."/>
                                 </a>
                                 <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME]/@language"/> }</span>
@@ -99,7 +99,7 @@
                     <xsl:otherwise>
                         <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                             <li class="nav-item" data-role="tab">
-                                <a href="#{$TAB_ID}" class="nav-link" data-role="tab-link">
+                                <a href="#{$TAB_ID}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link">
                                     <xsl:value-of select="."/>
                                 </a>
                             </li>
