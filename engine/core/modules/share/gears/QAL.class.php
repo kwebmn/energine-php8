@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Query Abstraction Layer (улучшенная версия).
  * Совместима с имеющимся кодом, новые методы — опциональны.
@@ -127,7 +128,7 @@ final class QAL extends DBA {
         return $r;
     }
 
-    public function buildWhereCondition($condition, array &$args = null) {
+    public function buildWhereCondition($condition, ?array &$args = null) {
         // Если включены prepared + $args пришли — используем плейсхолдеры
         $prepared = $this->getConfigValue('database.prepare') && $args !== null;
 

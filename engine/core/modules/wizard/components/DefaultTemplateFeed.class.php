@@ -1,22 +1,20 @@
 <?php
-
-class DefaultTemplateFeed extends ExtendedFeed
+declare(strict_types=1);
+final class DefaultTemplateFeed extends ExtendedFeed
 {
-    public function __construct($name, $module, array $params = null)
+    public function __construct(string $name, string $module, ?array $params = null)
     {
         parent::__construct($name, $module, $params);
-        $this->setTableName('DefaultTemplateTableName');   
+        $this->setTableName('DefaultTemplateTableName');
     }
 
-    protected function defineParams()
+    protected function defineParams(): array
     {
-        $result = array_merge(
+        return array_merge(
             parent::defineParams(),
-            array(
-                'active' => true
-            )
+            [
+                'active' => true,
+            ]
         );
-        return $result;
     }
-
 }

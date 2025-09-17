@@ -1,11 +1,10 @@
 <?php
-
-class DefaultTemplateGrid extends Grid
+declare(strict_types=1);
+final class DefaultTemplateGrid extends Grid
 {
-    public function __construct($name, $module, array $params = null)
+    public function __construct(string $name, string $module, ?array $params = null)
     {
         parent::__construct($name, $module, $params);
         $this->setTableName('DefaultTemplateTableName');
     }
-
 }

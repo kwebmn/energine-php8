@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @file
  * Filter
@@ -410,7 +411,7 @@ class Filter extends BaseObject
      * @return void
      * @throws SystemException
      */
-    public function load(SimpleXMLElement $filterDescription, array $meta = null)
+    public function load(SimpleXMLElement $filterDescription, ?array $meta = null)
     {
         if (empty($filterDescription)) {
             return;

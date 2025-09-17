@@ -1,22 +1,20 @@
 <?php
-
-class TestfeedFeed extends ExtendedFeed
+declare(strict_types=1);
+final class TestfeedFeed extends ExtendedFeed
 {
-    public function __construct($name, $module, array $params = null)
+    public function __construct(string $name, string $module, ?array $params = null)
     {
         parent::__construct($name, $module, $params);
-        $this->setTableName('auto_Testfeed');   
+        $this->setTableName('auto_Testfeed');
     }
 
-    protected function defineParams() : array
+    protected function defineParams(): array
     {
-        $result = array_merge(
+        return array_merge(
             parent::defineParams(),
-            array(
-                'active' => true
-            )
+            [
+                'active' => true,
+            ]
         );
-        return $result;
     }
-
 }

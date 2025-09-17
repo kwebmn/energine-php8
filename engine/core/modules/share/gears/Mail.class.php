@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Mail (Symfony Mailer adapter, drop-in replacement)
  *

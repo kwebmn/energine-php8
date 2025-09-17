@@ -1,31 +1,37 @@
 <?php
+declare(strict_types=1);
 
-class MailMessage extends DBWorker
+final class MailMessage extends DBWorker
 {
-	private static $instance;
+    private static ?self $instance = null;
 
-	public static function getInstance() {
-		if (!isset(self::$instance)) {
-			self::$instance = new MailMessage();
-		}
-		return self::$instance;
-	}
+    public static function getInstance(): self
+    {
+        if (!isset(self::$instance)) {
+            self::$instance = new self();
+        }
 
-	public function sendMessage($to, $subject, $message, $data = false)
-	{
-		$mailer = new Mail();
-		$mailer->setFrom($this->getConfigValue('mail.from'))->
-		setSubject($subject)->
-		setText($message, $data)->
-		addTo($to);
-		try {
-			$mailer->send();
-			return true;
-		}
-		catch (Exception $e)
-		{
-			return false;
-		}
-	}
+        return self::$instance;
+    }
 
+    public function sendMessage(string $to, string $subject, string $message, ?array $data = null): bool
+    {
+        $mailer = new Mail();
+        $from = (string)($this->getConfigValue('mail.from') ?? '');
+        if ($from !== '') {
+            $mailer->setFrom($from);
+        }
+
+        $mailer
+            ->setSubject($subject)
+            ->setText($message, $data)
+            ->addTo($to);
+
+        try {
+            return $mailer->send();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
 }
+

@@ -1,69 +1,59 @@
 <?php
+declare(strict_types=1);
 
-class LDContainer extends DBWorker
+final class LDContainer extends DBWorker
 {
+    private static ?self $instance = null;
 
-    private static $instance;
+    /** @var array<string, mixed> */
+    private array $container = [];
 
-
-    public static function getInstance()
+    public static function getInstance(): self
     {
         if (!isset(self::$instance)) {
-            self::$instance = new LDContainer();
+            self::$instance = new self();
         }
+
         return self::$instance;
     }
-
-    private $container;
 
     public function __construct()
     {
         parent::__construct();
-        $this->container = array();
 
-//        $search = array(
-//            '@context' => 'https://schema.org',
-//            'type' => 'WebSite',
-//            'url' => 'https://www.agronom.info',
-//            'potentialAction' => array(
-//                '@type' => 'SearchAction',
-//                'target' => 'https://www.agronom.info/search?q={search_term_string}',
-//                'query-input' => 'required name=search_term_string'
-//            )
-//        );
-
-
-        $logo = array(
-            '@context' => 'https://schema.org',
-            '@type' => 'Organization',
-            'url' => 'https://www.agronom.info',
-            'logo' => 'https://www.agronom.info/images/default/logo.svg',
-            'legalName' => 'Агроном Инфо'
-        );
+        $logo = [
+            '@context'  => 'https://schema.org',
+            '@type'     => 'Organization',
+            'url'       => 'https://www.agronom.info',
+            'logo'      => 'https://www.agronom.info/images/default/logo.svg',
+            'legalName' => 'Агроном Инфо',
+        ];
 
         $this->addLD('logo', $logo);
-
     }
-    
-    function addLD($name, $data)
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function addLD(string $name, array $data): void
     {
         $this->container[$name] = $data;
-
     }
-    
-    public function getLD()
+
+    /**
+     * @return array<int, array{ld_id:string, ld_body:string}>
+     */
+    public function getLD(): array
     {
-        $arr = array();
-        if (sizeof($this->container) > 0 and is_array($this->container))
-        {
-            foreach ($this->container as $key => $row)
-            {
-                $arr[] = array(
-                    'ld_id' => $key,
-                    'ld_body' => json_encode($row, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-                );
-            }
+        $result = [];
+
+        foreach ($this->container as $key => $row) {
+            $result[] = [
+                'ld_id'  => (string)$key,
+                'ld_body'=> json_encode($row, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{}',
+            ];
         }
-        return $arr;
+
+        return $result;
     }
 }

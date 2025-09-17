@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * TreeNodeList, TreeNode — совместимые с PHP 8.3 сигнатуры.
  */
