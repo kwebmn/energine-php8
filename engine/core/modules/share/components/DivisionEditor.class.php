@@ -105,7 +105,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
     /**
      * JSON выдача для дерева разделов (особый билдом JSONDivBuilder).
      */
-    protected function getRawData(): void
+    protected function getRawData()
     {
         $params = $this->getStateParams(true);
         $this->setFilter(['site_id' => (int)$params['site_id']]);
@@ -205,7 +205,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
     /**
      * Сохранение (через DivisionSaver) + возврат URL созданной/обновлённой страницы.
      */
-    protected function save(): void
+    protected function save()
     {
         $this->setSaver(new DivisionSaver());
         $this->setBuilder(new JSONCustomBuilder());
@@ -501,7 +501,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
      * Состояния add/edit/main/selector
      * ========================================================= */
 
-    protected function add(): void
+    protected function add()
     {
         parent::add();
 
@@ -552,7 +552,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
 
     }
 
-    protected function edit(): void
+    protected function edit()
     {
         // 1) Обязательно фиксируем стейт, чтобы конфиг отдал правильные поля
         $this->getConfig()->setCurrentState('edit');

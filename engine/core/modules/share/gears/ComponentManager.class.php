@@ -285,9 +285,8 @@ interface IBlock
 
     /**
      * Get current rights level of the user for running current action.
-     * @return mixed
      */
-    public function getCurrentStateRights(): mixed;
+    public function getCurrentStateRights(): int;
 
     /** Build block. */
     public function build(): DOMDocument;

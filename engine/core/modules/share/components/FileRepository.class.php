@@ -70,7 +70,7 @@ final class FileRepository extends Grid implements SampleFileRepository
     /**
      * Прокси-метод редактирования: определяет, файл это или директория.
      */
-    protected function edit(): void
+    protected function edit()
     {
         [$uplID] = $this->getStateParams();
         $uplID = (int)$uplID;
@@ -342,7 +342,7 @@ final class FileRepository extends Grid implements SampleFileRepository
      *
      * @throws SystemException
      */
-    protected function save(): void
+    protected function save()
     {
         $tx = $this->dbh->beginTransaction();
 
@@ -474,7 +474,7 @@ final class FileRepository extends Grid implements SampleFileRepository
     /**
      * @copydoc Grid::add
      */
-    protected function add(): void
+    protected function add()
     {
         $sp = $this->getStateParams(true);
         $uplPID = isset($sp['pid']) ? (int)$sp['pid'] : 0;
@@ -535,7 +535,7 @@ final class FileRepository extends Grid implements SampleFileRepository
      *
      * Подключает JSONRepoBuilder и добавляет «папку вверх».
      */
-    protected function getRawData(): void
+    protected function getRawData()
     {
         $sp = $this->getStateParams(true);
 
