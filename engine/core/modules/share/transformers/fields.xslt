@@ -285,14 +285,11 @@
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
             </xsl:attribute>
-            <xsl:attribute name="name"><xsl:choose>
-                <xsl:when test="@tableName">
-                    <xsl:value-of select="@tableName"/>
-                    <xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>
-                    [<xsl:value-of select="@name"/>]
-                </xsl:when>
-                <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-            </xsl:choose></xsl:attribute>
+            <xsl:attribute name="name"><xsl:choose><xsl:when test="@tableName"><xsl:value-of select="concat(
+                @tableName,
+                substring(concat('[', @language, ']'), 1, boolean(@language) * (string-length(@language) + 2)),
+                '[', @name, ']'
+            )"/></xsl:when><xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise></xsl:choose></xsl:attribute>
             <xsl:if test="not(@nullable) or @nullable='0'">
                 <xsl:attribute name="required">required</xsl:attribute>
             </xsl:if>
@@ -313,14 +310,11 @@
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
             </xsl:attribute>
-            <xsl:attribute name="name"><xsl:choose>
-                <xsl:when test="@tableName">
-                    <xsl:value-of select="@tableName"/>
-                    <xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>
-                    [<xsl:value-of select="@name"/>]
-                </xsl:when>
-                <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-            </xsl:choose></xsl:attribute>
+            <xsl:attribute name="name"><xsl:choose><xsl:when test="@tableName"><xsl:value-of select="concat(
+                @tableName,
+                substring(concat('[', @language, ']'), 1, boolean(@language) * (string-length(@language) + 2)),
+                '[', @name, ']'
+            )"/></xsl:when><xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise></xsl:choose></xsl:attribute>
             <xsl:if test="not(@nullable) or @nullable='0'">
                 <xsl:attribute name="required">required</xsl:attribute>
             </xsl:if>
