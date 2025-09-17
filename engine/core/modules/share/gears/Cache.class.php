@@ -270,7 +270,13 @@ class Cache
         foreach ($tags as $tag) {
             $idx = $this->tagsFile($tag);
             if (!is_file($idx)) continue;
-            $keys = json_decode((string)file_get_contents($idx), true) ?: [];
+
+            $content = $this->runFs(
+                static fn() => file_get_contents($idx),
+                'Cache tag index read failed',
+                ['file' => $idx]
+            );
+            $keys = is_string($content) ? (json_decode($content, true) ?: []) : [];
             foreach ($keys as $k) $this->dispose($k);
             if (is_file($idx)) {
                 $this->runFs(static fn() => unlink($idx), 'Cache unlink tag index failed', ['file' => $idx]);
@@ -388,7 +394,17 @@ class Cache
     {
         foreach ($tags as $tag) {
             $file = $this->tagsFile($tag);
-            $list = is_file($file) ? (json_decode((string)file_get_contents($file), true) ?: []) : [];
+            $list = [];
+            if (is_file($file)) {
+                $content = $this->runFs(
+                    static fn() => file_get_contents($file),
+                    'Cache indexTags read failed',
+                    ['file' => $file]
+                );
+                if (is_string($content)) {
+                    $list = json_decode($content, true) ?: [];
+                }
+            }
             if (!in_array($key, $list, true)) $list[] = $key;
             [$written, $writeError] = $this->callFs(static fn() => file_put_contents($file, json_encode($list), LOCK_EX));
             if ($written === false) {
