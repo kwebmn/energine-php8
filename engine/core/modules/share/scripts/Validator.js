@@ -34,7 +34,13 @@ class Validator {
      * @param {HTMLElement} field
      */
     removeError(field) {
-        field.classList.remove('is-invalid');
+        const targets = this._getCheckableGroupElements(field);
+        for (const element of targets) {
+            if (element instanceof HTMLElement) {
+                element.classList.remove('is-invalid');
+            }
+        }
+
         const feedback = this._getInvalidFeedbackElement(field, false);
         if (feedback) {
             feedback.textContent = '';
@@ -48,7 +54,14 @@ class Validator {
      */
     showError(field, message = 'Ошибка заполнения') {
         this.removeError(field);
-        field.classList.add('is-invalid');
+
+        const targets = this._getCheckableGroupElements(field);
+        for (const element of targets) {
+            if (element instanceof HTMLElement) {
+                element.classList.add('is-invalid');
+            }
+        }
+
         const feedback = this._getInvalidFeedbackElement(field);
         if (feedback) {
             feedback.textContent = message;
@@ -62,8 +75,12 @@ class Validator {
      * @returns {HTMLElement|null}
      */
     _getInvalidFeedbackElement(field, create = true) {
-        if (field._validatorInvalidFeedback && field._validatorInvalidFeedback.isConnected) {
-            return field._validatorInvalidFeedback;
+        const cached = field._validatorInvalidFeedback;
+        if (cached && cached.isConnected) {
+            if (this._isCheckableInput(field)) {
+                cached.classList.add('d-block');
+            }
+            return cached;
         }
 
         let feedback = this._findExistingFeedback(field);
@@ -71,15 +88,91 @@ class Validator {
         if (!feedback && create) {
             feedback = document.createElement('div');
             feedback.className = 'invalid-feedback';
+            if (this._isCheckableInput(field)) {
+                feedback.classList.add('d-block');
+            }
+
             field.insertAdjacentElement('afterend', feedback);
         }
 
+        if (feedback && this._isCheckableInput(field)) {
+            feedback.classList.add('d-block');
+        }
+
         if (feedback) {
-            field._validatorInvalidFeedback = feedback;
+            this._assignFeedbackCache(field, feedback);
             return feedback;
         }
 
         return null;
+    }
+
+    /**
+     * Привязать найденный контейнер обратной связи ко всем связанным чекбоксам/радиокнопкам
+     * @param {HTMLElement} field
+     * @param {HTMLElement} feedback
+     */
+    _assignFeedbackCache(field, feedback) {
+        const elements = this._getCheckableGroupElements(field);
+        let assigned = false;
+        for (const element of elements) {
+            if (element instanceof HTMLElement) {
+                element._validatorInvalidFeedback = feedback;
+                assigned = true;
+            }
+        }
+
+        if (!assigned && field instanceof HTMLElement) {
+            field._validatorInvalidFeedback = feedback;
+        }
+    }
+
+    /**
+     * Получить список связанных чекбоксов/радиокнопок (или сам элемент, если он не чекбокс/радио)
+     * @param {HTMLElement} field
+     * @returns {HTMLElement[]}
+     */
+    _getCheckableGroupElements(field) {
+        if (!this._isCheckableInput(field) || !this.form) {
+            return field instanceof HTMLElement ? [field] : [];
+        }
+
+        const name = field.getAttribute('name');
+        if (!name) {
+            return [field];
+        }
+
+        const type = (field.type || '').toLowerCase();
+        const related = [];
+        const elements = Array.from(this.form.elements);
+        for (const element of elements) {
+            if (element instanceof HTMLInputElement) {
+                const elementType = (element.type || '').toLowerCase();
+                if (this._isCheckableInput(element) && element.name === name && elementType === type) {
+                    related.push(element);
+                }
+            }
+        }
+
+        if (!related.length) {
+            return [field];
+        }
+
+        return related;
+    }
+
+    /**
+     * Проверить, является ли элемент чекбоксом или радиокнопкой
+     * @param {HTMLElement} field
+     * @returns {boolean}
+     */
+    _isCheckableInput(field) {
+        if (!(field instanceof HTMLInputElement)) {
+            return false;
+        }
+
+        const type = (field.type || '').toLowerCase();
+        return type === 'checkbox' || type === 'radio';
     }
 
     /**
