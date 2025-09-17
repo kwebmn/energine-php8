@@ -34,9 +34,11 @@ class Validator {
      * @param {HTMLElement} field
      */
     removeError(field) {
-        field.classList.remove('invalid');
-        const errorDiv = field.closest('.field')?.querySelector('div.error');
-        if (errorDiv) errorDiv.remove();
+        field.classList.remove('is-invalid');
+        const feedback = this._getFeedbackElement(field);
+        if (feedback) {
+            feedback.innerText = '';
+        }
     }
 
     /**
@@ -46,18 +48,57 @@ class Validator {
      */
     showError(field, message = 'Ошибка заполнения') {
         this.removeError(field);
-        field.classList.add('invalid');
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error';
-        errorDiv.innerText = message;
-        // После field (обычно input), в конец .field
-        const fieldContainer = field.closest('.field');
-        if (fieldContainer) {
-            fieldContainer.appendChild(errorDiv);
-        } else {
-            // если нет .field — прямо после input
-            field.parentNode.insertBefore(errorDiv, field.nextSibling);
+        field.classList.add('is-invalid');
+        const feedback = this._getFeedbackElement(field, true);
+        if (feedback) {
+            feedback.innerText = message;
         }
+    }
+
+    /**
+     * Получить (или создать) контейнер для сообщения об ошибке
+     * @param {HTMLElement} field
+     * @param {boolean} create
+     * @returns {HTMLElement|null}
+     */
+    _getFeedbackElement(field, create = false) {
+        let feedback = field._validatorFeedback;
+        if (feedback && !feedback.isConnected) {
+            feedback = null;
+            delete field._validatorFeedback;
+        }
+
+        const parent = field.parentNode;
+        const identifier = field.id || field.name || null;
+
+        if (!feedback && parent) {
+            const candidates = parent.querySelectorAll('.invalid-feedback');
+            feedback = Array.from(candidates).find(element => {
+                if (!identifier) {
+                    return !element.dataset.validatorFor;
+                }
+                return element.dataset.validatorFor === identifier;
+            });
+
+            if (!feedback && identifier) {
+                feedback = Array.from(candidates).find(element => !element.dataset.validatorFor);
+            }
+        }
+
+        if (!feedback && create) {
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            if (identifier) {
+                feedback.dataset.validatorFor = identifier;
+            }
+            field.insertAdjacentElement('afterend', feedback);
+        }
+
+        if (feedback) {
+            field._validatorFeedback = feedback;
+        }
+
+        return feedback || null;
     }
 
     /**
