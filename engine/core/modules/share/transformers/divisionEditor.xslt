@@ -63,9 +63,10 @@
                         <tr>
                             <th scope="row"><xsl:value-of select="field[@name='group_id']"/></th>
                             <xsl:for-each select="field[@name='right_id']/options/option">
+                                <xsl:variable name="RADIO_ID" select="concat('right_', ../../../field[@name='group_id']/@group_id, '_', @id)"/>
                                 <td>
                                     <div class="form-check m-0 d-flex justify-content-center">
-                                        <input class="form-check-input" type="radio" value="{@id}">
+                                        <input class="form-check-input" type="radio" id="{$RADIO_ID}" value="{@id}">
                                             <xsl:attribute name="name">right_id[<xsl:value-of select="../../../field[@name='group_id']/@group_id"/>]</xsl:attribute>
                                             <xsl:if test="@selected">
                                                 <xsl:attribute name="checked">checked</xsl:attribute>
