@@ -11,7 +11,64 @@
 <!--		        Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);-->
             </script>
     </xsl:template>
-    
+
+    <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@sample='DivisionEditor'][@type='form']]" priority="1">
+        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="FIELD_TYPE" select="translate(@type, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="OUTLINE_SETTING" select="translate(normalize-space(@outline), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="IS_TYPE_WITHOUT_OUTLINE"
+            select="string-length($FIELD_TYPE) &gt; 0 and contains('|boolean|select|multi|file|smap|thumb|captcha|tab|', concat('|', $FIELD_TYPE, '|'))"/>
+        <xsl:variable name="IS_NAME_WITHOUT_OUTLINE"
+            select="contains('|copy_site_structure|upl_id|upl_path|', concat('|', @name, '|'))"/>
+        <xsl:variable name="IS_OUTLINE"
+            select="not($IS_TYPE_WITHOUT_OUTLINE or $IS_NAME_WITHOUT_OUTLINE or $OUTLINE_SETTING='0' or $OUTLINE_SETTING='false')"/>
+
+        <div data-role="form-field">
+            <xsl:attribute name="class">
+                <xsl:choose>
+                    <xsl:when test="$IS_OUTLINE">form-outline mb-3</xsl:when>
+                    <xsl:otherwise>mb-3</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+            <xsl:if test="$IS_OUTLINE">
+                <xsl:attribute name="data-mdb-input-init">1</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
+            <xsl:attribute name="data-type">
+                <xsl:choose>
+                    <xsl:when test="@type"><xsl:value-of select="@type"/></xsl:when>
+                    <xsl:otherwise>string</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+            <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
+            <xsl:apply-templates select="." mode="field_content">
+                <xsl:with-param name="is-outline" select="$IS_OUTLINE"/>
+            </xsl:apply-templates>
+        </div>
+    </xsl:template>
+
+    <xsl:template match="field[@mode='1'][ancestor::component[@sample='DivisionEditor'][@type='form']]" priority="1">
+        <xsl:if test=".!=''">
+            <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+            <div class="mb-3" data-role="form-field">
+                <xsl:attribute name="data-type">
+                    <xsl:choose>
+                        <xsl:when test="@type"><xsl:value-of select="@type"/></xsl:when>
+                        <xsl:otherwise>string</xsl:otherwise>
+                    </xsl:choose>
+                </xsl:attribute>
+                <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+                <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:apply-templates select="." mode="field_name_readonly"/>
+                <div id="control_{@language}_{@name}">
+                    <xsl:apply-templates select="." mode="field_input_readonly"/>
+                </div>
+                <xsl:call-template name="render-field-messages"/>
+            </div>
+        </xsl:if>
+    </xsl:template>
+
     <!-- вывод дерева разделов -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
@@ -96,6 +153,7 @@
                 </xsl:choose>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+            <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
             <div class="input-group">
                 <div class="form-outline flex-grow-1" data-mdb-input-init="1">
                     <input type="text" id="{$DISPLAY_ID}" readonly="readonly">
@@ -120,7 +178,9 @@
                             <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
                         </xsl:choose></xsl:attribute>
                 </input>
-                <button type="button" class="btn btn-outline-secondary" id="sitemap_selector" hidden_field="{$HIDDEN_ID}" span_field="{$DISPLAY_ID}">
+                <button type="button" class="btn btn-outline-secondary" data-action="select-parent">
+                    <xsl:attribute name="data-id"><xsl:value-of select="$HIDDEN_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-name"><xsl:value-of select="$DISPLAY_ID"/></xsl:attribute>
                     <xsl:text>Выбрать…</xsl:text>
                 </button>
             </div>
@@ -139,6 +199,7 @@
                 </xsl:choose>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+            <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
             <xsl:if test="@title">
                 <label class="form-label" for="{@name}">
                     <xsl:value-of select="@title" disable-output-escaping="yes"/>
@@ -174,6 +235,7 @@
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type"><xsl:value-of select="$DATA_TYPE"/></xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+            <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
             <xsl:if test="@mode='1' and @title">
                 <label class="form-label" for="{@name}">
                     <xsl:value-of select="@title" disable-output-escaping="yes"/>
@@ -182,7 +244,7 @@
             <div class="input-group smap-segment">
                 <span class="input-group-text">
                     <span><xsl:value-of select="../field[@name='smap_pid']/@base"/><xsl:value-of select="$LANG_ABBR"/></span>
-                    <span id="smap_pid_segment"><xsl:value-of select="../field[@name='smap_pid']/@segment"/></span>
+                    <span data-role="smap-segment"><xsl:value-of select="../field[@name='smap_pid']/@segment"/></span>
                     <xsl:text>/</xsl:text>
                 </span>
                 <xsl:choose>

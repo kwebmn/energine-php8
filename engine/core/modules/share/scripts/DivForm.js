@@ -127,10 +127,10 @@ class DivForm extends Form {
         if (this.codeEditors && this.codeEditors.length) {
             // Тут мы предполагаем что на форме только одно поле типа код...
             this.codeEditors[0].setValue('');
-            // Скрыть родительский .field
-            let inputField = this.codeEditors[0].getInputField && this.codeEditors[0].getInputField();
-            let fieldDiv = inputField && inputField.closest('div.field');
-            if (fieldDiv) fieldDiv.classList.add('hidden');
+            // Скрыть обёртку поля
+            const inputField = this.codeEditors[0].getInputField && this.codeEditors[0].getInputField();
+            const fieldWrapper = inputField && inputField.closest('[data-role="form-field"]');
+            if (fieldWrapper) fieldWrapper.classList.add('d-none');
         }
     }
 

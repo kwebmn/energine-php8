@@ -1374,9 +1374,9 @@ Form.Label = {
                 segment = result.smap_segment;
             }
 
-            // Получаем элементы через id из this.obj атрибутов
-            const hiddenFieldId = this.obj?.getAttribute('hidden_field');
-            const spanFieldId = this.obj?.getAttribute('span_field');
+            // Получаем элементы через id из data-атрибутов (с запасом на легаси)
+            const hiddenFieldId = this.obj?.dataset?.id || this.obj?.getAttribute('hidden_field');
+            const spanFieldId = this.obj?.dataset?.name || this.obj?.getAttribute('span_field');
 
             const hiddenField = hiddenFieldId ? document.getElementById(hiddenFieldId) : null;
             const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
@@ -1390,7 +1390,8 @@ Form.Label = {
                 }
             }
 
-            const segmentObject = document.getElementById('smap_pid_segment');
+            const segmentObject = this.componentElement?.querySelector('[data-role="smap-segment"]')
+                || document.getElementById('smap_pid_segment');
             if (segmentObject) segmentObject.textContent = segment;
 
             Cookie.write(
@@ -1408,7 +1409,9 @@ Form.Label = {
      */
     prepareLabel(treeURL, restore = false) {
         // selector element
-        this.obj = document.getElementById('sitemap_selector');
+        this.obj = this.componentElement?.querySelector('[data-action="select-parent"]')
+            || document.querySelector('[data-action="select-parent"]')
+            || document.getElementById('sitemap_selector');
         if (this.obj) {
             // Навесим обработчик, прокидывая URL как аргумент
             this.obj.addEventListener('click', this.showTree.bind(this, treeURL));
@@ -1441,8 +1444,8 @@ Form.Label = {
                 return;
             }
 
-            const hiddenFieldId = this.obj.getAttribute('hidden_field');
-            const spanFieldId = this.obj.getAttribute('span_field');
+            const hiddenFieldId = this.obj.dataset?.id || this.obj.getAttribute('hidden_field');
+            const spanFieldId = this.obj.dataset?.name || this.obj.getAttribute('span_field');
 
             const hiddenField = hiddenFieldId ? document.getElementById(hiddenFieldId) : null;
             const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
@@ -1456,7 +1459,8 @@ Form.Label = {
                 }
             }
 
-            const segmentObject = document.getElementById('smap_pid_segment');
+            const segmentObject = this.componentElement?.querySelector('[data-role="smap-segment"]')
+                || document.getElementById('smap_pid_segment');
             if (segmentObject) segmentObject.textContent = savedData.segment;
         }
     }
