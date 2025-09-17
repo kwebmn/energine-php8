@@ -18,7 +18,7 @@ final class QAL extends DBA {
     const DESC = 'DESC';
 
     // Пустая строка в ваших правилах
-    const EMPTY_STRING = null;
+    const EMPTY_STRING = '__QAL_EMPTY_STRING_SENTINEL__';
 
     // Сообщения
     const ERR_BAD_QUERY_FORMAT = 'Bad query format.';
@@ -75,13 +75,27 @@ final class QAL extends DBA {
         $args = [];
 
         $buildQueryBody = function ($data, &$args) {
-            if (!empty($data)) {
-                foreach ($data as $fieldValue) {
-                    $args[] =
-                        (is_int($fieldValue) && $fieldValue === 0) ? 0 :
-                            (($fieldValue === self::EMPTY_STRING) ? '' :
-                                ($fieldValue === '' ? null : $fieldValue));
+            if (empty($data)) {
+                return;
+            }
+
+            foreach ($data as $fieldValue) {
+                if (is_int($fieldValue) && $fieldValue === 0) {
+                    $args[] = 0;
+                    continue;
                 }
+
+                if ($fieldValue === self::EMPTY_STRING) {
+                    $args[] = '';
+                    continue;
+                }
+
+                if ($fieldValue === '') {
+                    $args[] = null;
+                    continue;
+                }
+
+                $args[] = $fieldValue;
             }
         };
 
