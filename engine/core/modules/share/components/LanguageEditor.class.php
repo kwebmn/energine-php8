@@ -83,7 +83,7 @@ final class LanguageEditor extends Grid
      *
      * Нормализуем POST-данные для сохранения.
      */
-    public function loadData(): array|false|null
+    protected function loadData(): array|false|null
     {
         $result = parent::loadData();
 
