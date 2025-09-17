@@ -34,9 +34,11 @@ class Validator {
      * @param {HTMLElement} field
      */
     removeError(field) {
-        field.classList.remove('invalid');
-        const errorDiv = field.closest('.field')?.querySelector('div.error');
-        if (errorDiv) errorDiv.remove();
+        field.classList.remove('is-invalid');
+        const feedback = this._getInvalidFeedbackElement(field, false);
+        if (feedback) {
+            feedback.textContent = '';
+        }
     }
 
     /**
@@ -46,18 +48,78 @@ class Validator {
      */
     showError(field, message = 'Ошибка заполнения') {
         this.removeError(field);
-        field.classList.add('invalid');
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error';
-        errorDiv.innerText = message;
-        // После field (обычно input), в конец .field
-        const fieldContainer = field.closest('.field');
-        if (fieldContainer) {
-            fieldContainer.appendChild(errorDiv);
-        } else {
-            // если нет .field — прямо после input
-            field.parentNode.insertBefore(errorDiv, field.nextSibling);
+        field.classList.add('is-invalid');
+        const feedback = this._getInvalidFeedbackElement(field);
+        if (feedback) {
+            feedback.textContent = message;
         }
+    }
+
+    /**
+     * Найти (и при необходимости создать) контейнер для текста ошибки
+     * @param {HTMLElement} field
+     * @param {boolean} create
+     * @returns {HTMLElement|null}
+     */
+    _getInvalidFeedbackElement(field, create = true) {
+        if (field._validatorInvalidFeedback && field._validatorInvalidFeedback.isConnected) {
+            return field._validatorInvalidFeedback;
+        }
+
+        let feedback = this._findExistingFeedback(field);
+
+        if (!feedback && create) {
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            field.insertAdjacentElement('afterend', feedback);
+        }
+
+        if (feedback) {
+            field._validatorInvalidFeedback = feedback;
+            return feedback;
+        }
+
+        return null;
+    }
+
+    /**
+     * Поиск существующего блока invalid-feedback, связанного с полем
+     * @param {HTMLElement} field
+     * @returns {HTMLElement|null}
+     */
+    _findExistingFeedback(field) {
+        const describedBy = field.getAttribute('aria-describedby');
+        if (describedBy) {
+            const ids = describedBy.split(/\s+/).filter(Boolean);
+            for (const id of ids) {
+                const element = document.getElementById(id);
+                if (element instanceof HTMLElement && element.classList.contains('invalid-feedback')) {
+                    return element;
+                }
+            }
+        }
+
+        let sibling = field.nextSibling;
+        while (sibling) {
+            if (sibling instanceof HTMLElement && sibling.classList.contains('invalid-feedback')) {
+                return sibling;
+            }
+            sibling = sibling.nextSibling;
+        }
+
+        const parent = field.parentElement;
+        if (!parent) {
+            return null;
+        }
+
+        const feedbacks = parent.querySelectorAll('.invalid-feedback');
+        for (const feedback of feedbacks) {
+            if (field.compareDocumentPosition(feedback) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                return feedback;
+            }
+        }
+
+        return null;
     }
 
     /**
