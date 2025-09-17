@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-
 /**
  * Division editor (редактор разделов сайта).
  *
