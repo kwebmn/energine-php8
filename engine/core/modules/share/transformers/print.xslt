@@ -33,7 +33,7 @@
         </xsl:template>
 
         <xsl:template match="component[@type='list']">
-            <table border="1" cellpadding="10" cellspacing="0">
+            <table class="table table-sm table-bordered">
                 <caption></caption>
                 <thead>
                     <tr>
