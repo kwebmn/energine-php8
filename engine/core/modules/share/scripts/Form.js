@@ -484,11 +484,29 @@ class Form {
 
     // clearFileField
     clearFileField(button) {
-        const targetId = button?.dataset?.target;
+        const targetId = button?.dataset?.target || button?.dataset?.link;
         const previewId = button?.dataset?.preview;
+        const captionId = button?.dataset?.caption;
+        const segmentId = button?.dataset?.segment;
         const linkInput = targetId ? document.getElementById(targetId) : null;
         if (linkInput) {
             linkInput.value = '';
+            try {
+                linkInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch {
+                /* empty */
+            }
+        }
+        if (captionId) {
+            const captionElement = document.getElementById(captionId);
+            if (captionElement) {
+                if ('value' in captionElement) {
+                    captionElement.value = '';
+                } else {
+                    captionElement.textContent = '';
+                    captionElement.setAttribute('hidden', 'hidden');
+                }
+            }
         }
         const preview = previewId ? document.getElementById(previewId) : null;
         if (preview) {
@@ -501,6 +519,12 @@ class Form {
                 image.removeAttribute('src');
             }
             preview.setAttribute('hidden', 'hidden');
+        }
+        if (segmentId) {
+            const segmentElement = document.getElementById(segmentId);
+            if (segmentElement) {
+                segmentElement.textContent = '';
+            }
         }
         if (button) {
             button.setAttribute('hidden', 'hidden');
@@ -1236,7 +1260,13 @@ class FormSmapSelector {
      * @param {Form} form
      */
     constructor(selector, form) {
-        this.smap = { id: '', name: '' };
+        this.smap = {
+            id: null,
+            name: null,
+            caption: null,
+            segment: null,
+            clearButton: null
+        };
         // Получаем сам элемент
         this.selector = (typeof selector === 'string')
             ? document.querySelector(selector)
@@ -1251,13 +1281,25 @@ class FormSmapSelector {
         this.selector.addEventListener('click', (e) => {
             e.preventDefault();
             const target = e.currentTarget;
-            // Найдем target по data-атрибуту
-            const smapIdName = target.dataset.id || target.getAttribute('smap_id');
-            const smapNameName = target.dataset.name || target.getAttribute('smap_name');
 
-            // Поля для записи результатов (элементы input или т.п.)
+            const linkId = target.dataset.link;
+            const smapIdName = target.dataset.id || target.getAttribute('smap_id') || linkId;
+            const smapNameName = target.dataset.name || target.getAttribute('smap_name');
+            const smapCaptionName = target.dataset.caption || smapNameName;
+            const smapSegmentName = target.dataset.segment || target.getAttribute('smap_segment');
+
             this.smap.id = smapIdName ? document.getElementById(smapIdName) : null;
             this.smap.name = smapNameName ? document.getElementById(smapNameName) : null;
+            this.smap.caption = smapCaptionName ? document.getElementById(smapCaptionName) : null;
+            if (!this.smap.caption && this.smap.name) {
+                this.smap.caption = this.smap.name;
+            }
+
+            const defaultSegmentId = smapSegmentName || 'smap_pid_segment';
+            this.smap.segment = defaultSegmentId ? document.getElementById(defaultSegmentId) : null;
+
+            const wrapper = target.closest('[data-role="form-field"]');
+            this.smap.clearButton = wrapper ? wrapper.querySelector('[data-action="clear-file"]') : null;
 
             this.showSelector();
         });
@@ -1274,16 +1316,48 @@ class FormSmapSelector {
     }
 
     setName(result) {
-                if (result) {
+        if (result) {
             let name = '';
             if (result.site_name) {
                 name += result.site_name + ' : ';
             }
-            name += result.smap_name;
+            if (result.smap_name) {
+                name += result.smap_name;
+            }
 
-            // Заполняем input'ы, если они существуют
-            if (this.smap.name) this.smap.name.value = name;
-            if (this.smap.id) this.smap.id.value = result.smap_id;
+            const updateElement = (element, value) => {
+                if (!element) return;
+                if ('value' in element) {
+                    element.value = value;
+                } else {
+                    element.textContent = value;
+                }
+                if (typeof element.removeAttribute === 'function' && element.hasAttribute('hidden')) {
+                    element.removeAttribute('hidden');
+                }
+            };
+
+            updateElement(this.smap.name, name);
+            if (this.smap.caption && this.smap.caption !== this.smap.name) {
+                updateElement(this.smap.caption, name);
+            }
+
+            if (this.smap.id) {
+                this.smap.id.value = result.smap_id ?? '';
+                try {
+                    this.smap.id.dispatchEvent(new Event('change', { bubbles: true }));
+                } catch {
+                    /* empty */
+                }
+            }
+
+            if (this.smap.segment) {
+                this.smap.segment.textContent = result.smap_segment ?? '';
+            }
+
+            if (this.smap.clearButton) {
+                this.smap.clearButton.removeAttribute('hidden');
+            }
         }
     }
 }

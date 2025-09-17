@@ -85,8 +85,8 @@
     <xsl:template match="field[@name='smap_pid'][@mode='2'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
         <xsl:variable name="FIELD_UID" select="generate-id(.)"/>
-        <xsl:variable name="DISPLAY_ID" select="concat($FIELD_UID, '_display')"/>
-        <xsl:variable name="HIDDEN_ID" select="concat($FIELD_UID, '_value')"/>
+        <xsl:variable name="INPUT_ID" select="concat($FIELD_UID, '_value')"/>
+        <xsl:variable name="CAPTION_ID" select="concat($FIELD_UID, '_caption')"/>
         <div class="mb-3" data-role="form-field">
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
@@ -96,33 +96,56 @@
                 </xsl:choose>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
-            <div class="input-group">
-                <div class="form-outline flex-grow-1" data-mdb-input-init="1">
-                    <input type="text" id="{$DISPLAY_ID}" readonly="readonly">
-                        <xsl:attribute name="class">
-                            <xsl:text>form-control</xsl:text>
-                            <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                        </xsl:attribute>
-                        <xsl:attribute name="value"><xsl:value-of select="@data_name"/></xsl:attribute>
-                    </input>
-                    <xsl:if test="@title">
-                        <label class="form-label" for="{$DISPLAY_ID}">
-                            <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                            <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
-                                <span class="text-danger">*</span>
-                            </xsl:if>
-                        </label>
+            <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
+            <xsl:if test="@title">
+                <label class="form-label" for="{$INPUT_ID}">
+                    <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                    <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
+                        <span class="text-danger">*</span>
                     </xsl:if>
-                </div>
-                <input type="hidden" id="{$HIDDEN_ID}" value="{.}">
-                    <xsl:attribute name="name"><xsl:choose>
-                        <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name" />]</xsl:when>
+                </label>
+            </xsl:if>
+            <div class="input-group">
+                <input id="{$INPUT_ID}" readonly="readonly">
+                    <xsl:attribute name="class">
+                        <xsl:text>form-control</xsl:text>
+                        <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                    </xsl:attribute>
+                    <xsl:attribute name="name">
+                        <xsl:choose>
+                            <xsl:when test="@tableName">
+                                <xsl:value-of select="@tableName"/>
+                                <xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>
+                                [<xsl:value-of select="@name"/>]
+                            </xsl:when>
                             <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-                        </xsl:choose></xsl:attribute>
+                        </xsl:choose>
+                    </xsl:attribute>
+                    <xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute>
                 </input>
-                <button type="button" class="btn btn-outline-secondary" id="sitemap_selector" hidden_field="{$HIDDEN_ID}" span_field="{$DISPLAY_ID}">
-                    <xsl:text>Выбрать…</xsl:text>
+                <button class="btn btn-outline-secondary" type="button" data-action="open-smap">
+                    <xsl:attribute name="data-link"><xsl:value-of select="$INPUT_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-caption"><xsl:value-of select="$CAPTION_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-segment">smap_pid_segment</xsl:attribute>
+                    <xsl:text>Выбрать</xsl:text>
                 </button>
+                <button class="btn btn-link" type="button" data-action="clear-file">
+                    <xsl:attribute name="data-link"><xsl:value-of select="$INPUT_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-target"><xsl:value-of select="$INPUT_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-caption"><xsl:value-of select="$CAPTION_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-segment">smap_pid_segment</xsl:attribute>
+                    <xsl:if test="not(.)">
+                        <xsl:attribute name="hidden">hidden</xsl:attribute>
+                    </xsl:if>
+                    <xsl:text>Очистить</xsl:text>
+                </button>
+            </div>
+            <div class="form-text" data-role="selected-caption">
+                <xsl:attribute name="id"><xsl:value-of select="$CAPTION_ID"/></xsl:attribute>
+                <xsl:if test="not(@data_name)">
+                    <xsl:attribute name="hidden">hidden</xsl:attribute>
+                </xsl:if>
+                <xsl:value-of select="@data_name" disable-output-escaping="yes"/>
             </div>
             <xsl:call-template name="render-field-messages"/>
         </div>
