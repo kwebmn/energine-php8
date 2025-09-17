@@ -97,10 +97,3 @@ optgroup option {
 .filter textarea {
     border: 0;
 }
-
-/* ----- /forms ----- */
-
-.hidden {
-    display: none !important;
-}
-

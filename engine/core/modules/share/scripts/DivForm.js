@@ -130,7 +130,7 @@ class DivForm extends Form {
             // Скрыть родительский .field
             let inputField = this.codeEditors[0].getInputField && this.codeEditors[0].getInputField();
             let fieldDiv = inputField && inputField.closest('div.field');
-            if (fieldDiv) fieldDiv.classList.add('hidden');
+            if (fieldDiv) fieldDiv.classList.add('d-none');
         }
     }
 

@@ -1,6 +1,6 @@
 .treeview, .treeview ul { margin: 0; padding: 0; font: 12px/16px Tahoma, sans-serif; }
 .treeview ul { margin-left: 3px; background: url(../images/treeview/v_line.gif) left top repeat-y; }
-.treeview ul.hidden { display: none; }
+.treeview ul.d-none { display: none; }
 
 .treeview li { margin: 10px 0; padding: 0 0 0 16px; list-style: none; }
 .treeview li li { background: url(../images/treeview/h_line.gif) left 8px no-repeat; }

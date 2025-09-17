@@ -492,7 +492,7 @@
             <img border="0" id="preview_{@name}" data="data_{@name}"  width="{@width}" height="{@height}">
                 <xsl:choose>
                     <xsl:when test="../field[@name='upl_path']=''">
-                        <xsl:attribute name="class">hidden<xsl:if test="@name!='preview'"> thumb</xsl:if></xsl:attribute>
+                        <xsl:attribute name="class">d-none<xsl:if test="@name!='preview'"> thumb</xsl:if></xsl:attribute>
                     </xsl:when>
                     <xsl:otherwise>
                         <xsl:if test="@name!='preview'"><xsl:attribute name="class">thumb</xsl:attribute></xsl:if>
@@ -733,7 +733,7 @@
     <!-- поле для загрузки файла в файловом репозитории -->
     <xsl:template match="field[@name='upl_path'][ancestor::component[@sample='FileRepository' and @type='form']]" mode="field_input">
         <div class="preview">
-            <img border="0" id="preview" class="hidden"/>
+            <img border="0" id="preview" class="d-none"/>
         </div>
         <input>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>

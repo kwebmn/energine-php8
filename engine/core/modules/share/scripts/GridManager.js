@@ -962,8 +962,8 @@ class QueryControls {
         // containers — массив или NodeList
         this.containers = Array.from(containers);
 
-        // Убираем .hidden у первого контейнера
-        if (this.containers[0]) this.containers[0].classList.remove('hidden');
+        // Убираем d-none у первого контейнера
+        if (this.containers[0]) this.containers[0].classList.remove('d-none');
 
         // this.inputs — все инпуты внутри контейнеров (первый input в каждом)
         this.inputs = this.containers.map(c => c.querySelector('input'));
@@ -972,7 +972,7 @@ class QueryControls {
         this.dpsInputs = this.inputs.map(input => {
             const clone = input.cloneNode(true);
             clone.type = 'date';
-            clone.classList.add('hidden');
+            clone.classList.add('d-none');
             input.parentNode.appendChild(clone);
             return clone;
         });
@@ -1021,29 +1021,29 @@ class QueryControls {
     // Включить режим одного инпута, остальные скрыть и убрать "маленькость"
     asScalar() {
         this.show();
-        if (this.containers[1]) this.containers[1].classList.add('hidden');
+        if (this.containers[1]) this.containers[1].classList.add('d-none');
         [...this.dpsInputs, ...this.inputs].forEach(el => { if (el) el.classList.remove('small'); });
     }
 
     // Показать все контейнеры
     show() {
-        this.containers.forEach(c => c.classList.remove('hidden'));
+        this.containers.forEach(c => c.classList.remove('d-none'));
     }
 
     // Скрыть все контейнеры
     hide() {
-        this.containers.forEach(c => c.classList.add('hidden'));
+        this.containers.forEach(c => c.classList.add('d-none'));
     }
 
     // Показать или скрыть datepicker-инпуты
     showDatePickers(toShow) {
         this.isDate = toShow;
         if (toShow) {
-            this.inputs.forEach(el => { if (el) el.classList.add('hidden'); });
-            this.dpsInputs.forEach(el => { if (el) el.classList.remove('hidden'); });
+            this.inputs.forEach(el => { if (el) el.classList.add('d-none'); });
+            this.dpsInputs.forEach(el => { if (el) el.classList.remove('d-none'); });
         } else {
-            this.inputs.forEach(el => { if (el) el.classList.remove('hidden'); });
-            this.dpsInputs.forEach(el => { if (el) el.classList.add('hidden'); });
+            this.inputs.forEach(el => { if (el) el.classList.remove('d-none'); });
+            this.dpsInputs.forEach(el => { if (el) el.classList.add('d-none'); });
         }
     }
 }

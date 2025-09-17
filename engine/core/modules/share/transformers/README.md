@@ -114,6 +114,6 @@ Admin templates in this folder rely on MDBootstrap 5 components. When extending 
 
 - Use Bootstrap 5 / MDB spacing, flex and typography utilities (`d-flex`, `gap-*`, `btn`, `form-control`, etc.). Avoid bespoke legacy class names.
 - Shared CSS overrides live in `engine/core/modules/share/stylesheets/*.css`. Extend them instead of adding inline styles.
-- Control visibility with the `.hidden` utility class or dedicated data attributes, not presentation-oriented class names.
+- Control visibility with the `d-none` utility class or dedicated data attributes, not presentation-oriented class names.
 
 Следуя этим правилам, вы сохраните единообразие административного интерфейса и совместимость с обновлёнными JavaScript-модулями.
