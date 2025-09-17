@@ -282,7 +282,7 @@ class TagManager extends DBWorker
 
         $q = [];
         foreach ($names as $t) {
-            $q[] = E()->getDB()->quote($t);
+            $q[] = E()->getDB()->quote((string)$t);
         }
 
         $res = E()->getDB()->select(
@@ -314,7 +314,7 @@ class TagManager extends DBWorker
              FROM ' . self::TAG_TABLENAME . ' t
              JOIN ' . self::TAG_TABLENAME_TRANSLATION . ' tr
                ON t.tag_id = tr.tag_id AND tr.lang_id = %s
-             WHERE tr.tag_name LIKE ' . E()->getDB()->quote(trim($str) . '%%') . '
+             WHERE tr.tag_name LIKE ' . E()->getDB()->quote(trim((string)$str) . '%%') . '
              ORDER BY tr.tag_name ASC ' .
             ($limit ? 'LIMIT ' . (int)$limit : ''),
             E()->getLanguage()->getCurrent()
@@ -460,7 +460,7 @@ class TagManager extends DBWorker
 
         $q = [];
         foreach ($namesLower as $n) {
-            $q[] = E()->getDB()->quote($n);
+            $q[] = E()->getDB()->quote((string)$n);
         }
 
         $res = E()->getDB()->select(

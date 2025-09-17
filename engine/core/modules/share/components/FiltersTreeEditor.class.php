@@ -88,7 +88,7 @@ final class FiltersTreeEditor extends Grid
                      LEFT JOIN ' . $tableData . ' td
                         ON (t1.filter_id = td.filter_id AND ' . ($targetId
                         ? ('td.target_id = ' . $targetId)
-                        : ('td.session_id = ' . $this->dbh->quote(session_id()))) . ')
+                        : ('td.session_id = ' . $this->dbh->quote((string)session_id()))) . ')
                      LEFT JOIN ' . $tableTree . ' t2
                         ON (t1.filter_id = t2.filter_pid)
                      WHERE st.lang_id = %s
