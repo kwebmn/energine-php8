@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-use DOMDocument;
-use DOMNode;
-
 /**
  * Division editor (редактор разделов сайта).
  *
