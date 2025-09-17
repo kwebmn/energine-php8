@@ -39,7 +39,7 @@ class TranslationEditor extends Grid
      *
      * @return mixed
      */
-    protected function saveData(): mixed
+    protected function saveData()
     {
         // Нормализация имени тега: trim + upper
         $mainTable = $this->getTableName();

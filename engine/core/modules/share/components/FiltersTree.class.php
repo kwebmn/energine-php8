@@ -22,7 +22,7 @@ class FiltersTree extends DataSet
         return $base;
     }
 
-    protected function loadData(): array
+    protected function loadData(): array|false|null
     {
         return $this->getFilters();
     }

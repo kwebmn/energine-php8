@@ -32,7 +32,7 @@ class SiteList extends DataSet
     /**
      * Загружаем данные из SiteManager c учётом фильтра по тегам.
      */
-    protected function loadData(): array
+    protected function loadData(): array|false|null
     {
         $result = [];
         $filteredIDs = true;

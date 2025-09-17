@@ -119,26 +119,111 @@ final class URI extends BaseObject
     private static function parseUrlSafe(string $uri): array|false
     {
         $error = null;
+        $parts = false;
 
-        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$error): bool {
+        $handler = static function (int $severity, string $message) use (&$error): bool {
             $error = $message;
             return true;
-        });
+        };
 
-        $parts = parse_url($uri);
-
-        restore_error_handler();
+        try {
+            set_error_handler($handler);
+            $parts = parse_url($uri);
+        } catch (\Throwable $exception) {
+            error_log(sprintf('URI::validate(): parse_url threw for "%s": %s', $uri, $exception->getMessage()));
+            return false;
+        } finally {
+            restore_error_handler();
+        }
 
         if ($parts === false || $error !== null) {
             if ($error !== null) {
                 error_log(sprintf('URI::validate(): parse_url failed for "%s": %s', $uri, $error));
-            } elseif ($parts === false) {
+            } else {
                 error_log(sprintf('URI::validate(): parse_url returned false for "%s"', $uri));
             }
             return false;
         }
 
         return $parts;
+    }
+
+    /**
+     * @return array{0:string,1:?int}
+     */
+    private static function extractHostAndPort(string $hostHeader): array
+    {
+        $hostHeader = trim($hostHeader);
+        if ($hostHeader === '') {
+            return ['', null];
+        }
+
+        if ($hostHeader[0] === '[') {
+            $closingBracket = strpos($hostHeader, ']');
+            if ($closingBracket === false) {
+                return [$hostHeader, null];
+            }
+
+            $hostOnly = substr($hostHeader, 0, $closingBracket + 1);
+            $port = null;
+
+            $portPart = substr($hostHeader, $closingBracket + 1);
+            if ($portPart !== '' && $portPart[0] === ':') {
+                $candidate = self::normalizePort(substr($portPart, 1));
+                if ($candidate !== null) {
+                    $port = $candidate;
+                }
+            }
+
+            return [$hostOnly, $port];
+        }
+
+        $hostOnly = $hostHeader;
+        $port = null;
+
+        if (strpos($hostHeader, ':') !== false && substr_count($hostHeader, ':') === 1) {
+            $colonPos = strrpos($hostHeader, ':');
+            if ($colonPos !== false) {
+                $candidate = self::normalizePort(substr($hostHeader, $colonPos + 1));
+                if ($candidate !== null) {
+                    $hostOnly = substr($hostHeader, 0, $colonPos);
+                    $port = $candidate;
+                }
+            }
+        }
+
+        return [trim($hostOnly), $port];
+    }
+
+    private static function normalizePort(?string $value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim($value);
+        if ($value === '' || !ctype_digit($value)) {
+            return null;
+        }
+
+        $port = (int)$value;
+        return ($port > 0) ? $port : null;
+    }
+
+    private static function firstForwardedValue(?string $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $parts = array_filter(array_map('trim', explode(',', $value)), 'strlen');
+
+        return $parts[0] ?? '';
     }
 
     /**
@@ -150,59 +235,42 @@ final class URI extends BaseObject
 
         if ($uriString === '') {
             // Схема с учётом обратного проксирования
-            $https  = $_SERVER['HTTPS'] ?? '';
-            $proto  = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
-            $scheme = ($https && strtolower((string)$https) !== 'off') || strtolower((string)$proto) === 'https'
-                ? 'https' : 'http';
+            $proto = self::firstForwardedValue($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null);
+            if ($proto !== '') {
+                $scheme = strtolower($proto);
+            } else {
+                $https = $_SERVER['HTTPS'] ?? '';
+                $scheme = ($https && strtolower((string)$https) !== 'off') ? 'https' : 'http';
+            }
 
-            // Хост может содержать порт (host:port)
-            $hostHeader = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost');
-            $hostHeader = trim((string)$hostHeader);
+            // Хост может содержать порт (host:port) и прокси-заголовки
+            $hostHeader = self::firstForwardedValue($_SERVER['HTTP_X_FORWARDED_HOST'] ?? null);
+            if ($hostHeader === '') {
+                $hostHeader = (string)($_SERVER['HTTP_HOST'] ?? '');
+            }
+            if ($hostHeader === '') {
+                $hostHeader = (string)($_SERVER['SERVER_NAME'] ?? '');
+            }
+            $hostHeader = trim($hostHeader);
             if ($hostHeader === '') {
                 $hostHeader = 'localhost';
             }
 
-            // Разделим host:port, поддерживая IPv6 ([::1]:8080)
-            $hostOnly = $hostHeader;
-            $port = null;
-
-            if ($hostHeader !== '') {
-                if ($hostHeader[0] === '[') {
-                    $closingBracket = strpos($hostHeader, ']');
-                    if ($closingBracket !== false) {
-                        $hostOnly = substr($hostHeader, 0, $closingBracket + 1);
-                        $portPart = substr($hostHeader, $closingBracket + 1);
-                        if ($portPart !== '' && $portPart[0] === ':') {
-                            $portDigits = substr($portPart, 1);
-                            if ($portDigits !== '' && ctype_digit($portDigits)) {
-                                $candidate = (int)$portDigits;
-                                if ($candidate > 0) {
-                                    $port = $candidate;
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    $colonPos = strrpos($hostHeader, ':');
-                    if ($colonPos !== false) {
-                        $portPart = substr($hostHeader, $colonPos + 1);
-                        if ($portPart !== '' && ctype_digit($portPart)) {
-                            $candidate = (int)$portPart;
-                            if ($candidate > 0) {
-                                $hostOnly = substr($hostHeader, 0, $colonPos);
-                                $port = $candidate;
-                            }
-                        }
-                    }
-                }
-            }
+            [$hostOnly, $port] = self::extractHostAndPort($hostHeader);
 
             if ($hostOnly === '') {
                 $hostOnly = 'localhost';
             }
 
             if ($port === null) {
-                // если порт не пришёл в HTTP_HOST, берём SERVER_PORT
+                $forwardedPort = self::normalizePort(self::firstForwardedValue($_SERVER['HTTP_X_FORWARDED_PORT'] ?? null));
+                if ($forwardedPort !== null) {
+                    $port = $forwardedPort;
+                }
+            }
+
+            if ($port === null) {
+                // если порт не пришёл в заголовках, берём SERVER_PORT
                 $serverPort = (int)($_SERVER['SERVER_PORT'] ?? 0);
                 if ($serverPort > 0) {
                     $port = $serverPort;

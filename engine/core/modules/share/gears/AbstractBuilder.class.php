@@ -83,7 +83,7 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
      * Хук для потомков: наполнение $this->result.
      * Должен создать корневой элемент и построить содержимое.
      */
-    protected function run()
+    protected function run(): void
     {
         // Пустая реализация — потомок обязан переопределить.
     }

@@ -60,26 +60,40 @@ declare(strict_types=1);
 
 class JSqueeze
 {
-    const
+    public const SPECIAL_VAR_RX = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
 
-    SPECIAL_VAR_RX = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
+    /**
+     * Частотность символов (используется при выборе имён переменных).
+     * @var array<int, int>
+     */
+    public array $charFreq = [];
 
-    public
+    /** @var array<int, string> Собранные строки */
+    protected array $strings = [];
 
-    $charFreq;
+    /** @var array<string, mixed> Сохранённые замыкания */
+    protected array $closures = [];
 
-    protected
+    /** @var string Пул символов первой позиции генерируемых имён */
+    protected string $str0 = '';
 
-    $strings,
-    $closures,
-    $str0,
-    $str1,
-    $argFreq,
-    $specialVarRx,
-    $keepImportantComments,
+    /** @var string Пул символов остальных позиций генерируемых имён */
+    protected string $str1 = '';
 
-    $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*',
-    $reserved = array(
+    /** @var array<int|string, int> Частота аргументов */
+    protected array $argFreq = [];
+
+    /** @var string|false Регулярное выражение для «особых» переменных */
+    protected string|false $specialVarRx = self::SPECIAL_VAR_RX;
+
+    /** @var bool Сохранять ли комментарии вида /*!...*\/ */
+    protected bool $keepImportantComments = false;
+
+    /** @var string Базовый паттерн имен переменных */
+    protected string $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*';
+
+    /** @var array<string, int> Зарезервированные идентификаторы */
+    protected array $reserved = array(
         'abstract','as','boolean','break','byte','case','catch','char','class',
         'const','continue','debugger','default','delete','do','double','else',
         'enum','export','extends','false','final','finally','float','for',
@@ -89,6 +103,12 @@ class JSqueeze
         'throw','throws','transient','true','try','typeof','var','void',
         'while','with','yield','let','interface',
     );
+
+    /** @var array<string, mixed> Локальные переменные текущего дерева */
+    protected array $local_tree = [];
+
+    /** @var array<string, mixed> Использованные переменные текущего дерева */
+    protected array $used_tree = [];
 
 
     function __construct()
