@@ -119,12 +119,12 @@
                                         <xsl:value-of select="ancestor::component/filter/@title"/>
                                         <xsl:text>:&#160;</xsl:text>
                                     </span>
-                                    <select name="fieldName" class="form-select form-select-sm" data-role="filter-field">
+                                    <select name="fieldName" class="form-select form-select-sm" data-role="filter-field" data-mdb-select-init="1">
                                         <xsl:for-each select="ancestor::component/filter/field">
                                             <option value="[{@tableName}][{@name}]" type="{@type}"><xsl:value-of select="@title"/></option>
                                         </xsl:for-each>
                                     </select>
-                                    <select name="condition" class="form-select form-select-sm" data-role="filter-condition">
+                                    <select name="condition" class="form-select form-select-sm" data-role="filter-condition" data-mdb-select-init="1">
                                         <xsl:for-each select="ancestor::component/filter/operators/operator">
                                             <option value="{@name}">
                                                 <xsl:attribute name="data-types">
