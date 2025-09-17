@@ -9,6 +9,13 @@
 class TestFeedEditor extends ExtendedFeedEditor
 {
     /**
+     * Instance of division selector component created on demand.
+     *
+     * @var Component|null
+     */
+    private ?Component $divisionEditor = null;
+
+    /**
      * Construct test feed editor.
      *
      * @param string     $name   Имя компонента.

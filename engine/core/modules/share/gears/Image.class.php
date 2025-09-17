@@ -265,21 +265,39 @@ class Image extends Object {
             }
         }
 
+        $saveError = null;
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$saveError): bool {
+            $saveError = $message;
+            return true;
+        });
+
         $success = false;
         switch ($type) {
-            case self::TYPE_PNG:  $success = @imagepng ($this->image, $filename); break;
-            case self::TYPE_GIF:  $success = @imagegif ($this->image, $filename); break;
-            case self::TYPE_JPEG: $success = @imagejpeg($this->image, $filename); break;
+            case self::TYPE_PNG:  $success = imagepng($this->image, $filename); break;
+            case self::TYPE_GIF:  $success = imagegif($this->image, $filename); break;
+            case self::TYPE_JPEG: $success = imagejpeg($this->image, $filename); break;
             default: // unreachable
         }
 
+        restore_error_handler();
+
         if (!$success) {
-            throw new SystemException('ERR_CANT_SAVE_FILE', SystemException::ERR_WARNING, $filename);
+            $context = $saveError !== null ? ['error' => $saveError] : [];
+            throw new SystemException('ERR_CANT_SAVE_FILE', SystemException::ERR_WARNING, $filename, null, $context);
         }
-        try {
-            @chmod($filename, 0666);
+
+        if (is_file($filename)) {
+            $chmodError = null;
+            set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$chmodError): bool {
+                $chmodError = $message;
+                return true;
+            });
+            $chmodOk = chmod($filename, 0666);
+            restore_error_handler();
+            if ($chmodOk === false && $chmodError !== null) {
+                error_log('Image: unable to chmod file ' . $filename . ': ' . $chmodError);
+            }
         }
-        catch (Exception $e){}
         return $success;
     }
 

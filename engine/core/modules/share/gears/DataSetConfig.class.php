@@ -16,7 +16,7 @@ class DataSetConfig extends ComponentConfig
      *
      * @throws SystemException
      */
-    public function __construct($config, string $className, string $moduleName)
+    public function __construct(mixed $config, string $className, string $moduleName)
     {
         parent::__construct($config, $className, $moduleName);
 

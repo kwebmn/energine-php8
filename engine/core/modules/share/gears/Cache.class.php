@@ -51,7 +51,9 @@ class Cache
         $cfgDir  = (string)(BaseObject::_getConfigValue('site.cache_dir') ?? '');
         $default = defined('HTDOCS_DIR') ? (HTDOCS_DIR . '/var/cache') : self::CACHE_DIR;
         $this->dir = rtrim($cfgDir !== '' ? $cfgDir : $default, '/\\') . DIRECTORY_SEPARATOR;
-        if (!is_dir($this->dir)) { @mkdir($this->dir, 0777, true); }
+        if (!is_dir($this->dir)) {
+            $this->ensureDirectoryExists($this->dir);
+        }
 
         // 2) Опции
         $this->prefix     = (string)(BaseObject::_getConfigValue('site.cache_prefix') ?? '');
@@ -145,8 +147,7 @@ class Cache
         }
 
         if ($file = $this->existingFile($key)) {
-            @unlink($file);
-            if (function_exists('opcache_invalidate')) { @opcache_invalidate($file, true); }
+            $this->removeFile($file);
         }
     }
 
@@ -197,23 +198,36 @@ class Cache
         if ($existing !== null) return $existing;
 
         $lockFile = $this->filePath($key) . '.lock';
-        $fh = @fopen($lockFile, 'c');
-        if ($fh && @flock($fh, LOCK_EX)) {
-            try {
-                $again = $this->retrieve($key);
-                if ($again !== null) return $again;
+        [$fh, $openError] = $this->callFs(static fn() => fopen($lockFile, 'c'));
+        if (!is_resource($fh)) {
+            if ($openError !== null) {
+                $this->logWarning('Cache remember fopen failed', ['file' => $lockFile, 'err' => $openError]);
+            }
+            return $this->retrieve($key);
+        }
 
-                $value = $compute();
-                if ($tags) {
-                    $this->storeTagged($key, $value, $tags, $ttl);
-                } else {
-                    $this->store($key, $value, $ttl);
-                }
-                return $value;
-            } finally {
-                @flock($fh, LOCK_UN);
-                @fclose($fh);
-                @unlink($lockFile);
+        $locked = $this->runFs(static fn() => flock($fh, LOCK_EX), 'Cache remember flock failed', ['file' => $lockFile]);
+        if ($locked !== true) {
+            $this->runFs(static fn() => fclose($fh), 'Cache remember fclose failed', ['file' => $lockFile], false);
+            return $this->retrieve($key);
+        }
+
+        try {
+            $again = $this->retrieve($key);
+            if ($again !== null) return $again;
+
+            $value = $compute();
+            if ($tags) {
+                $this->storeTagged($key, $value, $tags, $ttl);
+            } else {
+                $this->store($key, $value, $ttl);
+            }
+            return $value;
+        } finally {
+            $this->runFs(static fn() => flock($fh, LOCK_UN), 'Cache remember unlock failed', ['file' => $lockFile], false);
+            $this->runFs(static fn() => fclose($fh), 'Cache remember fclose failed', ['file' => $lockFile], false);
+            if (is_file($lockFile)) {
+                $this->runFs(static fn() => unlink($lockFile), 'Cache remember unlink lock failed', ['file' => $lockFile]);
             }
         }
 
@@ -256,9 +270,11 @@ class Cache
         foreach ($tags as $tag) {
             $idx = $this->tagsFile($tag);
             if (!is_file($idx)) continue;
-            $keys = @json_decode((string)file_get_contents($idx), true) ?: [];
+            $keys = json_decode((string)file_get_contents($idx), true) ?: [];
             foreach ($keys as $k) $this->dispose($k);
-            @unlink($idx);
+            if (is_file($idx)) {
+                $this->runFs(static fn() => unlink($idx), 'Cache unlink tag index failed', ['file' => $idx]);
+            }
         }
     }
 
@@ -276,22 +292,33 @@ class Cache
 
         $payload = "<?php\nreturn " . var_export($value, true) . ";\n";
 
-        if (@file_put_contents($tmp, $payload, LOCK_EX) === false) {
-            $this->logWarning('Cache fileStore write failed', ['file' => $tmp]);
+        [$written, $writeError] = $this->callFs(static fn() => file_put_contents($tmp, $payload, LOCK_EX));
+        if ($written === false) {
+            $ctx = ['file' => $tmp];
+            if ($writeError !== null) { $ctx['err'] = $writeError; }
+            $this->logWarning('Cache fileStore write failed', $ctx);
             return false;
         }
-        @chmod($tmp, 0666);
 
-        if (!@rename($tmp, $file)) {
-            @unlink($file);
-            if (!@rename($tmp, $file)) {
-                @unlink($tmp);
-                $this->logWarning('Cache fileStore rename failed', ['file' => $file]);
+        if (is_file($tmp)) {
+            $this->runFs(static fn() => chmod($tmp, 0666), 'Cache fileStore chmod failed', ['file' => $tmp], false);
+        }
+
+        if ($this->runFs(static fn() => rename($tmp, $file), 'Cache fileStore rename failed', ['tmp' => $tmp, 'file' => $file]) === false) {
+            if (is_file($file)) {
+                $this->runFs(static fn() => unlink($file), 'Cache unlink failed before rename', ['file' => $file]);
+            }
+            if ($this->runFs(static fn() => rename($tmp, $file), 'Cache fileStore rename failed', ['tmp' => $tmp, 'file' => $file]) === false) {
+                if (is_file($tmp)) {
+                    $this->runFs(static fn() => unlink($tmp), 'Cache tmp cleanup failed', ['file' => $tmp]);
+                }
                 return false;
             }
         }
 
-        if (function_exists('opcache_invalidate')) { @opcache_invalidate($file, true); }
+        if (function_exists('opcache_invalidate')) {
+            $this->runFs(static fn() => opcache_invalidate($file, true), 'Cache opcache invalidate failed', ['file' => $file], false);
+        }
         return true;
     }
 
@@ -323,7 +350,9 @@ class Cache
         $hash = sha1($safe);
 
         $path = $this->dir . substr($hash, 0, 2) . '/' . substr($hash, 2, 2) . '/';
-        if (!is_dir($path)) @mkdir($path, 0777, true);
+        if (!is_dir($path)) {
+            $this->ensureDirectoryExists($path);
+        }
 
         return $path . $safe . '.cache.php';
     }
@@ -344,7 +373,9 @@ class Cache
     private function tagsDir(): string
     {
         $dir = $this->dir . 'tags/';
-        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        if (!is_dir($dir)) {
+            $this->ensureDirectoryExists($dir);
+        }
         return $dir;
     }
 
@@ -357,18 +388,30 @@ class Cache
     {
         foreach ($tags as $tag) {
             $file = $this->tagsFile($tag);
-            $list = is_file($file) ? @json_decode((string)file_get_contents($file), true) ?: [] : [];
+            $list = is_file($file) ? (json_decode((string)file_get_contents($file), true) ?: []) : [];
             if (!in_array($key, $list, true)) $list[] = $key;
-            @file_put_contents($file, json_encode($list), LOCK_EX);
+            [$written, $writeError] = $this->callFs(static fn() => file_put_contents($file, json_encode($list), LOCK_EX));
+            if ($written === false) {
+                $ctx = ['file' => $file];
+                if ($writeError !== null) { $ctx['err'] = $writeError; }
+                $this->logWarning('Cache indexTags write failed', $ctx);
+            }
         }
     }
 
     private function flushTagsIndex(): void
     {
         $dir = $this->tagsDir();
-        foreach ((array)@scandir($dir) as $f) {
+        $items = $this->runFs(static fn() => scandir($dir), 'Cache flushTagsIndex scandir failed', ['dir' => $dir]);
+        if (!is_array($items)) {
+            return;
+        }
+        foreach ($items as $f) {
             if ($f === '.' || $f === '..') continue;
-            @unlink($dir . $f);
+            $path = $dir . $f;
+            if (is_file($path)) {
+                $this->runFs(static fn() => unlink($path), 'Cache flushTagsIndex unlink failed', ['file' => $path]);
+            }
         }
     }
 
@@ -376,8 +419,7 @@ class Cache
     {
         $this->rrm($this->dir, function (string $path, bool $isFile): bool {
             if ($isFile && str_ends_with($path, '.cache.php')) {
-                @unlink($path);
-                if (function_exists('opcache_invalidate')) { @opcache_invalidate($path, true); }
+                $this->removeFile($path);
             }
             return true;
         });
@@ -392,18 +434,90 @@ class Cache
             \RecursiveIteratorIterator::CHILD_FIRST
         );
 
+        $tagsRoot = $this->tagsDir();
+
         /** @var \SplFileInfo $info */
         foreach ($it as $info) {
             $path = $info->getPathname();
             if ($info->isDir()) {
                 $fn($path, false);
-                if (!in_array($path, [$this->dir, $this->tagsDir()], true)) {
-                    @rmdir($path);
+                if (!in_array($path, [$this->dir, $tagsRoot], true)) {
+                    $this->runFs(static fn() => rmdir($path), 'Cache rmdir failed', ['dir' => $path]);
                 }
             } else {
                 $fn($path, true);
             }
         }
+    }
+
+    private function ensureDirectoryExists(string $dir): bool
+    {
+        if (is_dir($dir)) {
+            return true;
+        }
+
+        [$result, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
+        if ($result === false && !is_dir($dir)) {
+            $ctx = ['dir' => $dir];
+            if ($error !== null) {
+                $ctx['err'] = $error;
+            }
+            $this->logWarning('Cache directory create failed', $ctx);
+            return false;
+        }
+
+        return true;
+    }
+
+    private function removeFile(string $file): void
+    {
+        if (!is_file($file)) {
+            return;
+        }
+
+        $this->runFs(static fn(): bool => unlink($file), 'Cache unlink failed', ['file' => $file]);
+        if (function_exists('opcache_invalidate')) {
+            $this->runFs(static fn(): bool => opcache_invalidate($file, true), 'Cache opcache invalidate failed', ['file' => $file], false);
+        }
+    }
+
+    /**
+     * @return array{0:mixed,1:?string}
+     */
+    private function callFs(callable $operation): array
+    {
+        $result = null;
+        $error  = null;
+
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool {
+            throw new \ErrorException($message, 0, $severity, $file, $line);
+        });
+
+        try {
+            $result = $operation();
+        } catch (\ErrorException $e) {
+            $result = false;
+            $error  = $e->getMessage();
+        } finally {
+            restore_error_handler();
+        }
+
+        return [$result, $error];
+    }
+
+    private function runFs(callable $operation, string $message, array $context = [], bool $logWhenFalseWithoutError = true): mixed
+    {
+        [$result, $error] = $this->callFs($operation);
+        if ($result === false) {
+            if ($error !== null) {
+                $context['err'] = $error;
+            }
+            if ($error !== null || $logWhenFalseWithoutError) {
+                $this->logWarning($message, $context);
+            }
+        }
+
+        return $result;
     }
 
     private function logWarning(string $msg, array $ctx = []): void

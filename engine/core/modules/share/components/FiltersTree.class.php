@@ -106,7 +106,7 @@ class FiltersTree extends DataSet
         );
     }
 
-    protected function createBuilder()
+    protected function createBuilder(): AbstractBuilder
     {
         $builder = new TreeBuilder();
         $tree = TreeConverter::convert($this->getFilters(), 'filter_id', 'filter_pid');

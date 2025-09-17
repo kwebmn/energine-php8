@@ -9,6 +9,13 @@
 class DefaultTemplateFeedEditor extends ExtendedFeedEditor
 {
     /**
+     * Instance of division selector component created on demand.
+     *
+     * @var Component|null
+     */
+    private ?Component $divisionEditor = null;
+
+    /**
      * Construct default template feed editor.
      *
      * @param string     $name   Имя компонента.

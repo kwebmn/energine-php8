@@ -95,7 +95,7 @@ final class NavigationMenu extends DataSet
         return $data;
     }
 
-    protected function createBuilder()
+    protected function createBuilder(): AbstractBuilder
     {
         // Полное дерево может пригодиться (как и в исходнике), но фактически строим по выборке ниже
         $treeData = [];
