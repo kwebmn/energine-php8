@@ -19,15 +19,15 @@
         <xsl:variable name="IS_OUTLINE"
             select="not($IS_TYPE_WITHOUT_OUTLINE or $IS_NAME_WITHOUT_OUTLINE or $OUTLINE_SETTING='0' or $OUTLINE_SETTING='false')"/>
         <div data-role="form-field">
-            <xsl:attribute name="class">
-                <xsl:choose>
-                    <xsl:when test="$IS_OUTLINE">form-outline mb-3</xsl:when>
-                    <xsl:otherwise>mb-3</xsl:otherwise>
-                </xsl:choose>
-            </xsl:attribute>
-            <xsl:if test="$IS_OUTLINE">
-                <xsl:attribute name="data-mdb-input-init">1</xsl:attribute>
-            </xsl:if>
+            <xsl:choose>
+                <xsl:when test="$IS_OUTLINE">
+                    <xsl:attribute name="class">form-outline mb-3</xsl:attribute>
+                    <xsl:attribute name="data-mdb-input-init">1</xsl:attribute>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:attribute name="class">mb-3</xsl:attribute>
+                </xsl:otherwise>
+            </xsl:choose>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
