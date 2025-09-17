@@ -134,11 +134,11 @@ class ComponentConfig {
     protected function registerState($methodName, $patterns, $rights = false) {
         if ($this->config) {
             $newState = $this->config->addChild('state');
-            $newState->addAttribute('name', $methodName);
+            $newState->addAttribute('name', (string)$methodName);
             // Совместимость: оставляем как было
-            $newState->addAttribute('weight', true);
+            $newState->addAttribute('weight', '1');
             if ($rights) {
-                $newState->addAttribute('rights', $rights);
+                $newState->addAttribute('rights', (string)$rights);
             }
             if (!is_array($patterns)) $patterns = array($patterns);
             $uriPatterns = $newState->addChild('uri_patterns');
