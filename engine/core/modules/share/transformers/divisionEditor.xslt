@@ -275,9 +275,9 @@
     <!--Обычный список сайтов-->
     <xsl:template match="component[@class='SiteList']">
         <xsl:if test="not(recordset[@empty])">
-            <div class="list-group">
+            <ul class="list-group">
                 <xsl:apply-templates/>
-            </div>
+            </ul>
         </xsl:if>
     </xsl:template>
 
@@ -286,15 +286,17 @@
     </xsl:template>
 
     <xsl:template match="record[ancestor::component[@class='SiteList']]">
-        <a href="{$BASE}{$LANG_ABBR}{../../@template}show/{field[@name='site_id']}/">
+        <li>
             <xsl:attribute name="class">
                 <xsl:text>list-group-item</xsl:text>
                 <xsl:if test="field[@name='site_id'] = $COMPONENTS[@sample='DivisionEditor']/@site">
                     <xsl:text> active</xsl:text>
                 </xsl:if>
             </xsl:attribute>
-            <xsl:value-of select="field[@name='site_name']"/>
-        </a>
+            <a href="{$BASE}{$LANG_ABBR}{../../@template}show/{field[@name='site_id']}/" class="d-block text-reset text-decoration-none">
+                <xsl:value-of select="field[@name='site_name']"/>
+            </a>
+        </li>
     </xsl:template>
 
     <xsl:template match="component[@class='SiteList' and (following::component[@sample='DivisionEditor'] or preceding::component[@sample='DivisionEditor'])]" />
