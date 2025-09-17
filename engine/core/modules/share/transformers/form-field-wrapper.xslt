@@ -19,13 +19,14 @@
         <xsl:variable name="IS_OUTLINE"
             select="not($IS_TYPE_WITHOUT_OUTLINE or $IS_NAME_WITHOUT_OUTLINE or $OUTLINE_SETTING='0' or $OUTLINE_SETTING='false')"/>
         <div data-role="form-field">
-            <xsl:attribute name="class">
+            <xsl:variable name="WRAPPER_CLASSES">
                 <xsl:choose>
                     <xsl:when test="$IS_OUTLINE">form-outline mb-3</xsl:when>
                     <xsl:otherwise>mb-3</xsl:otherwise>
                 </xsl:choose>
-            </xsl:attribute>
-            <xsl:if test="$IS_OUTLINE">
+            </xsl:variable>
+            <xsl:attribute name="class"><xsl:value-of select="$WRAPPER_CLASSES"/></xsl:attribute>
+            <xsl:if test="contains(concat(' ', $WRAPPER_CLASSES, ' '), ' form-outline ')">
                 <xsl:attribute name="data-mdb-input-init">1</xsl:attribute>
             </xsl:if>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
