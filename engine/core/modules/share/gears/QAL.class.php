@@ -202,7 +202,7 @@ final class QAL extends DBA {
                             }
                             $subExpr[] = $identField.' '.$op.' ('.implode(',', $placeholders).')';
                         } else {
-                            $q = implode(',', array_map(fn($v) => $this->quote($v), $group));
+                            $q = implode(',', array_map(fn($v) => $this->quote((string)$v), $group));
                             $subExpr[] = $identField.' '.$op.' ('.$q.')';
                         }
                     }
@@ -219,7 +219,7 @@ final class QAL extends DBA {
                         $args[] = $a[1];
                         $chunk = $identField.' BETWEEN %s AND %s';
                     } else {
-                        $chunk = $identField.' BETWEEN '.$this->quote($a[0]).' AND '.$this->quote($a[1]);
+                        $chunk = $identField.' BETWEEN '.$this->quote((string)$a[0]).' AND '.$this->quote((string)$a[1]);
                     }
                     $parts[] = $chunk;
                     continue;
@@ -231,7 +231,7 @@ final class QAL extends DBA {
                         $args[] = $val;
                         $chunk = $identField.' '.$op.' %s';
                     } else {
-                        $chunk = $identField.' '.$op.' '.$this->quote($val);
+                        $chunk = $identField.' '.$op.' '.$this->quote((string)$val);
                     }
                     $parts[] = $chunk;
                     continue;
@@ -247,7 +247,7 @@ final class QAL extends DBA {
                         foreach ($arr as $v) { $args[] = $v; $placeholders[] = '%s'; }
                         $parts[] = $identField.' IN ('.implode(',', $placeholders).')';
                     } else {
-                        $q = implode(',', array_map(fn($v) => $this->quote($v), $arr));
+                        $q = implode(',', array_map(fn($v) => $this->quote((string)$v), $arr));
                         $parts[] = $identField.' IN ('.$q.')';
                     }
                 } else {
@@ -255,7 +255,7 @@ final class QAL extends DBA {
                         $args[] = $val;
                         $parts[] = $identField.' '.$op.' %s';
                     } else {
-                        $parts[] = $identField.' '.$op.' '.$this->quote($val);
+                        $parts[] = $identField.' '.$op.' '.$this->quote((string)$val);
                     }
                 }
             }
@@ -482,7 +482,7 @@ final class QAL extends DBA {
             foreach ($data as $v) $args[] = $v;
             $values = '('.implode(',', $placeholders).')';
         } else {
-            $values = '('.implode(',', array_map([$this,'quote'], array_values($data))).')';
+            $values = '('.implode(',', array_map(fn($v) => $this->quote((string)$v), array_values($data))).')';
         }
 
         if (!$updateOnDup) {
@@ -499,7 +499,7 @@ final class QAL extends DBA {
                 $setParts[] = $c.' = '.$v;
             } else {
                 if ($prepared) { $args[] = $v; $setParts[] = $c.' = %s'; }
-                else { $setParts[] = $c.' = '.$this->quote($v); }
+                else { $setParts[] = $c.' = '.$this->quote((string)$v); }
             }
         }
 
@@ -533,7 +533,7 @@ final class QAL extends DBA {
                 $vals = [];
                 foreach ($cols as $c) {
                     if ($prepared) { $args[] = $row[$c]; $vals[] = '%s'; }
-                    else           { $vals[] = $this->quote($row[$c]); }
+                    else           { $vals[] = $this->quote((string)$row[$c]); }
                 }
                 $valuesSqlParts[] = '('.implode(',', $vals).')';
             }
@@ -581,7 +581,7 @@ final class QAL extends DBA {
                         $args[] = $r[$col];
                         $cases[] = 'WHEN %s THEN %s';
                     } else {
-                        $cases[] = 'WHEN '.$this->quote($r[$keyField]).' THEN '.$this->quote($r[$col]);
+                        $cases[] = 'WHEN '.$this->quote((string)$r[$keyField]).' THEN '.$this->quote((string)$r[$col]);
                     }
                 }
                 if ($cases) {
