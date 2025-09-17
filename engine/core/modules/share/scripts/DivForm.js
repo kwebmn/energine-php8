@@ -1,10 +1,14 @@
 ScriptLoader.load('Form', 'ModalBox');
 
+const FORM_FIELD_WRAPPER_SELECTOR = '[data-role="form-field"], .form-outline, .mb-3';
+
 // Подключения: Form и ModalBox должны быть подключены как ES6-модули
 
 class DivForm extends Form {
     constructor(element) {
         super(element);
+
+        this.codeEditorFieldContainer = null;
 
         // --------- prepareLabel ---------
         // Предполагаем, что 'site_id' — id поля, в нем value — строка с id, а далее '/list/' как в оригинале
@@ -127,11 +131,37 @@ class DivForm extends Form {
         if (this.codeEditors && this.codeEditors.length) {
             // Тут мы предполагаем что на форме только одно поле типа код...
             this.codeEditors[0].setValue('');
-            // Скрыть контейнер поля
-            let inputField = this.codeEditors[0].getInputField && this.codeEditors[0].getInputField();
-            let fieldDiv = inputField && inputField.closest('[data-role="form-field"], .form-outline, .mb-3');
-            if (fieldDiv) fieldDiv.classList.add('d-none');
+            this.hideCodeEditorField();
         }
+    }
+
+    hideCodeEditorField() {
+        const fieldDiv = this.getCodeEditorFieldContainer();
+        if (fieldDiv) {
+            fieldDiv.classList.add('d-none');
+        }
+    }
+
+    getCodeEditorFieldContainer() {
+        if (this.codeEditorFieldContainer) {
+            return this.codeEditorFieldContainer;
+        }
+        if (!this.codeEditors || !this.codeEditors.length) {
+            return null;
+        }
+        const editor = this.codeEditors[0];
+        if (!editor || !editor.getInputField) {
+            return null;
+        }
+        const inputField = editor.getInputField();
+        if (!inputField) {
+            return null;
+        }
+        const container = inputField.closest(FORM_FIELD_WRAPPER_SELECTOR);
+        if (container) {
+            this.codeEditorFieldContainer = container;
+        }
+        return this.codeEditorFieldContainer;
     }
 
     /**
