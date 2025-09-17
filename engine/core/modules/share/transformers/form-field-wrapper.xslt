@@ -8,6 +8,85 @@
         Обёртка для полей формы с поддержкой классов form-outline/mb-3.
         Вынесена в отдельный файл для переиспользования и упрощения fields.xslt.
     -->
+    <xsl:template match="field[@type='boolean'][not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]">
+        <xsl:variable name="FIELD_NAME">
+            <xsl:choose>
+                <xsl:when test="@tableName">
+                    <xsl:value-of select="@tableName"/>
+                    <xsl:if test="@language">
+                        [<xsl:value-of select="@language"/>]
+                    </xsl:if>
+                    [<xsl:value-of select="@name"/>]
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="@name"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="FIELD_ID">
+            <xsl:choose>
+                <xsl:when test="@id">
+                    <xsl:value-of select="@id"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="@name"/>
+                    <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="CHECKED_VALUE">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space(@value)) &gt; 0">
+                    <xsl:value-of select="@value"/>
+                </xsl:when>
+                <xsl:otherwise>1</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="CURRENT_VALUE" select="normalize-space(string(.))"/>
+        <xsl:variable name="CHECKED_ATTR" select="translate(normalize-space(@checked), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="IS_CHECKED"
+            select="$CHECKED_ATTR='checked' or $CHECKED_ATTR='true' or $CHECKED_ATTR='1' or (. = 1) or (string-length($CURRENT_VALUE) &gt; 0 and $CURRENT_VALUE = string($CHECKED_VALUE))"/>
+        <xsl:variable name="HAS_ERROR" select="boolean(error[normalize-space(.)!=''])"/>
+        <xsl:variable name="ERROR_CLASS">
+            <xsl:if test="$HAS_ERROR"> is-invalid</xsl:if>
+        </xsl:variable>
+        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <div class="mb-3" data-role="form-field" data-type="checkbox">
+            <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+            <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
+            <div class="form-check">
+                <input type="hidden" name="{$FIELD_NAME}" value="0"/>
+                <input class="form-check-input{$ERROR_CLASS}" type="checkbox">
+                    <xsl:attribute name="id"><xsl:value-of select="$FIELD_ID"/></xsl:attribute>
+                    <xsl:attribute name="name"><xsl:value-of select="$FIELD_NAME"/></xsl:attribute>
+                    <xsl:attribute name="value"><xsl:value-of select="string($CHECKED_VALUE)"/></xsl:attribute>
+                    <xsl:if test="$IS_REQUIRED">
+                        <xsl:attribute name="required">required</xsl:attribute>
+                    </xsl:if>
+                    <xsl:if test="$IS_CHECKED">
+                        <xsl:attribute name="checked">checked</xsl:attribute>
+                    </xsl:if>
+                </input>
+                <xsl:if test="@title">
+                    <label class="form-check-label" for="{$FIELD_ID}">
+                        <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                    </label>
+                </xsl:if>
+            </div>
+            <xsl:for-each select="error[normalize-space(.)!='']">
+                <div class="invalid-feedback d-block">
+                    <xsl:value-of select="." disable-output-escaping="yes"/>
+                </div>
+            </xsl:for-each>
+            <xsl:if test="hint">
+                <div class="form-text">
+                    <xsl:value-of select="hint" disable-output-escaping="yes"/>
+                </div>
+            </xsl:if>
+        </div>
+    </xsl:template>
+
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
         <xsl:variable name="FIELD_TYPE" select="translate(@type, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
