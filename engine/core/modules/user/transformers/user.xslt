@@ -91,13 +91,13 @@
 
     <!-- компонент RoleEditor -->
     <xsl:template match="field[@name='group_div_rights']">
-            <div class="table_data">
-                <table width="100%" border="1">
+            <div class="table_data table-responsive">
+                <table class="table table-sm table-striped table-hover">
                     <thead>
                         <tr>
-                            <td><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></td>
+                            <th scope="col"><xsl:text>&#160;</xsl:text></th>
                             <xsl:for-each select="recordset/record[1]/field[@name='RightsId']/options/option">
-                                <td><xsl:value-of select="."/></td>
+                                <th scope="col"><xsl:value-of select="."/></th>
                             </xsl:for-each>
                         </tr>
                     </thead>
@@ -119,27 +119,47 @@
                 <xsl:text disable-output-escaping="yes">&lt;tbody&gt;</xsl:text>
             </xsl:if>
             <xsl:if test="$LEVEL=0">
-                <tr class="section_name">
-                    <td><xsl:value-of select="field[@name='Site']"/></td>
+                <tr class="section_name table-secondary">
+                    <th scope="row"><xsl:value-of select="field[@name='Site']"/></th>
                     <xsl:for-each select="field[@name='RightsId']/options/option">
-                        <td class="col_{position()}"><input type="radio" style="width:auto; border:0;" class="groupRadio" name=""></input></td>
+                        <td>
+                            <xsl:attribute name="class">
+                                <xsl:value-of select="concat('col_', position())"/>
+                            </xsl:attribute>
+                            <div class="text-center">
+                                <div class="form-check form-check-inline">
+                                    <input type="radio" class="form-check-input groupRadio" name=""></input>
+                                </div>
+                            </div>
+                        </td>
                     </xsl:for-each>
                 </tr>
             </xsl:if>
             <tr>
-                <xsl:if test="floor(position() div 2) = position() div 2">
-                    <xsl:attribute name="class">even</xsl:attribute>
-                </xsl:if>
-                <td class="group_name" style="padding-left:{$LEVEL*20 + 5}px;"><xsl:value-of select="field[@name='Name']"/></td>
+                <th scope="row" class="text-start">
+                    <xsl:call-template name="INDENT_NBSP">
+                        <xsl:with-param name="COUNT" select="$LEVEL"/>
+                    </xsl:call-template>
+                    <xsl:value-of select="field[@name='Name']"/>
+                </th>
                 <xsl:for-each select="field[@name='RightsId']/options/option">
-                    <td class="col_{position()}"><input type="radio" style="width:auto; border:0;" name="div_right[{../../../field[@name='Id']}]" value="{@id}">
-                        <xsl:if test="@selected">
-                            <xsl:attribute name="checked">checked</xsl:attribute>
-                        </xsl:if>
-                        <xsl:if test="../../@mode=1">
-                            <xsl:attribute name="disabled">disabled</xsl:attribute>
-                        </xsl:if>
-                    </input></td>
+                    <td>
+                        <xsl:attribute name="class">
+                            <xsl:value-of select="concat('col_', position())"/>
+                        </xsl:attribute>
+                        <div class="text-center">
+                            <div class="form-check form-check-inline">
+                                <input type="radio" class="form-check-input" name="div_right[{../../../field[@name='Id']}]" value="{@id}">
+                                    <xsl:if test="@selected">
+                                        <xsl:attribute name="checked">checked</xsl:attribute>
+                                    </xsl:if>
+                                    <xsl:if test="../../@mode=1">
+                                        <xsl:attribute name="disabled">disabled</xsl:attribute>
+                                    </xsl:if>
+                                </input>
+                            </div>
+                        </div>
+                    </td>
                 </xsl:for-each>
             </tr>
 
@@ -162,6 +182,16 @@
         <input>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES_READONLY"/>
         </input>
+    </xsl:template>
+
+    <xsl:template name="INDENT_NBSP">
+        <xsl:param name="COUNT"/>
+        <xsl:if test="$COUNT &gt; 0">
+            <xsl:text>&#160;&#160;</xsl:text>
+            <xsl:call-template name="INDENT_NBSP">
+                <xsl:with-param name="COUNT" select="$COUNT - 1"/>
+            </xsl:call-template>
+        </xsl:if>
     </xsl:template>
 
 </xsl:stylesheet>
