@@ -10,91 +10,13 @@ fieldset {
     padding: 12px;
     border: 1px solid gray;
 }
-input, textarea, select, button {
-    height: auto;
-    margin: 0;
-    padding: 6px;
-    vertical-align: middle;
-    background-color: #fff;
-    background-image: none;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
-    box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
-    -webkit-transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
-    transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
-    font-family: Tahoma, sans-serif;
-    box-sizing: border-box;
-    -moz-box-sizing: border-box;
-}
 
-button {
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: middle;
-    cursor: pointer;
-    background-image: none;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 6px 12px;
-    line-height: 18px;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    -o-user-select: none;
-    user-select: none;
-}
-button:hover {
-    background-color: #ebebeb;
-    border-color: #adadad;
-}
-.required input:focus,
-.required textarea:focus,
-.required select:focus,
-.required input:hover,
-.required textarea:hover,
-.required select:hover {
-    border-color: #6FCFE3;
-    background-color: #FaFFFF;
-    outline: 0;
-    -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,0.075),0 0 8px #6FCFE3;
-    box-shadow: inset 0 1px 1px rgba(0,0,0,0.075),0 0 8px #6FCFE3;
-}
-textarea {
-    vertical-align: top;
-}
-select {
-    min-height: 24px;
-    padding: 2px;
-}
-select option {
-    background: white;
-}
-optgroup {
-    color: black;
-    background: white;
-}
-optgroup option {
-    padding-left: 22px;
-}
-.required input,
-.required select,
-.required textarea {
-    background: #f0fff0;
-    border-color: #7DC27D;
-}
 [data-pane-part="footer"] input[type="text"],
 [data-pane-part="footer"] input[type="password"],
 [data-pane-part="footer"] input[type="email"],
 [data-pane-part="footer"] input[type="phone"],
 [data-pane-part="footer"] select,
-[data-pane-part="footer"] textarea,
-.filter input[type="text"],
-.filter input[type="password"],
-.filter input[type="email"],
-.filter input[type="phone"],
-.filter select,
-.filter textarea {
+[data-pane-part="footer"] textarea {
     border: 0;
 }
 
