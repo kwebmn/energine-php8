@@ -291,7 +291,7 @@ final class AttachmentEditor extends Grid
      *
      * Правильно сохраняет порядок в order_num полях.
      */
-    protected function saveData(): mixed
+    protected function saveData()
     {
         $result = false;
 

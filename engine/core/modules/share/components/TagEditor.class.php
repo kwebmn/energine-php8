@@ -40,7 +40,7 @@ final class TagEditor extends Grid
     /**
      * RAW-данные: также поддерживает фильтр по tag_id из state.
      */
-    protected function getRawData(): void
+    protected function getRawData()
     {
         $params = (array) $this->getStateParams(true);
         if (!empty($params['tag_id']) && is_string($params['tag_id'])) {

@@ -53,7 +53,7 @@ final class NavigationMenu extends DataSet
     /**
      * Накладываем ограничения по тегам (если заданы).
      */
-    protected function loadData(): array
+    protected function loadData(): array|false|null
     {
         $sitemap = E()->getMap();
         $data = $sitemap->getInfo();

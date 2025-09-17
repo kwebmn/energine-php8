@@ -42,7 +42,7 @@ final class LanguageEditor extends Grid
      *
      * При создании нового языка не даём возможности сделать его дефолтным.
      */
-    protected function add(): void
+    protected function add()
     {
         // фиксируем стейт для корректной подстановки конфигурации формы
         $this->getConfig()->setCurrentState('add');
