@@ -92,22 +92,24 @@
     <!-- компонент RoleEditor -->
     <xsl:template match="field[@name='group_div_rights']">
             <div class="table_data">
-                <table width="100%" border="1">
-                    <thead>
-                        <tr>
-                            <td><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></td>
-                            <xsl:for-each select="recordset/record[1]/field[@name='RightsId']/options/option">
-                                <td><xsl:value-of select="."/></td>
-                            </xsl:for-each>
-                        </tr>
-                    </thead>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th scope="col"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></th>
+                                <xsl:for-each select="recordset/record[1]/field[@name='RightsId']/options/option">
+                                    <th scope="col" class="text-center"><xsl:value-of select="."/></th>
+                                </xsl:for-each>
+                            </tr>
+                        </thead>
 
                         <xsl:call-template name="BUILD_DIV_TREE">
                             <xsl:with-param name="DATA" select="recordset"/>
                             <xsl:with-param name="LEVEL" select="0"/>
                         </xsl:call-template>
 
-                </table>
+                    </table>
+                </div>
            </div>
     </xsl:template>
 
@@ -119,27 +121,32 @@
                 <xsl:text disable-output-escaping="yes">&lt;tbody&gt;</xsl:text>
             </xsl:if>
             <xsl:if test="$LEVEL=0">
-                <tr class="section_name">
+                <tr class="section_name table-secondary">
                     <td><xsl:value-of select="field[@name='Site']"/></td>
                     <xsl:for-each select="field[@name='RightsId']/options/option">
-                        <td class="col_{position()}"><input type="radio" style="width:auto; border:0;" class="groupRadio" name=""></input></td>
+                        <td class="text-center">
+                            <div class="form-check text-center">
+                                <input type="radio" class="form-check-input groupRadio" name="" />
+                            </div>
+                        </td>
                     </xsl:for-each>
                 </tr>
             </xsl:if>
             <tr>
-                <xsl:if test="floor(position() div 2) = position() div 2">
-                    <xsl:attribute name="class">even</xsl:attribute>
-                </xsl:if>
-                <td class="group_name" style="padding-left:{$LEVEL*20 + 5}px;"><xsl:value-of select="field[@name='Name']"/></td>
+                <td style="padding-left:{$LEVEL*20 + 5}px;"><xsl:value-of select="field[@name='Name']"/></td>
                 <xsl:for-each select="field[@name='RightsId']/options/option">
-                    <td class="col_{position()}"><input type="radio" style="width:auto; border:0;" name="div_right[{../../../field[@name='Id']}]" value="{@id}">
-                        <xsl:if test="@selected">
-                            <xsl:attribute name="checked">checked</xsl:attribute>
-                        </xsl:if>
-                        <xsl:if test="../../@mode=1">
-                            <xsl:attribute name="disabled">disabled</xsl:attribute>
-                        </xsl:if>
-                    </input></td>
+                    <td class="text-center">
+                        <div class="form-check text-center">
+                            <input type="radio" class="form-check-input" name="div_right[{../../../field[@name='Id']}]" value="{@id}">
+                                <xsl:if test="@selected">
+                                    <xsl:attribute name="checked">checked</xsl:attribute>
+                                </xsl:if>
+                                <xsl:if test="../../@mode=1">
+                                    <xsl:attribute name="disabled">disabled</xsl:attribute>
+                                </xsl:if>
+                            </input>
+                        </div>
+                    </td>
                 </xsl:for-each>
             </tr>
 
