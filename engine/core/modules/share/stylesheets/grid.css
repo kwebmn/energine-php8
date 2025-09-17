@@ -148,10 +148,6 @@ div.grid table tr .firstColumn { border-left: 0; }
 
 /* Для FA-иконки видео, например: <i class="fas fa-video video_file"></i> */
 
-.hidden {
-    display: none !important;
-}
-
 [data-role="page-list"] .highlighted .page-link {
     background-color: #e9ecef;
 }

@@ -733,7 +733,7 @@
     <!-- поле для загрузки файла в файловом репозитории -->
     <xsl:template match="field[@name='upl_path'][ancestor::component[@sample='FileRepository' and @type='form']]" mode="field_input">
         <div class="preview">
-            <img border="0" id="preview" class="hidden"/>
+            <img border="0" id="preview" class="d-none"/>
         </div>
         <input>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>

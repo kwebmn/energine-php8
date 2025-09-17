@@ -140,7 +140,7 @@
                                     <div class="filter-query flex-grow-1" data-role="filter-query">
                                         <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
                                     </div>
-                                    <div class="filter-query flex-grow-1 hidden" data-role="filter-query">
+                                    <div class="filter-query flex-grow-1 d-none" data-role="filter-query">
                                         <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
                                     </div>
                                     <div class="d-flex align-items-center gap-2 ms-auto">

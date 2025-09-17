@@ -23,7 +23,3 @@
 [data-role="tabs"] .nav-item.highlighted .nav-link {
     background-color: #e9ecef;
 }
-
-.hidden {
-    display: none !important;
-}
