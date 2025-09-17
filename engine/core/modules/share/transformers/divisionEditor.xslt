@@ -49,7 +49,7 @@
     <xsl:template match="field[@name='page_rights'][@type='custom']">
         <xsl:variable name="RECORDS" select="recordset/record"/>
         <div class="table-responsive">
-            <table class="table table-sm table-striped table-hover">
+            <table class="table table-sm table-striped table-hover align-middle">
                 <thead>
                     <tr>
                         <th scope="col"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></th>
@@ -61,12 +61,13 @@
                 <tbody>
                     <xsl:for-each select="$RECORDS">
                         <tr>
-                            <th scope="row"><xsl:value-of select="field[@name='group_id']"/></th>
+                            <th scope="row" class="table-secondary"><xsl:value-of select="field[@name='group_id']"/></th>
                             <xsl:for-each select="field[@name='right_id']/options/option">
                                 <td>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" value="{@id}">
+                                    <div class="form-check m-0 d-flex justify-content-center">
+                                        <input class="form-check-input" type="radio">
                                             <xsl:attribute name="name">right_id[<xsl:value-of select="../../../field[@name='group_id']/@group_id"/>]</xsl:attribute>
+                                            <xsl:attribute name="value"><xsl:value-of select="@id"/></xsl:attribute>
                                             <xsl:if test="@selected">
                                                 <xsl:attribute name="checked">checked</xsl:attribute>
                                             </xsl:if>
