@@ -696,8 +696,12 @@ final class Setup {
                 }
                 array_unshift($data, 'CONST;' . implode(';', $langData));
 
-                if (!file_put_contents($dirName . $transFileName, implode("\r\n", $data))) {
-                    throw new Exception('Произошла ошибка при записи в файл: ' . $dirName . $transFileName . '.');
+                $targetFile = $dirName . $transFileName;
+                list($written, $writeError) = $this->callFs(function () use ($targetFile, $data) {
+                    return file_put_contents($targetFile, implode("\r\n", $data));
+                });
+                if ($written === false) {
+                    throw new Exception('Произошла ошибка при записи в файл: ' . $targetFile . '.' . $this->formatFsError($writeError));
                 }
                 $this->text('Записываем в файл ' . $dirName . $transFileName . ' (' . sizeof($data) . ')');
 
@@ -746,8 +750,11 @@ final class Setup {
             $dir = HTDOCS_DIR . DIRECTORY_SEPARATOR . $dir;
 
             if (!file_exists($dir)) {
-                if (!@mkdir($dir, 0755, true)) {
-                    throw new Exception('Невозможно создать директорию:' . $dir);
+                list($created, $mkdirError) = $this->callFs(function () use ($dir) {
+                    return mkdir($dir, 0755, true);
+                });
+                if ($created === false && !is_dir($dir)) {
+                    throw new Exception('Невозможно создать директорию:' . $dir . $this->formatFsError($mkdirError));
                 }
             } else {
                 $this->cleaner($dir);
@@ -973,7 +980,12 @@ final class Setup {
                 if (is_dir($fo)) {
                     $dir = $module . DIRECTORY_SEPARATOR . basename($fo);
                     if (!file_exists($dir)) {
-                        mkdir($dir);
+                        list($created, $mkdirError) = $this->callFs(function () use ($dir) {
+                            return mkdir($dir);
+                        });
+                        if ($created === false && !is_dir($dir)) {
+                            throw new Exception('Не удалось создать директорию ' . $dir . $this->formatFsError($mkdirError));
+                        }
                         $this->text('Создаем директорию ', $dir);
                     }
                     $this->linkCore($mode, $fo . DIRECTORY_SEPARATOR . '*', $dir, $level + 1);
@@ -987,8 +999,11 @@ final class Setup {
                     switch ($mode) {
                         case self::MODE_SYMLINK:
                             $this->text('Создаем симлинк ', $fo, ' --> ', $dest);
-                            if (!@symlink($fo, $dest)) {
-                                throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
+                            list($linked, $symlinkError) = $this->callFs(function () use ($fo, $dest) {
+                                return symlink($fo, $dest);
+                            });
+                            if ($linked === false) {
+                                throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest . $this->formatFsError($symlinkError));
                             }
                             break;
                         case self::MODE_COPY:
@@ -1014,18 +1029,36 @@ final class Setup {
                                     (strpos($pi['dirname'], 'FileAPI') === false)
                                 ) {
                                     $this->text('Минифицируем и копируем ', $fo, ' --> ', $dest);
-                                    file_put_contents($dest, $JSMIn->squeeze(file_get_contents($fo), true, false, false));
+                                    list($sourceContent, $readError) = $this->callFs(function () use ($fo) {
+                                        return file_get_contents($fo);
+                                    });
+                                    if ($sourceContent === false) {
+                                        throw new Exception('Не удалось прочитать файл для минификации: ' . $fo . $this->formatFsError($readError));
+                                    }
+                                    $payload = $JSMIn->squeeze($sourceContent, true, false, false);
+                                    list($written, $writeError) = $this->callFs(function () use ($dest, $payload) {
+                                        return file_put_contents($dest, $payload);
+                                    });
+                                    if ($written === false) {
+                                        throw new Exception('Не удалось записать файл: ' . $dest . $this->formatFsError($writeError));
+                                    }
                                 } else {
                                     $this->text('Создаем символическую ссылку ', $fo, ' --> ', $dest);
-                                    if (!@symlink($fo, $dest)) {
-                                        throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
+                                    list($linked, $symlinkError) = $this->callFs(function () use ($fo, $dest) {
+                                        return symlink($fo, $dest);
+                                    });
+                                    if ($linked === false) {
+                                        throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest . $this->formatFsError($symlinkError));
                                     }
                                 }
 
                             } else {
                                 $this->text('Создаем символическую ссылку ', $fo, ' --> ', $dest);
-                                if (!@symlink($fo, $dest)) {
-                                    throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
+                                list($linked, $symlinkError) = $this->callFs(function () use ($fo, $dest) {
+                                    return symlink($fo, $dest);
+                                });
+                                if ($linked === false) {
+                                    throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest . $this->formatFsError($symlinkError));
 
                                 }
                             }
@@ -1057,7 +1090,12 @@ final class Setup {
                 $new_dir = implode(DIRECTORY_SEPARATOR, array($dir, $module));
 
                 if (!file_exists($new_dir)) {
-                    mkdir($new_dir);
+                    list($created, $mkdirError) = $this->callFs(function () use ($new_dir) {
+                        return mkdir($new_dir);
+                    });
+                    if ($created === false && !is_dir($new_dir)) {
+                        throw new Exception('Не удалось создать директорию ' . $new_dir . $this->formatFsError($mkdirError));
+                    }
                 }
 
                 $srcFile = $fo;
@@ -1066,8 +1104,11 @@ final class Setup {
                 switch ($mode) {
                     case self::MODE_SYMLINK:
                         $this->text('Создаем симлинк ', $srcFile, ' --> ', $linkPath);
-                        if (!@symlink($srcFile, $linkPath)) {
-                            throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath);
+                        list($linked, $symlinkError) = $this->callFs(function () use ($srcFile, $linkPath) {
+                            return symlink($srcFile, $linkPath);
+                        });
+                        if ($linked === false) {
+                            throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath . $this->formatFsError($symlinkError));
                         }
                         break;
                     case self::MODE_COPY:
@@ -1075,11 +1116,26 @@ final class Setup {
 
                         if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
                             $this->text('Минифицируем и копируем ', $srcFile, ' --> ', $linkPath);
-                            file_put_contents($linkPath, $JSMin->squeeze(file_get_contents($srcFile), true, false, false));
+                            list($sourceContent, $readError) = $this->callFs(function () use ($srcFile) {
+                                return file_get_contents($srcFile);
+                            });
+                            if ($sourceContent === false) {
+                                throw new Exception('Не удалось прочитать файл для минификации: ' . $srcFile . $this->formatFsError($readError));
+                            }
+                            $payload = $JSMin->squeeze($sourceContent, true, false, false);
+                            list($written, $writeError) = $this->callFs(function () use ($linkPath, $payload) {
+                                return file_put_contents($linkPath, $payload);
+                            });
+                            if ($written === false) {
+                                throw new Exception('Не удалось записать файл: ' . $linkPath . $this->formatFsError($writeError));
+                            }
                         } else {
                             $this->text('Создаем символическую ссылку ', $srcFile, ' --> ', $linkPath);
-                            if (!@symlink($srcFile, $linkPath)) {
-                                throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath);
+                            list($linked, $symlinkError) = $this->callFs(function () use ($srcFile, $linkPath) {
+                                return symlink($srcFile, $linkPath);
+                            });
+                            if ($linked === false) {
+                                throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath . $this->formatFsError($symlinkError));
 
                             }
                         }
@@ -1162,7 +1218,50 @@ final class Setup {
      * @param array $deps Dependencies.
      */
     private function writeScriptMap($deps) {
-        file_put_contents(HTDOCS_DIR . '/system.jsmap.php', '<?php return ' . var_export($deps, true) . ';');
+        $payload = '<?php return ' . var_export($deps, true) . ';';
+        $target  = HTDOCS_DIR . '/system.jsmap.php';
+        list($written, $writeError) = $this->callFs(function () use ($target, $payload) {
+            return file_put_contents($target, $payload);
+        });
+        if ($written === false) {
+            throw new Exception('Не удалось записать карту JavaScript-зависимостей: ' . $target . $this->formatFsError($writeError));
+        }
+    }
+
+    /**
+     * Выполнить файловую операцию, перехватив предупреждения.
+     *
+     * @param callable $operation
+     * @return array [mixed $result, string|null $error]
+     */
+    private function callFs(callable $operation) {
+        $result = null;
+        $error = null;
+
+        set_error_handler(function ($severity, $message, $file = '', $line = 0) {
+            throw new \ErrorException($message, 0, $severity, $file, $line);
+        });
+
+        try {
+            $result = $operation();
+        } catch (\ErrorException $e) {
+            $result = false;
+            $error = $e->getMessage();
+        } finally {
+            restore_error_handler();
+        }
+
+        return array($result, $error);
+    }
+
+    /**
+     * Сформировать дополнение к сообщению об ошибке с текстом исключения.
+     *
+     * @param string|null $error
+     * @return string
+     */
+    private function formatFsError($error) {
+        return $error ? ' (' . $error . ')' : '';
     }
 
     /**
