@@ -205,6 +205,9 @@ class Form {
 
         // SmapSelector
         this.form.querySelectorAll('[data-action="open-smap"]').forEach(el => {
+            if (el.dataset?.labelSelector === 'division') {
+                return;
+            }
             new Form.SmapSelector(el, this);
         });
 
@@ -514,6 +517,32 @@ class Form {
 
         const uploader = targetId ? this.fileUploaderMap?.get(targetId) : null;
         uploader?.reset();
+
+        const captionId = button?.dataset?.caption;
+        const captionEl = captionId ? document.getElementById(captionId) : null;
+        if (captionEl) {
+            if ('value' in captionEl) {
+                captionEl.value = '';
+            } else {
+                captionEl.textContent = '';
+            }
+            captionEl.setAttribute('hidden', 'hidden');
+        }
+
+        const cookieName = button?.dataset?.cookie;
+        if (cookieName) {
+            try {
+                Cookie.remove(cookieName, { path: new URL(Energine.base).pathname });
+            } catch (error) {
+                console.warn('clearFileField: Cookie.remove failed', error);
+            }
+        }
+
+        const segmentObject = this.componentElement?.querySelector('[data-role="smap-segment"]')
+            || document.getElementById('smap_pid_segment');
+        if (segmentObject) {
+            segmentObject.textContent = '';
+        }
     }
 
     // processFileResult
@@ -1388,7 +1417,14 @@ Form.Label = {
                 } else {
                     spanField.textContent = name;
                 }
+                spanField.removeAttribute('hidden');
             }
+
+            const clearButton = hiddenFieldId
+                ? this.form?.querySelector(`[data-action="clear-file"][data-target="${hiddenFieldId}"]`)
+                    || this.form?.querySelector(`[data-action="clear-file"][data-link="${hiddenFieldId}"]`)
+                : null;
+            clearButton?.removeAttribute('hidden');
 
             const segmentObject = this.componentElement?.querySelector('[data-role="smap-segment"]')
                 || document.getElementById('smap_pid_segment');
@@ -1409,7 +1445,9 @@ Form.Label = {
      */
     prepareLabel(treeURL, restore = false) {
         // selector element
-        this.obj = this.componentElement?.querySelector('[data-action="select-parent"]')
+        this.obj = this.componentElement?.querySelector('[data-label-selector="division"]')
+            || this.componentElement?.querySelector('[data-action="select-parent"]')
+            || document.querySelector('[data-label-selector="division"]')
             || document.querySelector('[data-action="select-parent"]')
             || document.getElementById('sitemap_selector');
         if (this.obj) {
@@ -1457,6 +1495,17 @@ Form.Label = {
                 } else {
                     spanField.textContent = savedData.name;
                 }
+                if (savedData.name) {
+                    spanField.removeAttribute('hidden');
+                }
+            }
+
+            const clearButton = hiddenFieldId
+                ? this.form?.querySelector(`[data-action="clear-file"][data-target="${hiddenFieldId}"]`)
+                    || this.form?.querySelector(`[data-action="clear-file"][data-link="${hiddenFieldId}"]`)
+                : null;
+            if (clearButton && savedData.id) {
+                clearButton.removeAttribute('hidden');
             }
 
             const segmentObject = this.componentElement?.querySelector('[data-role="smap-segment"]')
