@@ -2,23 +2,89 @@
 
 declare(strict_types=1);
 
-use InvalidArgumentException;
 use Setup2\Installer;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+session_start();
+
+$requiredUser = getenv('SETUP2_USER');
+$requiredPass = getenv('SETUP2_PASS');
+
+if ($requiredUser !== false || $requiredPass !== false) {
+    $expectedUser = $requiredUser !== false ? (string) $requiredUser : '';
+    $expectedPass = $requiredPass !== false ? (string) $requiredPass : '';
+    $providedUser = $_SERVER['PHP_AUTH_USER'] ?? null;
+    $providedPass = $_SERVER['PHP_AUTH_PW'] ?? null;
+
+    if (!is_string($providedUser) || !is_string($providedPass) || $providedUser !== $expectedUser || $providedPass !== $expectedPass) {
+        header('WWW-Authenticate: Basic realm="Setup2"');
+        http_response_code(401);
+        echo 'Authentication required';
+        exit;
+    }
+}
+
+$alerts = $_SESSION['setup2_alerts'] ?? [];
+unset($_SESSION['setup2_alerts']);
+
+$csrfToken = $_SESSION['setup2_csrf_token'] ?? null;
+if (!is_string($csrfToken) || $csrfToken === '') {
+    $csrfToken = bin2hex(random_bytes(32));
+    $_SESSION['setup2_csrf_token'] = $csrfToken;
+}
+
 $installer = new Installer();
-$alerts = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $acceptHeader = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+    $wantsJson = str_contains($acceptHeader, 'application/json');
+    $postedToken = (string) ($_POST['_csrf_token'] ?? '');
+
+    if (!hash_equals($csrfToken, $postedToken)) {
+        http_response_code(403);
+
+        if ($wantsJson) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Invalid CSRF token.',
+            ]);
+        } else {
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'Forbidden';
+        }
+
+        exit;
+    }
+
     $actionName = trim((string) ($_POST['action'] ?? ''));
+    $message = '';
+    $status = 'success';
+    $statusCode = 200;
 
     try {
         $installer->runAction($actionName);
-        $alerts[] = sprintf('Action "%s" executed successfully.', $actionName);
-    } catch (InvalidArgumentException $exception) {
-        $alerts[] = $exception->getMessage();
+        $message = sprintf('Action "%s" executed successfully.', $actionName);
+    } catch (\InvalidArgumentException $exception) {
+        $message = $exception->getMessage();
+        $status = 'error';
+        $statusCode = 400;
     }
+
+    if ($wantsJson) {
+        http_response_code($statusCode);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'status' => $status,
+            'message' => $message,
+        ]);
+        exit;
+    }
+
+    $_SESSION['setup2_alerts'] = [$message];
+    header('Location: ' . (string) $_SERVER['PHP_SELF'], true, 303);
+    exit;
 }
 
 $actions = $installer->listActions();
