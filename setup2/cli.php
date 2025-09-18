@@ -39,8 +39,25 @@ foreach ($availableActions as $availableAction) {
 $actionName = $aliases[strtolower($rawAction)] ?? $rawAction;
 
 try {
-    $installer->runAction($actionName);
+    $result = $installer->run($actionName, array_slice($argv, 2));
+} catch (\InvalidArgumentException $exception) {
+    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+    exit(1);
 } catch (\Throwable $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
     exit(1);
 }
+
+$stream = $result->success ? STDOUT : STDERR;
+
+fwrite($stream, $result->message . PHP_EOL);
+
+if ($result->details !== null) {
+    fwrite($stream, print_r($result->details, true) . PHP_EOL);
+}
+
+if ($result->logPointer !== null) {
+    fwrite($stream, 'See log: ' . $result->logPointer . PHP_EOL);
+}
+
+exit($result->success ? 0 : 1);

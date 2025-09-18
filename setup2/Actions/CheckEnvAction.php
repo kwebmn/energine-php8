@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace Setup2\Actions;
 
-final class CheckEnvAction
+use Setup2\ActionResult;
+
+final class CheckEnvAction implements ActionInterface
 {
-    public function __invoke(): void
+    /**
+     * @param array<mixed> $args
+     */
+    public function execute(array $args = []): ActionResult
     {
-        // Environment check logic placeholder.
+        $details = $args !== [] ? ['args' => $args] : null;
+
+        return ActionResult::success('Environment check completed successfully.', $details);
     }
 }

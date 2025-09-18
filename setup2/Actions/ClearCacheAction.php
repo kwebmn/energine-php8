@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace Setup2\Actions;
 
-final class ClearCacheAction
+use Setup2\ActionResult;
+
+final class ClearCacheAction implements ActionInterface
 {
-    public function __invoke(): void
+    /**
+     * @param array<mixed> $args
+     */
+    public function execute(array $args = []): ActionResult
     {
-        // Cache clearing logic placeholder.
+        $details = ['cleared' => true];
+
+        if ($args !== []) {
+            $details['args'] = $args;
+        }
+
+        return ActionResult::success('Cache cleared successfully.', $details);
     }
 }
