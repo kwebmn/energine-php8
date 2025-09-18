@@ -62,14 +62,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = '';
     $status = 'success';
     $statusCode = 200;
+    $logEntries = [];
 
     try {
+        $logEntries[] = sprintf('[%s] Starting "%s" action.', date('Y-m-d H:i:s'), $actionName);
         $installer->runAction($actionName);
         $message = sprintf('Action "%s" executed successfully.', $actionName);
+        $logEntries[] = sprintf('[%s] Action "%s" finished without errors.', date('Y-m-d H:i:s'), $actionName);
     } catch (\InvalidArgumentException $exception) {
         $message = $exception->getMessage();
         $status = 'error';
         $statusCode = 400;
+        $logEntries[] = sprintf('[%s] %s', date('Y-m-d H:i:s'), $message);
+    } catch (\Throwable $exception) {
+        $message = sprintf('Failed to execute action "%s".', $actionName);
+        $status = 'error';
+        $statusCode = 500;
+        $logEntries[] = sprintf('[%s] %s', date('Y-m-d H:i:s'), $exception->getMessage());
     }
 
     if ($wantsJson) {
@@ -82,7 +91,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $_SESSION['setup2_alerts'] = [$message];
+    $_SESSION['setup2_alerts'] = [[
+        'status' => $status,
+        'message' => $message,
+        'action' => $actionName,
+        'log' => implode("\n", $logEntries),
+    ]];
     header('Location: ' . (string) $_SERVER['PHP_SELF'], true, 303);
     exit;
 }
