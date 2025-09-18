@@ -59,16 +59,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $actionName = trim((string) ($_POST['action'] ?? ''));
+    $actionArgs = $_POST;
+
+    if (is_array($actionArgs)) {
+        unset($actionArgs['_csrf_token'], $actionArgs['action']);
+    } else {
+        $actionArgs = [];
+    }
     $message = '';
     $status = 'success';
     $statusCode = 200;
     $logEntries = [];
+    $details = null;
+    $logPointer = null;
 
     try {
         $logEntries[] = sprintf('[%s] Starting "%s" action.', date('Y-m-d H:i:s'), $actionName);
-        $installer->runAction($actionName);
-        $message = sprintf('Action "%s" executed successfully.', $actionName);
-        $logEntries[] = sprintf('[%s] Action "%s" finished without errors.', date('Y-m-d H:i:s'), $actionName);
+        $result = $installer->run($actionName, $actionArgs);
+        $message = $result->message;
+        $status = $result->success ? 'success' : 'error';
+        $statusCode = $result->success ? 200 : 500;
+        $details = $result->details;
+        $logPointer = $result->logPointer;
+        $logEntries[] = sprintf('[%s] %s', date('Y-m-d H:i:s'), $message);
+
+        if (is_array($details)) {
+            $encodedDetails = json_encode($details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $logEntries[] = sprintf('[%s] Details: %s', date('Y-m-d H:i:s'), is_string($encodedDetails) ? $encodedDetails : print_r($details, true));
+        }
+
+        if (is_string($logPointer) && $logPointer !== '') {
+            $logEntries[] = sprintf('[%s] Log pointer: %s', date('Y-m-d H:i:s'), $logPointer);
+        }
     } catch (\InvalidArgumentException $exception) {
         $message = $exception->getMessage();
         $status = 'error';
@@ -84,10 +106,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($wantsJson) {
         http_response_code($statusCode);
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode([
+        $response = [
             'status' => $status,
             'message' => $message,
-        ]);
+        ];
+
+        if ($details !== null) {
+            $response['details'] = $details;
+        }
+
+        if ($logPointer !== null) {
+            $response['logPointer'] = $logPointer;
+        }
+
+        echo json_encode($response);
         exit;
     }
 
@@ -96,6 +128,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'message' => $message,
         'action' => $actionName,
         'log' => implode("\n", $logEntries),
+        'details' => $details,
+        'logPointer' => $logPointer,
     ]];
     header('Location: ' . (string) $_SERVER['PHP_SELF'], true, 303);
     exit;

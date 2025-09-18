@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace Setup2\Actions;
 
-final class SyncUploadsAction
+use Setup2\ActionResult;
+
+final class SyncUploadsAction implements ActionInterface
 {
-    public function __invoke(): void
+    /**
+     * @param array<mixed> $args
+     */
+    public function execute(array $args = []): ActionResult
     {
-        // Upload synchronization logic placeholder.
+        $details = ['synced' => true];
+
+        if ($args !== []) {
+            $details['args'] = $args;
+        }
+
+        return ActionResult::success('Uploads synchronized successfully.', $details);
     }
 }

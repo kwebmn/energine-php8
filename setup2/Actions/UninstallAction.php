@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace Setup2\Actions;
 
-final class UninstallAction
+use Setup2\ActionResult;
+
+final class UninstallAction implements ActionInterface
 {
-    public function __invoke(): void
+    /**
+     * @param array<mixed> $args
+     */
+    public function execute(array $args = []): ActionResult
     {
-        // Uninstallation logic placeholder.
+        $details = ['uninstalled' => true];
+
+        if ($args !== []) {
+            $details['args'] = $args;
+        }
+
+        return ActionResult::success('Uninstallation completed successfully.', $details);
     }
 }

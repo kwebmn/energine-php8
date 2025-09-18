@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Setup2;
 
+use InvalidArgumentException;
+use LogicException;
+use Setup2\Actions\ActionInterface;
 use Setup2\Actions\CheckEnvAction;
 use Setup2\Actions\ClearCacheAction;
 use Setup2\Actions\ExportTransAction;
@@ -14,31 +17,30 @@ use Setup2\Actions\UninstallAction;
 final class Installer
 {
     /**
-     * @var array<string, callable>
+     * @var array<string, class-string<ActionInterface>>
      */
-    private array $actions;
+    private const ACTION_MAP = [
+        'check-env' => CheckEnvAction::class,
+        'install' => InstallAction::class,
+        'clear-cache' => ClearCacheAction::class,
+        'sync-uploads' => SyncUploadsAction::class,
+        'export-trans' => ExportTransAction::class,
+        'uninstall' => UninstallAction::class,
+    ];
 
-    public function __construct()
+    /**
+     * @var array<string, ActionInterface>
+     */
+    private array $resolvedActions = [];
+
+    /**
+     * @param array<mixed> $args
+     */
+    public function run(string $action, array $args = []): ActionResult
     {
-        $this->actions = [
-            'check-env' => new CheckEnvAction(),
-            'install' => new InstallAction(),
-            'clear-cache' => new ClearCacheAction(),
-            'sync-uploads' => new SyncUploadsAction(),
-            'export-trans' => new ExportTransAction(),
-            'uninstall' => new UninstallAction(),
-        ];
-    }
+        $handler = $this->resolveAction($action);
 
-    public function runAction(string $name): void
-    {
-        $action = $this->actions[$name] ?? null;
-
-        if (!is_callable($action)) {
-            throw new \InvalidArgumentException(sprintf('Unknown installer action "%s".', $name));
-        }
-
-        $action();
+        return $handler->execute($args);
     }
 
     /**
@@ -46,6 +48,33 @@ final class Installer
      */
     public function listActions(): array
     {
-        return array_keys($this->actions);
+        return array_keys(self::ACTION_MAP);
+    }
+
+    private function resolveAction(string $action): ActionInterface
+    {
+        if (isset($this->resolvedActions[$action])) {
+            return $this->resolvedActions[$action];
+        }
+
+        $class = self::ACTION_MAP[$action] ?? null;
+
+        if ($class === null) {
+            throw new InvalidArgumentException(sprintf('Unknown installer action "%s".', $action));
+        }
+
+        $instance = new $class();
+
+        if (!$instance instanceof ActionInterface) {
+            throw new LogicException(sprintf(
+                'Installer action "%s" must implement %s.',
+                $action,
+                ActionInterface::class
+            ));
+        }
+
+        $this->resolvedActions[$action] = $instance;
+
+        return $instance;
     }
 }

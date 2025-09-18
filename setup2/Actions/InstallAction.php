@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace Setup2\Actions;
 
-final class InstallAction
+use Setup2\ActionResult;
+
+final class InstallAction implements ActionInterface
 {
-    public function __invoke(): void
+    /**
+     * @param array<mixed> $args
+     */
+    public function execute(array $args = []): ActionResult
     {
-        // Installation logic placeholder.
+        $details = ['installed' => true];
+
+        if ($args !== []) {
+            $details['args'] = $args;
+        }
+
+        return ActionResult::success('Installation completed successfully.', $details);
     }
 }

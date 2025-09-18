@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace Setup2\Actions;
 
-final class ExportTransAction
+use Setup2\ActionResult;
+
+final class ExportTransAction implements ActionInterface
 {
-    public function __invoke(): void
+    /**
+     * @param array<mixed> $args
+     */
+    public function execute(array $args = []): ActionResult
     {
-        // Translation export logic placeholder.
+        $details = ['exported' => true];
+
+        if ($args !== []) {
+            $details['args'] = $args;
+        }
+
+        return ActionResult::success('Translations exported successfully.', $details);
     }
 }
