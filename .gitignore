@@ -14,27 +14,4 @@ tmp/
 
 # PHP/Composer (под ваш кейс: для приложений lock обычно коммитят)
 vendor/
-stats/awsindex.html
-stats/awstats.phpbase.kweb.ua.alldomains.html
-stats/awstats.phpbase.kweb.ua.allhosts.html
-stats/awstats.phpbase.kweb.ua.allrobots.html
-stats/awstats.phpbase.kweb.ua.browserdetail.html
-stats/awstats.phpbase.kweb.ua.downloads.html
-stats/awstats.phpbase.kweb.ua.errors400.html
-stats/awstats.phpbase.kweb.ua.errors403.html
-stats/awstats.phpbase.kweb.ua.errors404.html
-stats/awstats.phpbase.kweb.ua.keyphrases.html
-stats/awstats.phpbase.kweb.ua.keywords.html
-stats/awstats.phpbase.kweb.ua.lasthosts.html
-stats/awstats.phpbase.kweb.ua.lastrobots.html
-stats/awstats.phpbase.kweb.ua.osdetail.html
-stats/awstats.phpbase.kweb.ua.refererpages.html
-stats/awstats.phpbase.kweb.ua.refererse.html
-stats/awstats.phpbase.kweb.ua.session.html
-stats/awstats.phpbase.kweb.ua.unknownbrowser.html
-stats/awstats.phpbase.kweb.ua.unknownip.html
-stats/awstats.phpbase.kweb.ua.unknownos.html
-stats/awstats.phpbase.kweb.ua.urldetail.html
-stats/awstats.phpbase.kweb.ua.urlentry.html
-stats/awstats.phpbase.kweb.ua.urlexit.html
-stats/index.php
+stats/
