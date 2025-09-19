@@ -82,28 +82,33 @@ final class LinkerAction implements ActionInterface
                 continue;
             }
 
+            $moduleName = (string) $module;
+
             $sourcePath = rtrim($path, DIRECTORY_SEPARATOR);
             $resolvedSource = realpath($sourcePath);
             if ($resolvedSource !== false) {
                 $sourcePath = $resolvedSource;
             }
 
+            $destinationPath = $modulesDir . DIRECTORY_SEPARATOR . $moduleName;
+
+            $sourceDisplay = $this->formatModuleSourceForReport($moduleName, $sourcePath, $coreRelDir);
+            $targetDisplay = $this->formatModuleTargetForReport($moduleName, $destinationPath, $coreRelDir);
+
             if (!is_dir($sourcePath)) {
                 $moduleFailures[] = [
-                    'module' => (string) $module,
-                    'source' => Paths::relativeToRoot($sourcePath),
+                    'module' => $moduleName,
+                    'source' => $sourceDisplay,
                     'error' => 'Каталог модуля не найден.',
                 ];
                 continue;
             }
 
-            $destinationPath = $modulesDir . DIRECTORY_SEPARATOR . (string) $module;
-
             if ((file_exists($destinationPath) || is_link($destinationPath)) && !$this->removePath($destinationPath)) {
                 $moduleFailures[] = [
-                    'module' => (string) $module,
-                    'source' => Paths::relativeToRoot($sourcePath),
-                    'target' => Paths::relativeToRoot($destinationPath),
+                    'module' => $moduleName,
+                    'source' => $sourceDisplay,
+                    'target' => $targetDisplay,
                     'error' => 'Не удалось удалить предыдущую ссылку на модуль.',
                 ];
                 continue;
@@ -111,15 +116,15 @@ final class LinkerAction implements ActionInterface
 
             if (@symlink($sourcePath, $destinationPath)) {
                 $details['modules']['linked'][] = [
-                    'module' => (string) $module,
-                    'source' => Paths::relativeToRoot($sourcePath),
-                    'target' => Paths::relativeToRoot($destinationPath),
+                    'module' => $moduleName,
+                    'source' => $sourceDisplay,
+                    'target' => $targetDisplay,
                 ];
             } else {
                 $moduleFailures[] = [
-                    'module' => (string) $module,
-                    'source' => Paths::relativeToRoot($sourcePath),
-                    'target' => Paths::relativeToRoot($destinationPath),
+                    'module' => $moduleName,
+                    'source' => $sourceDisplay,
+                    'target' => $targetDisplay,
                     'error' => 'Не удалось создать символическую ссылку на модуль.',
                 ];
             }
@@ -400,6 +405,113 @@ final class LinkerAction implements ActionInterface
         }
 
         return $linked;
+    }
+
+    private function formatModuleSourceForReport(string $module, string $sourcePath, string $coreRelDir): string
+    {
+        $relative = Paths::relativeToRoot($sourcePath);
+        $suffix = 'modules/' . $module;
+
+        if (str_ends_with($relative, $suffix)) {
+            $candidate = $this->buildModuleSourceDisplay($module, $coreRelDir);
+
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return $relative;
+    }
+
+    private function formatModuleTargetForReport(string $module, string $destinationPath, string $coreRelDir): string
+    {
+        $relative = Paths::relativeToRoot($destinationPath);
+        $suffix = 'modules/' . $module;
+
+        if (str_ends_with($relative, $suffix)) {
+            $candidate = $this->buildModuleTargetDisplay($module, $coreRelDir);
+
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return $relative;
+    }
+
+    private function buildModuleSourceDisplay(string $module, string $coreRelDir): string
+    {
+        $parent = $this->extractCoreParent($coreRelDir);
+
+        if ($parent === '') {
+            return 'modules/' . $module;
+        }
+
+        return $parent . '/modules/' . $module;
+    }
+
+    private function buildModuleTargetDisplay(string $module, string $coreRelDir): string
+    {
+        $base = $this->extractCoreBase($coreRelDir);
+
+        if ($base === '') {
+            return 'modules/' . $module;
+        }
+
+        return $base . '/modules/' . $module;
+    }
+
+    private function extractCoreParent(string $coreRelDir): string
+    {
+        $segments = $this->splitPathSegments($coreRelDir);
+
+        if ($segments === []) {
+            return '';
+        }
+
+        array_pop($segments);
+
+        return $segments === [] ? '' : implode('/', $segments);
+    }
+
+    private function extractCoreBase(string $coreRelDir): string
+    {
+        $segments = $this->splitPathSegments($coreRelDir);
+
+        if ($segments === []) {
+            return 'core';
+        }
+
+        $last = $segments[count($segments) - 1];
+
+        return $last === '' ? 'core' : $last;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function splitPathSegments(string $path): array
+    {
+        if ($path === '') {
+            return [];
+        }
+
+        $normalized = str_replace(['\\', '/'], '/', $path);
+        $parts = explode('/', $normalized);
+
+        $segments = [];
+
+        foreach ($parts as $part) {
+            $part = trim($part);
+
+            if ($part === '') {
+                continue;
+            }
+
+            $segments[] = $part;
+        }
+
+        return $segments;
     }
 
     private function removePath(string $path): bool
