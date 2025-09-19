@@ -103,13 +103,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $logEntries[] = sprintf('[%s] %s', date('Y-m-d H:i:s'), $exception->getMessage());
     }
 
+    $logText = implode("\n", $logEntries);
+
     if ($wantsJson) {
         http_response_code($statusCode);
         header('Content-Type: application/json; charset=utf-8');
         $response = [
             'status' => $status,
             'message' => $message,
+            'action' => $actionName,
         ];
+
+        if ($logText !== '') {
+            $response['log'] = $logText;
+        }
 
         if ($details !== null) {
             $response['details'] = $details;
@@ -127,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'status' => $status,
         'message' => $message,
         'action' => $actionName,
-        'log' => implode("\n", $logEntries),
+        'log' => $logText,
         'details' => $details,
         'logPointer' => $logPointer,
     ]];
