@@ -99,6 +99,11 @@ button {
     content: " →";
 }
 
+.alert__details {
+    width: 100%;
+    margin-top: 0.6rem;
+}
+
 .alert--success {
     border-color: rgba(30, 132, 73, 0.2);
     background: rgba(30, 132, 73, 0.08);
@@ -115,6 +120,49 @@ button {
     border-color: rgba(67, 56, 202, 0.2);
     background: rgba(67, 56, 202, 0.08);
     color: #3730a3;
+}
+
+.accordion {
+    width: 100%;
+}
+
+.accordion__summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-accent);
+    list-style: none;
+}
+
+.accordion__summary::-webkit-details-marker {
+    display: none;
+}
+
+.accordion__summary::before {
+    content: "▸";
+    font-size: 0.8rem;
+    transition: transform 0.18s ease;
+}
+
+.accordion[open] .accordion__summary::before {
+    transform: rotate(90deg);
+}
+
+.accordion__content {
+    margin: 0.6rem 0 0;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.06);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: auto;
+    max-height: 260px;
 }
 
 .dashboard {
@@ -178,6 +226,35 @@ button {
     text-align: left;
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
     min-height: 120px;
+    position: relative;
+}
+
+.action-tile--loading {
+    opacity: 0.75;
+    cursor: progress;
+}
+
+.action-tile__spinner {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(47, 128, 237, 0.28);
+    border-top-color: var(--color-accent);
+    animation: action-tile-spinner 0.8s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes action-tile-spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .action-tile__title {
@@ -265,6 +342,21 @@ button {
     line-height: 1.5;
     max-height: 320px;
     overflow: auto;
+}
+
+.log-details {
+    margin-top: 1rem;
+}
+
+.log-pointer {
+    margin: 0.75rem 0 0;
+    font-size: 0.9rem;
+    color: var(--color-muted);
+}
+
+.log-pointer a {
+    color: var(--color-accent);
+    word-break: break-all;
 }
 
 .log-placeholder {
