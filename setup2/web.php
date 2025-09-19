@@ -6,6 +6,28 @@ use Setup2\Installer;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+$securityHeaders = [
+    'X-Content-Type-Options' => 'nosniff',
+    'X-Frame-Options' => 'DENY',
+    'Referrer-Policy' => 'no-referrer',
+    'Content-Security-Policy' => "default-src 'self'",
+];
+
+foreach ($securityHeaders as $headerName => $headerValue) {
+    header(sprintf('%s: %s', $headerName, $headerValue));
+}
+
+$allowedMethods = ['GET', 'POST'];
+$requestMethod = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? ''));
+
+if (!in_array($requestMethod, $allowedMethods, true)) {
+    http_response_code(405);
+    header('Allow: ' . implode(', ', $allowedMethods));
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Method Not Allowed';
+    exit;
+}
+
 session_start();
 
 $requiredUser = getenv('SETUP2_USER');
