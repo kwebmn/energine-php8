@@ -11,6 +11,7 @@ use Setup2\Actions\CheckEnvAction;
 use Setup2\Actions\ClearCacheAction;
 use Setup2\Actions\ExportTransAction;
 use Setup2\Actions\InstallAction;
+use Setup2\Actions\LinkerAction;
 use Setup2\Actions\SyncUploadsAction;
 use Setup2\Actions\UninstallAction;
 
@@ -22,6 +23,7 @@ final class Installer
     private const ACTION_MAP = [
         'check-env' => CheckEnvAction::class,
         'install' => InstallAction::class,
+        'linker' => LinkerAction::class,
         'clear-cache' => ClearCacheAction::class,
         'sync-uploads' => SyncUploadsAction::class,
         'export-trans' => ExportTransAction::class,
