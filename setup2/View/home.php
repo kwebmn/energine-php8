@@ -15,6 +15,10 @@ $actionCards = [
         'title' => 'Clear Cache',
         'description' => 'Очистить кэш системы и шаблонов.',
     ],
+    'linker' => [
+        'title' => 'Создать ссылки',
+        'description' => 'Создать симлинки модулей и ресурсов.',
+    ],
     'sync-uploads' => [
         'title' => 'Sync Uploads',
         'description' => 'Синхронизировать пользовательские файлы.',
