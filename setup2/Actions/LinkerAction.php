@@ -57,7 +57,13 @@ final class LinkerAction implements ActionInterface
             return ActionResult::failure('В system.config.php не задан список модулей (ключ modules).');
         }
 
-        $modulesDir = Paths::resolve('engine/modules');
+        $coreRelDir = $this->normalizeRelativeDirectory($config['core_rel_dir'] ?? null, 'core');
+        $siteRelDir = $this->normalizeRelativeDirectory($config['site_rel_dir'] ?? null, 'site');
+
+        $coreModulesRelative = $coreRelDir === '' ? 'modules' : $coreRelDir . '/modules';
+        $modulesDir = Paths::resolve($coreModulesRelative);
+        $siteModulesRelative = $siteRelDir === '' ? 'modules' : $siteRelDir . '/modules';
+        $siteModulesRoot = Paths::resolve($siteModulesRelative);
 
         if (!Paths::ensureDirectory($modulesDir)) {
             return ActionResult::failure('Не удалось подготовить директорию для символьных ссылок модулей.', [
@@ -189,13 +195,12 @@ final class LinkerAction implements ActionInterface
                 }
             }
 
-            $siteModulesDir = Paths::resolve('site/modules');
-            if (is_dir($siteModulesDir)) {
-                $siteModules = glob($siteModulesDir . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
+            if (is_dir($siteModulesRoot)) {
+                $siteModules = glob($siteModulesRoot . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
                 if ($siteModules === false) {
                     $resourceDetails['failures'][] = [
                         'stage' => 'scan-site-modules',
-                        'source' => Paths::relativeToRoot($siteModulesDir),
+                        'source' => Paths::relativeToRoot($siteModulesRoot),
                         'error' => 'Не удалось получить список модулей сайта.',
                     ];
                 } else {
@@ -257,6 +262,26 @@ final class LinkerAction implements ActionInterface
         return $hasFailures
             ? ActionResult::failure($message, $details)
             : ActionResult::success($message, $details);
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function normalizeRelativeDirectory(mixed $value, string $default): string
+    {
+        if (!is_string($value)) {
+            $value = $default;
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+            $value = $default;
+        }
+
+        $value = str_replace(['\\', '/'], '/', $value);
+
+        return trim($value, '/');
     }
 
     /**
