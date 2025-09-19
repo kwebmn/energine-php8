@@ -30,23 +30,6 @@ if (!in_array($requestMethod, $allowedMethods, true)) {
 
 session_start();
 
-$requiredUser = getenv('SETUP2_USER');
-$requiredPass = getenv('SETUP2_PASS');
-
-if ($requiredUser !== false || $requiredPass !== false) {
-    $expectedUser = $requiredUser !== false ? (string) $requiredUser : '';
-    $expectedPass = $requiredPass !== false ? (string) $requiredPass : '';
-    $providedUser = $_SERVER['PHP_AUTH_USER'] ?? null;
-    $providedPass = $_SERVER['PHP_AUTH_PW'] ?? null;
-
-    if (!is_string($providedUser) || !is_string($providedPass) || $providedUser !== $expectedUser || $providedPass !== $expectedPass) {
-        header('WWW-Authenticate: Basic realm="Setup2"');
-        http_response_code(401);
-        echo 'Authentication required';
-        exit;
-    }
-}
-
 $alerts = $_SESSION['setup2_alerts'] ?? [];
 unset($_SESSION['setup2_alerts']);
 
