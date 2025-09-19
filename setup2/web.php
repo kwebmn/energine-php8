@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 use Setup2\Installer;
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
 $securityHeaders = [
     'X-Content-Type-Options' => 'nosniff',
     'X-Frame-Options' => 'DENY',
@@ -27,6 +25,36 @@ if (!in_array($requestMethod, $allowedMethods, true)) {
     echo 'Method Not Allowed';
     exit;
 }
+
+$configPath = dirname(__DIR__) . '/system.config.php';
+
+if (!is_file($configPath)) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Setup disabled (production mode)';
+    exit;
+}
+
+$config = require $configPath;
+$debugEnabled = false;
+
+if (is_array($config)) {
+    $siteConfig = $config['site'] ?? null;
+
+    if (is_array($siteConfig) && array_key_exists('debug', $siteConfig)) {
+        $debugValue = $siteConfig['debug'];
+        $debugEnabled = $debugValue === true || $debugValue === 1 || $debugValue === '1';
+    }
+}
+
+if (!$debugEnabled) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Setup disabled (production mode)';
+    exit;
+}
+
+require_once __DIR__ . '/../vendor/autoload.php';
 
 session_start();
 
