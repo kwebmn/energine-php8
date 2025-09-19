@@ -32,6 +32,8 @@ final class LinkerAction implements ActionInterface
             'modules' => [
                 'linked' => [],
                 'failed' => [],
+                'status' => 'skipped',
+                'message' => 'Создание символических ссылок модулей отключено.',
             ],
             'resources' => [],
         ];
@@ -57,81 +59,9 @@ final class LinkerAction implements ActionInterface
             return ActionResult::failure('В system.config.php не задан список модулей (ключ modules).');
         }
 
-        $coreRelDir = $this->normalizeRelativeDirectory($config['core_rel_dir'] ?? null, 'core');
         $siteRelDir = $this->normalizeRelativeDirectory($config['site_rel_dir'] ?? null, 'site');
-
-        $coreModulesRelative = $coreRelDir === '' ? 'modules' : $coreRelDir . '/modules';
-        $modulesDir = Paths::resolve($coreModulesRelative);
         $siteModulesRelative = $siteRelDir === '' ? 'modules' : $siteRelDir . '/modules';
         $siteModulesRoot = Paths::resolve($siteModulesRelative);
-
-        if (!Paths::ensureDirectory($modulesDir)) {
-            return ActionResult::failure('Не удалось подготовить директорию для символьных ссылок модулей.', [
-                'directory' => Paths::relativeToRoot($modulesDir),
-            ]);
-        }
-
-        $moduleFailures = [];
-
-        foreach ($modules as $module => $path) {
-            if (!is_string($path) || $path === '') {
-                $moduleFailures[] = [
-                    'module' => (string) $module,
-                    'error' => 'Некорректный путь к модулю в конфигурации.',
-                ];
-                continue;
-            }
-
-            $moduleName = (string) $module;
-
-            $sourcePath = rtrim($path, DIRECTORY_SEPARATOR);
-            $resolvedSource = realpath($sourcePath);
-            if ($resolvedSource !== false) {
-                $sourcePath = $resolvedSource;
-            }
-
-            $destinationPath = $modulesDir . DIRECTORY_SEPARATOR . $moduleName;
-
-            $sourceDisplay = $this->formatModuleSourceForReport($moduleName, $sourcePath, $coreRelDir);
-            $targetDisplay = $this->formatModuleTargetForReport($moduleName, $destinationPath, $coreRelDir);
-
-            if (!is_dir($sourcePath)) {
-                $moduleFailures[] = [
-                    'module' => $moduleName,
-                    'source' => $sourceDisplay,
-                    'error' => 'Каталог модуля не найден.',
-                ];
-                continue;
-            }
-
-            if ((file_exists($destinationPath) || is_link($destinationPath)) && !$this->removePath($destinationPath)) {
-                $moduleFailures[] = [
-                    'module' => $moduleName,
-                    'source' => $sourceDisplay,
-                    'target' => $targetDisplay,
-                    'error' => 'Не удалось удалить предыдущую ссылку на модуль.',
-                ];
-                continue;
-            }
-
-            if (@symlink($sourcePath, $destinationPath)) {
-                $details['modules']['linked'][] = [
-                    'module' => $moduleName,
-                    'source' => $sourceDisplay,
-                    'target' => $targetDisplay,
-                ];
-            } else {
-                $moduleFailures[] = [
-                    'module' => $moduleName,
-                    'source' => $sourceDisplay,
-                    'target' => $targetDisplay,
-                    'error' => 'Не удалось создать символическую ссылку на модуль.',
-                ];
-            }
-        }
-
-        $details['modules']['failed'] = $moduleFailures;
-
         $useSymlinkForResources = (bool) ($config['site']['debug'] ?? false);
 
         $resourceFailures = false;
@@ -258,11 +188,11 @@ final class LinkerAction implements ActionInterface
             $details['resources'][$relativeDir] = $resourceDetails;
         }
 
-        $hasFailures = $moduleFailures !== [] || $resourceFailures;
+        $hasFailures = $resourceFailures;
 
         $message = $hasFailures
-            ? 'Во время связывания произошли ошибки. Проверьте детали.'
-            : 'Символические ссылки модулей и ресурсов обновлены.';
+            ? 'Во время обновления ресурсов произошли ошибки. Проверьте детали.'
+            : 'Ресурсы обновлены. Связывание модулей отключено.';
 
         return $hasFailures
             ? ActionResult::failure($message, $details)
