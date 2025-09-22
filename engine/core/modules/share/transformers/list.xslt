@@ -31,7 +31,7 @@
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
         <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
             <xsl:if test="../@quickUploadPath">
                 <xsl:attribute name="quick_upload_path">
                     <xsl:value-of select="../@quickUploadPath"/>
@@ -82,14 +82,15 @@
         <xsl:variable name="FIELDS" select="record/field"/>
         <xsl:variable name="TAB_ID" select="generate-id(record)"/>
 
-        <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
-            <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
+        <div class="card-header bg-body-tertiary border-bottom" data-pane-part="header" data-pane-toolbar="top">
+            <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
                 <xsl:choose>
                     <xsl:when test="$FIELDS[@language]">
                         <xsl:for-each select="set:distinct($FIELDS[@language]/@tabName)">
                             <xsl:variable name="TAB_NAME" select="."/>
-                            <li class="nav-item" data-role="tab">
-                                <a href="#{$TAB_ID}" data-role="tab-link">
+                            <li class="nav-item" data-role="tab" role="presentation">
+                                <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
+                                <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
                                     <xsl:attribute name="class">
                                         <xsl:text>nav-link</xsl:text>
                                         <xsl:if test="position()=1">
@@ -98,6 +99,14 @@
                                     </xsl:attribute>
                                     <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
                                     <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
+                                    <xsl:attribute name="role">tab</xsl:attribute>
+                                    <xsl:attribute name="aria-controls"><xsl:value-of select="$TAB_ID"/></xsl:attribute>
+                                    <xsl:attribute name="aria-selected">
+                                        <xsl:choose>
+                                            <xsl:when test="position()=1">true</xsl:when>
+                                            <xsl:otherwise>false</xsl:otherwise>
+                                        </xsl:choose>
+                                    </xsl:attribute>
                                     <xsl:value-of select="."/>
                                 </a>
                                 <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME]/@language"/> }</span>
@@ -106,8 +115,9 @@
                     </xsl:when>
                     <xsl:otherwise>
                         <xsl:for-each select="set:distinct($FIELDS/@tabName)">
-                            <li class="nav-item" data-role="tab">
-                                <a href="#{$TAB_ID}" data-role="tab-link">
+                            <li class="nav-item" data-role="tab" role="presentation">
+                                <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
+                                <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
                                     <xsl:attribute name="class">
                                         <xsl:text>nav-link</xsl:text>
                                         <xsl:if test="position()=1">
@@ -116,6 +126,14 @@
                                     </xsl:attribute>
                                     <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
                                     <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
+                                    <xsl:attribute name="role">tab</xsl:attribute>
+                                    <xsl:attribute name="aria-controls"><xsl:value-of select="$TAB_ID"/></xsl:attribute>
+                                    <xsl:attribute name="aria-selected">
+                                        <xsl:choose>
+                                            <xsl:when test="position()=1">true</xsl:when>
+                                            <xsl:otherwise>false</xsl:otherwise>
+                                        </xsl:choose>
+                                    </xsl:attribute>
                                     <xsl:value-of select="."/>
                                 </a>
                             </li>
@@ -126,11 +144,11 @@
         </div>
         <div class="card-body p-0" data-pane-part="body">
             <div class="tab-content" data-role="tab-content">
-                <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item">
-                    <div class="grid" data-role="grid">
+                <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1">
+                    <div class="grid p-4" data-role="grid">
                         <xsl:if test="ancestor::component/filter">
-                            <div class="grid-toolbar d-flex flex-wrap align-items-center gap-3 mb-3" data-role="grid-toolbar">
-                                <div class="grid-filter d-flex flex-wrap align-items-center gap-2 w-100" data-role="grid-filter">
+                            <div class="grid-toolbar bg-body-tertiary border rounded-3 p-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-4" data-role="grid-toolbar">
+                                <div class="grid-filter d-flex flex-column flex-lg-row align-items-lg-center gap-3 w-100" data-role="grid-filter">
                                     <span class="fw-semibold">
                                         <xsl:value-of select="ancestor::component/filter/@title"/>
                                         <xsl:text>:&#160;</xsl:text>
@@ -159,7 +177,7 @@
                                     <div class="filter-query flex-grow-1 hidden" data-role="filter-query">
                                         <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2 ms-auto">
+                                    <div class="d-flex flex-wrap align-items-center gap-2 ms-lg-auto">
                                         <button type="button" class="btn btn-primary btn-sm" data-action="apply-filter">
                                             <xsl:value-of select="ancestor::component/filter/@apply"/>
                                         </button>

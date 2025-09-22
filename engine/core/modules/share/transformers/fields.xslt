@@ -846,16 +846,12 @@
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_name">
         <xsl:variable name="TAB_ID" select="generate-id(.)"/>
-        <li class="nav-item" data-role="tab" data-src="{ancestor::component/@single_template}{.}">
-            <a href="#{$TAB_ID}" data-role="tab-link">
-                <xsl:attribute name="class">
-                    <xsl:text>nav-link</xsl:text>
-                    <xsl:if test="position()=1">
-                        <xsl:text> active</xsl:text>
-                    </xsl:if>
-                </xsl:attribute>
-                <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
-                <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
+        <li class="nav-item" data-role="tab" data-src="{ancestor::component/@single_template}{.}" role="presentation">
+            <a href="#{$TAB_ID}" id="{$TAB_ID}-tab" class="nav-link" data-role="tab-link" data-bs-toggle="tab" data-bs-target="#{$TAB_ID}" role="tab" aria-controls="{$TAB_ID}" aria-selected="false">
+                <xsl:if test="position()=1">
+                    <xsl:attribute name="class">nav-link active</xsl:attribute>
+                    <xsl:attribute name="aria-selected">true</xsl:attribute>
+                </xsl:if>
                 <xsl:value-of select="@title" />
             </a>
         </li>
@@ -863,13 +859,16 @@
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_content">
         <xsl:variable name="TAB_ID" select="generate-id(.)"/>
-        <div id="{$TAB_ID}" data-role="pane-item">
+        <div data-role="pane-item">
+            <xsl:attribute name="id"><xsl:value-of select="$TAB_ID"/></xsl:attribute>
             <xsl:attribute name="class">
                 <xsl:text>tab-pane fade</xsl:text>
                 <xsl:if test="position()=1">
                     <xsl:text> show active</xsl:text>
                 </xsl:if>
             </xsl:attribute>
+            <xsl:attribute name="role">tabpanel</xsl:attribute>
+            <xsl:attribute name="aria-labelledby"><xsl:value-of select="$TAB_ID"/>-tab</xsl:attribute>
         </div>
     </xsl:template>
 
