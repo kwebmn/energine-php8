@@ -70,72 +70,52 @@ class Form {
     }
 
     /**
-     * Переинициализирует floating labels из MDB.
-     * @param {Document|DocumentFragment|Element|Array<Element>|NodeList} [context=document]
+     * Подготавливает элементы формы для корректного отображения в Bootstrap.
+     * Добавляет недостающие служебные классы, настраивает form-floating и ARIA-атрибуты.
+     * @param {Document|DocumentFragment|Element|Array<Element>|NodeList|string} [context=document]
      */
     static initializeInputs(context = document) {
-        const inputModule = window?.mdb?.Input;
-        if (!inputModule || typeof inputModule.init !== 'function') {
-            return;
-        }
+        const selectors = 'input, textarea, select';
+        const controls = new Set();
 
-        const collectTargets = (source) => {
-            const result = [];
+        const pushControls = (source) => {
             if (!source) {
-                return result;
+                return;
             }
 
-            if ((source instanceof Element || source instanceof DocumentFragment) && typeof source.matches === 'function') {
-                if (source.matches('.form-outline')) {
-                    result.push(source);
-                }
+            if (typeof source === 'string') {
+                pushControls((source ? document.querySelector(source) : null));
+                return;
+            }
+
+            const nodeType = source.nodeType;
+            const isElement = nodeType === 1;
+            const isDocument = nodeType === 9;
+            const isFragment = nodeType === 11;
+            if (!isElement && !isDocument && !isFragment) {
+                return;
+            }
+
+            if (isElement && typeof source.matches === 'function' && source.matches(selectors)) {
+                controls.add(source);
             }
 
             if (typeof source.querySelectorAll === 'function') {
-                result.push(...source.querySelectorAll('.form-outline'));
+                source.querySelectorAll(selectors).forEach((el) => controls.add(el));
             }
-
-            return result;
         };
 
-        let nodes = [];
         if (Form.isNodeCollection(context)) {
-            nodes = context ? Array.from(context).flatMap((item) => collectTargets(item)) : [];
+            Array.from(context).forEach((item) => pushControls(item));
         } else {
-            nodes = collectTargets(context);
+            pushControls(context || document);
         }
 
-        const uniqueNodes = Array.from(new Set(nodes));
-
-        if (!uniqueNodes.length) {
-            try {
-                inputModule.init();
-            } catch (error) {
-                console.warn('Form.init: failed to initialize MDB inputs', error);
-            }
-            return;
-        }
-
-        let lastError = null;
-        const attempts = [
-            () => inputModule.init(uniqueNodes),
-            () => uniqueNodes.forEach((node) => inputModule.init(node)),
-            () => inputModule.init(),
-        ];
-
-        for (const attempt of attempts) {
-            try {
-                attempt();
-                lastError = null;
-                break;
-            } catch (error) {
-                lastError = error;
-            }
-        }
-
-        if (lastError) {
-            console.warn('Form.init: failed to initialize MDB inputs', lastError);
-        }
+        controls.forEach((control) => {
+            Form.applyBootstrapControlClasses(control);
+            Form.prepareFloatingLabel(control);
+            Form.synchronizeInvalidState(control);
+        });
     }
 
     request(...args) {
@@ -144,7 +124,7 @@ class Form {
 
     constructor(element) {
         // Загрузка стилей (имитируем Asset.css)
-        Form.loadCSS('stylesheets/form.mdb.css');
+        Form.loadCSS('stylesheets/form.bootstrap.css');
 
         // this.overlay = new Overlay();
 
@@ -653,6 +633,233 @@ class Form {
 
     // --- Вспомогательные методы ---
 
+    static applyBootstrapControlClasses(control) {
+        if (!Form.isElement(control)) {
+            return;
+        }
+
+        const tagName = (control.tagName || '').toLowerCase();
+        if (!tagName) {
+            return;
+        }
+
+        if (tagName === 'select') {
+            if (!control.classList.contains('form-select') && !control.classList.contains('form-control')) {
+                control.classList.add('form-select');
+            }
+            return;
+        }
+
+        if (tagName === 'textarea') {
+            if (!control.classList.contains('form-control')) {
+                control.classList.add('form-control');
+            }
+            return;
+        }
+
+        if (tagName !== 'input') {
+            return;
+        }
+
+        const type = (control.getAttribute('type') || 'text').toLowerCase();
+        if (['hidden', 'submit', 'reset', 'button', 'image'].includes(type)) {
+            return;
+        }
+
+        if (type === 'checkbox' || type === 'radio') {
+            control.classList.add('form-check-input');
+            return;
+        }
+
+        if (type === 'range') {
+            control.classList.add('form-range');
+            return;
+        }
+
+        if (type === 'file') {
+            control.classList.add('form-control');
+            return;
+        }
+
+        if (type === 'color') {
+            control.classList.add('form-control');
+            control.classList.add('form-control-color');
+            return;
+        }
+
+        if (!control.classList.contains('form-control')) {
+            control.classList.add('form-control');
+        }
+    }
+
+    static prepareFloatingLabel(control) {
+        if (!Form.isElement(control)) {
+            return;
+        }
+
+        const wrapper = Form.safeClosest(control, '.form-floating');
+        if (!wrapper) {
+            return;
+        }
+
+        if (!control.hasAttribute('placeholder') || control.getAttribute('placeholder') === '') {
+            control.setAttribute('placeholder', ' ');
+        }
+
+        const label = wrapper.querySelector('label');
+        if (Form.isElement(label) && !label.getAttribute('for')) {
+            const controlId = Form.ensureControlId(control);
+            label.setAttribute('for', controlId);
+        }
+    }
+
+    static synchronizeInvalidState(control) {
+        if (!Form.isElement(control)) {
+            return;
+        }
+
+        if (control.classList.contains('is-invalid')) {
+            control.setAttribute('aria-invalid', 'true');
+        } else {
+            control.removeAttribute('aria-invalid');
+        }
+
+        const feedbacks = Form.findInvalidFeedbacks(control);
+        if (!feedbacks.length) {
+            return;
+        }
+
+        const controlId = Form.ensureControlId(control);
+        const describedBy = new Set((control.getAttribute('aria-describedby') || '')
+            .split(/\s+/)
+            .map(token => token.trim())
+            .filter(Boolean));
+
+        feedbacks.forEach((feedback) => {
+            if (!feedback.id) {
+                const generatedId = Form.generateFeedbackId(control);
+                feedback.id = generatedId;
+                if (!control.dataset.feedbackId) {
+                    control.dataset.feedbackId = generatedId;
+                }
+            }
+            if (feedback.dataset && !feedback.dataset.feedbackFor) {
+                feedback.dataset.feedbackFor = controlId;
+            }
+            if (!feedback.hasAttribute('aria-live')) {
+                feedback.setAttribute('aria-live', 'polite');
+            }
+            describedBy.add(feedback.id);
+        });
+
+        if (describedBy.size) {
+            control.setAttribute('aria-describedby', Array.from(describedBy).join(' '));
+        }
+    }
+
+    static findInvalidFeedbacks(control) {
+        if (!Form.isElement(control)) {
+            return [];
+        }
+
+        const wrappers = new Set([
+            Form.safeClosest(control, '[data-role="form-field"]'),
+            Form.safeClosest(control, '.form-floating'),
+            Form.safeClosest(control, '.input-group'),
+            control.parentElement,
+        ]);
+
+        const feedbacks = new Set();
+
+        wrappers.forEach((wrapper) => {
+            if (!Form.isElement(wrapper) && !(wrapper && typeof wrapper.querySelectorAll === 'function')) {
+                return;
+            }
+            wrapper.querySelectorAll?.('.invalid-feedback').forEach((feedback) => {
+                if (Form.isFeedbackForControl(feedback, control)) {
+                    feedbacks.add(feedback);
+                }
+            });
+        });
+
+        return Array.from(feedbacks);
+    }
+
+    static isFeedbackForControl(feedback, control) {
+        if (!Form.isElement(feedback) || !Form.isElement(control)) {
+            return false;
+        }
+
+        const target = feedback.dataset ? feedback.dataset.feedbackFor : null;
+        if (target) {
+            const controlId = control.id;
+            if (controlId && target === controlId) {
+                return true;
+            }
+            if (!controlId && control.name && target === control.name) {
+                return true;
+            }
+            return false;
+        }
+
+        const feedbackField = Form.safeClosest(feedback, '[data-role="form-field"]');
+        const controlField = Form.safeClosest(control, '[data-role="form-field"]');
+        if (feedbackField || controlField) {
+            return feedbackField === controlField;
+        }
+
+        const floatingWrapper = Form.safeClosest(control, '.form-floating');
+        if (floatingWrapper) {
+            return Form.safeClosest(feedback, '.form-floating') === floatingWrapper;
+        }
+
+        const groupWrapper = Form.safeClosest(control, '.input-group');
+        if (groupWrapper) {
+            return Form.safeClosest(feedback, '.input-group') === groupWrapper;
+        }
+
+        return feedback.parentElement === control.parentElement;
+    }
+
+    static ensureControlId(control) {
+        if (!Form.isElement(control)) {
+            return '';
+        }
+
+        if (control.id) {
+            return control.id;
+        }
+
+        const ownerDoc = control.ownerDocument || document;
+        const baseRaw = (control.name || control.getAttribute('data-role') || 'field').toString();
+        const base = baseRaw.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
+        let candidate = base;
+        let counter = 1;
+
+        while (ownerDoc.getElementById(candidate)) {
+            candidate = `${base}-${counter}`;
+            counter += 1;
+        }
+
+        control.id = candidate;
+        return candidate;
+    }
+
+    static isElement(node) {
+        return !!(node && typeof node === 'object' && node.nodeType === 1);
+    }
+
+    static safeClosest(element, selector) {
+        if (!Form.isElement(element) || typeof element.closest !== 'function' || !selector) {
+            return null;
+        }
+        try {
+            return element.closest(selector);
+        } catch (e) {
+            return null;
+        }
+    }
+
     static loadCSS(href) {
         if (![...document.querySelectorAll('link[rel=stylesheet]')].some(l => l.href.includes(href))) {
             let link = document.createElement('link');
@@ -873,10 +1080,11 @@ class Form {
     }
 
     static generateFeedbackId(control) {
-        const baseRaw = (control.id || control.name || 'field').toString();
+        const ownerDoc = control?.ownerDocument || document;
+        const baseRaw = (control?.id || control?.name || 'field').toString();
         const base = baseRaw.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
         let id = `${base}-feedback`;
-        while (document.getElementById(id)) {
+        while (ownerDoc.getElementById(id)) {
             id = `${base}-feedback-${Math.random().toString(36).slice(2, 8)}`;
         }
         return id;

@@ -1,6 +1,6 @@
 # Admin UI layout guidelines
 
-Admin templates in this folder rely on MDBootstrap 5 components. When extending the markup, follow the updated conventions below.
+Admin templates in this folder rely on Bootstrap 5 components. When extending the markup, follow the updated conventions below.
 
 ## Panels
 
@@ -51,9 +51,10 @@ Admin templates in this folder rely on MDBootstrap 5 components. When extending 
 
 ## Forms
 
-- Text inputs and textareas live inside `.form-outline`. Place the `<label>` immediately after the control so that MDB styles render correctly.
-- Use `.form-select` for `<select>` elements.
-- Use `.form-check`, `.form-check-input`, `.form-check-label` (and `.form-check-inline` if needed) for checkboxes and radio buttons.
+- Каждый `field` оборачивается в контейнер `div.mb-3[data-role="form-field"]`, а `<label>` располагается перед элементом управления.
+- Поля ввода и текстовые области используют `.form-control`, выпадающие списки — `.form-select`.
+- Чекбоксы и радиокнопки оформляются через `.form-check`, `.form-check-input`, `.form-check-label` (и при необходимости `.form-check-inline`).
+- Дополнительно можно применять `.form-floating`, если требуется плавающая подпись. В этом случае `<label>` идёт после контрола, а у самого контрола должен быть непустой `placeholder` (скрипт добавит `placeholder=" "`, если атрибут отсутствует).
 
 **Legacy (неправильно)**
 
@@ -67,9 +68,9 @@ Admin templates in this folder rely on MDBootstrap 5 components. When extending 
 **Правильно**
 
 ```html
-<div class="form-outline">
-    <input id="name" type="text" class="form-control" />
+<div class="mb-3" data-role="form-field">
     <label class="form-label" for="name">Name</label>
+    <input id="name" type="text" class="form-control" />
 </div>
 
 <select class="form-select" aria-label="Status">...</select>
@@ -77,6 +78,11 @@ Admin templates in this folder rely on MDBootstrap 5 components. When extending 
 <div class="form-check">
     <input class="form-check-input" type="checkbox" value="1" id="active" />
     <label class="form-check-label" for="active">Active</label>
+</div>
+
+<div class="form-floating">
+    <input type="text" class="form-control" id="floatingName" placeholder=" " />
+    <label for="floatingName">Floating label</label>
 </div>
 ```
 
@@ -86,9 +92,9 @@ Admin templates in this folder rely on MDBootstrap 5 components. When extending 
 - Provide feedback with a sibling `.invalid-feedback` element.
 
 ```html
-<div class="form-outline">
-    <input id="email" type="email" class="form-control is-invalid" />
+<div class="mb-3" data-role="form-field">
     <label class="form-label" for="email">Email</label>
+    <input id="email" type="email" class="form-control is-invalid" />
     <div class="invalid-feedback">Введите корректный адрес электронной почты.</div>
 </div>
 ```
@@ -112,7 +118,7 @@ Admin templates in this folder rely on MDBootstrap 5 components. When extending 
 
 ## Utility classes & styling
 
-- Use Bootstrap 5 / MDB spacing, flex and typography utilities (`d-flex`, `gap-*`, `btn`, `form-control`, etc.). Avoid bespoke legacy class names.
+- Use Bootstrap 5 spacing, flex and typography utilities (`d-flex`, `gap-*`, `btn`, `form-control`, etc.). Avoid bespoke legacy class names.
 - Shared CSS overrides live in `engine/core/modules/share/stylesheets/*.css`. Extend them instead of adding inline styles.
 - Control visibility with the `.hidden` utility class or dedicated data attributes, not presentation-oriented class names.
 
