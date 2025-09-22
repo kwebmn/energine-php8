@@ -849,14 +849,32 @@
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]"/>
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_name">
+        <xsl:variable name="TAB_ID" select="generate-id(.)"/>
         <li class="nav-item" data-role="tab" data-src="{ancestor::component/@single_template}{.}">
-            <a href="#{generate-id(.)}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="@title" /></a>
+            <a href="#{$TAB_ID}" data-role="tab-link">
+                <xsl:attribute name="class">
+                    <xsl:text>nav-link</xsl:text>
+                    <xsl:if test="position()=1">
+                        <xsl:text> active</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
+                <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
+                <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
+                <xsl:value-of select="@title" />
+            </a>
         </li>
     </xsl:template>
 
     <xsl:template match="field[@type='tab'][ancestor::component[@type='form']]" mode="field_content">
-        <xsl:param name="is-outline" select="false()"/>
-        <div id="{generate-id(.)}" class="tab-pane" data-role="pane-item"></div>
+        <xsl:variable name="TAB_ID" select="generate-id(.)"/>
+        <div id="{$TAB_ID}" data-role="pane-item">
+            <xsl:attribute name="class">
+                <xsl:text>tab-pane fade</xsl:text>
+                <xsl:if test="position()=1">
+                    <xsl:text> show active</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
+        </div>
     </xsl:template>
 
 </xsl:stylesheet>

@@ -89,7 +89,15 @@
                         <xsl:for-each select="set:distinct($FIELDS[@language]/@tabName)">
                             <xsl:variable name="TAB_NAME" select="."/>
                             <li class="nav-item" data-role="tab">
-                                <a href="#{$TAB_ID}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link">
+                                <a href="#{$TAB_ID}" data-role="tab-link">
+                                    <xsl:attribute name="class">
+                                        <xsl:text>nav-link</xsl:text>
+                                        <xsl:if test="position()=1">
+                                            <xsl:text> active</xsl:text>
+                                        </xsl:if>
+                                    </xsl:attribute>
+                                    <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
+                                    <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
                                     <xsl:value-of select="."/>
                                 </a>
                                 <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME]/@language"/> }</span>
@@ -99,7 +107,15 @@
                     <xsl:otherwise>
                         <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                             <li class="nav-item" data-role="tab">
-                                <a href="#{$TAB_ID}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link">
+                                <a href="#{$TAB_ID}" data-role="tab-link">
+                                    <xsl:attribute name="class">
+                                        <xsl:text>nav-link</xsl:text>
+                                        <xsl:if test="position()=1">
+                                            <xsl:text> active</xsl:text>
+                                        </xsl:if>
+                                    </xsl:attribute>
+                                    <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
+                                    <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
                                     <xsl:value-of select="."/>
                                 </a>
                             </li>
@@ -110,7 +126,7 @@
         </div>
         <div class="card-body p-0" data-pane-part="body">
             <div class="tab-content" data-role="tab-content">
-                <div id="{$TAB_ID}" class="tab-pane" data-role="pane-item">
+                <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item">
                     <div class="grid" data-role="grid">
                         <xsl:if test="ancestor::component/filter">
                             <div class="grid-toolbar d-flex flex-wrap align-items-center gap-3 mb-3" data-role="grid-toolbar">

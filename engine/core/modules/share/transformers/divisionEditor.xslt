@@ -19,13 +19,18 @@
             <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
-                        <a href="#{$TAB_ID}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="record[1]/field[1]/@tabName" /></a>
+                        <a href="#{$TAB_ID}" data-role="tab-link">
+                            <xsl:attribute name="class">nav-link active</xsl:attribute>
+                            <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
+                            <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
+                            <xsl:value-of select="record[1]/field[1]/@tabName" />
+                        </a>
                     </li>
                 </ul>
             </div>
             <div class="card-body" data-pane-part="body">
                 <div class="tab-content" data-role="tab-content">
-                    <div id="{$TAB_ID}" class="tab-pane" data-role="pane-item">
+                    <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item">
                         <div id="treeContainer" data-role="tree-panel">
                             <xsl:apply-templates select="$COMPONENTS[@class='SiteList']" mode="insideEditor"/>
                         </div>
@@ -96,34 +101,32 @@
                 </xsl:choose>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
-            <div class="input-group">
-                <div class="form-outline flex-grow-1" data-mdb-input-init="1">
-                    <input type="text" id="{$DISPLAY_ID}" readonly="readonly">
-                        <xsl:attribute name="class">
-                            <xsl:text>form-control</xsl:text>
-                            <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                        </xsl:attribute>
-                        <xsl:attribute name="value"><xsl:value-of select="@data_name"/></xsl:attribute>
-                    </input>
-                    <xsl:if test="@title">
-                        <label class="form-label" for="{$DISPLAY_ID}">
-                            <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                            <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
-                                <span class="text-danger">*</span>
-                            </xsl:if>
-                        </label>
+            <xsl:if test="@title">
+                <label class="form-label" for="{$DISPLAY_ID}">
+                    <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                    <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
+                        <span class="text-danger">*</span>
                     </xsl:if>
-                </div>
-                <input type="hidden" id="{$HIDDEN_ID}" value="{.}">
-                    <xsl:attribute name="name"><xsl:choose>
-                        <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name" />]</xsl:when>
-                            <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-                        </xsl:choose></xsl:attribute>
+                </label>
+            </xsl:if>
+            <div class="input-group">
+                <input type="text" id="{$DISPLAY_ID}" readonly="readonly">
+                    <xsl:attribute name="class">
+                        <xsl:text>form-control</xsl:text>
+                        <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                    </xsl:attribute>
+                    <xsl:attribute name="value"><xsl:value-of select="@data_name"/></xsl:attribute>
                 </input>
                 <button type="button" class="btn btn-outline-secondary" id="sitemap_selector" hidden_field="{$HIDDEN_ID}" span_field="{$DISPLAY_ID}">
                     <xsl:text>Выбрать…</xsl:text>
                 </button>
             </div>
+            <input type="hidden" id="{$HIDDEN_ID}" value="{.}">
+                <xsl:attribute name="name"><xsl:choose>
+                    <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name" />]</xsl:when>
+                    <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+                </xsl:choose></xsl:attribute>
+            </input>
             <xsl:call-template name="render-field-messages"/>
         </div>
     </xsl:template>
@@ -174,9 +177,18 @@
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type"><xsl:value-of select="$DATA_TYPE"/></xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
-            <xsl:if test="@mode='1' and @title">
-                <label class="form-label" for="{@name}">
+            <xsl:if test="@title">
+                <label class="form-label">
+                    <xsl:attribute name="for">
+                        <xsl:choose>
+                            <xsl:when test="@mode='1'"><xsl:value-of select="@name"/></xsl:when>
+                            <xsl:otherwise><xsl:value-of select="$FIELD_ID"/></xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:attribute>
                     <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                    <xsl:if test="not(@mode='1') and $IS_REQUIRED and not(ancestor::component/@exttype='grid')">
+                        <span class="text-danger">*</span>
+                    </xsl:if>
                 </label>
             </xsl:if>
             <div class="input-group smap-segment">
@@ -190,23 +202,13 @@
                         <span class="form-control-plaintext flex-grow-1"><xsl:value-of select="." disable-output-escaping="yes"/></span>
                     </xsl:when>
                     <xsl:otherwise>
-                        <div class="form-outline flex-grow-1" data-mdb-input-init="1">
-                            <input>
-                                <xsl:attribute name="class">
-                                    <xsl:text>form-control</xsl:text>
-                                    <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                                </xsl:attribute>
-                                <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
-                            </input>
-                            <xsl:if test="@title">
-                                <label class="form-label" for="{$FIELD_ID}">
-                                    <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                                    <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
-                                        <span class="text-danger">*</span>
-                                    </xsl:if>
-                                </label>
-                            </xsl:if>
-                        </div>
+                        <input>
+                            <xsl:attribute name="class">
+                                <xsl:text>form-control</xsl:text>
+                                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                            </xsl:attribute>
+                            <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
+                        </input>
                     </xsl:otherwise>
                 </xsl:choose>
                 <span class="input-group-text">/</span>
