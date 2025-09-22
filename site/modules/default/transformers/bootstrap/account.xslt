@@ -84,7 +84,7 @@
             <xsl:if test="field[@name='Id' and text() = $ID]">
                 <xsl:attribute name="class">list-group-item px-3 active</xsl:attribute>
             </xsl:if>
-            <a  href="{$LANG_ABBR}{field[@name='Segment']}" data-mdb-ripple-initialized="true">
+            <a  href="{$LANG_ABBR}{field[@name='Segment']}">
                 <xsl:value-of select="field[@name='Name']"/>
             </a>
         </li>

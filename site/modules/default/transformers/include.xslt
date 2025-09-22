@@ -5,11 +5,11 @@
     version="1.0">
     
 <!--    <xsl:include href="base/navbar.xslt"/>-->
-    <xsl:include href="mdb/header.xslt"/>
-    <xsl:include href="mdb/footer.xslt"/>
-    <xsl:include href="mdb/login.xslt"/>
-    <xsl:include href="mdb/content.xslt"/>
-    <xsl:include href="mdb/account.xslt"/>
+    <xsl:include href="bootstrap/header.xslt"/>
+    <xsl:include href="bootstrap/footer.xslt"/>
+    <xsl:include href="bootstrap/login.xslt"/>
+    <xsl:include href="bootstrap/content.xslt"/>
+    <xsl:include href="bootstrap/account.xslt"/>
 
 <!--    <xsl:include href="base/content.xslt"/>-->
 <!--    <xsl:include href="base/login.xslt"/>-->

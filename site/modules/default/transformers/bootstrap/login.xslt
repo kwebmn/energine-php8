@@ -10,7 +10,7 @@
 
             <div class="row d-flex justify-content-center">
                 <div class="col-xl-5 col-md-8">
-                    <div class="card shadow-4">
+                    <div class="card shadow">
                         <div class="card-body p-4">
                             <!-- Pills navs -->
                             <ul class="nav nav-pills nav-justified mb-3" >
@@ -26,7 +26,7 @@
 
                                     <xsl:if test="//property[@name='is_user'] > 0">
                                         <div role="tabpanel" class="tab-pane active" id="logout">
-                                            <button class="btn  btn-primary btn-block mb-4 btn-logout" id="btn-logout"><xsl:value-of select="//translation[@const='TXT_LOGOUT']" /></button>
+                                            <button class="btn btn-primary w-100 mb-4 btn-logout" id="btn-logout"><xsl:value-of select="//translation[@const='TXT_LOGOUT']" /></button>
                                         </div>
                                     </xsl:if>
 
@@ -35,33 +35,23 @@
 
                                             <div class="text-center mb-3">
                                                 <p><xsl:value-of select="//translation[@const='TXT_SIGN_WITH']"/></p>
-<!--                                                <button type="button" class="btn btn-link btn-lg btn-floating mx-1" data-mdb-ripple-init="1" data-ripple-color="primary">-->
-<!--                                                    <i class="fab fa-facebook-f"></i>-->
-<!--                                                </button>-->
 
-                                                <a href="{$LANG_ABBR}/login/google/" class="btn btn-link btn-lg btn-floating mx-1" data-mdb-ripple-init="1" data-ripple-color="primary">
+                                                <a href="{$LANG_ABBR}/login/google/" class="btn btn-link btn-lg mx-1">
                                                     <i class="fab fa-google"></i>
                                                 </a>
 
-<!--                                                <button type="button" class="btn btn-link btn-lg btn-floating mx-1" data-mdb-ripple-init="1" data-ripple-color="primary">-->
-<!--                                                    <i class="fab fa-twitter"></i>-->
-<!--                                                </button>-->
-
-<!--                                                <button type="button" class="btn btn-link btn-lg btn-floating mx-1" data-mdb-ripple-init="1" data-ripple-color="primary">-->
-<!--                                                    <i class="fab fa-github"></i>-->
-<!--                                                </button>-->
                                             </div>
 
                                             <!-- Email input -->
-                                            <div class="form-outline mb-4" data-mdb-input-init="1">
-                                                <input type="email" id="loginName" class="form-control" name="signin[email]" required="required"/>
+                                            <div class="mb-4">
                                                 <label class="form-label" for="loginName"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
+                                                <input type="email" id="loginName" class="form-control" name="signin[email]" required="required"/>
                                             </div>
 
                                             <!-- Password input -->
-                                            <div class="form-outline mb-4" data-mdb-input-init="1">
-                                                <input type="password" id="loginPassword2" class="form-control" name="signin[password]" required="required"/>
+                                            <div class="mb-4">
                                                 <label class="form-label" for="loginPassword2"><xsl:value-of select="//translation[@const='TXT_PASSWORD']" /></label>
+                                                <input type="password" id="loginPassword2" class="form-control" name="signin[password]" required="required"/>
                                             </div>
 
                                             <!-- 2 column grid layout -->
@@ -75,7 +65,7 @@
                                             </div>
 
                                             <!-- Submit button -->
-                                            <button type="submit" class="btn btn-primary btn-block mb-4" data-mdb-ripple-init="1" id="btn-sign-up-fast">
+                                            <button type="submit" class="btn btn-primary w-100 mb-4" id="btn-sign-up-fast">
                                                 <xsl:value-of select="//translation[@const='TXT_SIGN_UP']" />
                                             </button>
 
@@ -200,13 +190,13 @@
             <div class="col-xl-6">
                 <form id="recover_form" action="{@template}send" method="post">
                     <!-- Email input -->
-                    <div class="form-outline mb-4" data-mdb-input-init="1">
-                        <input type="email" id="email" class="form-control fg-input" name="email" required="required"/>
+                    <div class="mb-4">
                         <label class="form-label" for="email"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
+                        <input type="email" id="email" class="form-control" name="email" required="required"/>
                     </div>
 
                     <div class="form-group">
-                        <button type="submit" name="recover_submit" id="recover_submit" class="btn btn-primary mb-4 btn-login" data-mdb-ripple-init="1">
+                        <button type="submit" name="recover_submit" id="recover_submit" class="btn btn-primary mb-4 btn-login">
                             <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD']"/>
                         </button>
                     </div>
@@ -230,18 +220,18 @@
                 <form id="recover_form2" action="{@template}" method="post">
                     <input type="hidden" name="code" id="code" value="{@code}"/>
 
-                    <div class="form-outline mb-4" data-mdb-input-init="1">
-                        <input type="password" id="password1"  class="form-control" name="password1" required="required"/>
+                    <div class="mb-4">
                         <label class="form-label" for="password1"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD']" /></label>
+                        <input type="password" id="password1"  class="form-control" name="password1" required="required"/>
                     </div>
 
-                    <div class="form-outline mb-4" data-mdb-input-init="1">
-                        <input type="password" id="password2"  class="form-control" name="password2" required="required"/>
+                    <div class="mb-4">
                         <label class="form-label" for="password2"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD2']" /></label>
+                        <input type="password" id="password2"  class="form-control" name="password2" required="required"/>
                     </div>
 
                     <div class="form-group">
-                        <button type="submit" name="change-password-submit" id="change-password-submit" class="btn btn-primary mb-4" value="" data-mdb-ripple-init="1">
+                        <button type="submit" name="change-password-submit" id="change-password-submit" class="btn btn-primary mb-4" value="">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
                         </button>
                     </div>
