@@ -117,6 +117,19 @@ class Toolbar {
         return s.charAt(0).toUpperCase() + s.slice(1);
     }
 
+    static hasBootstrapStyles() {
+        return (typeof document !== 'undefined') &&
+            !!document.querySelector('link[href*="bootstrap.min.css"]');
+    }
+
+    static hasBootstrapScript() {
+        if (typeof window !== 'undefined' && typeof window.bootstrap !== 'undefined') {
+            return true;
+        }
+        return (typeof document !== 'undefined') &&
+            !!document.querySelector('script[src*="bootstrap.bundle.min.js"]');
+    }
+
     // ---- Controls ----
 
     static Control = class {

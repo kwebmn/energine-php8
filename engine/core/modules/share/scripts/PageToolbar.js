@@ -2,6 +2,7 @@ ScriptLoader.load('Toolbar', 'ModalBox', 'Cookie');
 
 class PageToolbar extends Toolbar {
     constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
+        PageToolbar.ensureBootstrapLoaded();
         super(toolbarName, props);
 
         Energine.loadCSS('stylesheets/pagetoolbar.css');
@@ -45,6 +46,65 @@ class PageToolbar extends Toolbar {
             }
 
         });
+    }
+
+    static ensureBootstrapLoaded() {
+        if (PageToolbar._bootstrapInitialized) {
+            return;
+        }
+
+        const cssPath = PageToolbar._resolveStaticPath('stylesheets/bootstrap.min.css');
+        if (!Toolbar.hasBootstrapStyles()) {
+            Energine.loadCSS(cssPath);
+        }
+
+        if (!Toolbar.hasBootstrapScript()) {
+            PageToolbar._appendBootstrapScript(PageToolbar._resolveStaticPath('scripts/bootstrap.bundle.min.js'));
+        }
+
+        PageToolbar._bootstrapInitialized = true;
+    }
+
+    static _appendBootstrapScript(src) {
+        if (typeof document === 'undefined' || !document.head) {
+            return;
+        }
+
+        const existingScript = document.querySelector(`script[src$="${src}"]`);
+        if (existingScript) {
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = false;
+        script.dataset.energineBootstrap = 'true';
+        script.addEventListener('error', error => {
+            console.error('[PageToolbar] Failed to load Bootstrap bundle', src, error);
+            PageToolbar._bootstrapInitialized = false;
+            if (script.parentNode) {
+                script.parentNode.removeChild(script);
+            }
+        }, { once: true });
+        document.head.appendChild(script);
+    }
+
+    static _resolveStaticPath(relativePath) {
+        if (/^(?:[a-z]+:)?\/\//i.test(relativePath)) {
+            return relativePath;
+        }
+
+        const base = (window?.Energine && typeof window.Energine.static === 'string')
+            ? window.Energine.static
+            : '';
+
+        if (!base) {
+            return relativePath;
+        }
+
+        const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+        const normalizedPath = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+        return normalizedBase + normalizedPath;
     }
 
     static _addClass(el, cls) { el.classList.add(cls); }
@@ -188,6 +248,8 @@ class PageToolbar extends Toolbar {
     // Вложенный контрол логотипа (если нужно)
     static Logo = class extends Toolbar.Control {};
 }
+
+PageToolbar._bootstrapInitialized = false;
 
 // экспорт для window, если надо
 window.PageToolbar = PageToolbar;
