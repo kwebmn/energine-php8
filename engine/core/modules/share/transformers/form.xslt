@@ -119,20 +119,31 @@
     <!-- форма как часть grid-а выводится в другом стиле -->
    <xsl:template match="recordset[parent::component[@type='form' and @exttype='grid']]">
     <xsl:variable name="FIELDS" select="record/field"/>
-    <div id="{generate-id(.)}" data-role="pane" class="card"
+    <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden"
          template="{$BASE}{$LANG_ABBR}{../@template}"
          single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
-        <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
-            <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
+        <div class="card-header bg-body-tertiary border-bottom" data-pane-part="header" data-pane-toolbar="top">
+            <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                     <xsl:variable name="TAB_NAME" select="."/>
                     <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME])) &gt; 0">
-                        <li class="nav-item" data-role="tab">
-                            <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}"
-                               href="#{generate-id(.)}"
+                        <xsl:variable name="TAB_FIELD" select="$FIELDS[@tabName=$TAB_NAME][1]"/>
+                        <xsl:variable name="TAB_UID" select="concat('gridFormTab-', generate-id($TAB_FIELD))"/>
+                        <li class="nav-item" data-role="tab" role="presentation">
+                            <a lang_abbr="{$TAB_FIELD/@languageAbbr}"
+                               href="#{$TAB_UID}"
+                               id="{$TAB_UID}-tab"
                                class="nav-link"
-                               data-mdb-tab-init="1"
-                               data-role="tab-link">
+                               data-role="tab-link"
+                               data-bs-toggle="tab"
+                               data-bs-target="#{$TAB_UID}"
+                               role="tab"
+                               aria-controls="{$TAB_UID}"
+                               aria-selected="false">
+                                <xsl:if test="position()=1">
+                                    <xsl:attribute name="class">nav-link active</xsl:attribute>
+                                    <xsl:attribute name="aria-selected">true</xsl:attribute>
+                                </xsl:if>
                                 <xsl:value-of select="$TAB_NAME"/>
                             </a>
                             <xsl:if test="$FIELDS[@tabName=$TAB_NAME][1]/@language">
@@ -149,11 +160,22 @@
             </ul>
         </div>
 
-        <div class="card-body" data-pane-part="body">
+        <div class="card-body p-4" data-pane-part="body">
             <div class="tab-content" data-role="tab-content">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                     <xsl:variable name="TAB_NAME" select="."/>
-                    <div id="{generate-id(.)}" class="tab-pane" data-role="pane-item">
+                    <xsl:variable name="TAB_FIELD" select="$FIELDS[@tabName=$TAB_NAME][1]"/>
+                    <xsl:variable name="TAB_UID" select="concat('gridFormTab-', generate-id($TAB_FIELD))"/>
+                    <div data-role="pane-item">
+                        <xsl:attribute name="id"><xsl:value-of select="$TAB_UID"/></xsl:attribute>
+                        <xsl:attribute name="class">
+                            <xsl:text>tab-pane fade</xsl:text>
+                            <xsl:if test="position()=1">
+                                <xsl:text> show active</xsl:text>
+                            </xsl:if>
+                        </xsl:attribute>
+                        <xsl:attribute name="role">tabpanel</xsl:attribute>
+                        <xsl:attribute name="aria-labelledby"><xsl:value-of select="$TAB_UID"/>-tab</xsl:attribute>
                         <xsl:apply-templates select="$FIELDS[@tabName=$TAB_NAME]"/>
                     </div>
                 </xsl:for-each>
@@ -164,7 +186,7 @@
         </div>
 
         <xsl:if test="../toolbar">
-            <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body-tertiary border-top" data-pane-part="footer" data-pane-toolbar="bottom"></div>
         </xsl:if>
     </div>
 </xsl:template>

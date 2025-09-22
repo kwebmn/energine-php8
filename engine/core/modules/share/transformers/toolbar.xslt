@@ -172,55 +172,67 @@
     
     <!-- листалка по страницам -->
     <xsl:template match="toolbar[@name='pager']">
-        <xsl:if test="count(control)&gt;1">
-            <div class="pager">
-                <xsl:apply-templates select="properties/property[@name='title']"/>
-                <xsl:apply-templates/>    
-            </div>
+        <xsl:if test="count(control) &gt; 1">
+            <xsl:variable name="PAGER_TITLE" select="properties/property[@name='title']"/>
+            <nav class="mt-3" aria-label="Pagination">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <xsl:if test="$PAGER_TITLE">
+                        <span class="text-muted small text-uppercase fw-semibold">
+                            <xsl:value-of select="$PAGER_TITLE"/>
+                        </span>
+                    </xsl:if>
+                    <ul class="pagination pagination-sm mb-0" data-role="page-list">
+                        <xsl:apply-templates select="control"/>
+                    </ul>
+                </div>
+            </nav>
         </xsl:if>
     </xsl:template>
-    
-    <xsl:template match="control[parent::toolbar[@name='pager']]">
-        <span class="control">
-            <a>
-                <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>                            
-                <xsl:value-of select="@title"/>
-            </a>
-        </span>
-    </xsl:template>
-    
-    <!-- номер текущей страницы выделен -->
+
     <xsl:template match="control[@disabled][parent::toolbar[@name='pager']]">
         <xsl:if test="preceding-sibling::control">
-            <span class="control arrow">
-                <a>
+            <li class="page-item">
+                <a class="page-link" aria-label="Previous" rel="prev">
                     <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action - 1"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>
-                    <img src="images/prev_page.gif"/>
+                    <span aria-hidden="true">&#8249;</span>
+                    <span class="visually-hidden">Previous</span>
                 </a>
-            </span>
+            </li>
         </xsl:if>
-        <span class="control current"><xsl:value-of select="@title"/></span>
+        <li class="page-item active" aria-current="page">
+            <span class="page-link"><xsl:value-of select="@title"/></span>
+        </li>
         <xsl:if test="following-sibling::control">
-            <span class="control arrow">
-                <a>
+            <li class="page-item">
+                <a class="page-link" aria-label="Next" rel="next">
                     <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action + 1"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>
-                    <img src="images/next_page.gif"/>
+                    <span aria-hidden="true">&#8250;</span>
+                    <span class="visually-hidden">Next</span>
                 </a>
-            </span>
+            </li>
         </xsl:if>
     </xsl:template>
-    
+
+    <xsl:template match="control[parent::toolbar[@name='pager']][not(@disabled)][not(@type='separator')]"><!-- другие страницы -->
+        <li class="page-item">
+            <a class="page-link">
+                <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>
+                <xsl:value-of select="@title"/>
+            </a>
+        </li>
+    </xsl:template>
+
     <!-- разделитель между группами цифр -->
     <xsl:template match="control[@type='separator'][parent::toolbar[@name='pager']]">
-        <span class="control break">...</span>
+        <li class="page-item disabled" aria-hidden="true">
+            <span class="page-link">…</span>
+        </li>
     </xsl:template>
-    
+
     <xsl:template match="properties[parent::toolbar[@name='pager']]"/>
-    
-    <xsl:template match="property[@name='title'][ancestor::toolbar[@name='pager']]">
-        <span class="title"><xsl:value-of select="."/>:</span>
-    </xsl:template>
-    <!-- /листалка по страницам -->     
+
+    <xsl:template match="property[@name='title'][ancestor::toolbar[@name='pager']]"/>
+    <!-- /листалка по страницам -->
     
     <!-- Панель управления страницей обрабатывается в document.xslt  -->
     <xsl:template match="toolbar[parent::component[@class='PageToolBar']]"/>
