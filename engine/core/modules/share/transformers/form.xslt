@@ -105,7 +105,7 @@
             <xsl:attribute name="name"><xsl:value-of select="@id"/></xsl:attribute>
             <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
             <xsl:if test="@tooltip != ''">
-                <xsl:attribute name="data-mdb-tooltip-init">1</xsl:attribute>
+                <xsl:attribute name="data-bs-toggle">tooltip</xsl:attribute>
             </xsl:if>
             <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
             <xsl:attribute name="form"><xsl:value-of select="$form-id"/></xsl:attribute>
@@ -122,17 +122,51 @@
         <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
             <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
-                    <xsl:for-each select="set:distinct($FIELDS/@tabName)">
-                        <xsl:variable name="TAB_NAME" select="."></xsl:variable>
-                        <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME]))&gt;0">
-                            <li class="nav-item" data-role="tab">
-                                <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="$TAB_NAME" /></a>
-                                <xsl:if test="$FIELDS[@tabName=$TAB_NAME][1]/@language">
-                                    <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME][1]/@language" /> }</span>
+                    <xsl:choose>
+                        <xsl:when test="$FIELDS[@language]">
+                            <xsl:for-each select="set:distinct($FIELDS[@language]/@tabName)">
+                                <xsl:variable name="TAB_NAME" select="."/>
+                                <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME]))&gt;0">
+                                    <li class="nav-item" data-role="tab">
+                                        <a lang_abbr="{$FIELDS[@tabName=$TAB_NAME][1]/@languageAbbr}" href="#{generate-id(.)}" data-role="tab-link">
+                                            <xsl:attribute name="class">
+                                                <xsl:text>nav-link</xsl:text>
+                                                <xsl:if test="position()=1">
+                                                    <xsl:text> active</xsl:text>
+                                                </xsl:if>
+                                            </xsl:attribute>
+                                            <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
+                                            <xsl:attribute name="data-bs-target">#<xsl:value-of select="generate-id(.)"/></xsl:attribute>
+                                            <xsl:value-of select="$TAB_NAME" />
+                                        </a>
+                                        <xsl:if test="$FIELDS[@tabName=$TAB_NAME][1]/@language">
+                                            <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME][1]/@language" /> }</span>
+                                        </xsl:if>
+                                    </li>
                                 </xsl:if>
-                            </li>
-                        </xsl:if>
-                    </xsl:for-each>
+                            </xsl:for-each>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:for-each select="set:distinct($FIELDS/@tabName)">
+                                <xsl:variable name="TAB_NAME" select="."/>
+                                <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME]))&gt;0">
+                                    <li class="nav-item" data-role="tab">
+                                        <a href="#{generate-id(.)}" data-role="tab-link">
+                                            <xsl:attribute name="class">
+                                                <xsl:text>nav-link</xsl:text>
+                                                <xsl:if test="position()=1">
+                                                    <xsl:text> active</xsl:text>
+                                                </xsl:if>
+                                            </xsl:attribute>
+                                            <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
+                                            <xsl:attribute name="data-bs-target">#<xsl:value-of select="generate-id(.)"/></xsl:attribute>
+                                            <xsl:value-of select="$TAB_NAME"/>
+                                        </a>
+                                    </li>
+                                </xsl:if>
+                            </xsl:for-each>
+                        </xsl:otherwise>
+                    </xsl:choose>
                     <xsl:apply-templates select="$FIELDS[@type='tab']" mode="field_name"/>
                 </ul>
             </div>
@@ -140,7 +174,13 @@
                 <div class="tab-content" data-role="tab-content">
                     <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                         <xsl:variable name="TAB_NAME" select="."/>
-                        <div id="{generate-id(.)}" class="tab-pane" data-role="pane-item">
+                        <div id="{generate-id(.)}" data-role="pane-item">
+                            <xsl:attribute name="class">
+                                <xsl:text>tab-pane fade</xsl:text>
+                                <xsl:if test="position()=1">
+                                    <xsl:text> show active</xsl:text>
+                                </xsl:if>
+                            </xsl:attribute>
                             <xsl:apply-templates select="$FIELDS[@tabName=$TAB_NAME]"/>
                         </div>
                     </xsl:for-each>
