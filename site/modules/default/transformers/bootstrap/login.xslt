@@ -16,7 +16,7 @@
         <xsl:variable name="IS_USER" select="//property[@name='is_user'] &gt; 0"/>
         <xsl:variable name="TEMPLATE_PATH" select="concat($LANG_ABBR, @single_template)"/>
 
-        <div class="container py-5" id="{$COMPONENT_ID}">
+        <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
             <xsl:attribute name="template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
             <div class="row justify-content-center">
                 <div class="col-xl-5 col-md-8">
