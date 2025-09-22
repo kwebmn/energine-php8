@@ -362,15 +362,15 @@ final class Document extends DBWorker implements IDocument
             $this->componentManager->createComponent('breadCrumbs', 'share', $this->breadCrumbsClass)
         );
 
-        // // Cross-domain auth iframe for non-auth users when domains differ
-        // if (
-        //     !$this->user->isAuthenticated() &&
-        //     (strpos(E()->getSiteManager()->getCurrentSite()->host, (string)$this->getConfigValue('site.domain')) === false)
-        // ) {
-        //     $this->componentManager->add(
-        //         $this->componentManager->createComponent('cdAuth', 'share', 'CrossDomainAuth')
-        //     );
-        // }
+        // Cross-domain auth iframe for non-auth users when domains differ
+        if (
+            !$this->user->isAuthenticated() &&
+            (strpos(E()->getSiteManager()->getCurrentSite()->host, (string)$this->getConfigValue('site.domain')) === false)
+        ) {
+            $this->componentManager->add(
+                $this->componentManager->createComponent('cdAuth', 'share', 'CrossDomainAuth')
+            );
+        }
 
         $this->componentManager->add(
             $this->componentManager->createComponent('jsdata', 'default', 'JSData')
