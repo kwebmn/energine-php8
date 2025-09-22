@@ -11,6 +11,9 @@ class PageToolbar extends Toolbar {
         this.layoutManager = null;
         this.sidebarToggleButton = null;
         this._updateSidebarToggleState = null;
+        this.sidebarOffcanvas = null;
+        this.sidebarFrameElement = null;
+        this._ensureSidebarOffcanvas = null;
 
         this.dock();
         this.bindTo(this);
@@ -119,6 +122,26 @@ class PageToolbar extends Toolbar {
     static _setStyle(el, prop, val) { el.style[prop] = val; }
     static _setStyles(el, styles) { Object.entries(styles).forEach(([k, v]) => el.style[k] = v); }
 
+    static _persistSidebarState(isVisible) {
+        try {
+            const baseHref = window?.Energine?.base || window.location.pathname || '/';
+            const url = new URL(baseHref, window.location.origin);
+            const hostname = url.hostname || window.location.hostname;
+            const domainChunks = hostname.split('.');
+            if (domainChunks.length > 2) {
+                domainChunks.shift();
+            }
+            const domain = domainChunks.length ? `.${domainChunks.join('.')}` : window.location.hostname;
+            const pathName = url.pathname || '/';
+            const path = pathName.endsWith('/') ? pathName : `${pathName}/`;
+            const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString();
+            const value = isVisible ? '1' : '0';
+            document.cookie = `sidebar=${value}; expires=${expires}; domain=${domain}; path=${path}`;
+        } catch (error) {
+            console.warn('[PageToolbar] Failed to persist sidebar state', error);
+        }
+    }
+
     // ===== Основная логика =====
 
     setupLayout() {
@@ -132,13 +155,16 @@ class PageToolbar extends Toolbar {
             PageToolbar._addClass(html, 'e-has-topframe1');
         }
 
-        // Основные контейнеры
+        const layoutContainer = document.createElement('div');
+        layoutContainer.classList.add('e-layout', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100');
+
         const mainFrame = document.createElement('div');
         PageToolbar._addClass(mainFrame, 'e-mainframe');
+        mainFrame.classList.add('flex-grow-1', 'container-fluid');
 
         const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
-        topFrame.classList.add('navbar', 'navbar-expand-lg', 'navbar-light', 'bg-body');
+        topFrame.classList.add('navbar', 'navbar-expand-lg', 'navbar-light', 'bg-body', 'border-bottom', 'shadow-sm', 'sticky-top');
 
         const container = document.createElement('div');
         container.classList.add('container-fluid');
@@ -205,24 +231,35 @@ class PageToolbar extends Toolbar {
         const toMove = Array.from(document.body.childNodes).filter(el =>
             el.nodeType === 1 && !((el.tagName.toLowerCase() !== 'svg') && PageToolbar._hasClass(el, 'e-overlay'))
         );
+        layoutContainer.appendChild(mainFrame);
         document.body.appendChild(topFrame);
-        document.body.appendChild(mainFrame);
+        document.body.appendChild(layoutContainer);
         toMove.forEach(child => mainFrame.appendChild(child));
 
         // Боковая панель (sidebar)
         if (!this.properties['noSideFrame']) {
-            if (getCookie('sidebar') == 1) {
-                PageToolbar._addClass(html, 'e-has-sideframe');
-            }
+            const sidebarId = (`${collapseIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
             const sidebarFrame = document.createElement('div');
             PageToolbar._addClass(sidebarFrame, 'e-sideframe');
+            sidebarFrame.classList.add('offcanvas', 'offcanvas-start');
+            sidebarFrame.id = sidebarId;
+            sidebarFrame.setAttribute('tabindex', '-1');
+            if (sidebarLabel) {
+                sidebarFrame.setAttribute('aria-label', sidebarLabel);
+            }
+
             const sidebarFrameContent = document.createElement('div');
             PageToolbar._addClass(sidebarFrameContent, 'e-sideframe-content');
+            sidebarFrameContent.classList.add('offcanvas-body', 'p-0', 'd-flex', 'flex-column');
+
             const sidebarFrameBorder = document.createElement('div');
             PageToolbar._addClass(sidebarFrameBorder, 'e-sideframe-border');
-            document.body.appendChild(sidebarFrame);
+
+            layoutContainer.insertBefore(sidebarFrame, mainFrame);
             sidebarFrame.appendChild(sidebarFrameContent);
             sidebarFrame.appendChild(sidebarFrameBorder);
+
+            this.sidebarFrameElement = sidebarFrame;
 
             const iframe = document.createElement('iframe');
             PageToolbar._setProperties(iframe, {
@@ -237,13 +274,73 @@ class PageToolbar extends Toolbar {
                 sidebarToggle.setAttribute('aria-expanded', pressed);
                 sidebarToggle.classList.toggle('active', state);
             };
-            this._updateSidebarToggleState();
+
+            const sidebarCookie = getCookie('sidebar');
+            const shouldShowSidebar = sidebarCookie == 1;
+            if (shouldShowSidebar) {
+                PageToolbar._addClass(html, 'e-has-sideframe');
+            } else {
+                PageToolbar._removeClass(html, 'e-has-sideframe');
+            }
+            this._updateSidebarToggleState(shouldShowSidebar);
+
+            const handleSidebarShown = () => {
+                PageToolbar._addClass(html, 'e-has-sideframe');
+                this._updateSidebarToggleState(true);
+                PageToolbar._persistSidebarState(true);
+            };
+
+            const handleSidebarHidden = () => {
+                PageToolbar._removeClass(html, 'e-has-sideframe');
+                this._updateSidebarToggleState(false);
+                PageToolbar._persistSidebarState(false);
+            };
+
+            sidebarFrame.addEventListener('shown.bs.offcanvas', handleSidebarShown);
+            sidebarFrame.addEventListener('hidden.bs.offcanvas', handleSidebarHidden);
+
+            const bootstrapInitAttempts = { count: 0, max: 40 };
+            const ensureOffcanvas = () => {
+                if (this.sidebarOffcanvas) {
+                    return true;
+                }
+                const bootstrapGlobal = window?.bootstrap;
+                if (!bootstrapGlobal || !bootstrapGlobal.Offcanvas) {
+                    return false;
+                }
+
+                this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                    backdrop: true,
+                    scroll: false
+                });
+
+                if (PageToolbar._hasClass(html, 'e-has-sideframe')) {
+                    this.sidebarOffcanvas.show();
+                }
+
+                return true;
+            };
+
+            const waitForOffcanvas = () => {
+                if (!ensureOffcanvas()) {
+                    if (bootstrapInitAttempts.count++ < bootstrapInitAttempts.max) {
+                        window.setTimeout(waitForOffcanvas, 50);
+                    } else {
+                        console.warn('[PageToolbar] Bootstrap Offcanvas API is not available.');
+                    }
+                }
+            };
+
+            waitForOffcanvas();
+            this._ensureSidebarOffcanvas = ensureOffcanvas;
 
             sidebarToggle.addEventListener('click', event => {
                 event.preventDefault();
                 event.stopPropagation();
                 this.toggleSidebar();
             });
+
+            sidebarToggle.setAttribute('aria-controls', sidebarId);
         } else {
             sidebarToggle.classList.add('disabled');
             sidebarToggle.setAttribute('aria-disabled', 'true');
@@ -251,6 +348,9 @@ class PageToolbar extends Toolbar {
             sidebarToggle.setAttribute('aria-expanded', 'false');
             sidebarToggle.disabled = true;
             this._updateSidebarToggleState = null;
+            this.sidebarFrameElement = null;
+            this.sidebarOffcanvas = null;
+            this._ensureSidebarOffcanvas = null;
         }
 
         // Деактивируем editBlocks если editMode включён
@@ -279,24 +379,22 @@ class PageToolbar extends Toolbar {
     }
 
     toggleSidebar() {
+        if (typeof this._ensureSidebarOffcanvas === 'function') {
+            this._ensureSidebarOffcanvas();
+        }
+
+        if (this.sidebarOffcanvas && typeof this.sidebarOffcanvas.toggle === 'function') {
+            const element = this.sidebarOffcanvas._element || this.sidebarFrameElement;
+            const isShown = element ? element.classList.contains('show') : false;
+            this.sidebarOffcanvas.toggle();
+            return !isShown;
+        }
+
         const html = document.documentElement;
-        html.classList.toggle('e-has-sideframe');
+        PageToolbar._toggleClass(html, 'e-has-sideframe');
+        const isSidebarVisible = PageToolbar._hasClass(html, 'e-has-sideframe');
+        PageToolbar._persistSidebarState(isSidebarVisible);
 
-        // Используем стандартный URL!
-        const url = new URL(window.Energine.base, window.location.origin);
-        let domainChunks = url.hostname.split('.');
-        if (domainChunks.length > 2) domainChunks.shift();
-        const domain = '.' + domainChunks.join('.');
-
-        // Path с / на конце
-        const path = url.pathname.endsWith('/') ? url.pathname : url.pathname + '/';
-
-        // Кука на 30 дней
-        const value = html.classList.contains('e-has-sideframe') ? '1' : '0';
-        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString();
-        document.cookie = `sidebar=${value}; expires=${expires}; domain=${domain}; path=${path}`;
-
-        const isSidebarVisible = html.classList.contains('e-has-sideframe');
         if (typeof this._updateSidebarToggleState === 'function') {
             this._updateSidebarToggleState(isSidebarVisible);
         } else if (this.sidebarToggleButton) {
