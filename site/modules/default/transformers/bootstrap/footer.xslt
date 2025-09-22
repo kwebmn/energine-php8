@@ -3,42 +3,91 @@
         version="1.0"
         xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
-
     <xsl:template name="FOOTER">
-        <!-- Footer -->
-        <footer class="bg-light text-center mt-5">
-            <!-- Grid container -->
-            <div class="container p-4">
-
-
-
-                <!-- Section: Text -->
-                <section class="mb-4">
+        <footer class="bg-body-tertiary border-top mt-5">
+            <div class="container py-5">
+                <div class="row g-4">
                     <xsl:apply-templates select="$COMPONENTS[@name='footerTextBlock']" />
-<!--                    <p>-->
-<!--                        Lorem ipsum dolor sit amet consectetur adipisicing elit. Sunt-->
-<!--                        distinctio earum repellat quaerat voluptatibus placeat nam,-->
-<!--                        commodi optio pariatur est quia magnam eum harum corrupti dicta,-->
-<!--                        aliquam sequi voluptate quas.-->
-<!--                    </p>-->
-                </section>
-                <!-- Section: Text -->
 
-
-                <!-- Section: Links -->
-                <!-- Section: Links -->
-
+                    <xsl:for-each select="$COMPONENTS[(@tag='footer' or starts-with(@name,'footer')) and @name!='footerTextBlock']">
+                        <xsl:apply-templates select="." mode="footer-column" />
+                    </xsl:for-each>
+                </div>
             </div>
-            <!-- Grid container -->
 
-            <!-- Copyright -->
-            <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.2)">
-                <xsl:value-of select="//translation[@const='TXT_COPYRIGHT']" disable-output-escaping="yes"/>
+            <div class="bg-body-secondary py-3">
+                <div class="container text-center small text-muted">
+                    <xsl:value-of select="//translation[@const='TXT_COPYRIGHT']" disable-output-escaping="yes"/>
+                </div>
             </div>
-            <!-- Copyright -->
-
         </footer>
-        <!-- Footer -->
+    </xsl:template>
+
+    <xsl:template match="component[@name='footerTextBlock']">
+        <xsl:if test="string-length(normalize-space(recordset/record/field)) &gt; 0">
+            <div class="col-12 col-lg-5">
+                <div class="text-muted">
+                    <xsl:value-of select="recordset/record/field" disable-output-escaping="yes"/>
+                </div>
+            </div>
+        </xsl:if>
+    </xsl:template>
+
+    <xsl:template match="component" mode="footer-column">
+        <xsl:param name="columnClass" select="'col-6 col-md-4 col-xl-3'"/>
+        <div class="{$columnClass}">
+            <xsl:variable name="TITLE_PROP" select="normalize-space(properties/property[@name='title'])"/>
+            <xsl:variable name="TITLE_ATTR" select="normalize-space(@title)"/>
+
+            <xsl:if test="string-length($TITLE_PROP) &gt; 0 or string-length($TITLE_ATTR) &gt; 0">
+                <h6 class="text-uppercase fw-semibold mb-3">
+                    <xsl:choose>
+                        <xsl:when test="string-length($TITLE_PROP) &gt; 0">
+                            <xsl:value-of select="properties/property[@name='title']"/>
+                        </xsl:when>
+                        <xsl:when test="string-length($TITLE_ATTR) &gt; 0">
+                            <xsl:value-of select="@title"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="@name"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </h6>
+            </xsl:if>
+
+            <ul class="list-unstyled mb-0">
+                <xsl:apply-templates select="recordset/record" mode="footer-link" />
+            </ul>
+        </div>
+    </xsl:template>
+
+    <xsl:template match="component/recordset/record" mode="footer-link">
+        <xsl:variable name="NAME" select="normalize-space(field[@name='Name'])"/>
+        <xsl:variable name="DESCRIPTION" select="field[@name='Description']"/>
+
+        <xsl:if test="string-length($NAME) &gt; 0">
+            <li class="mb-2">
+                <a class="link-secondary text-decoration-none">
+                    <xsl:attribute name="href">
+                        <xsl:choose>
+                            <xsl:when test="string-length(normalize-space(field[@name='Url'])) &gt; 0">
+                                <xsl:value-of select="field[@name='Url']"/>
+                            </xsl:when>
+                            <xsl:when test="string-length(normalize-space(field[@name='Segment'])) &gt; 0">
+                                <xsl:value-of select="field[@name='Segment']"/>
+                            </xsl:when>
+                            <xsl:otherwise>#</xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:attribute>
+                    <xsl:value-of select="$NAME"/>
+                </a>
+                <xsl:if test="string-length(normalize-space($DESCRIPTION)) &gt; 0">
+                    <div class="small text-muted">
+                        <xsl:value-of select="$DESCRIPTION" disable-output-escaping="yes"/>
+                    </div>
+                </xsl:if>
+            </li>
+        </xsl:if>
     </xsl:template>
 
 </xsl:stylesheet>

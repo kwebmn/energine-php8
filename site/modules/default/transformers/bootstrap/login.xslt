@@ -1,254 +1,231 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
-    <!--    <xsl:template match="content[@file='default/sign_in.content.xml']">-->
-    <!--    </xsl:template>-->
-
     <xsl:template match="component[@name='signIn']">
+        <xsl:variable name="COMPONENT_ID" select="concat('signIn-', generate-id(.))"/>
+        <xsl:variable name="TABS_ID" select="concat('auth-tabs-', generate-id(.))"/>
+        <xsl:variable name="LOGIN_TAB_ID" select="concat('auth-login-tab-', generate-id(.))"/>
+        <xsl:variable name="LOGIN_PANE_ID" select="concat('auth-login-pane-', generate-id(.))"/>
+        <xsl:variable name="REGISTER_TAB_ID" select="concat('auth-register-tab-', generate-id(.))"/>
+        <xsl:variable name="REGISTER_PANE_ID" select="concat('auth-register-pane-', generate-id(.))"/>
+        <xsl:variable name="LOGIN_EMAIL_ID" select="concat('login-email-', generate-id(.))"/>
+        <xsl:variable name="LOGIN_PASSWORD_ID" select="concat('login-password-', generate-id(.))"/>
+        <xsl:variable name="REGISTER_NAME_ID" select="concat('register-name-', generate-id(.))"/>
+        <xsl:variable name="REGISTER_EMAIL_ID" select="concat('register-email-', generate-id(.))"/>
+        <xsl:variable name="REGISTER_PASSWORD_ID" select="concat('register-password-', generate-id(.))"/>
+        <xsl:variable name="IS_USER" select="//property[@name='is_user'] &gt; 0"/>
+        <xsl:variable name="TEMPLATE_PATH" select="concat($LANG_ABBR, @single_template)"/>
 
-        <div class="container px-4">
-
-            <div class="row d-flex justify-content-center">
+        <div class="container py-5" id="{$COMPONENT_ID}">
+            <xsl:attribute name="template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <div class="row justify-content-center">
                 <div class="col-xl-5 col-md-8">
-                    <div class="card shadow-lg">
-                        <div class="card-body p-4">
-                            <!-- Pills navs -->
-                            <ul class="nav nav-pills nav-justified mb-3" id="authTabs-{generate-id(.)}" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button
-                                            class="nav-link active"
-                                            id="tab-login-{generate-id(.)}"
-                                            data-bs-toggle="pill"
-                                            data-bs-target="#pills-login"
-                                            type="button"
-                                            role="tab"
-                                            aria-controls="pills-login"
-                                            aria-selected="true">
-                                        <xsl:value-of select="//translation[@const='TXT_SIGN_UP']" />
-                                    </button>
-                                </li>
-
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-white border-0 pb-0">
+                            <ul class="nav nav-pills nav-justified" id="{$TABS_ID}" role="tablist">
+                                <xsl:choose>
+                                    <xsl:when test="$IS_USER">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="{$LOGIN_TAB_ID}" type="button" role="tab">
+                                                <xsl:attribute name="data-bs-target">#<xsl:value-of select="$LOGIN_PANE_ID"/></xsl:attribute>
+                                                <xsl:attribute name="aria-controls"><xsl:value-of select="$LOGIN_PANE_ID"/></xsl:attribute>
+                                                <xsl:attribute name="aria-selected">true</xsl:attribute>
+                                                <xsl:value-of select="//translation[@const='TXT_LOGOUT']"/>
+                                            </button>
+                                        </li>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="{$LOGIN_TAB_ID}" type="button" role="tab">
+                                                <xsl:attribute name="data-bs-target">#<xsl:value-of select="$LOGIN_PANE_ID"/></xsl:attribute>
+                                                <xsl:attribute name="aria-controls"><xsl:value-of select="$LOGIN_PANE_ID"/></xsl:attribute>
+                                                <xsl:attribute name="aria-selected">true</xsl:attribute>
+                                                <xsl:value-of select="//translation[@const='TXT_SIGN_IN_ONLY']"/>
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="{$REGISTER_TAB_ID}" type="button" role="tab">
+                                                <xsl:attribute name="data-bs-target">#<xsl:value-of select="$REGISTER_PANE_ID"/></xsl:attribute>
+                                                <xsl:attribute name="aria-controls"><xsl:value-of select="$REGISTER_PANE_ID"/></xsl:attribute>
+                                                <xsl:attribute name="aria-selected">false</xsl:attribute>
+                                                <xsl:value-of select="//translation[@const='TXT_SIGN_UP']"/>
+                                            </button>
+                                        </li>
+                                    </xsl:otherwise>
+                                </xsl:choose>
                             </ul>
-                            <div class="tab-content" id="{generate-id(recordset)}" template="{$LANG_ABBR}{@single_template}">
-                                <div class="tab-pane fade show active" id="pills-login" role="tabpanel" aria-labelledby="tab-login-{generate-id(.)}" >
-
-                                    <xsl:if test="//property[@name='is_user'] > 0">
-                                        <div role="tabpanel" class="tab-pane active" id="logout">
-                                            <button class="btn btn-primary w-100 mb-4 btn-logout" id="btn-logout"><xsl:value-of select="//translation[@const='TXT_LOGOUT']" /></button>
-                                        </div>
-                                    </xsl:if>
-
-                                    <xsl:if test="not(//property[@name='is_user'] > 0)">
-                                        <form id="sign_in" method="POST">
-
-                                            <div class="text-center mb-3">
-                                                <p><xsl:value-of select="//translation[@const='TXT_SIGN_WITH']"/></p>
-
-                                                <a href="{$LANG_ABBR}/login/google/" class="btn btn-link btn-lg mx-1">
-                                                    <i class="fab fa-google"></i>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="tab-content" id="{$COMPONENT_ID}-content">
+                                <xsl:attribute name="template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+                                <div class="tab-pane fade show active" id="{$LOGIN_PANE_ID}" role="tabpanel" aria-labelledby="{$LOGIN_TAB_ID}">
+                                    <xsl:choose>
+                                        <xsl:when test="$IS_USER">
+                                            <div class="text-center">
+                                                <p class="mb-4">
+                                                    <xsl:value-of select="//translation[@const='TXT_LOGOUT_TEXT']"/>
+                                                </p>
+                                                <button class="btn btn-primary w-100 mb-3 btn-logout" id="btn-logout" type="button">
+                                                    <xsl:value-of select="//translation[@const='TXT_LOGOUT']"/>
+                                                </button>
+                                                <a class="btn btn-outline-secondary w-100" href="{$BASE}{$LANG_ABBR}">
+                                                    <xsl:value-of select="//translation[@const='TXT_HOME']"/>
                                                 </a>
-
                                             </div>
-
-                                            <!-- Email input -->
-                                            <div class="form-floating mb-4">
-                                                <input type="email" id="loginName" class="form-control" name="signin[email]" required="required" placeholder="{//translation[@const='TXT_EMAIL']}"/>
-                                                <label for="loginName"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
-                                            </div>
-
-                                            <!-- Password input -->
-                                            <div class="form-floating mb-4">
-                                                <input type="password" id="loginPassword2" class="form-control" name="signin[password]" required="required" placeholder="{//translation[@const='TXT_PASSWORD']}"/>
-                                                <label for="loginPassword2"><xsl:value-of select="//translation[@const='TXT_PASSWORD']" /></label>
-                                            </div>
-
-                                            <!-- 2 column grid layout -->
-                                            <div class="row mb-4">
-
-
-                                                <div class="col-md-12 d-flex justify-content-center">
-                                                    <!-- Simple link -->
-                                                    <a href="{$BASE}{$LANG_ABBR}restore-password/"><xsl:value-of select="//translation[@const='TXT_FORGOT_PASSWORD']" /></a>
+                                        </xsl:when>
+                                        <xsl:otherwise>
+                                            <form id="sign_in" method="POST" novalidate="novalidate" class="needs-validation">
+                                                <div class="text-center mb-4">
+                                                    <p class="mb-2"><xsl:value-of select="//translation[@const='TXT_SIGN_WITH']"/></p>
+                                                    <a href="{$LANG_ABBR}/login/google/" class="btn btn-outline-danger btn-sm px-3">
+                                                        <i class="fab fa-google me-1" aria-hidden="true"></i>
+                                                        <span>Google</span>
+                                                    </a>
+                                                </div>
+                                                <div class="alert alert-danger d-none" data-role="form-error" role="alert"></div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="{$LOGIN_EMAIL_ID}">
+                                                        <xsl:value-of select="//translation[@const='TXT_EMAIL']"/>
+                                                    </label>
+                                                    <input class="form-control" type="email" id="{$LOGIN_EMAIL_ID}" name="signin[email]" required="required" autocomplete="email"/>
+                                                    <div class="invalid-feedback d-none" data-field="email">
+                                                        <xsl:value-of select="messages/message[@field='email']"/>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="{$LOGIN_PASSWORD_ID}">
+                                                        <xsl:value-of select="//translation[@const='TXT_PASSWORD']"/>
+                                                    </label>
+                                                    <input class="form-control" type="password" id="{$LOGIN_PASSWORD_ID}" name="signin[password]" required="required" autocomplete="current-password"/>
+                                                    <div class="invalid-feedback d-none" data-field="password">
+                                                        <xsl:value-of select="messages/message[@field='password']"/>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                                    <a href="{$BASE}{$LANG_ABBR}restore-password/">
+                                                        <xsl:value-of select="//translation[@const='TXT_FORGOT_PASSWORD']"/>
+                                                    </a>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary w-100 mb-2">
+                                                    <xsl:value-of select="//translation[@const='TXT_SIGN_IN_ONLY']"/>
+                                                </button>
+                                            </form>
+                                        </xsl:otherwise>
+                                    </xsl:choose>
+                                </div>
+                                <xsl:if test="not($IS_USER)">
+                                    <div class="tab-pane fade" id="{$REGISTER_PANE_ID}" role="tabpanel" aria-labelledby="{$REGISTER_TAB_ID}">
+                                        <form id="sign_up" method="POST" novalidate="novalidate" class="needs-validation">
+                                            <div class="alert alert-danger d-none" data-role="form-error" role="alert"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label" for="{$REGISTER_NAME_ID}">
+                                                    <xsl:value-of select="//translation[@const='TXT_YOUR_NAME']"/>
+                                                </label>
+                                                <input class="form-control" type="text" id="{$REGISTER_NAME_ID}" name="signup[name]" required="required" autocomplete="name"/>
+                                                <div class="invalid-feedback d-none" data-field="name">
+                                                    <xsl:value-of select="messages/message[@field='name']"/>
                                                 </div>
                                             </div>
-
-                                            <!-- Submit button -->
-                                            <button type="submit" class="btn btn-primary w-100 mb-4" id="btn-sign-up-fast">
-                                                <xsl:value-of select="//translation[@const='TXT_SIGN_UP']" />
+                                            <div class="mb-3">
+                                                <label class="form-label" for="{$REGISTER_EMAIL_ID}">
+                                                    <xsl:value-of select="//translation[@const='TXT_EMAIL']"/>
+                                                </label>
+                                                <input class="form-control" type="email" id="{$REGISTER_EMAIL_ID}" name="signup[email]" required="required" autocomplete="email"/>
+                                                <div class="invalid-feedback d-none" data-field="email">
+                                                    <xsl:value-of select="messages/message[@field='email']"/>
+                                                </div>
+                                            </div>
+                                            <div class="mb-4">
+                                                <label class="form-label" for="{$REGISTER_PASSWORD_ID}">
+                                                    <xsl:value-of select="//translation[@const='TXT_PASSWORD']"/>
+                                                </label>
+                                                <input class="form-control" type="password" id="{$REGISTER_PASSWORD_ID}" name="signup[password]" required="required" autocomplete="new-password" minlength="6"/>
+                                                <div class="invalid-feedback d-none" data-field="password">
+                                                    <xsl:value-of select="messages/message[@field='password']"/>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary w-100">
+                                                <xsl:value-of select="//translation[@const='TXT_SIGN_UP']"/>
                                             </button>
-
-                                            <!-- Register buttons -->
                                         </form>
-
-                                    </xsl:if>
-                                </div>
+                                    </div>
+                                </xsl:if>
                             </div>
-                            <!-- Pills content -->
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
-
-<!--        <div role="tabpanel" id="{generate-id(recordset)}" template="{$LANG_ABBR}{@single_template}">-->
-<!--            <ul class="tab-nav" role="tablist">-->
-<!--                <xsl:if test="//property[@name='is_user'] > 0">-->
-<!--                    <li class="active">-->
-<!--                        <a href="#logout" role="tab" data-toggle="tab" aria-expanded="true" class="mootools-noconflict">Выход</a>-->
-<!--                    </li>-->
-<!--                </xsl:if>-->
-
-<!--                <xsl:if test="not(//property[@name='is_user'] > 0)">-->
-<!--                    <li class="active">-->
-<!--                        <a href="#login" role="tab" data-toggle="tab" aria-expanded="true" class="mootools-noconflict"><xsl:value-of select="//translation[@const='TXT_SIGN_IN_ONLY']"/></a>-->
-<!--                    </li>-->
-<!--                    <li class="">-->
-<!--                        <a href="#register" aria-controls="profile11" role="tab" data-toggle="tab" aria-expanded="false" class="mootools-noconflict">-->
-<!--                            <xsl:value-of select="//translation[@const='TXT_SIGN_UP']" />-->
-<!--                        </a>-->
-<!--                    </li>-->
-<!--                </xsl:if>-->
-
-<!--            </ul>-->
-
-<!--            <div class="tab-content">-->
-
-<!--                <xsl:if test="//property[@name='is_user'] > 0">-->
-<!--                    <div role="tabpanel" class="tab-pane active" id="logout">-->
-<!--                        <button class="btn btn-default btn-logout" id="btn-logout">Выйти</button>-->
-<!--                    </div>-->
-<!--                </xsl:if>-->
-<!--                <xsl:if test="not(//property[@name='is_user'] > 0)">-->
-<!--                    <div role="tabpanel" class="tab-pane active" id="login">-->
-<!--                        <form id="sign_in" method="POST">-->
-<!--                            <div class="form-group fg-float">-->
-<!--                                <div class="fg-line">-->
-<!--                                    <input type="text" class="input-lg form-control fg-input" name="signin[email]" required="required"/>-->
-<!--                                    <label class="fg-label"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>-->
-<!--                                </div>-->
-<!--                            </div>-->
-<!--                            <div class="form-group fg-float">-->
-<!--                                <div class="fg-line">-->
-<!--                                    <input type="password" class="input-lg form-control fg-input" name="signin[password]" required="required"/>-->
-<!--                                    <label class="fg-label"><xsl:value-of select="//translation[@const='TXT_PASSWORD']" /></label>-->
-<!--                                </div>-->
-<!--                            </div>-->
-<!--                            <button class="waves-effect btn btn-primary m-r-10 m-b-10" id="btn-sign-up-fast2"  >-->
-<!--                                <xsl:value-of select="//translation[@const='TXT_SIGN_IN_ONLY']" />-->
-<!--                            </button>-->
-<!--                            <a class="waves-effect btn btn-default m-r-10 m-b-10" href="{$BASE}{$LANG_ABBR}restore-password/">-->
-<!--                                <xsl:value-of select="//translation[@const='TXT_FORGOT_PASSWORD']" />-->
-<!--                            </a>-->
-
-<!--                            <div class="m-t-10">-->
-<!--                            </div>-->
-<!--                        </form>-->
-
-<!--                    </div>-->
-
-<!--                    <div role="tabpanel" class="tab-pane " id="register">-->
-<!--                        <form id="sign_up" method="POST">-->
-<!--                            <div class="form-group fg-float">-->
-<!--                                <div class="fg-line">-->
-<!--                                    <input type="text" class="input-lg form-control fg-input" name="signup[name]" required="required"/>-->
-<!--                                    <label class="fg-label">-->
-<!--                                        <xsl:value-of select="//translation[@const='TXT_YOUR_NAME']"/>-->
-<!--                                    </label>-->
-<!--                                </div>-->
-<!--                            </div>-->
-
-<!--                            <div class="form-group fg-float">-->
-<!--                                <div class="fg-line">-->
-<!--                                    <input type="email" class="input-lg form-control fg-input" name="signup[email]" required="required"/>-->
-<!--                                    <label class="fg-label">-->
-<!--                                        <xsl:value-of select="//translation[@const='TXT_EMAIL']"/>-->
-<!--                                    </label>-->
-<!--                                </div>-->
-<!--                            </div>-->
-<!--                            <div class="form-group fg-float">-->
-<!--                                <div class="fg-line">-->
-<!--                                    <input type="password" class="input-lg form-control fg-input" name="signup[password]" required="required"/>-->
-<!--                                    <label class="fg-label">-->
-<!--                                        <xsl:value-of select="//translation[@const='TXT_PASSWORD']"/>-->
-<!--                                    </label>-->
-<!--                                </div>-->
-<!--                            </div>-->
-
-<!--                            <button class="waves-effect btn btn-primary" id="btn-sign-up-fast">-->
-<!--                                <xsl:value-of select="//translation[@const='TXT_SIGN_UP']" />-->
-<!--                            </button>-->
-
-<!--                        </form>-->
-
-<!--                    </div>-->
-
-
-<!--                </xsl:if>-->
-
-
-
-<!--            </div>-->
-<!--        </div>-->
     </xsl:template>
 
-
     <xsl:template match="component[@name='recoverPassword' and @componentAction='main']">
-        <div class="row" id="{generate-id(recordset)}" single_template="{@single_template}" template="{@template}">
-            <div class="col-xl-6">
-                <form id="recover_form" action="{@template}send" method="post">
-                    <!-- Email input -->
-                    <div class="form-floating mb-4">
-                        <input type="email" id="email" class="form-control" name="email" required="required" placeholder="{//translation[@const='TXT_EMAIL']}"/>
-                        <label for="email"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
+        <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
+            <div class="row justify-content-center">
+                <div class="col-xl-5 col-md-8">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body p-4">
+                            <form id="recover_form" action="{@template}send" method="post" novalidate="novalidate" class="needs-validation">
+                                <div class="mb-3">
+                                    <label class="form-label" for="email">
+                                        <xsl:value-of select="//translation[@const='TXT_EMAIL']" />
+                                    </label>
+                                    <input type="email" id="email" class="form-control" name="email" required="required" autocomplete="email"/>
+                                    <div class="invalid-feedback d-none" data-field="email"></div>
+                                </div>
+                                <button type="submit" name="recover_submit" id="recover_submit" class="btn btn-primary w-100">
+                                    <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD']"/>
+                                </button>
+                            </form>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <button type="submit" name="recover_submit" id="recover_submit" class="btn btn-primary w-100 mb-4">
-                            <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD']"/>
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
-
         </div>
     </xsl:template>
 
     <xsl:template match="component[@name='recoverPassword' and @componentAction='send']">
-        <div class="row" id="{generate-id(recordset)}" single_template="{@single_template}" template="{@template}">
-            <div class="col-sm-6 col-sm-offset-3 text-center">
-                <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD_MESSAGE']" disable-output-escaping="yes"/>
+        <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
+            <div class="row justify-content-center">
+                <div class="col-lg-6 text-center">
+                    <div class="alert alert-success" role="alert">
+                        <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD_MESSAGE']" disable-output-escaping="yes"/>
+                    </div>
+                </div>
             </div>
         </div>
     </xsl:template>
 
     <xsl:template match="component[@name='recoverPassword' and @componentAction='recover']">
-        <div class="row" id="{generate-id(recordset)}" single_template="{@single_template}" template="{@template}">
-            <div class="col-xl-6 ">
-                <form id="recover_form2" action="{@template}" method="post">
-                    <input type="hidden" name="code" id="code" value="{@code}"/>
-
-                    <div class="form-floating mb-4">
-                        <input type="password" id="password1"  class="form-control" name="password1" required="required" placeholder="{//translation[@const='FIELD_CHANGE_U_PASSWORD']}"/>
-                        <label for="password1"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD']" /></label>
+        <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
+            <div class="row justify-content-center">
+                <div class="col-xl-5 col-md-8">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body p-4">
+                            <form id="recover_form2" action="{@template}" method="post" novalidate="novalidate" class="needs-validation">
+                                <input type="hidden" name="code" id="code" value="{@code}"/>
+                                <div class="mb-3">
+                                    <label class="form-label" for="password1">
+                                        <xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD']" />
+                                    </label>
+                                    <input type="password" id="password1"  class="form-control" name="password1" required="required" autocomplete="new-password"/>
+                                    <div class="invalid-feedback d-none" data-field="password1"></div>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label" for="password2">
+                                        <xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD2']" />
+                                    </label>
+                                    <input type="password" id="password2"  class="form-control" name="password2" required="required" autocomplete="new-password"/>
+                                    <div class="invalid-feedback d-none" data-field="password2"></div>
+                                </div>
+                                <button type="submit" name="change-password-submit" id="change-password-submit" class="btn btn-primary w-100">
+                                    <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
+                                </button>
+                            </form>
+                        </div>
                     </div>
-
-                    <div class="form-floating mb-4">
-                        <input type="password" id="password2"  class="form-control" name="password2" required="required" placeholder="{//translation[@const='FIELD_CHANGE_U_PASSWORD2']}"/>
-                        <label for="password2"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD2']" /></label>
-                    </div>
-
-                    <div class="form-group">
-                        <button type="submit" name="change-password-submit" id="change-password-submit" class="btn btn-primary w-100 mb-4" value="">
-                            <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
-
         </div>
     </xsl:template>
-
-
 
 </xsl:stylesheet>
