@@ -186,7 +186,7 @@ class GoogleSitemap extends SitemapTree
     /**
      * @copydoc SitemapTree::createBuilder
      */
-    protected function createBuilder()
+    protected function createBuilder(): TreeBuilder
     {
         $builder = new TreeBuilder();
 
