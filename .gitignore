@@ -14,6 +14,7 @@ tmp/
 
 # PHP/Composer (под ваш кейс: для приложений lock обычно коммитят)
 vendor/
+<<<<<<< HEAD
 stats/
 core/
 assets/
@@ -22,3 +23,6 @@ scripts/
 stylesheets/
 templates/
 uploads/
+=======
+stats/
+>>>>>>> fbbcc4a (fixes)
