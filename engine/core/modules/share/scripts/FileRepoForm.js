@@ -53,7 +53,8 @@ class FileRepoForm extends Form {
                     const dataElement = dataSelector ? document.getElementById(dataSelector) : null;
 
                     if (previewElement) {
-                        previewElement.classList.remove('hidden');
+                        previewElement.classList.remove('d-none', 'hidden');
+                        previewElement.removeAttribute('hidden');
                         previewElement.src = Energine.base + 'resizer/w0-h0/' + response.tmp_name;
                     }
                     if (dataElement) {
@@ -68,7 +69,8 @@ class FileRepoForm extends Form {
     generatePreviews(tmpFileName) {
         if (this.thumbs && this.thumbs.length) {
             this.thumbs.forEach(el => {
-                el.classList.remove('hidden');
+                el.classList.remove('d-none', 'hidden');
+                el.removeAttribute('hidden');
                 el.src = `${Energine.base}resizer/w${el.getAttribute('width')}-h${el.getAttribute('height')}/${tmpFileName}`;
             });
         }
@@ -109,14 +111,15 @@ class FileRepoForm extends Form {
         const previewElement = document.getElementById('preview');
         if (previewElement) {
             previewElement.removeAttribute('src');
-            previewElement.classList.remove('hidden');
+            previewElement.classList.remove('d-none', 'hidden');
+            previewElement.removeAttribute('hidden');
             previewElement.src = Energine.base + 'images/loading.gif';
         }
 
         if (this.thumbs && this.thumbs.length) {
             this.thumbs.forEach(thumb => {
                 thumb.removeAttribute('src');
-                thumb.classList.add('hidden');
+                thumb.classList.add('d-none');
             });
         }
 
@@ -139,7 +142,7 @@ class FileRepoForm extends Form {
                 if (/^(image|video)\//.test(response.type)) {
                     if (previewElement) {
                         previewElement.removeAttribute('src');
-                        previewElement.classList.add('hidden');
+                        previewElement.classList.add('d-none');
                         previewElement.src = Energine.base + 'resizer/w0-h0/' + response.tmp_name;
                     }
                     generatePreviews(response.tmp_name);
@@ -147,7 +150,10 @@ class FileRepoForm extends Form {
                 } else {
                     if (previewElement) previewElement.src = Energine['static'] + 'images/icons/icon_undefined.gif';
                 }
-                if (previewElement) previewElement.classList.remove('hidden');
+                if (previewElement) {
+                    previewElement.classList.remove('d-none', 'hidden');
+                    previewElement.removeAttribute('hidden');
+                }
             });
         }
     }

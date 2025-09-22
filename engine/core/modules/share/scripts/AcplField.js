@@ -261,7 +261,7 @@ class DropBoxList extends ActiveList {
             ? document.getElementById(input)
             : input;
 
-        this.container.classList.remove('hidden');
+        this.container.classList.remove('hidden', 'd-none');
         this.container.classList.add('d-none');
         this.container.setAttribute('role', 'listbox');
 
