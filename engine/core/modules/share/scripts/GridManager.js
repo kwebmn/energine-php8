@@ -33,6 +33,16 @@ class Grid {
             header.addEventListener('click', this.onChangeSort.bind(this))
         );
 
+        const bodyTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
+        if (bodyTable) {
+            bodyTable.classList.add('table', 'table-hover', 'table-striped', 'table-sm', 'align-middle', 'mb-0');
+        }
+
+        const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
+        if (headTable) {
+            headTable.classList.add('table', 'table-sm', 'align-middle', 'mb-0');
+        }
+
         this.handleWindowResize = () => {
             this.fitGridFormSize();
         };
@@ -150,8 +160,17 @@ class Grid {
 
         this.paneContent = this.element.closest('[data-role="pane-item"]');
         this.gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
+        if (this.gridToolbar) {
+            this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2', 'mb-3');
+        }
         this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
+        if (this.gridHeadContainer) {
+            this.gridHeadContainer.classList.add('table-responsive');
+        }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
+        if (this.gridContainer) {
+            this.gridContainer.classList.add('table-responsive');
+        }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
 
@@ -193,10 +212,16 @@ class Grid {
 
         // Навешиваем события
         row.addEventListener('mouseover', () => {
-            if (row !== this.getSelectedItem()) row.classList.add('highlighted');
+            if (row !== this.getSelectedItem()) {
+                row.classList.add('highlighted', 'table-active');
+            }
         });
         row.addEventListener('mouseout', () => {
-            row.classList.remove('highlighted');
+            if (row !== this.getSelectedItem()) {
+                row.classList.remove('highlighted', 'table-active');
+            } else {
+                row.classList.remove('highlighted');
+            }
         });
         row.addEventListener('click', () => {
             if (row !== this.getSelectedItem()) this.selectItem(row);
@@ -213,18 +238,39 @@ class Grid {
         let cell = document.createElement('td');
         row.appendChild(cell);
 
-        switch (this.metadata[fieldName].type) {
-            case 'boolean':
-                let checkbox = document.createElement('img');
-                checkbox.src = 'images/checkbox_' + (record[fieldName] === true ? 'on' : 'off') + '.png';
-                checkbox.width = 13; checkbox.height = 13;
-                cell.appendChild(checkbox);
-                cell.style.textAlign = 'center';
-                cell.style.verticalAlign = 'middle';
+        const fieldMeta = this.metadata[fieldName];
+        const fieldType = fieldMeta.type;
+        cell.classList.add('align-middle', 'text-break');
+
+        switch (fieldType) {
+            case 'boolean': {
+                const formCheck = document.createElement('div');
+                formCheck.classList.add('form-check', 'm-0', 'd-inline-flex', 'justify-content-center');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.classList.add('form-check-input');
+                checkbox.disabled = true;
+                const value = record[fieldName];
+                const normalized = (value !== undefined && value !== null)
+                    ? String(value).toLowerCase()
+                    : '';
+                checkbox.checked = value === true
+                    || value === 1
+                    || normalized === '1'
+                    || normalized === 'true'
+                    || normalized === 'y';
+                formCheck.appendChild(checkbox);
+                cell.classList.add('text-center');
+                cell.appendChild(formCheck);
                 break;
-            case 'value':
-                cell.innerHTML = record[fieldName]['value'];
+            }
+            case 'value': {
+                const value = (record[fieldName] && record[fieldName].value !== undefined)
+                    ? record[fieldName].value
+                    : '&nbsp;';
+                cell.innerHTML = value;
                 break;
+            }
             case 'textbox':
                 if (record[fieldName] && Object.keys(record[fieldName]).length) {
                     cell.innerHTML = Object.values(record[fieldName]).join(', ');
@@ -238,28 +284,33 @@ class Grid {
                     image.src = (window.Energine && Energine.resizer ? Energine.resizer : '') + 'w40-h40/' + record[fieldName];
                     image.width = 40;
                     image.height = 40;
+                    image.classList.add('img-thumbnail', 'rounded');
+                    const altText = (fieldMeta && fieldMeta.title) ? fieldMeta.title : '';
+                    if (altText) image.alt = altText;
+                    cell.classList.add('text-center');
                     cell.appendChild(image);
-                    cell.style.textAlign = 'center';
-                    cell.style.verticalAlign = 'middle';
+                } else {
+                    cell.innerHTML = '&nbsp;';
                 }
                 break;
-            default:
+            default: {
                 let fieldValue = '';
                 if (record[fieldName] || record[fieldName] === 0) {
                     fieldValue = (record[fieldName] + '').trim();
                 }
                 let prevRow = row.previousElementSibling;
                 if (
-                    this.metadata[fieldName].type === 'select' &&
+                    fieldType === 'select' &&
                     row.firstChild === cell &&
                     prevRow &&
                     prevRow.record &&
                     prevRow.record[fieldName] === record[fieldName]
                 ) {
                     fieldValue = '';
-                    if (prevRow.firstChild) prevRow.firstChild.style.fontWeight = 'bold';
+                    if (prevRow.firstChild) prevRow.firstChild.classList.add('fw-bold');
                 }
                 cell.innerHTML = fieldValue !== '' ? fieldValue : '&#160;';
+            }
         }
     }
 
@@ -793,10 +844,20 @@ class Filter {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
+        this.element.classList.add('bg-light', 'border', 'border-light', 'rounded-3', 'p-3', 'mb-3', 'shadow-sm');
+
         // Привязки к основным элементам управления
         const applyButton = this.element.querySelector('[data-action="apply-filter"]');
         const resetLink = this.element.querySelector('[data-action="reset-filter"]');
         this.active = false;
+
+        if (applyButton) {
+            applyButton.classList.add('btn', 'btn-primary', 'btn-sm');
+        }
+        if (resetLink) {
+            resetLink.classList.add('btn', 'btn-link', 'btn-sm', 'p-0', 'text-decoration-none');
+            resetLink.setAttribute('role', 'button');
+        }
 
         // Поля фильтра
         this.fields = this.element.querySelector('[data-role="filter-field"]');
@@ -804,6 +865,9 @@ class Filter {
 
         if (!this.fields) throw new Error('Filter: data-role="filter-field" not found!');
         if (!this.condition) throw new Error('Filter: data-role="filter-condition" not found!');
+
+        this.fields.classList.add('form-select', 'form-select-sm');
+        this.condition.classList.add('form-select', 'form-select-sm');
 
         // Инициализация QueryControls
         this.inputs = new GridManager.Filter.QueryControls(
@@ -959,21 +1023,35 @@ class QueryControls {
      * @param {HTMLElement} applyAction - Кнопка "применить" фильтр.
      */
     constructor(containers, applyAction) {
+        this.hiddenClass = 'd-none';
+
         // containers — массив или NodeList
         this.containers = Array.from(containers);
+        this.containers.forEach(container => {
+            container.classList.add('d-flex', 'flex-nowrap', 'align-items-center', 'gap-2', 'mb-2');
+        });
 
-        // Убираем .hidden у первого контейнера
-        if (this.containers[0]) this.containers[0].classList.remove('hidden');
+        // Убираем класс скрытия у первого контейнера
+        if (this.containers[0]) this.containers[0].classList.remove(this.hiddenClass);
 
         // this.inputs — все инпуты внутри контейнеров (первый input в каждом)
-        this.inputs = this.containers.map(c => c.querySelector('input'));
+        this.inputs = this.containers.map(container => {
+            const input = container.querySelector('input');
+            if (input) {
+                input.classList.add('form-control', 'form-control-sm');
+            }
+            return input;
+        });
 
         // this.dpsInputs — создаём для каждого контейнера отдельный input[type=date], скрытый по умолчанию
         this.dpsInputs = this.inputs.map(input => {
+            if (!input) return null;
             const clone = input.cloneNode(true);
             clone.type = 'date';
-            clone.classList.add('hidden');
-            input.parentNode.appendChild(clone);
+            clone.classList.add(this.hiddenClass, 'form-control', 'form-control-sm');
+            if (input.parentNode) {
+                input.parentNode.appendChild(clone);
+            }
             return clone;
         });
 
@@ -982,10 +1060,13 @@ class QueryControls {
 
         // Обработка enter для всех инпутов
         [...this.dpsInputs, ...this.inputs].forEach(input => {
+            if (!input) return;
             input.addEventListener('keydown', event => {
                 if ((event.key === 'Enter' || event.key === 'enter') && event.target.value !== '') {
                     event.preventDefault();
-                    applyAction.click();
+                    if (applyAction && typeof applyAction.click === 'function') {
+                        applyAction.click();
+                    }
                 }
             });
         });
@@ -1015,35 +1096,33 @@ class QueryControls {
     // Включить режим "между" (2 инпута), сделать маленькими
     asPeriod() {
         this.show();
-        [...this.dpsInputs, ...this.inputs].forEach(el => { if (el) el.classList.add('small'); });
     }
 
     // Включить режим одного инпута, остальные скрыть и убрать "маленькость"
     asScalar() {
         this.show();
-        if (this.containers[1]) this.containers[1].classList.add('hidden');
-        [...this.dpsInputs, ...this.inputs].forEach(el => { if (el) el.classList.remove('small'); });
+        this.containers.slice(1).forEach(container => container.classList.add(this.hiddenClass));
     }
 
     // Показать все контейнеры
     show() {
-        this.containers.forEach(c => c.classList.remove('hidden'));
+        this.containers.forEach(c => c.classList.remove(this.hiddenClass));
     }
 
     // Скрыть все контейнеры
     hide() {
-        this.containers.forEach(c => c.classList.add('hidden'));
+        this.containers.forEach(c => c.classList.add(this.hiddenClass));
     }
 
     // Показать или скрыть datepicker-инпуты
     showDatePickers(toShow) {
         this.isDate = toShow;
         if (toShow) {
-            this.inputs.forEach(el => { if (el) el.classList.add('hidden'); });
-            this.dpsInputs.forEach(el => { if (el) el.classList.remove('hidden'); });
+            this.inputs.forEach(el => { if (el) el.classList.add(this.hiddenClass); });
+            this.dpsInputs.forEach(el => { if (el) el.classList.remove(this.hiddenClass); });
         } else {
-            this.inputs.forEach(el => { if (el) el.classList.remove('hidden'); });
-            this.dpsInputs.forEach(el => { if (el) el.classList.add('hidden'); });
+            this.inputs.forEach(el => { if (el) el.classList.remove(this.hiddenClass); });
+            this.dpsInputs.forEach(el => { if (el) el.classList.add(this.hiddenClass); });
         }
     }
 }
