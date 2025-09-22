@@ -9,6 +9,8 @@ class PageToolbar extends Toolbar {
         this.componentPath = componentPath;
         this.documentId = documentId;
         this.layoutManager = null;
+        this.sidebarToggleButton = null;
+        this._updateSidebarToggleState = null;
 
         this.dock();
         this.bindTo(this);
@@ -133,8 +135,71 @@ class PageToolbar extends Toolbar {
         // Основные контейнеры
         const mainFrame = document.createElement('div');
         PageToolbar._addClass(mainFrame, 'e-mainframe');
-        const topFrame = document.createElement('div');
+
+        const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
+        topFrame.classList.add('navbar', 'navbar-expand-lg', 'navbar-light', 'bg-body');
+
+        const container = document.createElement('div');
+        container.classList.add('container-fluid');
+        topFrame.appendChild(container);
+
+        const translations = window?.Energine?.translations;
+        const getTranslation = (...keys) => {
+            if (!translations || typeof translations.get !== 'function') {
+                return '';
+            }
+            for (const key of keys) {
+                if (!key) continue;
+                const value = translations.get(key);
+                if (value) {
+                    return value;
+                }
+            }
+            return '';
+        };
+
+        const sidebarToggle = document.createElement('button');
+        sidebarToggle.type = 'button';
+        sidebarToggle.classList.add('navbar-brand', 'pagetb_logo', 'p-0', 'border-0', 'bg-transparent');
+        const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
+        if (sidebarLabel) {
+            sidebarToggle.setAttribute('aria-label', sidebarLabel);
+        }
+        const logoImage = document.createElement('img');
+        logoImage.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
+        logoImage.alt = '';
+        logoImage.classList.add('pagetb_logo-img');
+        sidebarToggle.appendChild(logoImage);
+        container.appendChild(sidebarToggle);
+        this.sidebarToggleButton = sidebarToggle;
+
+        const collapseIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
+        const collapseId = (`${collapseIdBase}-collapse`).replace(/[^A-Za-z0-9_-]/g, '-');
+
+        const toggler = document.createElement('button');
+        toggler.classList.add('navbar-toggler');
+        toggler.type = 'button';
+        toggler.setAttribute('data-bs-toggle', 'collapse');
+        toggler.setAttribute('data-bs-target', `#${collapseId}`);
+        toggler.setAttribute('aria-controls', collapseId);
+        toggler.setAttribute('aria-expanded', 'false');
+        const togglerLabel = getTranslation('TXT_MENU', 'TXT_TOOLBAR') || 'Toggle toolbar';
+        if (togglerLabel) {
+            toggler.setAttribute('aria-label', togglerLabel);
+        }
+        const togglerIcon = document.createElement('span');
+        togglerIcon.classList.add('navbar-toggler-icon');
+        toggler.appendChild(togglerIcon);
+        container.appendChild(toggler);
+
+        const collapse = document.createElement('div');
+        collapse.classList.add('collapse', 'navbar-collapse', 'justify-content-end');
+        collapse.id = collapseId;
+        container.appendChild(collapse);
+
+        this.element.classList.add('py-2', 'py-lg-0');
+        collapse.appendChild(this.element);
 
         // Перенос body-children (кроме svg и e-overlay)
         const toMove = Array.from(document.body.childNodes).filter(el =>
@@ -143,13 +208,6 @@ class PageToolbar extends Toolbar {
         document.body.appendChild(topFrame);
         document.body.appendChild(mainFrame);
         toMove.forEach(child => mainFrame.appendChild(child));
-        topFrame.appendChild(this.element);
-
-        // Логотип/иконка
-        const gear = document.createElement('img');
-        gear.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
-        PageToolbar._addClass(gear, 'pagetb_logo');
-        topFrame.insertBefore(gear, topFrame.firstChild);
 
         // Боковая панель (sidebar)
         if (!this.properties['noSideFrame']) {
@@ -173,7 +231,26 @@ class PageToolbar extends Toolbar {
             });
             sidebarFrameContent.appendChild(iframe);
 
-            gear.addEventListener('click', this.toggleSidebar.bind(this));
+            this._updateSidebarToggleState = (state = PageToolbar._hasClass(html, 'e-has-sideframe')) => {
+                const pressed = state ? 'true' : 'false';
+                sidebarToggle.setAttribute('aria-pressed', pressed);
+                sidebarToggle.setAttribute('aria-expanded', pressed);
+                sidebarToggle.classList.toggle('active', state);
+            };
+            this._updateSidebarToggleState();
+
+            sidebarToggle.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggleSidebar();
+            });
+        } else {
+            sidebarToggle.classList.add('disabled');
+            sidebarToggle.setAttribute('aria-disabled', 'true');
+            sidebarToggle.setAttribute('aria-pressed', 'false');
+            sidebarToggle.setAttribute('aria-expanded', 'false');
+            sidebarToggle.disabled = true;
+            this._updateSidebarToggleState = null;
         }
 
         // Деактивируем editBlocks если editMode включён
@@ -218,6 +295,18 @@ class PageToolbar extends Toolbar {
         const value = html.classList.contains('e-has-sideframe') ? '1' : '0';
         const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString();
         document.cookie = `sidebar=${value}; expires=${expires}; domain=${domain}; path=${path}`;
+
+        const isSidebarVisible = html.classList.contains('e-has-sideframe');
+        if (typeof this._updateSidebarToggleState === 'function') {
+            this._updateSidebarToggleState(isSidebarVisible);
+        } else if (this.sidebarToggleButton) {
+            const pressed = isSidebarVisible ? 'true' : 'false';
+            this.sidebarToggleButton.setAttribute('aria-pressed', pressed);
+            this.sidebarToggleButton.setAttribute('aria-expanded', pressed);
+            this.sidebarToggleButton.classList.toggle('active', isSidebarVisible);
+        }
+
+        return isSidebarVisible;
     }
 
     showTmplEditor() { ModalBox.open({ url: this.componentPath + 'template' }); }
