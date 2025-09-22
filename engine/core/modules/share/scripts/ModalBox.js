@@ -61,10 +61,14 @@ class ModalBoxClass {
         }
 
         document.removeEventListener('keydown', instance.escHandler);
-        document.removeEventListener('focusin', instance.focusInHandler);
+        document.removeEventListener('focusin', instance.focusInHandler, true);
 
         if (instance.focusTrapHandler) {
             instance.modal.removeEventListener('keydown', instance.focusTrapHandler);
+        }
+
+        if (instance.focusPropagationHandler) {
+            instance.modal.removeEventListener('focusin', instance.focusPropagationHandler);
         }
 
         if (instance.backdropHandler) {
@@ -215,19 +219,33 @@ class ModalBoxClass {
         instance.focusTrapHandler = focusTrapHandler;
         modal.addEventListener('keydown', focusTrapHandler);
 
+        const stopFocusPropagationHandler = (event) => {
+            if (this.getCurrent() !== instance) {
+                return;
+            }
+
+            event.stopPropagation();
+        };
+        instance.focusPropagationHandler = stopFocusPropagationHandler;
+        modal.addEventListener('focusin', stopFocusPropagationHandler);
+
         const focusInHandler = (event) => {
             if (this.getCurrent() !== instance) {
                 return;
             }
 
             if (!modal.contains(event.target)) {
+                if (typeof event.stopImmediatePropagation === 'function') {
+                    event.stopImmediatePropagation();
+                }
+
                 const focusable = this._getFocusableElements(modal);
                 const fallback = focusable[0] || modal;
                 fallback.focus();
             }
         };
         instance.focusInHandler = focusInHandler;
-        document.addEventListener('focusin', focusInHandler);
+        document.addEventListener('focusin', focusInHandler, true);
 
         // ESC
         const escHandler = (e) => {
