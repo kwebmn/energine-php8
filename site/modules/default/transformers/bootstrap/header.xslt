@@ -92,33 +92,37 @@
             <!-- Icon dropdown -->
             <li class="nav-item dropdown">
                 <a
-                        class="nav-link dropdown-toggle btn btn-link btn-sm text-capitalize"
+                        class="nav-link dropdown-toggle text-capitalize"
                         href="#"
-                        id="navbarDropdown"
+                        id="languageDropdown"
                         role="button"
                         data-bs-toggle="dropdown"
                         aria-expanded="false"
+                        aria-haspopup="true"
                 >
                     <xsl:value-of select="//field[@name='lang_id' and text() = $LANG_ID]/../field[@name='lang_name']" />
                 </a>
-                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                    <li>
-                        <a class="dropdown-item" href="#">
-                            <xsl:value-of select="//field[@name='lang_id' and text() = $LANG_ID]/../field[@name='lang_name']" />
-                            <i class="fa fa-check text-success ms-2"></i>
-                        </a>
-                    </li>
-                    <li><hr class="dropdown-divider" /></li>
-
+                <ul class="dropdown-menu" aria-labelledby="languageDropdown">
                     <xsl:for-each select="recordset/record">
-                        <xsl:if test="not(field[@name='lang_id'] = $LANG_ID)">
-                            <li>
-                                <a class="dropdown-item" href="{field[@name='lang_url']}"><xsl:value-of select="field[@name='lang_name']" /></a>
-                            </li>
-                        </xsl:if>
+                        <xsl:variable name="IS_CURRENT" select="field[@name='lang_id'] = $LANG_ID" />
+                        <li>
+                            <a href="{field[@name='lang_url']}">
+                                <xsl:attribute name="class">
+                                    <xsl:text>dropdown-item</xsl:text>
+                                    <xsl:if test="$IS_CURRENT">
+                                        <xsl:text> active</xsl:text>
+                                    </xsl:if>
+                                </xsl:attribute>
+                                <xsl:if test="$IS_CURRENT">
+                                    <xsl:attribute name="aria-current">true</xsl:attribute>
+                                </xsl:if>
+                                <xsl:value-of select="field[@name='lang_name']" />
+                                <xsl:if test="$IS_CURRENT">
+                                    <i class="fa fa-check text-success ms-2"></i>
+                                </xsl:if>
+                            </a>
+                        </li>
                     </xsl:for-each>
-
-
                 </ul>
             </li>
         </ul>
