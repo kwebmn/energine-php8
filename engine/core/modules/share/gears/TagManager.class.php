@@ -33,7 +33,7 @@ class TagManager extends DBWorker
      * @param Data            $data
      * @param string          $tableName  Имя «главной» таблицы без суффикса (_tags будет добавлен автоматически)
      */
-    public function __construct(DataDescription $dataDescription, Data $data, string $tableName)
+    public function __construct(DataDescription $dataDescription,  $data, string $tableName)
     {
         parent::__construct();
 

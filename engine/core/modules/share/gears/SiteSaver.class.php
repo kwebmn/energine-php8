@@ -44,8 +44,8 @@ class SiteSaver extends Saver
         $this->attachUnlinkedDomains($siteId);
 
         // Write tags (keep original semantics: pass DD twice)
-        $tm = new TagManager($this->dataDescription, $this->dataDescription, 'share_sites');
-        $tm->save($siteId);
+        // $tm = new TagManager($this->dataDescription,  $this->dataDescription, 'share_sites');
+        // $tm->save($siteId);
 
         // On insert, create site structure
         if ($this->getMode() === QAL::INSERT) {
