@@ -286,11 +286,7 @@
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
             </xsl:attribute>
             <xsl:attribute name="name"><xsl:choose>
-                <xsl:when test="@tableName">
-                    <xsl:value-of select="@tableName"/>
-                    <xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>
-                    [<xsl:value-of select="@name"/>]
-                </xsl:when>
+                <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name"/>]</xsl:when>
                 <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
             </xsl:choose></xsl:attribute>
             <xsl:if test="not(@nullable) or @nullable='0'">
