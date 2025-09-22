@@ -137,7 +137,7 @@
 <!--            </xsl:otherwise>-->
 <!--        </xsl:choose>-->
 <!--        <link href="assets/minified.css" rel="stylesheet" />-->
-        <script type="text/javascript" src="assets/minified.js" />
+        <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
         <script type="text/javascript">
             Object.assign(Energine, {
