@@ -68,7 +68,7 @@
 
     <xsl:template match="component[@name='userMenu']/recordset">
         <xsl:if test="not(@empty)">
-            <ul class="list-group list-group-light">
+            <ul class="list-group list-group-flush">
 <!--                -->
 <!--                <li class="list-group-item">A second item</li>-->
 <!--                <li class="list-group-item">A third item</li>-->
@@ -80,11 +80,17 @@
     </xsl:template>
 
     <xsl:template match="component[@name='userMenu']/recordset/record">
-        <li class="list-group-item px-3">
+        <li>
+            <xsl:attribute name="class">
+                <xsl:text>list-group-item list-group-item-action px-3</xsl:text>
+                <xsl:if test="field[@name='Id' and text() = $ID]">
+                    <xsl:text> active</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <xsl:if test="field[@name='Id' and text() = $ID]">
-                <xsl:attribute name="class">list-group-item px-3 active</xsl:attribute>
+                <xsl:attribute name="aria-current">page</xsl:attribute>
             </xsl:if>
-            <a  href="{$LANG_ABBR}{field[@name='Segment']}">
+            <a class="d-block text-decoration-none text-reset stretched-link" href="{$LANG_ABBR}{field[@name='Segment']}">
                 <xsl:value-of select="field[@name='Name']"/>
             </a>
         </li>
@@ -99,21 +105,24 @@
 
     <xsl:template match="component[@name='userMenu']/recordset/record//recordset/record">
         <li>
+            <xsl:attribute name="class">
+                <xsl:text>list-group-item list-group-item-action ps-4</xsl:text>
+                <xsl:if test="field[@name='Id' and text() = $ID]">
+                    <xsl:text> active</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <xsl:if test="field[@name='Id' and text() = $ID]">
-                <xsl:attribute name="class">active</xsl:attribute>
+                <xsl:attribute name="aria-current">page</xsl:attribute>
             </xsl:if>
-            <a href="{$LANG_ABBR}{field[@name='Segment']}">
-                <div class="row">
-                    <div class="col-xs-11 col-sm-11 col-md-10 p-l-25 ">
-                        <span class="zmdi zmdi-chevron-right m-r-15 m-l-5">
-                            <xsl:if test="string-length(field[@name='Icon']) > 0">
-                                <xsl:attribute name="class"><xsl:value-of select="field[@name='Icon']"/> m-r-15 m-l-5</xsl:attribute>
-                            </xsl:if>
-                        </span>
-                        <xsl:value-of select="field[@name='Name']"/>
-                    </div>
-
-                </div>
+            <a class="d-flex align-items-center gap-2 text-decoration-none text-reset" href="{$LANG_ABBR}{field[@name='Segment']}">
+                <span class="zmdi zmdi-chevron-right me-3 ms-1">
+                    <xsl:if test="string-length(field[@name='Icon']) &gt; 0">
+                        <xsl:attribute name="class"><xsl:value-of select="field[@name='Icon']"/> me-3 ms-1</xsl:attribute>
+                    </xsl:if>
+                </span>
+                <span class="flex-grow-1">
+                    <xsl:value-of select="field[@name='Name']"/>
+                </span>
             </a>
         </li>
 
