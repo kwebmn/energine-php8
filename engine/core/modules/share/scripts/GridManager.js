@@ -1,70 +1,67 @@
-ScriptLoader.load('TabPane', 'PageList', 'Toolbar',  'ModalBox');
+ScriptLoader.load('TabPane', 'PageList', 'Toolbar', 'ModalBox', 'tabulator/tabulator.min');
+
 class Grid {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
      */
     constructor(element, options = {}) {
-        // Универсальная обертка для работы с элементами по селектору или объекту
         this.element = Energine.utils.resolveElement(element, {
             name: 'Grid root'
         });
 
+        if (typeof Tabulator === 'undefined') {
+            throw new Error('Tabulator 6.3 is required for GridManager to operate.');
+        }
+
+        this.options = Object.assign({
+            onSelect: null,
+            onSortChange: null,
+            onDoubleClick: null,
+            placeholder: (Energine.translations && Energine.translations.get('TXT_NO_RECORDS')) || ''
+        }, options);
+
         this.data = [];
         this.metadata = {};
-        this.selectedItem = null;
-        this.sort = { field: null, order: null };
-        this.isDirty = false;
         this.keyFieldName = null;
-        this.prevDataLength = 0;
-        this.options = options;
+        this.sort = { field: null, order: null };
         this.events = {};
+        this.isDirty = false;
+        this.selectedRow = null;
+        this.tabulator = null;
+        this.silentSortUpdate = false;
 
-        // --- DOM привязка ---
-        this.headOff = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] thead');
-        if (this.headOff) this.headOff.style.display = 'none';
+        this.container = document.createElement('div');
+        this.container.classList.add('grid-tabulator');
+        this.element.innerHTML = '';
+        this.element.appendChild(this.container);
 
-        this.tbody = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] tbody');
-        this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
-        this.headers.forEach(header => {
-            header.addEventListener('click', this.onChangeSort.bind(this));
-            header.classList.add('text-center', 'align-middle', 'fw-semibold');
-            header.style.cursor = 'pointer';
-        });
+        this.ensureAssetsLoaded();
 
-        const bodyTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
-        if (bodyTable) {
-            bodyTable.classList.add('table', 'table-hover', 'table-striped', 'table-sm', 'align-middle', 'mb-0');
-        }
-
-        const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
-        if (headTable) {
-            headTable.classList.add('table', 'table-sm', 'align-middle', 'mb-0');
-        }
-
-        this.handleWindowResize = () => {
-            this.fitGridFormSize();
-        };
-        window.addEventListener('resize', this.handleWindowResize);
-
-        // Поддержка событий
         this.on('dirty', () => {
             this.isDirty = true;
         });
 
-        // Структура для дальнейших ссылок
-        this.paneContent = null;
-        this.gridToolbar = null;
-        this.gridHeadContainer = null;
-        this.gridContainer = null;
-        this.minGridHeight = null;
-        this.pane = null;
-        this.gridBodyContainer = null;
+        if (typeof this.options.onSelect === 'function') {
+            this.on('select', this.options.onSelect);
+        }
 
-        this.on('doubleClick', this.options.onDoubleClick);
-
+        if (typeof this.options.onDoubleClick === 'function') {
+            this.on('doubleClick', this.options.onDoubleClick);
+        }
     }
 
+    ensureAssetsLoaded() {
+        const cssPath = 'scripts/tabulator/tabulator.min.css';
+        if (window.Energine && typeof Energine.loadCSS === 'function') {
+            Energine.loadCSS(cssPath);
+        } else if (!document.querySelector(`link[href$="${cssPath}"]`)) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = cssPath;
+            document.head.appendChild(link);
+        }
+    }
 
     // --- Event system ---
     on(event, handler) {
@@ -74,10 +71,13 @@ class Grid {
         }
         return this;
     }
+
     off(event, handler) {
-        if (this.events[event])
+        if (this.events[event]) {
             this.events[event] = this.events[event].filter(fn => fn !== handler);
+        }
     }
+
     fireEvent(event, ...args) {
         if (this.events[event]) {
             this.events[event].forEach(fn => {
@@ -88,394 +88,353 @@ class Grid {
         }
     }
 
-    setMetadata(metadata) {
-        for (let fieldName in metadata) {
-            if (metadata[fieldName].key) {
+    setMetadata(metadata = {}) {
+        this.metadata = metadata || {};
+        this.keyFieldName = null;
+
+        Object.keys(this.metadata).forEach(fieldName => {
+            const fieldMeta = this.metadata[fieldName];
+            if (fieldMeta && fieldMeta.key) {
                 this.keyFieldName = fieldName;
             }
+        });
+
+        if (this.tabulator) {
+            if (this.keyFieldName) {
+                this.tabulator.setIndex(this.keyFieldName);
+            }
+            this.tabulator.setColumns(this.buildColumns());
         }
-        this.metadata = metadata;
     }
-    getMetadata() { return this.metadata; }
-    setData(data) {
+
+    getMetadata() {
+        return this.metadata;
+    }
+
+    setData(data = []) {
         if (!this.metadata) {
             alert('Cannot set data without specified metadata.');
             return false;
         }
-        this.data = data;
+        this.data = Array.isArray(data) ? data.slice() : [];
         return true;
     }
 
-    selectItem(item) {
-        this.deselectItem();
-        if (item) {
-            item.classList.add('table-active');
-            this.selectedItem = item;
-            this.fireEvent('select', item);
-        }
+    isEmpty() {
+        return !this.data || !this.data.length;
     }
-    deselectItem() {
-        if (this.selectedItem) {
-            this.selectedItem.classList.remove('table-active');
-            this.selectedItem = null;
-        }
-    }
-    getSelectedItem() { return this.selectedItem; }
-    isEmpty() { return !this.data || !this.data.length; }
 
-    getSelectedRecord() {
-        if (!this.getSelectedItem()) return false;
-        return this.getSelectedItem().record;
+    buildColumns() {
+        if (!this.metadata) {
+            return [];
+        }
+
+        const columns = [];
+        Object.keys(this.metadata).forEach(fieldName => {
+            const fieldMeta = this.metadata[fieldName];
+            if (!fieldMeta || !fieldMeta.visible || fieldMeta.type === 'hidden') {
+                return;
+            }
+
+            const column = {
+                field: fieldName,
+                title: fieldMeta.title || fieldMeta.caption || fieldName,
+                tooltip: fieldMeta.hint || false
+            };
+
+            if (Object.prototype.hasOwnProperty.call(fieldMeta, 'sort')) {
+                column.headerSort = fieldMeta.sort === 1 || fieldMeta.sort === '1' || fieldMeta.sort === true;
+            } else {
+                column.headerSort = true;
+            }
+
+            if (fieldMeta.width) {
+                const width = parseInt(fieldMeta.width, 10);
+                if (!Number.isNaN(width)) {
+                    column.width = width;
+                }
+            }
+
+            if (fieldMeta.align) {
+                column.hozAlign = fieldMeta.align;
+            }
+
+            const type = fieldMeta.type || 'text';
+            switch (type) {
+                case 'boolean': {
+                    column.hozAlign = column.hozAlign || 'center';
+                    column.formatter = (cell) => {
+                        const value = cell.getValue();
+                        const normalized = (value !== undefined && value !== null)
+                            ? String(value).toLowerCase()
+                            : '';
+                        const checked = value === true
+                            || value === 1
+                            || normalized === '1'
+                            || normalized === 'true'
+                            || normalized === 'y';
+                        const formCheck = document.createElement('div');
+                        formCheck.classList.add('form-check', 'm-0', 'd-inline-flex', 'justify-content-center');
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.classList.add('form-check-input');
+                        checkbox.disabled = true;
+                        checkbox.checked = checked;
+                        formCheck.appendChild(checkbox);
+                        return formCheck;
+                    };
+                    break;
+                }
+                case 'value': {
+                    column.formatter = (cell) => {
+                        const value = cell.getValue();
+                        if (value && typeof value === 'object' && value.value !== undefined) {
+                            return value.value;
+                        }
+                        return value ?? '';
+                    };
+                    break;
+                }
+                case 'textbox': {
+                    column.formatter = (cell) => {
+                        const value = cell.getValue();
+                        if (value && typeof value === 'object') {
+                            return Object.values(value).filter(Boolean).join(', ');
+                        }
+                        return value ?? '';
+                    };
+                    break;
+                }
+                case 'file': {
+                    column.hozAlign = column.hozAlign || 'center';
+                    column.formatter = (cell) => {
+                        const value = cell.getValue();
+                        if (!value) {
+                            return '';
+                        }
+                        const image = document.createElement('img');
+                        image.src = (window.Energine && Energine.resizer ? Energine.resizer : '') + 'w40-h40/' + value;
+                        image.width = 40;
+                        image.height = 40;
+                        image.classList.add('img-thumbnail', 'rounded');
+                        if (fieldMeta && fieldMeta.title) {
+                            image.alt = fieldMeta.title;
+                        }
+                        return image;
+                    };
+                    break;
+                }
+                default: {
+                    column.formatter = (cell) => {
+                        const value = cell.getValue();
+                        if (value === undefined || value === null) {
+                            return '';
+                        }
+                        return String(value).trim();
+                    };
+                }
+            }
+
+            columns.push(column);
+        });
+
+        return columns;
     }
-    getSelectedRecordKey() {
-        if (!this.keyFieldName) return false;
-        let rec = this.getSelectedRecord();
-        return rec ? rec[this.keyFieldName] : false;
+
+    initializeTabulator() {
+        if (this.tabulator) {
+            return;
+        }
+
+        this.tabulator = new Tabulator(this.container, {
+            data: this.data,
+            columns: this.buildColumns(),
+            layout: 'fitColumns',
+            selectable: 1,
+            index: this.keyFieldName || undefined,
+            sortMode: 'remote',
+            placeholder: this.options.placeholder,
+            rowClick: (_, row) => {
+                this.selectRow(row);
+            },
+            rowDblClick: (_, row) => {
+                this.selectRow(row);
+                this.fireEvent('doubleClick', row);
+            }
+        });
+
+        this.tabulator.on('rowSelectionChanged', (data, rows) => {
+            this.selectedRow = rows && rows[0] ? rows[0] : null;
+            if (this.selectedRow) {
+                this.fireEvent('select', this.selectedRow, data[0]);
+            }
+        });
+
+        this.tabulator.on('sortChanged', (sorters) => {
+            const sorter = Array.isArray(sorters) && sorters.length ? sorters[0] : null;
+            const previous = Object.assign({}, this.sort);
+            if (sorter) {
+                const field = sorter.field || (sorter.column && sorter.column.getField && sorter.column.getField());
+                const dir = sorter.dir || sorter.direction || sorter.sort || sorter.order;
+                this.sort = {
+                    field: field || null,
+                    order: dir || null
+                };
+            } else {
+                this.sort = { field: null, order: null };
+            }
+
+            if (this.sort.field && !this.sort.order) {
+                this.sort.order = 'asc';
+            }
+
+            const suppressed = this.silentSortUpdate;
+            this.silentSortUpdate = false;
+
+            if (!suppressed && (this.sort.field !== previous.field || this.sort.order !== previous.order)) {
+                if (typeof this.options.onSortChange === 'function') {
+                    this.options.onSortChange();
+                }
+            }
+        });
     }
-    dataKeyExists(key) {
-        if (!this.data) return false;
-        if (!this.keyFieldName) return false;
-        return this.data.some(item => item[this.keyFieldName] == key);
+
+    build() {
+        const previouslySelectedRecordKey = this.getSelectedRecordKey();
+
+        if (!this.tabulator) {
+            this.initializeTabulator();
+        }
+
+        if (!this.tabulator) {
+            return;
+        }
+
+        if (this.keyFieldName) {
+            this.tabulator.setIndex(this.keyFieldName);
+        }
+
+        this.tabulator.setColumns(this.buildColumns());
+        this.tabulator.setData(this.data);
+
+        if (this.sort.field && this.sort.order) {
+            this.silentSortUpdate = true;
+            try {
+                this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
+            } catch (e) {
+                try {
+                    this.silentSortUpdate = true;
+                    this.tabulator.setSort(this.sort.field, this.sort.order);
+                } catch (ignored) {}
+            }
+            setTimeout(() => { this.silentSortUpdate = false; }, 0);
+        } else {
+            this.silentSortUpdate = true;
+            this.tabulator.clearSort();
+            setTimeout(() => { this.silentSortUpdate = false; }, 0);
+        }
+
+        if (previouslySelectedRecordKey && this.dataKeyExists(previouslySelectedRecordKey)) {
+            this.selectByKey(previouslySelectedRecordKey);
+        } else {
+            const rows = this.tabulator.getRows();
+            if (rows && rows.length) {
+                rows[0].select();
+            } else {
+                this.deselectItem();
+            }
+        }
     }
 
     clear() {
         this.deselectItem();
-        while (this.tbody.firstChild) {
-            this.tbody.removeChild(this.tbody.firstChild);
+        this.data = [];
+        if (this.tabulator) {
+            this.tabulator.clearData();
         }
     }
 
-    build() {
-
-        let preiouslySelectedRecordKey = this.getSelectedRecordKey();
-        this.selectedItem = null;
-        this.clear();
-
-        if (!this.isEmpty()) {
-            if (!this.dataKeyExists(preiouslySelectedRecordKey)) {
-                preiouslySelectedRecordKey = false;
-            }
-            this.data.forEach((record, id) => {
-                this.addRecord(record, id, preiouslySelectedRecordKey);
-            });
-            if (!this.selectedItem && !preiouslySelectedRecordKey && this.tbody.firstChild) {
-                this.selectItem(this.tbody.firstChild);
-            }
-        } else {
-            this.tbody.appendChild(document.createElement('tr'));
-        }
-
-        this.paneContent = this.element.closest('[data-role="pane-item"]');
-        this.gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
-        if (this.gridToolbar) {
-            this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2', 'mb-3');
-        }
-        this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
-        if (this.gridHeadContainer) {
-            this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0', 'rounded-top');
-        }
-        this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
-        if (this.gridContainer) {
-            this.gridContainer.classList.add('table-responsive', 'bg-body', 'border', 'border-top-0', 'rounded-bottom', 'shadow-sm');
-        }
-        this.pane = this.element.closest('[data-role="pane"]');
-        this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
-
-        this.adjustColumns();
-        this.fitGridFormSize();
-
-        if (!this.minGridHeight) {
-            let h = this.gridContainer.style.height;
-            this.minGridHeight = h ? parseInt(h, 10) : 300;
-            this.fitGridFormSize();
-        }
-    }
-
-    addRecord(record, id, currentKey) {
-        // Проверяем соответствие записи метаданным
-        for (let fieldName in record) {
-            if (!this.metadata[fieldName]) {
-                alert('Grid: record doesn\'t conform to metadata.');
-                return;
-            }
-        }
-
-        let row = document.createElement('tr');
-        row.setAttribute('unselectable', 'on');
-        this.tbody.appendChild(row);
-
-        row.record = record;
-
-        for (let fieldName in record) {
-            this.iterateFields(fieldName, record, row);
-        }
-
-        if (row.firstChild) row.firstChild.classList.add('firstColumn');
-
-        if (currentKey === record[this.keyFieldName]) {
-            this.selectItem(row);
-            // row.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-
-        // Навешиваем события
-        row.addEventListener('mouseover', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.add('highlighted', 'table-active');
-            }
-        });
-        row.addEventListener('mouseout', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.remove('highlighted', 'table-active');
-            } else {
-                row.classList.remove('highlighted');
-            }
-        });
-        row.addEventListener('click', () => {
-            if (row !== this.getSelectedItem()) this.selectItem(row);
-        });
-        row.addEventListener('dblclick', () => {
-            this.fireEvent('doubleClick');
-        });
-    }
-
-    iterateFields(fieldName, record, row) {
-        if (!this.metadata[fieldName].visible || this.metadata[fieldName].type === 'hidden') {
+    selectRow(row) {
+        if (!row || !this.tabulator) {
             return;
         }
-        let cell = document.createElement('td');
-        row.appendChild(cell);
-
-        const fieldMeta = this.metadata[fieldName];
-        const fieldType = fieldMeta.type;
-        cell.classList.add('align-middle', 'text-break');
-
-        switch (fieldType) {
-            case 'boolean': {
-                const formCheck = document.createElement('div');
-                formCheck.classList.add('form-check', 'm-0', 'd-inline-flex', 'justify-content-center');
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.classList.add('form-check-input');
-                checkbox.disabled = true;
-                const value = record[fieldName];
-                const normalized = (value !== undefined && value !== null)
-                    ? String(value).toLowerCase()
-                    : '';
-                checkbox.checked = value === true
-                    || value === 1
-                    || normalized === '1'
-                    || normalized === 'true'
-                    || normalized === 'y';
-                formCheck.appendChild(checkbox);
-                cell.classList.add('text-center');
-                cell.appendChild(formCheck);
-                break;
-            }
-            case 'value': {
-                const value = (record[fieldName] && record[fieldName].value !== undefined)
-                    ? record[fieldName].value
-                    : '&nbsp;';
-                cell.innerHTML = value;
-                break;
-            }
-            case 'textbox':
-                if (record[fieldName] && Object.keys(record[fieldName]).length) {
-                    cell.innerHTML = Object.values(record[fieldName]).join(', ');
-                } else {
-                    cell.innerHTML = '&nbsp;';
-                }
-                break;
-            case 'file':
-                if (record[fieldName]) {
-                    let image = document.createElement('img');
-                    image.src = (window.Energine && Energine.resizer ? Energine.resizer : '') + 'w40-h40/' + record[fieldName];
-                    image.width = 40;
-                    image.height = 40;
-                    image.classList.add('img-thumbnail', 'rounded');
-                    const altText = (fieldMeta && fieldMeta.title) ? fieldMeta.title : '';
-                    if (altText) image.alt = altText;
-                    cell.classList.add('text-center');
-                    cell.appendChild(image);
-                } else {
-                    cell.innerHTML = '&nbsp;';
-                }
-                break;
-            default: {
-                let fieldValue = '';
-                if (record[fieldName] || record[fieldName] === 0) {
-                    fieldValue = (record[fieldName] + '').trim();
-                }
-                let prevRow = row.previousElementSibling;
-                if (
-                    fieldType === 'select' &&
-                    row.firstChild === cell &&
-                    prevRow &&
-                    prevRow.record &&
-                    prevRow.record[fieldName] === record[fieldName]
-                ) {
-                    fieldValue = '';
-                    if (prevRow.firstChild) prevRow.firstChild.classList.add('fw-bold');
-                }
-                cell.innerHTML = fieldValue !== '' ? fieldValue : '&#160;';
-            }
+        const selected = typeof this.tabulator.getSelectedRows === 'function'
+            ? this.tabulator.getSelectedRows()
+            : [];
+        if (selected && selected.length) {
+            this.tabulator.deselectRow(selected);
         }
+        row.select();
     }
 
-    adjustColumns() {
-        // NOTE: This is a simplified version, needs adaptation for your layout.
-        let gridHeadContainer = this.gridHeadContainer;
-        if (!gridHeadContainer) return;
-        let table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
-        if (!table) return;
-        let fixedColumns = table.dataset.fixedColumns === 'true';
-        let tbodyTr = this.tbody.querySelector('tr');
-        if (!tbodyTr) return;
-        let tds = Array.from(tbodyTr.children);
-        let ths = Array.from(gridHeadContainer.querySelectorAll('th'));
-        let headCols = Array.from(gridHeadContainer.querySelectorAll('col'));
-        let bodyCols = Array.from(this.element.querySelectorAll('[data-role="grid-table"][data-grid-part="body"] col'));
-
-        // Padding for scrollbar
-        let ScrollBarWidth = 16;
-        gridHeadContainer.style.paddingRight = ScrollBarWidth + 'px';
-
-        if (!fixedColumns) {
-            let headers = tds.map(td => td.offsetWidth);
-            headers.forEach((width, n) => {
-                if (headCols[n]) headCols[n].style.width = width + 'px';
-                if (bodyCols[n]) bodyCols[n].style.width = width + 'px';
-            });
-
-            let oversizeHead = ths.map((th, n) =>
-                th.offsetWidth > headers[n]
-            );
-            if (oversizeHead.some(v => v)) {
-                let newWidth = ths.map((th, n) => oversizeHead[n] ? th.offsetWidth : 0);
-                let colWidth = [0, 0];
-                headers.forEach((w, n) => {
-                    if (oversizeHead[n]) {
-                        colWidth[1] += newWidth[n] - w;
-                    } else {
-                        colWidth[0] += w;
-                    }
-                });
-                colWidth[1] += colWidth[0];
-                let scaleCoef = colWidth[0] / colWidth[1];
-                headers = headers.map((w, n) =>
-                    oversizeHead[n] ? newWidth[n] : Math.floor(w * scaleCoef)
-                );
-                headers.forEach((width, n) => {
-                    if (headCols[n]) headCols[n].style.width = width + 'px';
-                    if (bodyCols[n]) bodyCols[n].style.width = width + 'px';
-                });
-            }
-        } else {
-            let tableParent = this.tbody.parentElement;
-            if (tableParent) tableParent.style.tableLayout = 'fixed';
-        }
-        this.tbody.parentElement.style.wordWrap = 'break-word';
+    selectItem(row) {
+        this.selectRow(row);
     }
 
-    fitGridSize() {
-        if (this.paneContent) {
-            let margin = parseInt(this.element.style.marginTop) || 0;
-            let eBToolbar = document.body.querySelector('[data-pane-part="footer"]');
-            let gridHeight = this.paneContent.offsetHeight
-                - (this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0)
-                - (this.gridToolbar ? this.gridToolbar.offsetHeight : 0)
-                - margin
-                - (eBToolbar ? eBToolbar.offsetHeight : 0);
-
-            if (gridHeight > 0) {
-                if (gridHeight < 100) gridHeight = 300;
-                this.gridContainer.style.height = gridHeight ;
-            }
-            else
-            {
-
+    deselectItem() {
+        if (this.tabulator) {
+            const selected = typeof this.tabulator.getSelectedRows === 'function'
+                ? this.tabulator.getSelectedRows()
+                : [];
+            if (selected && selected.length) {
+                this.tabulator.deselectRow(selected);
             }
         }
+        this.selectedRow = null;
     }
 
-    fitGridFormSize() {
-        if (!this.gridContainer) {
+    getSelectedItem() {
+        return this.selectedRow;
+    }
+
+    getSelectedRecord() {
+        if (!this.getSelectedItem()) {
+            return false;
+        }
+        if (typeof this.selectedRow.getData === 'function') {
+            return this.selectedRow.getData();
+        }
+        return false;
+    }
+
+    getSelectedRecordKey() {
+        if (!this.keyFieldName) {
+            return false;
+        }
+        const record = this.getSelectedRecord();
+        return record ? record[this.keyFieldName] : false;
+    }
+
+    selectByKey(key) {
+        if (!this.tabulator || !this.keyFieldName || key === false || key === undefined || key === null) {
             return;
         }
-
-        if (!this.pane) {
-            this.fitGridSize();
-            return;
+        const row = this.tabulator.getRow(key);
+        if (row) {
+            this.selectRow(row);
+            if (typeof row.scrollTo === 'function') {
+                row.scrollTo();
+            }
         }
-
-        const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
-        const gridHeadHeight = this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0;
-        const paneToolbarTop = this.pane.querySelector('[data-pane-part="header"]');
-        const paneToolbarBottom = this.pane.querySelector('[data-pane-part="footer"]');
-        const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
-        const paneToolbarBottomHeight = paneToolbarBottom ? paneToolbarBottom.offsetHeight : 0;
-        const paneHeight = this.pane.offsetHeight;
-        const margin = parseInt(this.element.style.marginTop, 10) || 0;
-        const gridBodyContainer = this.gridBodyContainer
-            || this.element.querySelector('[data-grid-section="body-inner"]');
-        let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderTopWidth || 0, 10)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderBottomWidth || 0, 10);
-
-        if (this.minGridHeight && gridBodyHeight < this.minGridHeight) {
-            gridBodyHeight = this.minGridHeight;
-        }
-
-        const totalHeight = toolbarHeight
-            + gridHeadHeight
-            + gridBodyHeight
-            + paneToolbarTopHeight
-            + paneToolbarBottomHeight
-            + margin
-            + 3;
-        const viewportHeight = window.innerHeight;
-        let freeSpace = viewportHeight;
-
-        if ((document.body.scrollHeight - 16 - 81) < viewportHeight) {
-            freeSpace -= (this.pane.offsetTop + 16 + 81);
-        }
-
-        if (totalHeight > paneHeight) {
-            this.pane.style.height = ((totalHeight > freeSpace) ? freeSpace : totalHeight) + 'px';
-        }
-
-        this.fitGridSize();
     }
 
-    // --- Sorting
-    onChangeSort(event) {
-        let getNextDirectionOrderItem = current => {
-            let sortDirectionOrder = ['', 'asc', 'desc'],
-                currentIndex, result;
-            current = current || '';
-            currentIndex = sortDirectionOrder.indexOf(current);
-            if (currentIndex !== -1) {
-                result = sortDirectionOrder[(currentIndex + 1) % sortDirectionOrder.length];
-            } else {
-                result = sortDirectionOrder[0];
-            }
-            return result;
-        };
-
-        let header = event.target;
-        let sortFieldName = header.getAttribute('name');
-        let sortDirection = header.className;
-
-
-        if (this.metadata[sortFieldName] && this.metadata[sortFieldName].sort === 1) {
-            this.sort.field = sortFieldName;
-            this.sort.order = getNextDirectionOrderItem(sortDirection);
-
-            header.className = ''; // remove all sort classes
-            if (this.sort.order) header.classList.add(this.sort.order);
-
-            this.fireEvent('sortChange');
-            this.options.onSortChange();
+    dataKeyExists(key) {
+        if (!this.data || !this.keyFieldName) {
+            return false;
         }
+        return this.data.some(item => item && item[this.keyFieldName] == key);
+    }
+
+    getAdjacentRow(direction) {
+        const current = this.getSelectedItem();
+        if (!current) {
+            return null;
+        }
+        const method = direction === 'next' ? 'getNextRow' : 'getPrevRow';
+        if (typeof current[method] === 'function') {
+            return current[method]();
+        }
+        return null;
     }
 }
 
@@ -753,17 +712,15 @@ class GridManager {
         );
     }
     editPrev() {
-        let prevRow;
-        let curr = this.grid.getSelectedItem();
-        if (curr && (prevRow = curr.previousElementSibling)) {
+        const prevRow = this.grid.getAdjacentRow('prev');
+        if (prevRow) {
             this.grid.selectItem(prevRow);
             this.edit();
         }
     }
     editNext() {
-        let nextRow;
-        let curr = this.grid.getSelectedItem();
-        if (curr && (nextRow = curr.nextElementSibling)) {
+        const nextRow = this.grid.getAdjacentRow('next');
+        if (nextRow) {
             this.grid.selectItem(nextRow);
             this.edit();
         }
