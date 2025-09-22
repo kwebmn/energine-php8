@@ -61,23 +61,59 @@
     </xsl:template>
 
     <xsl:template match="toolbar[@name='pager']">
-        <xsl:for-each select="control">
-
-            <xsl:choose>
-                <xsl:when test="@type ='link'">
-                    <a href="{$LANG_ABBR}{../../@template}page-{@action}?{../properties/property[@name='get_string']}" class="btn btn-default waves-effect m-r-5 btn-sm">
-                        <xsl:if test="@disabled = 'disabled'">
-                            <xsl:attribute name="class">btn btn-primary btn-lg waves-effect m-r-5</xsl:attribute>
-                        </xsl:if>
-                        <xsl:value-of select="@action"/>
-                    </a>
-                </xsl:when>
-
-                <xsl:otherwise>
-                    <btn class="btn disabled m-r-5">...</btn>
-                </xsl:otherwise>
-            </xsl:choose>
-        </xsl:for-each>
+        <nav aria-label="Page navigation">
+            <ul class="pagination pagination-sm mb-0">
+                <xsl:for-each select="control">
+                    <xsl:choose>
+                        <xsl:when test="@type = 'link'">
+                            <xsl:variable name="isNumeric" select="not(string(number(@action)) = 'NaN')"/>
+                            <li>
+                                <xsl:attribute name="class">
+                                    <xsl:text>page-item</xsl:text>
+                                    <xsl:if test="@disabled = 'disabled' and $isNumeric">
+                                        <xsl:text> active</xsl:text>
+                                    </xsl:if>
+                                    <xsl:if test="@disabled = 'disabled' and not($isNumeric)">
+                                        <xsl:text> disabled</xsl:text>
+                                    </xsl:if>
+                                </xsl:attribute>
+                                <xsl:choose>
+                                    <xsl:when test="@disabled = 'disabled' and $isNumeric">
+                                        <span class="page-link" aria-current="page">
+                                            <xsl:if test="@title">
+                                                <xsl:attribute name="title"><xsl:value-of select="@title"/></xsl:attribute>
+                                            </xsl:if>
+                                            <xsl:value-of select="@action"/>
+                                        </span>
+                                    </xsl:when>
+                                    <xsl:when test="@disabled = 'disabled'">
+                                        <span class="page-link" aria-disabled="true">
+                                            <xsl:if test="@title">
+                                                <xsl:attribute name="title"><xsl:value-of select="@title"/></xsl:attribute>
+                                            </xsl:if>
+                                            <xsl:value-of select="@action"/>
+                                        </span>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <a class="page-link" href="{$LANG_ABBR}{../../@template}page-{@action}?{../properties/property[@name='get_string']}">
+                                            <xsl:if test="@title">
+                                                <xsl:attribute name="title"><xsl:value-of select="@title"/></xsl:attribute>
+                                            </xsl:if>
+                                            <xsl:value-of select="@action"/>
+                                        </a>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                            </li>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:for-each>
+            </ul>
+        </nav>
 
     </xsl:template>
 
