@@ -275,7 +275,7 @@ return array(
     // ====== НОВЫЕ ОПЦИИ ДЛЯ УПРАВЛЕНИЯ СТЕКОМ ================================
 
     // Пути ядра/сайта (читает bootstrap.php; можно не задавать — будут 'core'/'site')
-    'core_rel_dir' => 'engine/core',
+    'core_rel_dir' => 'core',
     'site_rel_dir' => 'site',
 
     // Окружение/ENV (дублирует APP_ENV; влияет на логи/кеш/Twig)
