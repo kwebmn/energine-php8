@@ -480,10 +480,11 @@ class Form {
             if (image) {
                 image.removeAttribute('src');
             }
-            preview.setAttribute('hidden', 'hidden');
+            preview.classList.add('d-none');
+            preview.setAttribute('aria-hidden', 'true');
         }
         if (button) {
-            button.setAttribute('hidden', 'hidden');
+            button.classList.add('d-none');
         }
 
         const inputId = button?.dataset?.input;
@@ -537,12 +538,15 @@ class Form {
             if (anchor) {
                 anchor.setAttribute('href', Energine.media + result['upl_path']);
             }
+            previewEl?.classList.remove('d-none', 'hidden');
             previewEl?.removeAttribute('hidden');
+            previewEl?.setAttribute('aria-hidden', 'false');
         }
 
         const clearButton = linkId
             ? this.form.querySelector(`[data-action="clear-file"][data-target="${linkId}"]`)
             : null;
+        clearButton?.classList.remove('d-none', 'hidden');
         clearButton?.removeAttribute('hidden');
     }
 

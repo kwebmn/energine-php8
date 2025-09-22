@@ -162,11 +162,12 @@
         <xsl:variable name="FILE_INPUT_ID" select="concat($BASE_ID, '_file')"/>
         <xsl:variable name="PREVIEW_ID" select="concat($BASE_ID, '_preview')"/>
         <xsl:variable name="HAS_VALUE" select="string-length(.) &gt; 0"/>
-        <div class="mb-2 preview">
+        <div>
+            <xsl:attribute name="class">
+                <xsl:text>mb-2 preview</xsl:text>
+                <xsl:if test="not($HAS_VALUE)"><xsl:text> d-none</xsl:text></xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="id"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
-            <xsl:if test="not($HAS_VALUE)">
-                <xsl:attribute name="hidden">hidden</xsl:attribute>
-            </xsl:if>
             <xsl:choose>
                 <xsl:when test="$HAS_VALUE">
                     <a target="_blank">
@@ -237,7 +238,7 @@
                     </xsl:if>
                     <xsl:value-of select="$TRANSLATION[@const='BTN_QUICK_UPLOAD']"/>
                 </button>
-                <input type="file" class="d-none" hidden="hidden" data-action="upload-file">
+                <input type="file" class="d-none" data-action="upload-file">
                     <xsl:attribute name="id"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
                     <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                     <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
@@ -252,14 +253,15 @@
                 </input>
             </xsl:if>
             <xsl:if test="@nullable">
-                <button class="btn btn-link" type="button" data-action="clear-file">
+                <button type="button" data-action="clear-file">
+                    <xsl:attribute name="class">
+                        <xsl:text>btn btn-link</xsl:text>
+                        <xsl:if test="not($HAS_VALUE)"><xsl:text> d-none</xsl:text></xsl:if>
+                    </xsl:attribute>
                     <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                     <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
                     <xsl:if test="@quickUploadPid">
                         <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
-                    </xsl:if>
-                    <xsl:if test="not($HAS_VALUE)">
-                        <xsl:attribute name="hidden">hidden</xsl:attribute>
                     </xsl:if>
                     <xsl:value-of select="$TRANSLATION[@const='TXT_CLEAR']"/>
                 </button>
@@ -488,7 +490,7 @@
             <img border="0" id="preview_{@name}" data="data_{@name}"  width="{@width}" height="{@height}">
                 <xsl:choose>
                     <xsl:when test="../field[@name='upl_path']=''">
-                        <xsl:attribute name="class">hidden<xsl:if test="@name!='preview'"> thumb</xsl:if></xsl:attribute>
+                        <xsl:attribute name="class">d-none<xsl:if test="@name!='preview'"> thumb</xsl:if></xsl:attribute>
                     </xsl:when>
                     <xsl:otherwise>
                         <xsl:if test="@name!='preview'"><xsl:attribute name="class">thumb</xsl:attribute></xsl:if>
@@ -729,7 +731,7 @@
     <!-- поле для загрузки файла в файловом репозитории -->
     <xsl:template match="field[@name='upl_path'][ancestor::component[@sample='FileRepository' and @type='form']]" mode="field_input">
         <div class="preview">
-            <img border="0" id="preview" class="hidden"/>
+            <img border="0" id="preview" class="d-none"/>
         </div>
         <input>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
