@@ -9,6 +9,9 @@ var/
 cache/
 tmp/
 
+# Node.js
+node_modules/
+
 # Секреты
 .env
 
@@ -22,3 +25,5 @@ scripts/
 stylesheets/
 templates/
 uploads/
+!site/modules/default/stylesheets/
+!site/modules/default/stylesheets/default.scss
