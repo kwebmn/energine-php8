@@ -10,19 +10,27 @@
 
             <div class="row d-flex justify-content-center">
                 <div class="col-xl-5 col-md-8">
-                    <div class="card shadow">
+                    <div class="card shadow-lg">
                         <div class="card-body p-4">
                             <!-- Pills navs -->
-                            <ul class="nav nav-pills nav-justified mb-3" >
-                                <li class="nav-item" >
-                                    <div class="nav-link active">
+                            <ul class="nav nav-pills nav-justified mb-3" id="authTabs-{generate-id(.)}" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button
+                                            class="nav-link active"
+                                            id="tab-login-{generate-id(.)}"
+                                            data-bs-toggle="pill"
+                                            data-bs-target="#pills-login"
+                                            type="button"
+                                            role="tab"
+                                            aria-controls="pills-login"
+                                            aria-selected="true">
                                         <xsl:value-of select="//translation[@const='TXT_SIGN_UP']" />
-                                    </div>
+                                    </button>
                                 </li>
 
                             </ul>
                             <div class="tab-content" id="{generate-id(recordset)}" template="{$LANG_ABBR}{@single_template}">
-                                <div class="tab-pane fade show active" id="pills-login" role="tabpanel" aria-labelledby="tab-login" >
+                                <div class="tab-pane fade show active" id="pills-login" role="tabpanel" aria-labelledby="tab-login-{generate-id(.)}" >
 
                                     <xsl:if test="//property[@name='is_user'] > 0">
                                         <div role="tabpanel" class="tab-pane active" id="logout">
@@ -43,15 +51,15 @@
                                             </div>
 
                                             <!-- Email input -->
-                                            <div class="mb-4">
-                                                <label class="form-label" for="loginName"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
-                                                <input type="email" id="loginName" class="form-control" name="signin[email]" required="required"/>
+                                            <div class="form-floating mb-4">
+                                                <input type="email" id="loginName" class="form-control" name="signin[email]" required="required" placeholder="{//translation[@const='TXT_EMAIL']}"/>
+                                                <label for="loginName"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
                                             </div>
 
                                             <!-- Password input -->
-                                            <div class="mb-4">
-                                                <label class="form-label" for="loginPassword2"><xsl:value-of select="//translation[@const='TXT_PASSWORD']" /></label>
-                                                <input type="password" id="loginPassword2" class="form-control" name="signin[password]" required="required"/>
+                                            <div class="form-floating mb-4">
+                                                <input type="password" id="loginPassword2" class="form-control" name="signin[password]" required="required" placeholder="{//translation[@const='TXT_PASSWORD']}"/>
+                                                <label for="loginPassword2"><xsl:value-of select="//translation[@const='TXT_PASSWORD']" /></label>
                                             </div>
 
                                             <!-- 2 column grid layout -->
@@ -190,13 +198,13 @@
             <div class="col-xl-6">
                 <form id="recover_form" action="{@template}send" method="post">
                     <!-- Email input -->
-                    <div class="mb-4">
-                        <label class="form-label" for="email"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
-                        <input type="email" id="email" class="form-control" name="email" required="required"/>
+                    <div class="form-floating mb-4">
+                        <input type="email" id="email" class="form-control" name="email" required="required" placeholder="{//translation[@const='TXT_EMAIL']}"/>
+                        <label for="email"><xsl:value-of select="//translation[@const='TXT_EMAIL']" /></label>
                     </div>
 
                     <div class="form-group">
-                        <button type="submit" name="recover_submit" id="recover_submit" class="btn btn-primary mb-4 btn-login">
+                        <button type="submit" name="recover_submit" id="recover_submit" class="btn btn-primary w-100 mb-4">
                             <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD']"/>
                         </button>
                     </div>
@@ -220,18 +228,18 @@
                 <form id="recover_form2" action="{@template}" method="post">
                     <input type="hidden" name="code" id="code" value="{@code}"/>
 
-                    <div class="mb-4">
-                        <label class="form-label" for="password1"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD']" /></label>
-                        <input type="password" id="password1"  class="form-control" name="password1" required="required"/>
+                    <div class="form-floating mb-4">
+                        <input type="password" id="password1"  class="form-control" name="password1" required="required" placeholder="{//translation[@const='FIELD_CHANGE_U_PASSWORD']}"/>
+                        <label for="password1"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD']" /></label>
                     </div>
 
-                    <div class="mb-4">
-                        <label class="form-label" for="password2"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD2']" /></label>
-                        <input type="password" id="password2"  class="form-control" name="password2" required="required"/>
+                    <div class="form-floating mb-4">
+                        <input type="password" id="password2"  class="form-control" name="password2" required="required" placeholder="{//translation[@const='FIELD_CHANGE_U_PASSWORD2']}"/>
+                        <label for="password2"><xsl:value-of select="//translation[@const='FIELD_CHANGE_U_PASSWORD2']" /></label>
                     </div>
 
                     <div class="form-group">
-                        <button type="submit" name="change-password-submit" id="change-password-submit" class="btn btn-primary mb-4" value="">
+                        <button type="submit" name="change-password-submit" id="change-password-submit" class="btn btn-primary w-100 mb-4" value="">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
                         </button>
                     </div>
