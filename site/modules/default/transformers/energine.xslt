@@ -30,8 +30,7 @@
                 </xsl:for-each>
 
                 <xsl:if test="not(//property[@name='single'])">
-                    <!-- MDB -->
-                    <link href="stylesheets/default/mdb/mdb.min.css" rel="stylesheet"/>
+                    <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet"/>
                 </xsl:if>
 
 
@@ -63,10 +62,9 @@
                     <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
                 </xsl:if>
 
-                <!-- MDB -->
                 <xsl:if test="not(//property[@name='single'])">
-                    <script async="async" type="text/javascript" src="scripts/default/mdb/mdb.umd.min.js"></script>
-                    <script async="async" type="text/javascript" src="scripts/default/sweetalert2.min.js"></script>
+                    <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
+                    <script defer="defer" type="text/javascript" src="scripts/default/sweetalert2.min.js"></script>
                     <!-- SweetAlert2 -->
                     <link href="stylesheets/default/sweetalert2.css" rel="stylesheet"/>
                 </xsl:if>

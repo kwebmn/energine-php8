@@ -19,11 +19,11 @@
 
                 <!-- Toggle button -->
                 <button
-                        data-mdb-collapse-init="1"
                         class="navbar-toggler"
                         type="button"
-                        data-mdb-target="#navbarButtonsExample"
-                        aria-controls="navbarSupportedContent"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navbarButtonsExample"
+                        aria-controls="navbarButtonsExample"
                         aria-expanded="false"
                         aria-label="Toggle navigation"
                 >
@@ -58,13 +58,13 @@
                     <div class="d-flex align-items-center">
                         <xsl:choose>
                             <xsl:when test="//property[@name='is_user'] > 0">
-                                <a data-mdb-ripple-init="1"  class="btn btn-link  px-3 me-2" href="{$BASE}{$LANG_ABBR}my">
+                                <a class="btn btn-link  px-3 me-2" href="{$BASE}{$LANG_ABBR}my">
                                     <i class="fas fa-user-large"></i>
                                 </a>
                             </xsl:when>
 
                             <xsl:otherwise>
-                                <a data-mdb-ripple-init="1"  class="btn btn-link  px-3 me-2" href="{$BASE}{$LANG_ABBR}login">
+                                <a class="btn btn-link  px-3 me-2" href="{$BASE}{$LANG_ABBR}login">
                                     <i class="fas fa-user-large"></i>
                                 </a>
                             </xsl:otherwise>
@@ -92,11 +92,11 @@
             <!-- Icon dropdown -->
             <li class="nav-item dropdown">
                 <a
-                        data-mdb-dropdown-init="1"
                         class="nav-link dropdown-toggle btn btn-link btn-sm text-capitalize"
                         href="#"
                         id="navbarDropdown"
                         role="button"
+                        data-bs-toggle="dropdown"
                         aria-expanded="false"
                 >
                     <xsl:value-of select="//field[@name='lang_id' and text() = $LANG_ID]/../field[@name='lang_name']" />
