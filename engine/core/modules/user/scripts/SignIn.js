@@ -36,10 +36,12 @@ class SignIn {
       if (form.dataset.submitting === '1') return;
       form.dataset.submitting = '1';
 
+      this._clearValidation(form);
+
       try {
         const url = urlBuilder(form);
         const result = await this._postForm(form, url);
-        this._handleResult(result, /*isLogout*/ false);
+        this._handleResult(result, /*isLogout*/ false, form);
       } catch (err) {
         this._handleError(err);
       } finally {
@@ -89,8 +91,9 @@ class SignIn {
     return response.json();
   }
 
-  _handleResult(result, isLogout = false) {
+  _handleResult(result, isLogout = false, form = null) {
     if (result?.result) {
+      if (form) this._clearValidation(form);
       Energine.noticeBox(result.message, 'success', () => {
         const redirect = isLogout
           ? `/${Energine.lang}/`
@@ -98,6 +101,13 @@ class SignIn {
         document.location.href = redirect;
       });
     } else {
+      const fieldName = result?.field ?? '';
+      const message = result?.message ?? 'Сталася помилка';
+
+      const fieldHandled = this._showFieldError(form, fieldName, message);
+      if (!fieldHandled) {
+        this._showFormError(form, message);
+      }
       Energine.alertBox(result?.message ?? 'Сталася помилка', 'error');
     }
   }
@@ -106,6 +116,65 @@ class SignIn {
     // Единый обработчик сетевых/HTTP ошибок
     console.error(err);
     Energine.alertBox('Помилка з’єднання. Спробуйте ще раз.', 'error');
+  }
+
+  _clearValidation(form) {
+    if (!form) return;
+
+    form.querySelectorAll('.is-invalid').forEach((input) => {
+      input.classList.remove('is-invalid');
+    });
+
+    form.querySelectorAll('.invalid-feedback').forEach((feedback) => {
+      feedback.textContent = '';
+      feedback.classList.remove('d-block');
+      feedback.classList.add('d-none');
+    });
+
+    const alert = form.querySelector('[data-role="form-error"]');
+    if (alert) {
+      alert.textContent = '';
+      alert.classList.add('d-none');
+    }
+  }
+
+  _showFieldError(form, fieldName, message) {
+    if (!form || !fieldName) return false;
+
+    const selector = `[name$="[${fieldName}]"]`;
+    let input = form.querySelector(selector);
+    if (!input) {
+      input = form.querySelector(`[name="${fieldName}"]`);
+    }
+    if (!input) return false;
+
+    input.classList.add('is-invalid');
+
+    const container =
+      input.closest('.mb-3, .mb-4, .form-group, .form-floating') || form;
+    let feedback = container.querySelector(
+      `.invalid-feedback[data-field="${fieldName}"]`
+    );
+    if (!feedback) {
+      feedback = container.querySelector('.invalid-feedback');
+    }
+
+    if (feedback) {
+      feedback.textContent = message ?? '';
+      feedback.classList.remove('d-none');
+      feedback.classList.add('d-block');
+    }
+
+    return true;
+  }
+
+  _showFormError(form, message) {
+    if (!form) return;
+    const alert = form.querySelector('[data-role="form-error"]');
+    if (!alert) return;
+
+    alert.textContent = message ?? '';
+    alert.classList.remove('d-none');
   }
 }
 

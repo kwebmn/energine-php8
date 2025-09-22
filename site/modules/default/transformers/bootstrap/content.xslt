@@ -3,59 +3,73 @@
         version="1.0"
         xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
-
     <xsl:template match="content">
-
-        <!-- Heading -->
-        <div class="container-fluid">
-            <div class="p-5 bg-body-tertiary mb-4">
-                <h1 class=""><xsl:value-of select="//property[@name='title']"/></h1>
-                <!-- Breadcrumb -->
-                <nav class="d-flex">
-                    <xsl:apply-templates select="$COMPONENTS[@name='breadCrumbs']"/>
-                </nav>
-                <!-- Breadcrumb -->
+        <section class="bg-body-tertiary border-bottom">
+            <div class="container-fluid px-4 py-5">
+                <div class="row">
+                    <div class="col">
+                        <h1 class="display-5 fw-semibold mb-3">
+                            <xsl:value-of select="//property[@name='title']"/>
+                        </h1>
+                        <xsl:if test="$COMPONENTS[@name='breadCrumbs']/recordset/record">
+                            <nav aria-label="breadcrumb">
+                                <xsl:apply-templates select="$COMPONENTS[@name='breadCrumbs']"/>
+                            </nav>
+                        </xsl:if>
+                    </div>
+                </div>
             </div>
+        </section>
 
-        </div>
-        <!-- Heading -->
-
-        <div class="container">
-            <div class="row">
-                <div class="col-sm-12">
-                    <xsl:apply-templates />
+        <div class="container-fluid py-4">
+            <div class="container">
+                <div class="row g-4">
+                    <div class="col-12">
+                        <xsl:apply-templates />
+                    </div>
                 </div>
             </div>
         </div>
-
     </xsl:template>
 
     <xsl:template match="component[@name='breadCrumbs']">
         <xsl:if test="count(recordset/record) &gt; 1">
-            <xsl:apply-templates/>
+            <ol class="breadcrumb mb-0">
+                <xsl:apply-templates select="recordset/record"/>
+            </ol>
         </xsl:if>
     </xsl:template>
 
-    <xsl:template match="recordset[parent::component[@name='breadCrumbs']]">
-        <h6 class="mb-0">
-            <xsl:apply-templates/>
-        </h6>
-    </xsl:template>
+    <xsl:template match="component[@name='breadCrumbs']/recordset/record">
+        <xsl:variable name="IS_LAST" select="position() = last()"/>
+        <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
 
-    <xsl:template match="record[ancestor::component[@name='breadCrumbs']]">
         <xsl:choose>
             <xsl:when test="position() = 1">
-                <a href="{$BASE}{$LANG_ABBR}" class="text-reset"><xsl:value-of select="field[@name='Name']"/></a>
-                <span class="mx-1">/</span>
+                <li class="breadcrumb-item">
+                    <a class="link-dark text-decoration-none" href="{$BASE}{$LANG_ABBR}">
+                        <xsl:value-of select="field[@name='Name']"/>
+                    </a>
+                </li>
             </xsl:when>
-            <xsl:when test="position() = last()">
-                <span class="mx-1 fw-light"><xsl:value-of select="field[@name='Name']"/></span>
+            <xsl:when test="$IS_LAST">
+                <li class="breadcrumb-item active" aria-current="page">
+                    <xsl:value-of select="field[@name='Name']"/>
+                </li>
             </xsl:when>
             <xsl:otherwise>
-                <xsl:if test="field[@name='Id'] != ''">
-                    <a class="text-reset mx-1" href="{$BASE}{$LANG_ABBR}{field[@name='Segment']}"><xsl:value-of select="field[@name='Name']"/></a>
-                </xsl:if>
-                <span>/</span>
+                <li class="breadcrumb-item">
+                    <xsl:choose>
+                        <xsl:when test="string-length($SEGMENT) &gt; 0">
+                            <a class="link-dark text-decoration-none" href="{$BASE}{$LANG_ABBR}{$SEGMENT}">
+                                <xsl:value-of select="field[@name='Name']"/>
+                            </a>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <span><xsl:value-of select="field[@name='Name']"/></span>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </li>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -114,30 +128,37 @@
                 </xsl:for-each>
             </ul>
         </nav>
-
     </xsl:template>
 
     <xsl:template match="component[@name='childDivisions']">
-        <xsl:apply-templates />
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+            <xsl:apply-templates select="recordset/record" mode="child-card" />
+        </div>
     </xsl:template>
 
-    <xsl:template match="component[@name='childDivisions']/recordset">
-        <xsl:apply-templates />
-    </xsl:template>
-
-    <xsl:template match="component[@name='childDivisions']/recordset/record">
-        <div class="madia">
-            <div class="media-body">
-                <h3 class="media-heading">
-                    <a href="{$LANG_ABBR}{field[@name='Segment']}">
-                        <xsl:value-of select="field[@name='Name']"/>
-                    </a>
-                </h3>
-                <xsl:value-of select="field[@name='DescriptionRtf']" disable-output-escaping="yes"/>
+    <xsl:template match="component[@name='childDivisions']/recordset/record" mode="child-card">
+        <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h5 mb-2">
+                        <xsl:choose>
+                            <xsl:when test="string-length($SEGMENT) &gt; 0">
+                                <a class="stretched-link text-decoration-none" href="{$LANG_ABBR}{$SEGMENT}">
+                                    <xsl:value-of select="field[@name='Name']"/>
+                                </a>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <span><xsl:value-of select="field[@name='Name']"/></span>
+                            </xsl:otherwise>
+                        </xsl:choose>
+                    </h3>
+                    <div class="text-muted">
+                        <xsl:value-of select="field[@name='DescriptionRtf']" disable-output-escaping="yes"/>
+                    </div>
+                </div>
             </div>
         </div>
-
     </xsl:template>
-
 
 </xsl:stylesheet>

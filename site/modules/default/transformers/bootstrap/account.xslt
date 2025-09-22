@@ -2,130 +2,159 @@
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
     <xsl:template match="content[//layout[@file='account.layout.xml']]">
-
-        <!-- Heading -->
-        <div class="container-fluid">
-            <div class="p-5 bg-body-tertiary mb-4">
-                <h1 class=""><xsl:value-of select="//property[@name='title']"/></h1>
-                <!-- Breadcrumb -->
-                <nav class="d-flex">
-                    <xsl:apply-templates select="$COMPONENTS[@name='breadCrumbs']"/>
-                </nav>
-                <!-- Breadcrumb -->
-            </div>
-
-        </div>
-        <!-- Heading -->
-
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-sm-4 col-xl-2">
-                    <xsl:apply-templates select="$COMPONENTS[@name='userMenu']"/>
-                </div>
-
-                <div class="col-sm-8 col-xl-10">
-                    <xsl:apply-templates />
+        <section class="bg-body-tertiary border-bottom">
+            <div class="container-fluid px-4 py-5">
+                <div class="row">
+                    <div class="col">
+                        <h1 class="display-5 fw-semibold mb-3">
+                            <xsl:value-of select="//property[@name='title']"/>
+                        </h1>
+                        <xsl:if test="$COMPONENTS[@name='breadCrumbs']/recordset/record">
+                            <nav aria-label="breadcrumb">
+                                <xsl:apply-templates select="$COMPONENTS[@name='breadCrumbs']"/>
+                            </nav>
+                        </xsl:if>
+                    </div>
                 </div>
             </div>
+        </section>
+
+        <div class="container-fluid py-4">
+            <div class="container">
+                <div class="row g-4">
+                    <div class="col-sm-4 col-xl-3 col-xxl-2">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-white border-0">
+                                <span class="fw-semibold text-uppercase small">
+                                    <xsl:value-of select="//translation[@const='TXT_PROFILE']"/>
+                                </span>
+                            </div>
+                            <div class="card-body p-0">
+                                <xsl:apply-templates select="$COMPONENTS[@name='userMenu']"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-8 col-xl-9 col-xxl-10">
+                        <div class="card shadow-sm">
+                            <div class="card-body p-4">
+                                <xsl:apply-templates />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-
-<!--        <div class="container-fluid m-t-20" >-->
-<!--            <div class="row">-->
-<!--                <div class="col-sm-12">-->
-<!--                    <xsl:apply-templates select="$COMPONENTS[@name='breadCrumbs']"/>-->
-
-<!--                    <div class="row">-->
-<!--                        <div class="col-sm-3">-->
-<!--                            <xsl:apply-templates select="$COMPONENTS[@name='userMenu']"/>-->
-<!--                        </div>-->
-
-<!--                        <div class="col-sm-9">-->
-<!--                            <div class="card">-->
-<!--                                <div class="card-header ch-alt">-->
-<!--                                    <xsl:value-of select="//property[@name='title']"/>-->
-<!--                                </div>-->
-
-<!--                                <div class="card-body card-padding">-->
-<!--                                    <xsl:apply-templates/>-->
-<!--                                </div>-->
-
-<!--                            </div>-->
-
-<!--                        </div>-->
-<!--                    </div>-->
-
-
-
-<!--                </div>-->
-<!--            </div>-->
-<!--        </div>-->
     </xsl:template>
-
 
     <xsl:template match="component[@name='userMenu']">
-        <xsl:apply-templates />
-    </xsl:template>
-
-    <xsl:template match="component[@name='userMenu']/recordset">
-        <xsl:if test="not(@empty)">
+        <xsl:if test="not(recordset/@empty)">
             <ul class="list-group list-group-flush">
-<!--                -->
-<!--                <li class="list-group-item">A second item</li>-->
-<!--                <li class="list-group-item">A third item</li>-->
-<!--                <li class="list-group-item">A fourth item</li>-->
-<!--                <li class="list-group-item">And a fifth one</li>-->
-                <xsl:apply-templates />
+                <xsl:apply-templates select="recordset/record" />
             </ul>
         </xsl:if>
     </xsl:template>
 
     <xsl:template match="component[@name='userMenu']/recordset/record">
+        <xsl:variable name="IS_ACTIVE" select="field[@name='Id' and text() = $ID]"/>
+        <xsl:variable name="ICON_CLASS" select="normalize-space(field[@name='Icon'])"/>
         <li>
             <xsl:attribute name="class">
-                <xsl:text>list-group-item list-group-item-action px-3</xsl:text>
-                <xsl:if test="field[@name='Id' and text() = $ID]">
+                <xsl:text>list-group-item list-group-item-action px-3 py-3</xsl:text>
+                <xsl:if test="$IS_ACTIVE">
                     <xsl:text> active</xsl:text>
                 </xsl:if>
             </xsl:attribute>
-            <xsl:if test="field[@name='Id' and text() = $ID]">
-                <xsl:attribute name="aria-current">page</xsl:attribute>
-            </xsl:if>
-            <a class="d-block text-decoration-none text-reset stretched-link" href="{$LANG_ABBR}{field[@name='Segment']}">
-                <xsl:value-of select="field[@name='Name']"/>
-            </a>
-        </li>
-<!--        <xsl:if test="recordset">-->
-<!--            <xsl:apply-templates select="recordset" />-->
-<!--        </xsl:if>-->
-    </xsl:template>
-
-    <xsl:template match="component[@name='userMenu']/recordset/record//recordset">
-        <xsl:apply-templates select="record" />
-    </xsl:template>
-
-    <xsl:template match="component[@name='userMenu']/recordset/record//recordset/record">
-        <li>
-            <xsl:attribute name="class">
-                <xsl:text>list-group-item list-group-item-action ps-4</xsl:text>
-                <xsl:if test="field[@name='Id' and text() = $ID]">
-                    <xsl:text> active</xsl:text>
-                </xsl:if>
-            </xsl:attribute>
-            <xsl:if test="field[@name='Id' and text() = $ID]">
+            <xsl:if test="$IS_ACTIVE">
                 <xsl:attribute name="aria-current">page</xsl:attribute>
             </xsl:if>
             <a class="d-flex align-items-center gap-2 text-decoration-none text-reset" href="{$LANG_ABBR}{field[@name='Segment']}">
-                <span class="zmdi zmdi-chevron-right me-3 ms-1">
-                    <xsl:if test="string-length(field[@name='Icon']) &gt; 0">
-                        <xsl:attribute name="class"><xsl:value-of select="field[@name='Icon']"/> me-3 ms-1</xsl:attribute>
-                    </xsl:if>
+                <span class="flex-shrink-0 text-muted">
+                    <xsl:choose>
+                        <xsl:when test="string-length($ICON_CLASS) &gt; 0">
+                            <i aria-hidden="true">
+                                <xsl:attribute name="class"><xsl:value-of select="$ICON_CLASS"/></xsl:attribute>
+                            </i>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <i class="fa fa-user-circle" aria-hidden="true"></i>
+                        </xsl:otherwise>
+                    </xsl:choose>
                 </span>
                 <span class="flex-grow-1">
                     <xsl:value-of select="field[@name='Name']"/>
                 </span>
             </a>
         </li>
+        <xsl:if test="recordset">
+            <xsl:apply-templates select="recordset" />
+        </xsl:if>
+    </xsl:template>
 
+    <xsl:template match="component[@name='userMenu']/recordset">
+        <xsl:apply-templates select="record" />
+    </xsl:template>
+
+    <xsl:template match="component[@name='userMenu']/recordset/record//recordset/record">
+        <xsl:variable name="IS_ACTIVE" select="field[@name='Id' and text() = $ID]"/>
+        <li>
+            <xsl:attribute name="class">
+                <xsl:text>list-group-item list-group-item-action ps-4 py-3</xsl:text>
+                <xsl:if test="$IS_ACTIVE">
+                    <xsl:text> active</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
+            <xsl:if test="$IS_ACTIVE">
+                <xsl:attribute name="aria-current">page</xsl:attribute>
+            </xsl:if>
+            <a class="d-flex align-items-center gap-2 text-decoration-none text-reset" href="{$LANG_ABBR}{field[@name='Segment']}">
+                <span class="flex-grow-1">
+                    <xsl:value-of select="field[@name='Name']"/>
+                </span>
+            </a>
+        </li>
+    </xsl:template>
+
+    <xsl:template match="component[@name='breadCrumbs']">
+        <xsl:if test="count(recordset/record) &gt; 1">
+            <ol class="breadcrumb mb-0">
+                <xsl:apply-templates select="recordset/record"/>
+            </ol>
+        </xsl:if>
+    </xsl:template>
+
+    <xsl:template match="component[@name='breadCrumbs']/recordset/record">
+        <xsl:variable name="IS_LAST" select="position() = last()"/>
+        <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
+
+        <xsl:choose>
+            <xsl:when test="position() = 1">
+                <li class="breadcrumb-item">
+                    <a class="link-dark text-decoration-none" href="{$BASE}{$LANG_ABBR}">
+                        <xsl:value-of select="field[@name='Name']"/>
+                    </a>
+                </li>
+            </xsl:when>
+            <xsl:when test="$IS_LAST">
+                <li class="breadcrumb-item active" aria-current="page">
+                    <xsl:value-of select="field[@name='Name']"/>
+                </li>
+            </xsl:when>
+            <xsl:otherwise>
+                <li class="breadcrumb-item">
+                    <xsl:choose>
+                        <xsl:when test="string-length($SEGMENT) &gt; 0">
+                            <a class="link-dark text-decoration-none" href="{$BASE}{$LANG_ABBR}{$SEGMENT}">
+                                <xsl:value-of select="field[@name='Name']"/>
+                            </a>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <span><xsl:value-of select="field[@name='Name']"/></span>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </li>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
 
 </xsl:stylesheet>
