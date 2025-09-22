@@ -1,3 +1,5 @@
+/* Bootstrap-based admin form helpers */
+
 .form-control-plaintext {
     padding-top: .375rem;
     padding-bottom: .375rem;
@@ -23,4 +25,12 @@
 
 .preview a {
     display: inline-flex;
+}
+
+.form-floating > .form-control.is-invalid ~ label {
+    color: var(--bs-danger);
+}
+
+.form-floating > .form-control ~ .form-text {
+    margin-top: .5rem;
 }
