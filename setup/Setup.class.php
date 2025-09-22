@@ -759,6 +759,7 @@ final class Setup {
         $this->text(PHP_EOL . 'Создание символических ссылок в ' . CORE_DIR . ':');
         foreach ($this->config['modules'] as $module => $module_path) {
             $symlinked_dir = implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module));
+            
             $this->text('Создание символической ссылки ', $module_path, ' -> ', $symlinked_dir);
 
             if (file_exists($symlinked_dir) || is_link($symlinked_dir)) {
@@ -773,7 +774,7 @@ final class Setup {
             if (!is_writeable($modules_dir)) {
                 throw new Exception('Нет доступа на запись: ' . $modules_dir);
             }
-
+            
             symlink($module_path, $symlinked_dir);
 
         }
