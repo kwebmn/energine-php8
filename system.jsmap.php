@@ -43,12 +43,13 @@
   array (
     0 => 'Validator',
   ),
-  'GridManager' => 
+  'GridManager' =>
   array (
     0 => 'TabPane',
     1 => 'PageList',
     2 => 'Toolbar',
     3 => 'ModalBox',
+    4 => 'tabulator/tabulator.min',
   ),
   'DivTree' => 
   array (
