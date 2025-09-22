@@ -88,9 +88,7 @@ class ModalBoxClass {
         setTimeout(() => {
             instance.modal.remove();
 
-            if (typeof instance.options.onClose === 'function') {
-                instance.options.onClose(instance.returnValue);
-            }
+            Energine.utils.safeCall(instance.options?.onClose, [instance.returnValue], instance);
 
             const { previousActiveElement } = instance;
             if (previousActiveElement && typeof previousActiveElement.focus === 'function') {

@@ -9,8 +9,6 @@ class FileRepoForm extends Form {
         FileAPI.staticPath = Energine.base + 'scripts/FileAPI/';
         FileAPI.debug = false;
 
-        this.componentElement = typeof el === 'string' ? document.getElementById(el) : el;
-
         this.thumbs = Array.from(this.componentElement.querySelectorAll('img.thumb'));
 
         // Uploader (основной input[type=file])
@@ -49,8 +47,12 @@ class FileRepoForm extends Form {
                 this.xhrFileUpload(el.id, files, (response) => {
                     const previewSelector = el.getAttribute('preview');
                     const dataSelector = el.getAttribute('data');
-                    const previewElement = previewSelector ? document.getElementById(previewSelector) : null;
-                    const dataElement = dataSelector ? document.getElementById(dataSelector) : null;
+                    const previewElement = previewSelector
+                        ? Energine.utils.resolveElement(previewSelector, { optional: true })
+                        : null;
+                    const dataElement = dataSelector
+                        ? Energine.utils.resolveElement(dataSelector, { optional: true })
+                        : null;
 
                     if (previewElement) {
                         previewElement.classList.remove('d-none', 'hidden');
@@ -85,7 +87,7 @@ class FileRepoForm extends Form {
             url: this.singlePath + 'upload-temp/?json',
             data: {
                 key: field_name,
-                pid: document.getElementById('upl_pid')?.value || ''
+                pid: Energine.utils.resolveElement('upl_pid', { optional: true })?.value || ''
             },
             files: f,
             prepare: (file, options) => {
@@ -108,7 +110,7 @@ class FileRepoForm extends Form {
 
     // Основной превью-файл
     showPreview(evt) {
-        const previewElement = document.getElementById('preview');
+        const previewElement = Energine.utils.resolveElement('preview', { optional: true });
         if (previewElement) {
             previewElement.removeAttribute('src');
             previewElement.classList.remove('d-none', 'hidden');
@@ -129,10 +131,10 @@ class FileRepoForm extends Form {
 
         for (const file of files) {
             this.xhrFileUpload('uploader', files, (response) => {
-                const uplName = document.getElementById('upl_name');
-                const uplFilename = document.getElementById('upl_filename');
-                const data = document.getElementById('data');
-                const uplTitle = document.getElementById('upl_title');
+                const uplName = Energine.utils.resolveElement('upl_name', { optional: true });
+                const uplFilename = Energine.utils.resolveElement('upl_filename', { optional: true });
+                const data = Energine.utils.resolveElement('data', { optional: true });
+                const uplTitle = Energine.utils.resolveElement('upl_title', { optional: true });
 
                 if (uplName) uplName.value = response.name;
                 if (uplFilename) uplFilename.value = response.name;

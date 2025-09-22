@@ -3,9 +3,9 @@ ScriptLoader.load('TabPane', 'Toolbar', 'ModalBox', 'jquery.min', 'jstree/jstree
 class DivManager {
 
     constructor(element) {
-        this.element = typeof element === 'string'
-            ? document.querySelector(element) || document.getElementById(element)
-            : element;
+        this.element = Energine.utils.resolveElement(element, {
+            name: 'DivManager root'
+        });
 
         this.selectOnStart = false;
 
@@ -14,8 +14,6 @@ class DivManager {
 
     initManager() {
         Energine.loadCSS('scripts/jstree/themes/default/style.min.css');
-
-        if (!this.element) throw new Error('DivManager: element not found');
 
         this.toolbar = null;
         this.tabPane = new TabPane(this.element);
@@ -49,10 +47,12 @@ class DivManager {
         });
 
         // --- Навешиваем события ---
-        this.jstree.on('select_node.jstree', (e, data) => this.onSelectNode && this.onSelectNode(data.node));
+        this.jstree.on('select_node.jstree', (e, data) => {
+            Energine.utils.safeCall(this.onSelectNode, [data.node], this);
+        });
         this.jstree.on('dblclick.jstree', '.jstree-anchor', (e) => {
             const node = this.jstree.jstree().get_node(e.target);
-            this.go && this.go(node);
+            Energine.utils.safeCall(this.go, [node], this);
         });
 
 

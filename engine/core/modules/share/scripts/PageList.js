@@ -15,7 +15,7 @@ class PageList extends EventTarget {
         this.element.setAttribute('unselectable', 'on');
 
         // Мержим опции (если есть)
-        this.options = options;
+        this.options = Object.assign({ onPageSelect: null }, options);
     }
 
     getElement() {
@@ -111,13 +111,13 @@ class PageList extends EventTarget {
         if (link) link.setAttribute('aria-current', 'page');
         // Генерируем событие
         // this.dispatchEvent(new CustomEvent('pageSelect', { detail: this.currentPage }));
-        this.options.onPageSelect();
+        Energine.utils.safeCall(this.options.onPageSelect, [this.currentPage], this);
     }
 
     selectPageByNum(num) {
         this.currentPage = num;
         // this.dispatchEvent(new CustomEvent('pageSelect', { detail: this.currentPage }));
-        this.options.onPageSelect(num);
+        Energine.utils.safeCall(this.options.onPageSelect, [num], this);
     }
 
     /**

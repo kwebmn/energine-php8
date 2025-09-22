@@ -6,6 +6,8 @@ class ImageManager extends Form {
     constructor(element) {
         super(element);
 
+        const getById = (id) => Energine.utils.resolveElement(id, { optional: true });
+
         /**
          * Image object with metadata.
          * @type {Object}
@@ -19,7 +21,7 @@ class ImageManager extends Form {
         this.imageMargins = ['margin-left', 'margin-right', 'margin-top', 'margin-bottom'];
 
         // Блокируем изменение имени файла
-        const filenameInput = document.getElementById('filename');
+        const filenameInput = getById('filename');
         if (filenameInput) filenameInput.disabled = true;
 
         // Получаем данные из ModalBox, если есть
@@ -30,8 +32,8 @@ class ImageManager extends Form {
         }
 
         // Привязываем обработчики к width/height
-        const widthInput = document.getElementById('width');
-        const heightInput = document.getElementById('height');
+        const widthInput = getById('width');
+        const heightInput = getById('height');
         if (widthInput) widthInput.addEventListener('change', this.checkRatio.bind(this));
         if (heightInput) heightInput.addEventListener('change', this.checkRatio.bind(this));
     }
@@ -44,8 +46,9 @@ class ImageManager extends Form {
         const oldWidth = parseInt(this.image.upl_width) || 0;
         const oldHeight = parseInt(this.image.upl_height) || 0;
 
-        const widthInput = document.getElementById('width');
-        const heightInput = document.getElementById('height');
+        const getById = (id) => Energine.utils.resolveElement(id, { optional: true });
+        const widthInput = getById('width');
+        const heightInput = getById('height');
         let width = parseInt(widthInput.value) || 0;
         let height = parseInt(heightInput.value) || 0;
 
@@ -64,8 +67,10 @@ class ImageManager extends Form {
             // Формируем путь для нового размера
             const filename = this.image.upl_path;
             const src = `${Energine.resizer}w${width}-h${height}/${filename}`;
-            document.getElementById('filename').value = src;
-            document.getElementById('thumbnail').src = src;
+            const filenameField = getById('filename');
+            const thumbnail = getById('thumbnail');
+            if (filenameField) filenameField.value = src;
+            if (thumbnail) thumbnail.src = src;
         }
     }
 
@@ -91,20 +96,27 @@ class ImageManager extends Form {
      */
     updateForm() {
         if (!this.image) return;
-        document.getElementById('filename').value = this.image.upl_path || '';
-        document.getElementById('thumbnail').src = (Energine.media || '') + (this.image.upl_path || '');
-        document.getElementById('width').value = this.image.upl_width || 0;
-        document.getElementById('height').value = this.image.upl_height || 0;
-        document.getElementById('align').value = this.image.align || '';
+        const getById = (id) => Energine.utils.resolveElement(id, { optional: true });
+        const filename = getById('filename');
+        const thumbnail = getById('thumbnail');
+        const widthField = getById('width');
+        const heightField = getById('height');
+        const alignField = getById('align');
+
+        if (filename) filename.value = this.image.upl_path || '';
+        if (thumbnail) thumbnail.src = (Energine.media || '') + (this.image.upl_path || '');
+        if (widthField) widthField.value = this.image.upl_width || 0;
+        if (heightField) heightField.value = this.image.upl_height || 0;
+        if (alignField) alignField.value = this.image.align || '';
 
         this.imageMargins.forEach(propertyName => {
-            const field = document.getElementById(propertyName);
+            const field = getById(propertyName);
             if (field) {
                 field.value = field.value || this.image[propertyName] || '0';
             }
         });
 
-        const alt = document.getElementById('alt');
+        const alt = getById('alt');
         if (alt && !alt.value) {
             alt.value = this.image.upl_title || '';
         }
@@ -114,17 +126,26 @@ class ImageManager extends Form {
      * Вставить картинку (отправить данные обратно).
      */
     insertImage() {
-        if (document.getElementById('filename').value) {
-            this.image.filename = document.getElementById('filename').value;
-            this.image.width = parseInt(document.getElementById('width').value) || '';
-            this.image.height = parseInt(document.getElementById('height').value) || '';
-            this.image.align = document.getElementById('align').value || '';
+        const getById = (id) => Energine.utils.resolveElement(id, { optional: true });
+        const filenameField = getById('filename');
+        if (filenameField && filenameField.value) {
+            const widthField = getById('width');
+            const heightField = getById('height');
+            const alignField = getById('align');
+            const altField = getById('alt');
+            const thumbnail = getById('thumbnail');
+
+            this.image.filename = filenameField.value;
+            this.image.width = parseInt(widthField?.value, 10) || '';
+            this.image.height = parseInt(heightField?.value, 10) || '';
+            this.image.align = alignField?.value || '';
 
             this.imageMargins.forEach(propertyName => {
-                this.image[propertyName] = parseInt(document.getElementById(propertyName).value) || 0;
+                const field = getById(propertyName);
+                this.image[propertyName] = parseInt(field?.value, 10) || 0;
             });
-            this.image.alt = document.getElementById('alt').value;
-            this.image.thumbnail = document.getElementById('thumbnail').src;
+            this.image.alt = altField?.value || '';
+            this.image.thumbnail = thumbnail?.src || '';
 
             ModalBox.setReturnValue(this.image);
         }

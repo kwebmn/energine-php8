@@ -157,9 +157,7 @@ class AttachmentEditor extends GridManager {
             if (showOverlay && overlay) {
                 overlay.hide();
             }
-            if (typeof callback === 'function') {
-                callback(response);
-            }
+            Energine.utils.safeCall(callback, [response]);
         };
 
         Energine.request(

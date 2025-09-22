@@ -6,9 +6,9 @@ class Grid {
      */
     constructor(element, options = {}) {
         // Универсальная обертка для работы с элементами по селектору или объекту
-        this.element = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+        this.element = Energine.utils.resolveElement(element, {
+            name: 'Grid root'
+        });
 
         this.data = [];
         this.metadata = {};
@@ -69,15 +69,23 @@ class Grid {
     // --- Event system ---
     on(event, handler) {
         if (!this.events[event]) this.events[event] = [];
-        this.events[event].push(handler);
+        if (typeof handler === 'function') {
+            this.events[event].push(handler);
+        }
+        return this;
     }
     off(event, handler) {
         if (this.events[event])
             this.events[event] = this.events[event].filter(fn => fn !== handler);
     }
     fireEvent(event, ...args) {
-        if (this.events[event])
-            this.events[event].forEach(fn => fn.apply(this, args));
+        if (this.events[event]) {
+            this.events[event].forEach(fn => {
+                if (typeof fn === 'function') {
+                    fn.apply(this, args);
+                }
+            });
+        }
     }
 
     setMetadata(metadata) {

@@ -10,7 +10,10 @@ class TabPane {
         this.setOptions(options);
 
         // Получаем корневой элемент
-        this.element = typeof element === 'string' ? document.querySelector(element) : element;
+        this.element = Energine.utils.resolveElement(element, {
+            optional: true,
+            name: 'TabPane root'
+        });
         if (!this.element) {
             this.tabs = [];
             this.currentTab = null;

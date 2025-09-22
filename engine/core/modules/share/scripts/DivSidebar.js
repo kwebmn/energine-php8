@@ -138,10 +138,12 @@ class DivSidebar extends DivManager {
 
 
         // --- Навешиваем события ---
-        this.jstree.on('select_node.jstree', (e, data) => this.onSelectNode && this.onSelectNode(data.node));
+        this.jstree.on('select_node.jstree', (e, data) => {
+            Energine.utils.safeCall(this.onSelectNode, [data.node], this);
+        });
         this.jstree.on('dblclick.jstree', '.jstree-anchor', (e) => {
             const node = this.jstree.jstree().get_node(e.target);
-            this.go && this.go(node);
+            Energine.utils.safeCall(this.go, [node], this);
         });
 
 
