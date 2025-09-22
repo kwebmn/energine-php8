@@ -44,25 +44,9 @@ class AttachmentEditor extends GridManager {
                                 },
                                 (response) => {
                                     if (response.data) {
-                                        // Второй запрос — уже без Request.JSON!
-                                        Energine.request(
-                                            `${this.singlePath}savequickupload/`,
-                                            {
-                                                json: 1,
-                                                componentAction: 'add',
-                                                upl_id: response.data
-                                            },
-                                            (data) => {
-                                                // Здесь твой onComplete (data) код, если нужен
-                                            },
-                                            (userErr) => {
-                                                // обработка пользовательской ошибки (опционально)
-                                            },
-                                            (serverErr) => {
-                                                // обработка server-side ошибки (опционально)
-                                            }
-                                        );
-                                    }                                }
+                                        this.saveQuickUpload(response.data);
+                                    }
+                                }
                             );
                         }
 
@@ -139,34 +123,56 @@ class AttachmentEditor extends GridManager {
      * Открыть окно быстрого аплоада
      */
     quickupload() {
-        const overlay = this.overlay;
         ModalBox.open({
             url: `${this.singlePath}file-library/${this.quick_upload_pid}/add/`,
             onClose: (response) => {
                 if (response && response.result && response.data) {
-                    this.overlay.show();
-                    new Request.JSON({
-                        url: `${this.singlePath}savequickupload/`,
-                        method: 'post',
-                        data: {
-                            json: 1,
-                            componentAction: 'add',
-                            upl_id: response.data
-                        },
-                        evalResponse: true,
-                        onComplete: (data) => {
-                            overlay.hide();
+                    this.saveQuickUpload(response.data, {
+                        showOverlay: true,
+                        onSuccess: (data) => {
                             if (data && data.result) {
                                 this.loadPage(1);
                             }
-                        },
-                        onFailure: () => {
-                            overlay.hide();
                         }
-                    }).send();
+                    });
                 }
             }
         });
+    }
+
+    /**
+     * Выполнить сохранение быстрого аплоада через общий helper
+     * @param {string|number} uploadId
+     * @param {{showOverlay?: boolean, onSuccess?: Function, onError?: Function}} [options]
+     */
+    saveQuickUpload(uploadId, options = {}) {
+        const { showOverlay = false, onSuccess, onError } = options;
+        const overlay = this.overlay;
+
+        if (showOverlay && overlay) {
+            overlay.show();
+        }
+
+        const finalize = (callback) => (response) => {
+            if (showOverlay && overlay) {
+                overlay.hide();
+            }
+            if (typeof callback === 'function') {
+                callback(response);
+            }
+        };
+
+        Energine.request(
+            `${this.singlePath}savequickupload/`,
+            {
+                json: 1,
+                componentAction: 'add',
+                upl_id: uploadId
+            },
+            finalize(onSuccess),
+            finalize(onError),
+            finalize(onError)
+        );
     }
 
     /**
