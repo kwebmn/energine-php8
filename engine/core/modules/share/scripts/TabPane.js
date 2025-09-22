@@ -6,7 +6,6 @@ class TabPane {
 
     constructor(element, options = {}) {
         // Динамически подключаем CSS (если нужно)
-        Energine.loadCSS('stylesheets/tabpane.css');
         this._events = {};
         this.setOptions(options);
 
@@ -17,6 +16,7 @@ class TabPane {
             this.currentTab = null;
             return;
         }
+        this.element.classList.add('d-flex', 'flex-column', 'h-100');
 
         // Ищем контейнер вкладок
         const tabsList = this.element.querySelector('[data-role="tabs"]');
@@ -32,6 +32,11 @@ class TabPane {
         const tabContent = this.element.querySelector('[data-role="tab-content"]');
         if (tabContent) {
             tabContent.classList.add('tab-content');
+        }
+
+        const bodyPart = this.element.querySelector('[data-pane-part="body"]');
+        if (bodyPart) {
+            bodyPart.classList.add('flex-grow-1', 'overflow-auto');
         }
 
         this.tabs = Array.from(tabsList.querySelectorAll('[data-role="tab"]'));
@@ -67,7 +72,7 @@ class TabPane {
             // --- Привязка панели к вкладке ---
             tab.pane = this.element.querySelector(`div${paneId}`);
             if (tab.pane) {
-                tab.pane.classList.add('tab-pane', 'fade');
+                tab.pane.classList.add('tab-pane', 'fade', 'p-3');
                 tab.pane.setAttribute('data-role', 'pane-item');
                 tab.pane.classList.remove('show', 'active');
                 tab.pane.setAttribute('role', 'tabpanel');
@@ -184,7 +189,7 @@ class TabPane {
 
         const tabPane = document.createElement('div');
         tabPane.id = tabID;
-        tabPane.className = 'tab-pane fade';
+        tabPane.className = 'tab-pane fade p-3';
         tabPane.setAttribute('data-role', 'pane-item');
         tabPane.classList.remove('show', 'active');
         tabPane.setAttribute('role', 'tabpanel');

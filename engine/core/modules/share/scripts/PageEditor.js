@@ -1,11 +1,28 @@
 ScriptLoader.load('ckeditor/ckeditor', 'ModalBox');
 
+function applyEditorOutline(area, editor) {
+    if (!area) {
+        return;
+    }
+    area.style.outline = '1px dashed #f00';
+    area.style.outlineOffset = '2px';
+    if (editor && typeof editor.on === 'function') {
+        editor.on('focus', () => {
+            area.style.outline = '2px dashed #0d0';
+            area.style.outlineOffset = '2px';
+        });
+        editor.on('blur', () => {
+            area.style.outline = '1px dashed #f00';
+            area.style.outlineOffset = '2px';
+        });
+    }
+}
+
 class PageEditor {
     editorClassName = 'nrgnEditor';
     editors = [];
 
     constructor() {
-        PageEditor.loadCSS('stylesheets/pageeditor.css');
         CKEDITOR.config.versionCheck = false;
         CKEDITOR.disableAutoInline = true;
         CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,energineimage,energinefile';
@@ -47,15 +64,6 @@ class PageEditor {
         window.nrgPageEditor = this;
     }
 
-    static loadCSS(file) {
-        if (!document.querySelector(`link[href$="${file}"]`)) {
-            const link = document.createElement('link');
-            link.rel = "stylesheet";
-            link.href = file;
-            document.head.appendChild(link);
-        }
-    }
-
     // --------- Вложенный BlockEditor ---------
     static BlockEditor = class {
         constructor(area) {
@@ -65,9 +73,10 @@ class PageEditor {
             this.singlePath = area.getAttribute('single_template');
             this.ID = area.getAttribute('eID') || '';
             this.num = area.getAttribute('num') || '';
-            this.editor = CKEDITOR.inline(area.id);
-            this.editor.singleTemplate = this.singlePath;
-            this.editor.editorId = area.id;
+        this.editor = CKEDITOR.inline(area.id);
+        this.editor.singleTemplate = this.singlePath;
+        this.editor.editorId = area.id;
+        applyEditorOutline(this.area, this.editor);
             //this.overlay = new Overlay();
             // Если нужны события blur/focus, можно раскомментировать:
             /*
@@ -161,6 +170,7 @@ class BlockEditor {
         this.editor = CKEDITOR.inline(this.area.id);
         this.editor.singleTemplate = this.area.getAttribute('single_template');
         this.editor.editorId = this.area.id;
+        applyEditorOutline(this.area, this.editor);
 
         /**
          * Overlay.

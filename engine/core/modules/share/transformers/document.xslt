@@ -99,7 +99,6 @@
                 <xsl:apply-templates select="." mode="stylesheets"/>
             </xsl:when>
             <xsl:otherwise>
-                <link rel="stylesheet" type="text/css" href="{$STATIC_URL}stylesheets/singlemode.css"/>
                 <!--<script type="text/javascript">window.singleMode = true;</script>-->
             </xsl:otherwise>
         </xsl:choose>

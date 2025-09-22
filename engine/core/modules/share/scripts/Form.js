@@ -123,9 +123,6 @@ class Form {
     }
 
     constructor(element) {
-        // Загрузка стилей (имитируем Asset.css)
-        Form.loadCSS('stylesheets/form.bootstrap.css');
-
         // this.overlay = new Overlay();
 
         // Получаем элемент формы

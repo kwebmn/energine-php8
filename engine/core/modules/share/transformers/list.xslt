@@ -145,7 +145,7 @@
         <div class="card-body p-0" data-pane-part="body">
             <div class="tab-content" data-role="tab-content">
                 <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1">
-                    <div class="grid p-4" data-role="grid">
+                    <div class="grid p-4 bg-body border rounded-3 shadow-sm" data-role="grid">
                         <xsl:if test="ancestor::component/filter">
                             <div class="grid-toolbar bg-body-tertiary border rounded-3 p-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-4" data-role="grid-toolbar">
                                 <div class="grid-filter d-flex flex-column flex-lg-row align-items-lg-center gap-3 w-100" data-role="grid-filter">
@@ -187,11 +187,11 @@
                                     </div>
                                 </div>
                                 <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                    <div class="grid-breadcrumbs flex-grow-1" id="breadcrumbs"/>
+                                    <div class="grid-breadcrumbs flex-grow-1 alert alert-secondary mb-0 py-2 px-3" id="breadcrumbs"/>
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head" data-grid-section="head">
+                        <div class="grid-head border border-bottom-0 rounded-top bg-body-tertiary" data-grid-section="head">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover table-sm mb-0" data-role="grid-table" data-grid-part="head">
                                     <xsl:if test="ancestor::component[@sample='FileRepository']">
@@ -238,7 +238,7 @@
                                 </table>
                             </div>
                         </div>
-                        <div class="grid-body" data-grid-section="body">
+                        <div class="grid-body border border-top-0 rounded-bottom bg-body" data-grid-section="body">
                             <div class="table-responsive" data-grid-section="body-inner">
                                 <table class="table table-striped table-hover table-sm mb-0" data-role="grid-table" data-grid-part="body">
                                     <xsl:if test="ancestor::component[@sample='FileRepository']">

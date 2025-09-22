@@ -13,7 +13,6 @@ class DivManager {
     }
 
     initManager() {
-        Energine.loadCSS('stylesheets/div.css');
         Energine.loadCSS('scripts/jstree/themes/default/style.min.css');
 
         if (!this.element) throw new Error('DivManager: element not found');
@@ -21,6 +20,8 @@ class DivManager {
         this.toolbar = null;
         this.tabPane = new TabPane(this.element);
         this.langId = this.element.getAttribute('lang_id');
+
+        this.element.classList.add('d-flex', 'flex-column', 'flex-lg-row', 'gap-4', 'align-items-start');
 
         // --- Создание структуры дерева (div для jsTree) ---
         this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
@@ -32,6 +33,11 @@ class DivManager {
             divTree.id = 'divTree';
             this.treeContainer.appendChild(divTree);
         }
+        this.treeContainer.classList.add('position-relative', 'flex-shrink-0', 'w-100', 'w-lg-auto', 'bg-body', 'border', 'rounded-3', 'p-3', 'shadow-sm');
+        this.treeContainer.style.maxWidth = '340px';
+        this.treeContainer.style.maxHeight = 'calc(100vh - 6rem)';
+        this.treeContainer.style.overflowY = 'auto';
+        this.treeContainer.classList.add('mb-3', 'mb-lg-0');
 
         this.singlePath = this.element.getAttribute('single_template');
         this.site = this.element.getAttribute('site');

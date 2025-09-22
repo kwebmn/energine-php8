@@ -1,9 +1,8 @@
 class Toolbar {
     constructor(toolbarName, props = {}) {
-        Energine.loadCSS('stylesheets/toolbar.css');
         this.name = toolbarName;
         this.element = document.createElement('div');
-        this.element.classList.add('btn-toolbar', 'flex-wrap', 'gap-2');
+        this.element.classList.add('btn-toolbar', 'flex-wrap', 'gap-2', 'align-items-center');
         this.element.setAttribute('role', 'toolbar');
         if (toolbarName) {
             this.element.classList.add(toolbarName);
@@ -35,10 +34,10 @@ class Toolbar {
     }
 
     dock() {
-        this.element.classList.add('docked_toolbar');
+        this.element.classList.add('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
     }
     undock() {
-        this.element.classList.remove('docked_toolbar');
+        this.element.classList.remove('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
     }
     getElement() {
         return this.element;
@@ -226,7 +225,7 @@ class Toolbar {
             }
         }
         buildAsIcon(icon) {
-            this.element.classList.add('btn-icon');
+            this.element.classList.add('d-inline-flex', 'align-items-center', 'justify-content-center');
             this.element.textContent = icon;
             if (this.properties.title || this.properties.tooltip) {
                 this.element.setAttribute('aria-label', this.properties.title || this.properties.tooltip);
@@ -236,7 +235,7 @@ class Toolbar {
             if (this.properties.icon) {
                 this.buildAsIcon(this.properties.icon);
             } else {
-                this.element.classList.remove('btn-icon', 'px-2');
+                this.element.classList.remove('d-inline-flex', 'align-items-center', 'justify-content-center', 'px-2');
                 this.element.removeAttribute('aria-label');
                 this.element.textContent = this.properties.title || '';
             }
@@ -308,7 +307,7 @@ class Toolbar {
             super.build();
             if (!this.element) return;
             this.element.type = this.properties.type || 'button';
-            this.element.classList.add('btn', 'btn-sm', this.getVariantClass());
+            this.element.classList.add('btn', 'btn-sm', this.getVariantClass(), 'd-inline-flex', 'align-items-center', 'gap-2');
             if (this.properties.id) this.element.classList.add(`${this.properties.id}_btn`);
             this.handleMouseOver = () => {
                 if (!this.properties.isDisabled) this.element.classList.add('highlighted');
@@ -465,7 +464,7 @@ class Toolbar {
         build() {
             super.build();
             if (!this.element) return;
-            this.element.classList.add('align-self-center', 'toolbar-text', 'text-body-secondary');
+            this.element.classList.add('align-self-center', 'text-body-secondary', 'small');
         }
     };
 
@@ -556,7 +555,7 @@ class Toolbar {
             if (!this.toolbar || !this.properties.id) return;
             this.element = document.createElement('div');
             this.applyCommonAttributes();
-            this.element.classList.add('custom_select', 'dropdown', 'toolbar-dropdown');
+            this.element.classList.add('custom_select', 'dropdown', 'toolbar-dropdown', 'd-flex', 'flex-column', 'gap-1');
             if (this.properties.title) {
                 let span = document.createElement('span');
                 span.classList.add('label', 'text-body-secondary', 'small', 'text-uppercase', 'fw-semibold');
@@ -564,19 +563,19 @@ class Toolbar {
                 this.element.appendChild(span);
             }
             this.select = document.createElement('div');
-            this.select.classList.add('custom_select_box', 'btn-group');
+            this.select.classList.add('custom_select_box', 'btn-group', 'd-flex', 'align-items-stretch');
             this.button = document.createElement('button');
             this.button.type = 'button';
-            this.button.classList.add('custom_select_button', 'btn', 'btn-sm', 'btn-outline-secondary', 'dropdown-toggle');
+            this.button.classList.add('custom_select_button', 'btn', 'btn-sm', 'btn-outline-secondary', 'dropdown-toggle', 'd-inline-flex', 'align-items-center', 'gap-2');
             this.button.setAttribute('data-bs-toggle', 'dropdown');
             this.button.setAttribute('aria-expanded', 'false');
             this.view = document.createElement('span');
-            this.view.classList.add('custom_select_view');
+            this.view.classList.add('custom_select_view', 'd-inline-flex', 'align-items-center', 'gap-2');
             this.button.appendChild(this.view);
             this.dropbox = document.createElement('div');
-            this.dropbox.classList.add('custom_select_dropbox', 'dropdown-menu', 'shadow');
+            this.dropbox.classList.add('custom_select_dropbox', 'dropdown-menu', 'shadow', 'p-0', 'w-100');
             this.options_container = document.createElement('div');
-            this.options_container.classList.add('custom_select_options');
+            this.options_container.classList.add('custom_select_options', 'list-group', 'list-group-flush');
             this.dropbox.appendChild(this.options_container);
             this.select.appendChild(this.button);
             this.select.appendChild(this.dropbox);
@@ -646,7 +645,7 @@ class Toolbar {
         disable() {
             if (!this.properties.isDisabled) {
                 super.disable();
-                this.select.classList.add('disabled');
+                this.select.classList.add('disabled', 'opacity-50');
                 this.button.classList.add('disabled');
                 this.button.disabled = true;
                 if (this.dropdownInstance) {
@@ -661,7 +660,7 @@ class Toolbar {
             if (this.properties.isDisabled) {
                 super.enable(force);
                 if (!this.properties.isDisabled) {
-                    this.select.classList.remove('disabled');
+                    this.select.classList.remove('disabled', 'opacity-50');
                     this.button.classList.remove('disabled');
                     this.button.disabled = false;
                 }
