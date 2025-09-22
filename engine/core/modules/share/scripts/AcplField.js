@@ -111,9 +111,9 @@ class ActiveList {
         // События — простая реализация, аналог MooTools.Events
         this._events = {};
 
-        this.container = typeof container === 'string'
-            ? document.getElementById(container)
-            : container;
+        this.container = Energine.utils.resolveElement(container, {
+            name: 'ActiveList container'
+        });
         this.container.classList.add('alist');
         this.container.tabIndex = 1;
         this.container.style.userSelect = 'none';
@@ -249,9 +249,9 @@ class DropBoxList extends ActiveList {
         super(container);
 
         // Привязываем input
-        this.input = (typeof input === 'string')
-            ? document.getElementById(input)
-            : input;
+        this.input = Energine.utils.resolveElement(input, {
+            name: 'DropBoxList input'
+        });
 
         this.container.classList.remove('hidden', 'd-none');
         this.container.classList.add('d-none');
@@ -355,7 +355,9 @@ class AcplField {
      */
     constructor(element, options = {}) {
         // DOM
-        this.element = (typeof element === 'string') ? document.getElementById(element) : element;
+        this.element = Energine.utils.resolveElement(element, {
+            name: 'AcplField element'
+        });
         this.options = Object.assign({ startFrom: 1 }, options);
 
         if (!this.element.matches(AcplField.selector)) {
@@ -446,7 +448,7 @@ class AcplField {
 
         const component = this.componentId ? window[this.componentId] : null;
         if (component && typeof component.openTagEditor === 'function') {
-            component.openTagEditor(this.button);
+            Energine.utils.safeCall(component.openTagEditor, [this.button], component);
             return true;
         }
 

@@ -468,7 +468,10 @@ class PathList {
      * @param {HTMLElement|string} el
      */
     constructor(el) {
-        this.element = (typeof el === 'string') ? document.querySelector(el) : el;
+        this.element = Energine.utils.resolveElement(el, {
+            optional: true,
+            name: 'PathList element'
+        });
     }
 
     /**
@@ -486,7 +489,7 @@ class PathList {
                 a.textContent = title;
                 a.addEventListener('click', (e) => {
                     e.preventDefault();
-                    loader(id);
+                    Energine.utils.safeCall(loader, [id], this);
                 });
                 const sep = document.createElement('span');
                 sep.textContent = ' / ';

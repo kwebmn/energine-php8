@@ -112,7 +112,7 @@ class PageEditor {
                     .then(response => response.text())
                     .then(response => {
                         // this.editor.setData(response); // убрано как в оригинале
-                        if (onSuccess) onSuccess.call(this);
+                        Energine.utils.safeCall(onSuccess, [], this);
                         if (this.editor.resetDirty) this.editor.resetDirty();
                         if (!async) this.overlay.hide();
                     });
@@ -222,7 +222,7 @@ class BlockEditor {
                 params,
                 (response) => {
                     // onSuccess как в оригинале
-                    if (onSuccess) onSuccess.call(this, response);
+                    Energine.utils.safeCall(onSuccess, [response], this);
                     this.editor.resetDirty && this.editor.resetDirty();
                     if (!async) {
                         hideLoader();

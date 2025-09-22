@@ -6,26 +6,27 @@ class DivForm extends Form {
     constructor(element) {
         super(element);
 
+        const getById = (id) => Energine.utils.resolveElement(id, { optional: true });
+
         // --------- prepareLabel ---------
-        // Предполагаем, что 'site_id' — id поля, в нем value — строка с id, а далее '/list/' как в оригинале
-        let siteIdInput = document.getElementById('site_id');
-        let labelUrl = siteIdInput ? siteIdInput.value + '/list/' : '/list/';
+        const siteIdInput = getById('site_id');
+        const labelUrl = siteIdInput ? `${siteIdInput.value}/list/` : '/list/';
         this.prepareLabel(labelUrl);
 
         // --------- selectors ---------
-        let contentSelector = this.componentElement.querySelector('#smap_content');
-        let layoutSelector = this.componentElement.querySelector('#smap_layout');
-        let segmentInput   = this.componentElement.querySelector('#smap_segment');
-        let t = this; // для contentFunc
+        const contentSelector = this.componentElement.querySelector('#smap_content');
+        const layoutSelector = this.componentElement.querySelector('#smap_layout');
+        const segmentInput = this.componentElement.querySelector('#smap_segment') || getById('smap_segment');
 
         // --------- contentFunc ---------
-        function contentFunc() {
+        const contentFunc = () => {
             if (!contentSelector) return;
 
-            // Получить выбранный option
-            let selectedOption = contentSelector.options[contentSelector.selectedIndex];
+            const selectedOption = contentSelector.options[contentSelector.selectedIndex];
+            if (!selectedOption) return;
+
             if (segmentInput) {
-                let segment = selectedOption.getAttribute('data-segment');
+                const segment = selectedOption.getAttribute('data-segment');
                 if (segment) {
                     segmentInput.readOnly = true;
                     segmentInput.value = segment;
@@ -33,32 +34,26 @@ class DivForm extends Form {
                     segmentInput.readOnly = false;
                 }
             }
-            let layout = selectedOption.getAttribute('data-layout');
-            if (layout && layout !== '*') {
+
+            const layout = selectedOption.getAttribute('data-layout');
+            if (layout && layout !== '*' && layoutSelector) {
                 layoutSelector.value = layout;
             }
-            t.clearContentXML();
-        }
+
+            this.clearContentXML();
+        };
 
         // --------- URI Text Field ---------
-        // Поддержка поля uriTextField (например, smap_name_3 или первый подходящий)
-        let uriTextField = document.getElementById('smap_name_3');
+        let uriTextField = getById('smap_name_3');
         if (!uriTextField) {
-            // Найти первый элемент с id smap_name_{число}
-            const allElements = document.querySelectorAll('*');
             const regex = /^smap_name_\d+$/;
-            for (let el of allElements) {
-                if (regex.test(el.id)) {
-                    uriTextField = el;
-                    break;
-                }
-            }
+            uriTextField = Array.from(document.querySelectorAll('[id^="smap_name_"]'))
+                .find(el => regex.test(el.id)) || null;
         }
 
         // --------- segmentUriFunc ---------
-        function segmentUriFunc() {
-            // Транслитерация
-            function transliterate(text) {
+        const segmentUriFunc = (event) => {
+            const transliterate = (text = '') => {
                 const translitMap = {
                     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z',
                     'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r',
@@ -66,36 +61,34 @@ class DivForm extends Form {
                     'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
                 };
 
-                let urlFriendlyText = '';
-                for (let ch of text.toLowerCase()) {
-                    if (translitMap.hasOwnProperty(ch)) {
-                        urlFriendlyText += translitMap[ch];
-                    } else if (/[a-z0-9]/.test(ch)) {
-                        urlFriendlyText += ch;
-                    } else {
-                        urlFriendlyText += '-';
-                    }
-                }
-                return urlFriendlyText.replace(/-+/g, '-').replace(/^-|-$/g, '');
-            }
+                return text
+                    .toLowerCase()
+                    .split('')
+                    .map((ch) => {
+                        if (Object.prototype.hasOwnProperty.call(translitMap, ch)) {
+                            return translitMap[ch];
+                        }
+                        if (/[a-z0-9]/.test(ch)) {
+                            return ch;
+                        }
+                        return '-';
+                    })
+                    .join('')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+            };
 
-            let url_text = this.value;
-            url_text = transliterate(url_text);
+            const sourceValue = event?.target?.value || '';
+            const urlText = transliterate(sourceValue);
 
-            let smapSegmentField = document.getElementById('smap_segment');
-            if (smapSegmentField && smapSegmentField.value.length === 0) {
-                smapSegmentField.value = url_text;
+            if (segmentInput && segmentInput.value.length === 0) {
+                segmentInput.value = urlText;
             }
-        }
+        };
 
         // --------- События ---------
         if (contentSelector) contentSelector.addEventListener('change', contentFunc);
         if (uriTextField) uriTextField.addEventListener('change', segmentUriFunc);
-
-        // --- Привязка 'this' в segmentUriFunc ---
-        if (uriTextField) {
-            uriTextField.addEventListener('change', segmentUriFunc);
-        }
     }
 
     /**

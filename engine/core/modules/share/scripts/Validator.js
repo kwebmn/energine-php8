@@ -10,7 +10,9 @@ class Validator {
      * @param {TabPane} tabPane - (необязательно) объект TabPane
      */
     constructor(form, tabPane = null) {
-        this.form = typeof form === 'string' ? document.getElementById(form) : form;
+        this.form = Energine.utils.resolveElement(form, {
+            name: 'Validator form'
+        });
         this.tabPane = tabPane;
         this.prepareFloatFields();
     }

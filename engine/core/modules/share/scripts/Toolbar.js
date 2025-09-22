@@ -108,9 +108,9 @@ class Toolbar {
         });
     }
     callAction(action, data) {
-        if (this.boundTo && typeof this.boundTo[action] === 'function') {
-            this.boundTo[action](data);
-        }
+        if (!this.boundTo) return;
+        const handler = this.boundTo[action];
+        Energine.utils.safeCall(handler, [data], this.boundTo);
     }
 
     // STATIC

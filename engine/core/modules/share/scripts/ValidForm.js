@@ -9,22 +9,25 @@ class ValidForm {
      */
     constructor(element) {
         // Основной элемент (по селектору или ссылке)
-        this.componentElement = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+        this.componentElement = Energine.utils.resolveElement(element, {
+            optional: true,
+            name: 'ValidForm component'
+        });
 
-        if (this.componentElement) {
-            // Находим родительскую форму
-            this.form = this.componentElement.closest('form');
-            if (this.form) {
-                // Сохраняем путь (если есть)
-                this.singlePath = this.componentElement.getAttribute('single_template');
-                this.form.classList.add('form');
-                // Навешиваем валидацию на submit
-                this.form.addEventListener('submit', this.validateForm.bind(this));
-                // Инициализируем валидатор (должен быть определён отдельно)
-                this.validator = new Validator(this.form);
-            }
+        if (!this.componentElement) {
+            return;
+        }
+
+        // Находим родительскую форму
+        this.form = this.componentElement.closest('form');
+        if (this.form) {
+            // Сохраняем путь (если есть)
+            this.singlePath = this.componentElement.getAttribute('single_template');
+            this.form.classList.add('form');
+            // Навешиваем валидацию на submit
+            this.form.addEventListener('submit', this.validateForm.bind(this));
+            // Инициализируем валидатор (должен быть определён отдельно)
+            this.validator = new Validator(this.form);
         }
     }
 

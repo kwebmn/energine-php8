@@ -7,7 +7,7 @@ window.ScriptLoader = {
 function serializeToFormEncoded(obj, prefix) {
     const str = [];
     for (const p in obj) {
-        if (!obj.hasOwnProperty(p)) continue;
+        if (!Object.prototype.hasOwnProperty.call(obj, p)) continue;
 
         const k = prefix ? `${prefix}[${p}]` : p;
         const v = obj[p];
@@ -20,6 +20,137 @@ function serializeToFormEncoded(obj, prefix) {
     }
     return str.join("&");
 }
+
+const isElementLike = (value) => {
+    if (!value) return false;
+    return value === window
+        || value === document
+        || value instanceof Element
+        || (typeof DocumentFragment !== 'undefined' && value instanceof DocumentFragment);
+};
+
+const isCollectionLike = (value) => {
+    if (!value) return false;
+    return Array.isArray(value)
+        || (typeof NodeList !== 'undefined' && value instanceof NodeList)
+        || (typeof HTMLCollection !== 'undefined' && value instanceof HTMLCollection);
+};
+
+const toArray = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.slice();
+    if (typeof NodeList !== 'undefined' && value instanceof NodeList) return Array.from(value);
+    if (typeof HTMLCollection !== 'undefined' && value instanceof HTMLCollection) return Array.from(value);
+    return [value];
+};
+
+const toElementArray = (target, { context = document } = {}) => {
+    if (!target) return [];
+
+    if (typeof target === 'string') {
+        const trimmed = target.trim();
+        if (!trimmed) return [];
+
+        const root = context || document;
+        const results = new Set();
+
+        const add = (element) => {
+            if (element) results.add(element);
+        };
+
+        const resolveBySelector = (selector, scope) => {
+            try {
+                scope.querySelectorAll(selector).forEach(add);
+            } catch (err) {
+                // ignore selector errors, fall back to id search
+            }
+        };
+
+        const looksLikeSelector = /[#.\[\s:]/.test(trimmed);
+
+        if (!looksLikeSelector) {
+            const byId = (typeof root.getElementById === 'function' ? root.getElementById(trimmed) : null)
+                || document.getElementById(trimmed);
+            add(byId);
+        }
+
+        if (!results.size) {
+            resolveBySelector(trimmed, root);
+            if (!results.size && root !== document) {
+                resolveBySelector(trimmed, document);
+            }
+        }
+
+        return Array.from(results);
+    }
+
+    if (isElementLike(target)) {
+        return [target];
+    }
+
+    if (target && typeof target.jquery !== 'undefined') {
+        return toElementArray(target.get ? target.get() : target.toArray(), { context });
+    }
+
+    if (isCollectionLike(target)) {
+        return toArray(target).flatMap((item) => toElementArray(item, { context }));
+    }
+
+    return [];
+};
+
+const resolveElement = (target, { context = document, optional = false, name } = {}) => {
+    const elements = toElementArray(target, { context });
+    if (elements.length) {
+        return elements[0];
+    }
+
+    if (optional) {
+        return null;
+    }
+
+    const label = name || 'Element';
+    throw new Error(`${label}: selector "${target}" did not match any element`);
+};
+
+const resolveElements = (target, options = {}) => toElementArray(target, options);
+
+const bindAll = (instance, methods = []) => {
+    if (!instance || !Array.isArray(methods)) {
+        return instance;
+    }
+
+    methods.forEach((methodName) => {
+        if (typeof methodName !== 'string') {
+            return;
+        }
+        const fn = instance[methodName];
+        if (typeof fn === 'function') {
+            instance[methodName] = fn.bind(instance);
+        }
+    });
+
+    return instance;
+};
+
+const safeCall = (fn, args = [], context = undefined) => {
+    if (typeof fn !== 'function') {
+        return undefined;
+    }
+
+    const normalizedArgs = Array.isArray(args) ? args : [args];
+    return fn.apply(context ?? null, normalizedArgs);
+};
+
+const utils = {
+    resolveElement,
+    resolveElements,
+    toArray,
+    toElementArray,
+    bindAll,
+    safeCall,
+    isNodeCollection: isCollectionLike
+};
 
 // --- Energine глобально ---
 window.Energine = {
@@ -88,7 +219,7 @@ window.Energine = {
             if (!response) return onServerError(text);
 
             if (response.result) {
-                onSuccess(response);
+                safeCall(onSuccess, [response]);
             } else {
                 let msg = response.title || 'Произошла ошибка:\n';
                 if (Array.isArray(response.errors)) {
@@ -104,7 +235,7 @@ window.Energine = {
                     });
                 }
                 alert(msg);
-                if (onUserError) onUserError(response);
+                safeCall(onUserError, [response]);
             }
         } catch (e) {
             console.error(e);
@@ -166,14 +297,14 @@ window.Energine = {
     noticeBox(message, icon, callback) {
         if (typeof Swal === 'undefined') {
             alert(message);
-            if (callback) callback();
+            safeCall(callback);
         } else {
             Swal.fire({
                 icon,
                 title: message,
                 timer: 1500
             }).then(() => {
-                if (callback) callback();
+                safeCall(callback);
             });
         }
     },
@@ -226,6 +357,8 @@ window.Energine = {
         }
     }
 };
+
+window.Energine.utils = Object.assign({}, window.Energine.utils || {}, utils);
 
 // --- safeConsoleError глобально ---
 // window.safeConsoleError = function (e) {
@@ -289,4 +422,4 @@ window.hideLoader = function(container = document.body) {
     if (loader) loader.remove();
 };
 
-Window.Energine = Energine;
+window.Energine = Energine;

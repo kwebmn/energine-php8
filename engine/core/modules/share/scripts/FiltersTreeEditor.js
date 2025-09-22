@@ -5,9 +5,9 @@ class FiltersTreeEditor {
      * @param {HTMLElement|string} element
      */
     constructor(element) {
-        this.componentElement = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+        this.componentElement = Energine.utils.resolveElement(element, {
+            name: 'FiltersTreeEditor root'
+        });
         this.singlePath = this.componentElement.getAttribute('single-template');
         Energine.loadCSS('scripts/jstree/themes/default/style.css');
         this.initTree();

@@ -54,19 +54,7 @@ class Form {
      * @returns {boolean}
      */
     static isNodeCollection(value) {
-        if (!value) {
-            return false;
-        }
-        if (Array.isArray(value)) {
-            return true;
-        }
-        if (typeof NodeList !== 'undefined' && value instanceof NodeList) {
-            return true;
-        }
-        if (typeof HTMLCollection !== 'undefined' && value instanceof HTMLCollection) {
-            return true;
-        }
-        return false;
+        return Energine.utils.isNodeCollection(value);
     }
 
     /**
@@ -76,40 +64,20 @@ class Form {
      */
     static initializeInputs(context = document) {
         const selectors = 'input, textarea, select';
+        const sources = Energine.utils.toElementArray(context || document);
         const controls = new Set();
 
-        const pushControls = (source) => {
-            if (!source) {
-                return;
-            }
+        sources.forEach((source) => {
+            if (!source) return;
 
-            if (typeof source === 'string') {
-                pushControls((source ? document.querySelector(source) : null));
-                return;
-            }
-
-            const nodeType = source.nodeType;
-            const isElement = nodeType === 1;
-            const isDocument = nodeType === 9;
-            const isFragment = nodeType === 11;
-            if (!isElement && !isDocument && !isFragment) {
-                return;
-            }
-
-            if (isElement && typeof source.matches === 'function' && source.matches(selectors)) {
+            if (typeof source.matches === 'function' && source.matches(selectors)) {
                 controls.add(source);
             }
 
             if (typeof source.querySelectorAll === 'function') {
                 source.querySelectorAll(selectors).forEach((el) => controls.add(el));
             }
-        };
-
-        if (Form.isNodeCollection(context)) {
-            Array.from(context).forEach((item) => pushControls(item));
-        } else {
-            pushControls(context || document);
-        }
+        });
 
         controls.forEach((control) => {
             Form.applyBootstrapControlClasses(control);
@@ -126,23 +94,17 @@ class Form {
         // this.overlay = new Overlay();
 
         // Получаем элемент формы
-        this.componentElement = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
-
-        // singlePath
-        this.componentElement = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
-
-        if (!this.componentElement) {
-            throw new Error('Form: не найден componentElement по селектору или элементу: ' + element);
-        }
+        this.componentElement = Energine.utils.resolveElement(element, {
+            name: 'Form component'
+        });
 
         this.singlePath = this.componentElement.getAttribute('single_template');
 
         // Внешний элемент формы
         this.form = this.componentElement.closest('form');
+        if (!this.form) {
+            throw new Error('Form: parent form element not found');
+        }
 
         // Состояние формы
         this.state = this.form.querySelector('#componentAction')?.value;

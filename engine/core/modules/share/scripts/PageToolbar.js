@@ -29,7 +29,9 @@ class PageToolbar extends Toolbar {
             if (window.nrgPageEditor) {
                 if (confirm(Energine.translations.get('TXT_ARE_YOU_SURE_SAVE'))) {
                     if (window.nrgPageEditor.editors && window.nrgPageEditor.editors.length) {
-                        window.nrgPageEditor.editors.forEach(editor => editor.save.call(editor, false));
+                        window.nrgPageEditor.editors.forEach(editor => {
+                            Energine.utils.safeCall(editor.save, [false], editor);
+                        });
                     }
                     setTimeout(
                         function()
