@@ -5,9 +5,6 @@ class Grid {
      * @param {Object} [options]
      */
     constructor(element, options = {}) {
-        // CSS подключайте отдельно, тут просто пример
-        Energine.loadCSS('stylesheets/grid.css');
-
         // Универсальная обертка для работы с элементами по селектору или объекту
         this.element = (typeof element === 'string')
             ? document.querySelector(element)
@@ -29,9 +26,11 @@ class Grid {
 
         this.tbody = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] tbody');
         this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
-        this.headers.forEach(header =>
-            header.addEventListener('click', this.onChangeSort.bind(this))
-        );
+        this.headers.forEach(header => {
+            header.addEventListener('click', this.onChangeSort.bind(this));
+            header.classList.add('text-center', 'align-middle', 'fw-semibold');
+            header.style.cursor = 'pointer';
+        });
 
         const bodyTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
         if (bodyTable) {
@@ -165,11 +164,11 @@ class Grid {
         }
         this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
         if (this.gridHeadContainer) {
-            this.gridHeadContainer.classList.add('table-responsive');
+            this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0', 'rounded-top');
         }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
         if (this.gridContainer) {
-            this.gridContainer.classList.add('table-responsive');
+            this.gridContainer.classList.add('table-responsive', 'bg-body', 'border', 'border-top-0', 'rounded-bottom', 'shadow-sm');
         }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');

@@ -5,7 +5,6 @@ class PageToolbar extends Toolbar {
         PageToolbar.ensureBootstrapLoaded();
         super(toolbarName, props);
 
-        Energine.loadCSS('stylesheets/pagetoolbar.css');
         this.componentPath = componentPath;
         this.documentId = documentId;
         this.layoutManager = null;
@@ -58,7 +57,7 @@ class PageToolbar extends Toolbar {
             return;
         }
 
-        const cssPath = PageToolbar._resolveStaticPath('stylesheets/bootstrap.min.css');
+        const cssPath = PageToolbar._resolveStaticPath('stylesheets/default/bootstrap.min.css');
         if (!Toolbar.hasBootstrapStyles()) {
             Energine.loadCSS(cssPath);
         }
@@ -151,23 +150,26 @@ class PageToolbar extends Toolbar {
         }
 
         const html = document.documentElement;
+        html.classList.add('h-100');
+        document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-body-tertiary');
         if (!PageToolbar._hasClass(html, 'e-has-topframe1')) {
             PageToolbar._addClass(html, 'e-has-topframe1');
         }
 
         const layoutContainer = document.createElement('div');
-        layoutContainer.classList.add('e-layout', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100');
+        layoutContainer.classList.add('e-layout', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-4', 'py-3', 'px-3', 'px-lg-4');
 
         const mainFrame = document.createElement('div');
         PageToolbar._addClass(mainFrame, 'e-mainframe');
-        mainFrame.classList.add('flex-grow-1', 'container-fluid');
+        mainFrame.classList.add('flex-grow-1', 'container-fluid', 'bg-body', 'rounded-3', 'shadow-sm', 'p-4');
+        mainFrame.style.minHeight = '0';
 
         const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
         topFrame.classList.add('navbar', 'navbar-expand-lg', 'navbar-light', 'bg-body', 'border-bottom', 'shadow-sm', 'sticky-top');
 
         const container = document.createElement('div');
-        container.classList.add('container-fluid');
+        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'gap-3');
         topFrame.appendChild(container);
 
         const translations = window?.Energine?.translations;
@@ -195,7 +197,9 @@ class PageToolbar extends Toolbar {
         const logoImage = document.createElement('img');
         logoImage.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
         logoImage.alt = '';
-        logoImage.classList.add('pagetb_logo-img');
+        logoImage.classList.add('pagetb_logo-img', 'img-fluid');
+        logoImage.style.height = '38px';
+        logoImage.style.width = 'auto';
         sidebarToggle.appendChild(logoImage);
         container.appendChild(sidebarToggle);
         this.sidebarToggleButton = sidebarToggle;
@@ -220,11 +224,11 @@ class PageToolbar extends Toolbar {
         container.appendChild(toggler);
 
         const collapse = document.createElement('div');
-        collapse.classList.add('collapse', 'navbar-collapse', 'justify-content-end');
+        collapse.classList.add('collapse', 'navbar-collapse', 'justify-content-end', 'py-2', 'py-lg-0');
         collapse.id = collapseId;
         container.appendChild(collapse);
 
-        this.element.classList.add('py-2', 'py-lg-0');
+        this.element.classList.add('py-2', 'py-lg-0', 'gap-2');
         collapse.appendChild(this.element);
 
         // Перенос body-children (кроме svg и e-overlay)
@@ -241,19 +245,22 @@ class PageToolbar extends Toolbar {
             const sidebarId = (`${collapseIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
             const sidebarFrame = document.createElement('div');
             PageToolbar._addClass(sidebarFrame, 'e-sideframe');
-            sidebarFrame.classList.add('offcanvas', 'offcanvas-start');
+            sidebarFrame.classList.add('offcanvas', 'offcanvas-start', 'shadow', 'border-0');
             sidebarFrame.id = sidebarId;
             sidebarFrame.setAttribute('tabindex', '-1');
+            sidebarFrame.style.width = '320px';
             if (sidebarLabel) {
                 sidebarFrame.setAttribute('aria-label', sidebarLabel);
             }
 
             const sidebarFrameContent = document.createElement('div');
             PageToolbar._addClass(sidebarFrameContent, 'e-sideframe-content');
-            sidebarFrameContent.classList.add('offcanvas-body', 'p-0', 'd-flex', 'flex-column');
+            sidebarFrameContent.classList.add('offcanvas-body', 'p-0', 'd-flex', 'flex-column', 'bg-body');
+            sidebarFrameContent.style.minHeight = '0';
 
             const sidebarFrameBorder = document.createElement('div');
             PageToolbar._addClass(sidebarFrameBorder, 'e-sideframe-border');
+            sidebarFrameBorder.classList.add('d-none', 'd-lg-block', 'border-start');
 
             layoutContainer.insertBefore(sidebarFrame, mainFrame);
             sidebarFrame.appendChild(sidebarFrameContent);

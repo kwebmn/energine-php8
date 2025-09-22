@@ -97,14 +97,6 @@ class Words {
     }
 }
 
-// Подключить acpl.css для списка (как раньше Asset.css('acpl.css'))
-if (!document.querySelector('link[href$="acpl.css"]')) {
-    const link = document.createElement('link');
-    link.rel = "stylesheet";
-    link.href = "stylesheets/acpl.css";
-    document.head.appendChild(link);
-}
-
 /**
  * Класс активного списка с событиями.
  */
@@ -253,7 +245,7 @@ class DropBoxList extends ActiveList {
     constructor(input) {
         // Основной контейнер — новый div с классом acpl_variants
         const container = document.createElement('div');
-        container.className = 'acpl_variants';
+        container.classList.add('acpl_variants', 'dropdown-menu', 'mt-1', 'w-100', 'shadow', 'border', 'rounded-3', 'p-0');
         super(container);
 
         // Привязываем input
@@ -265,7 +257,12 @@ class DropBoxList extends ActiveList {
         this.container.classList.add('d-none');
         this.container.setAttribute('role', 'listbox');
 
-        this.ul.classList.add('list-group');
+        this.container.style.position = 'absolute';
+        this.container.style.insetInlineStart = '0';
+        this.container.style.top = '100%';
+        this.container.style.zIndex = '1080';
+
+        this.ul.classList.add('list-group', 'list-group-flush', 'mb-0');
 
         // Прячем по дефолту
         this.hide();
@@ -357,9 +354,6 @@ class AcplField {
      * @param {Object} [options]
      */
     constructor(element, options = {}) {
-        // Подключаем стили
-        AcplField.assetCss('stylesheets/acpl.css');
-
         // DOM
         this.element = (typeof element === 'string') ? document.getElementById(element) : element;
         this.options = Object.assign({ startFrom: 1 }, options);
@@ -373,11 +367,11 @@ class AcplField {
 
         this.container = this.element.closest('.input-group');
         if (this.container) {
-            this.container.classList.add('input-group', 'acpl-field');
+            this.container.classList.add('input-group', 'acpl-field', 'position-relative');
         } else {
             const parent = this.element.parentNode;
             this.container = document.createElement('div');
-            this.container.classList.add('input-group', 'acpl-field');
+            this.container.classList.add('input-group', 'acpl-field', 'position-relative');
             if (parent) {
                 parent.insertBefore(this.container, this.element);
             }
@@ -480,15 +474,6 @@ class AcplField {
     syncButtonState() {
         if (this.button) {
             this.button.setAttribute('aria-expanded', this.list.isOpen() ? 'true' : 'false');
-        }
-    }
-
-    static assetCss(file) {
-        if (!document.querySelector(`link[href$="${file}"]`)) {
-            let link = document.createElement('link');
-            link.rel = "stylesheet";
-            link.href = file;
-            document.head.appendChild(link);
         }
     }
 
