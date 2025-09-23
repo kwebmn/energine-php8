@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document debug="1" editable="0">
+  <properties>
+    <property name="keywords"></property>
+    <property name="description">Відкрийте інноваційні можливості нашої демонстраційної платформи! </property>
+    <property name="robots"></property>
+    <property name="ID">80</property>
+    <property name="default">1</property>
+    <property name="is_user">1</property>
+    <property name="single">single</property>
+    <property name="url">https://phpbase.kweb.biz/single/adminPanel/80/edit/?debug</property>
+    <property name="title" alt="">Головна сторінка</property>
+    <property name="base" static="https://phpbase.kweb.biz/" media="https://phpbase.kweb.biz/" resizer="https://phpbase.kweb.biz/resizer/" folder="default" default="https://phpbase.kweb.biz/">https://phpbase.kweb.biz/</property>
+    <property name="lang" abbr="" default="2" real_abbr="uk">2</property>
+  </properties>
+  <component name="adminPanel" module="share" componentAction="edit" class="DivisionEditor" state="" template="single/adminPanel/" single_template="single/adminPanel/" sample="DivisionEditor" type="form" exttype="grid" title="Список розділів">
+    <recordset>
+      <record>
+        <field name="smap_id" type="hidden" mode="1" length="10" title="Розділ" nullable="" key="1" sort="0" index="PRI" tableName="share_sitemap" tabName="Властивості">80</field>
+        <field name="smap_id" type="hidden" mode="1" length="10" title="Розділ" nullable="" key="1" sort="0" index="PRI" tableName="share_sitemap" tabName="Властивості">80</field>
+        <field name="smap_id" type="hidden" mode="1" length="10" title="Розділ" nullable="" key="1" sort="0" index="PRI" tableName="share_sitemap" tabName="Властивості">80</field>
+        <field name="smap_id" type="hidden" mode="1" length="10" title="Розділ" nullable="" key="1" sort="0" index="PRI" tableName="share_sitemap" tabName="Властивості">80</field>
+        <field name="smap_id" type="hidden" mode="1" length="10" title="Розділ" nullable="" key="1" sort="0" index="PRI" tableName="share_sitemap" tabName="Властивості">80</field>
+        <field name="smap_pid" type="hidden" mode="1" length="10" title="Батьківський розділ" nullable="1" key="" sort="0" index="MUL" tableName="share_sitemap" base="https://phpbase.kweb.biz/" tabName="Властивості"/>
+        <field name="site_id" type="hidden" mode="2" length="10" title="Проект" nullable="" key="" sort="0" pattern="/^\d{1,7}$/" message="MSG_BAD_INT_FORMAT_OR_NULL" index="MUL" tableName="share_sitemap" origType="integer" tabName="Властивості">1</field>
+        <field name="smap_content" type="select" mode="2" title="Вміст сторінки" nullable="" key="" sort="0" pattern="/^.+$/" message="Поле не може бути порожнім." index="" tableName="share_sitemap" tabName="Властивості">
+          <options>
+            <option id="textblock.content.xml" selected="selected">1. Текстова сторінка</option>
+            <option id="childs.content.xml">2 Список підрозділів</option>
+            <option id="main.content.xml">7. Головна сторінка</option>
+            <option id="divison_editor.content.xml">CONTENT_DIVISON_EDITOR</option>
+            <option id="language_editor.content.xml">CONTENT_LANGUAGE_EDITOR</option>
+            <option id="profile.content.xml">CONTENT_PROFILE</option>
+            <option id="recover_password.content.xml">CONTENT_RECOVER_PASSWORD</option>
+            <option id="robots_txt.content.xml" data-segment="robots.txt" data-layout="google_sitemap.layout.xml">CONTENT_ROBOTS_TXT</option>
+            <option id="role_editor.content.xml">CONTENT_ROLE_EDITOR</option>
+            <option id="sign_in.content.xml">CONTENT_SIGN_IN</option>
+            <option id="test.content.xml">CONTENT_TEST</option>
+            <option id="Testfeed.content.xml">CONTENT_TESTFEED</option>
+            <option id="Testfeed_editor.content.xml">CONTENT_TESTFEED_EDITOR</option>
+            <option id="test_editor.content.xml">CONTENT_TEST_EDITOR</option>
+            <option id="transaltion_editor.content.xml">CONTENT_TRANSALTION_EDITOR</option>
+            <option id="user_editor.content.xml">CONTENT_USER_EDITOR</option>
+            <option id="wizard.content.xml">CONTENT_WIZARD</option>
+            <option id="google_sitemap.content.xml">Google sitemap</option>
+          </options>
+        </field>
+        <field name="smap_layout" type="select" mode="2" title="Макет сторінки" nullable="" key="" sort="0" pattern="/^.+$/" message="Поле не може бути порожнім." index="" tableName="share_sitemap" tabName="Властивості">
+          <options>
+            <option id="google_sitemap.layout.xml">Google sitemap</option>
+            <option id="default.layout.xml" selected="selected">Базовий</option>
+            <option id="account.layout.xml">Персональний кабінет</option>
+            <option id="empty.layout.xml">Пустий</option>
+          </options>
+        </field>
+        <field name="smap_meta_robots" type="text" mode="2" title="Параметри індексування сторінки (значення meta-тега robots)" nullable="1" key="" sort="0" index="" tableName="share_sitemap" tabName="Властивості"/>
+        <field name="smap_is_disabled" type="boolean" mode="2" title="Відключена" nullable="" default="0" key="" sort="1" outputFormat="%s" index="" tableName="share_sitemap_translation" language="5" languageAbbr="pl" tabName="POLAND">0</field>
+        <field name="smap_is_disabled" type="boolean" mode="2" title="Відключена" nullable="" default="0" key="" sort="1" outputFormat="%s" index="" tableName="share_sitemap_translation" language="4" languageAbbr="de" tabName="DEUTSCH">0</field>
+        <field name="smap_is_disabled" type="boolean" mode="2" title="Відключена" nullable="" default="0" key="" sort="1" outputFormat="%s" index="" tableName="share_sitemap_translation" language="3" languageAbbr="en" tabName="ENGLISH">0</field>
+        <field name="smap_is_disabled" type="boolean" mode="2" title="Відключена" nullable="" default="0" key="" sort="1" outputFormat="%s" index="" tableName="share_sitemap_translation" language="1" languageAbbr="ru" tabName="Русский">0</field>
+        <field name="smap_is_disabled" type="boolean" mode="2" title="Відключена" nullable="" default="0" key="" sort="1" outputFormat="%s" index="" tableName="share_sitemap_translation" language="2" languageAbbr="uk" tabName="Українська">0</field>
+        <field name="page_rights" type="custom" mode="2" sort="0" tabName="Права на сторінку" customField="customField">
+          <recordset title="Список розділів" rows="3">
+            <record>
+              <field name="group_id" type="string" mode="1" length="30" title="Групи" sort="1" tabName="Список розділів" group_id="1">Администратор</field>
+              <field name="right_id" type="select" mode="2" title="Рівень прав, необхідний для перегляду товарів з цим статусом" sort="0" tabName="Список розділів">
+                <options>
+                  <option id="1">Тільки перегляд</option>
+                  <option id="2">Редактування</option>
+                  <option id="3" selected="selected">Повний доступ</option>
+                  <option id="0">Права відсутні</option>
+                </options>
+              </field>
+            </record>
+            <record>
+              <field name="group_id" type="string" mode="1" length="30" title="Групи" sort="1" tabName="Список розділів" group_id="3">Гость</field>
+              <field name="right_id" type="select" mode="2" title="Рівень прав, необхідний для перегляду товарів з цим статусом" sort="0" tabName="Список розділів">
+                <options>
+                  <option id="1" selected="selected">Тільки перегляд</option>
+                  <option id="2">Редактування</option>
+                  <option id="3">Повний доступ</option>
+                  <option id="0">Права відсутні</option>
+                </options>
+              </field>
+            </record>
+            <record>
+              <field name="group_id" type="string" mode="1" length="30" title="Групи" sort="1" tabName="Список розділів" group_id="4">Пользователь</field>
+              <field name="right_id" type="select" mode="2" title="Рівень прав, необхідний для перегляду товарів з цим статусом" sort="0" tabName="Список розділів">
+                <options>
+                  <option id="1" selected="selected">Тільки перегляд</option>
+                  <option id="2">Редактування</option>
+                  <option id="3">Повний доступ</option>
+                  <option id="0">Права відсутні</option>
+                </options>
+              </field>
+            </record>
+          </recordset>
+        </field>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" key="" sort="1" index="" tableName="share_sitemap_translation" language="5" languageAbbr="pl" tabName="POLAND">Главная страница</field>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" key="" sort="1" index="" tableName="share_sitemap_translation" language="4" languageAbbr="de" tabName="DEUTSCH">Hauptseite</field>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" key="" sort="1" index="" tableName="share_sitemap_translation" language="3" languageAbbr="en" tabName="ENGLISH">Main page</field>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" key="" sort="1" index="" tableName="share_sitemap_translation" language="1" languageAbbr="ru" tabName="Русский">Главная страница</field>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" key="" sort="1" index="" tableName="share_sitemap_translation" language="2" languageAbbr="uk" tabName="Українська">Головна сторінка</field>
+        <field name="smap_description_rtf" type="htmlblock" mode="2" title="Опис розділу" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="5" languageAbbr="pl" tabName="POLAND"/>
+        <field name="smap_description_rtf" type="htmlblock" mode="2" title="Опис розділу" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="4" languageAbbr="de" tabName="DEUTSCH"/>
+        <field name="smap_description_rtf" type="htmlblock" mode="2" title="Опис розділу" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="3" languageAbbr="en" tabName="ENGLISH"/>
+        <field name="smap_description_rtf" type="htmlblock" mode="2" title="Опис розділу" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="1" languageAbbr="ru" tabName="Русский"/>
+        <field name="smap_description_rtf" type="htmlblock" mode="2" title="Опис розділу" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="2" languageAbbr="uk" tabName="Українська">&lt;p&gt;?&lt;/p&gt;
+</field>
+        <field name="smap_html_title" type="string" mode="2" length="250" title="Альтернативний title сторінки" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="5" languageAbbr="pl" tabName="POLAND"/>
+        <field name="smap_html_title" type="string" mode="2" length="250" title="Альтернативний title сторінки" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="4" languageAbbr="de" tabName="DEUTSCH"/>
+        <field name="smap_html_title" type="string" mode="2" length="250" title="Альтернативний title сторінки" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="3" languageAbbr="en" tabName="ENGLISH"/>
+        <field name="smap_html_title" type="string" mode="2" length="250" title="Альтернативний title сторінки" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="1" languageAbbr="ru" tabName="Русский"/>
+        <field name="smap_html_title" type="string" mode="2" length="250" title="Альтернативний title сторінки" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="2" languageAbbr="uk" tabName="Українська"/>
+        <field name="smap_meta_keywords" type="text" mode="2" title="Ключові слова (meta keywords)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="5" languageAbbr="pl" tabName="POLAND"/>
+        <field name="smap_meta_keywords" type="text" mode="2" title="Ключові слова (meta keywords)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="4" languageAbbr="de" tabName="DEUTSCH"/>
+        <field name="smap_meta_keywords" type="text" mode="2" title="Ключові слова (meta keywords)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="3" languageAbbr="en" tabName="ENGLISH"/>
+        <field name="smap_meta_keywords" type="text" mode="2" title="Ключові слова (meta keywords)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="1" languageAbbr="ru" tabName="Русский"/>
+        <field name="smap_meta_keywords" type="text" mode="2" title="Ключові слова (meta keywords)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="2" languageAbbr="uk" tabName="Українська"/>
+        <field name="smap_meta_description" type="text" mode="2" title="Мета-опис (meta description)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="5" languageAbbr="pl" tabName="POLAND">Odkryj innowacyjne możliwości naszej platformy demonstracyjnej! </field>
+        <field name="smap_meta_description" type="text" mode="2" title="Мета-опис (meta description)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="4" languageAbbr="de" tabName="DEUTSCH">Entdecken Sie die innovativen Möglichkeiten unserer Demoplattform! </field>
+        <field name="smap_meta_description" type="text" mode="2" title="Мета-опис (meta description)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="3" languageAbbr="en" tabName="ENGLISH">Discover the innovative capabilities of our demo platform! </field>
+        <field name="smap_meta_description" type="text" mode="2" title="Мета-опис (meta description)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="1" languageAbbr="ru" tabName="Русский">Откройте для себя инновационные возможности нашей демонстрационной платформы! Удобный интерфейс, передовые инструменты и эксклюзивный доступ к последним технологическим решениям ждут вас. Идеально подходит для тех, кто интересуется будущим цифровых технологий.</field>
+        <field name="smap_meta_description" type="text" mode="2" title="Мета-опис (meta description)" nullable="1" key="" sort="0" index="" tableName="share_sitemap_translation" language="2" languageAbbr="uk" tabName="Українська">Відкрийте інноваційні можливості нашої демонстраційної платформи! </field>
+        <field name="attached_files" type="tab" mode="2" title="Додаткові файли" sort="0" tableName="share_sitemap_uploads" tabName="Властивості">80/attachments/</field>
+        <field name="tags" type="textbox" mode="2" title="Теги" sort="0" url="tag-autocomplete" separator="," tabName="Властивості"/>
+      </record>
+    </recordset>
+    <javascript>
+      <behavior name="DivForm" path=""/>
+      <variable name="wysiwyg_styles" type="json">{"p.red":{"element":"p","class":"red","caption":"TXT_RED_PARAGRAPH"},"p.underline":{"element":"p","class":"underline","caption":"TXT_TEXT_UNDERLINE"}}</variable>
+    </javascript>
+    <toolbar name="toolbar_adminPanel">
+      <control id="save" action="" mode="2" title="Зберегти" onclick="save" type="button"/>
+      <control id="list" action="" mode="2" title="Закрити" onclick="close" type="button"/>
+    </toolbar>
+  </component>
+  <translations json="{&quot;BTN_ITALIC&quot;:&quot;Курсив&quot;,&quot;BTN_HREF&quot;:&quot;Вставити посилання&quot;,&quot;BTN_UL&quot;:&quot;Ненумерований список&quot;,&quot;BTN_OL&quot;:&quot;Нумерований перелiк&quot;,&quot;BTN_ALIGN_LEFT&quot;:&quot;Вирiвнювання злiва&quot;,&quot;TXT_PREVIEW&quot;:&quot;Режим перегляду&quot;,&quot;BTN_FILE_LIBRARY&quot;:&quot;Вставити посилання на файл&quot;,&quot;BTN_INSERT_IMAGE&quot;:&quot;Вставити зображення&quot;,&quot;BTN_INSERT_IMAGE_URL&quot;:&quot;BTN_INSERT_IMAGE_URL&quot;,&quot;BTN_VIEWSOURCE&quot;:&quot;Вихідний код&quot;,&quot;TXT_RESET&quot;:&quot;Очистити форматування&quot;,&quot;TXT_H1&quot;:&quot;Заголовок 1&quot;,&quot;TXT_H2&quot;:&quot;Заголовок 2&quot;,&quot;TXT_H3&quot;:&quot;Заголовок 3&quot;,&quot;TXT_H4&quot;:&quot;Заголовок 4&quot;,&quot;TXT_H5&quot;:&quot;Заголовок 5&quot;,&quot;TXT_H6&quot;:&quot;Заголовок 6&quot;,&quot;TXT_ADDRESS&quot;:&quot;Адреса&quot;,&quot;TXT_ERROR_NOT_VIDEO_FILE&quot;:&quot;TXT_ERROR_NOT_VIDEO_FILE&quot;,&quot;BTN_SAVE&quot;:&quot;Зберегти&quot;,&quot;BTN_BOLD&quot;:&quot;Напівжирний&quot;,&quot;BTN_ALIGN_CENTER&quot;:&quot;Вирiвнювання по центру&quot;,&quot;BTN_ALIGN_RIGHT&quot;:&quot;Вирiвнювання справа&quot;,&quot;BTN_ALIGN_JUSTIFY&quot;:&quot;Вирiвнювання по ширинi&quot;,&quot;BTN_EXT_FLASH&quot;:&quot;Вставити embed код&quot;,&quot;BTN_ACTIVATE&quot;:&quot;Активувати&quot;,&quot;ERR_NO_DIV_NAME&quot;:&quot;Необхідно вказати назву розділу для всіх активних мов&quot;}">
+    <translation const="BTN_ITALIC" component="adminPanel">Курсив</translation>
+    <translation const="BTN_HREF" component="adminPanel">Вставити посилання</translation>
+    <translation const="BTN_UL" component="adminPanel">Ненумерований список</translation>
+    <translation const="BTN_OL" component="adminPanel">Нумерований перелiк</translation>
+    <translation const="BTN_ALIGN_LEFT" component="adminPanel">Вирiвнювання злiва</translation>
+    <translation const="TXT_PREVIEW" component="adminPanel">Режим перегляду</translation>
+    <translation const="BTN_FILE_LIBRARY" component="adminPanel">Вставити посилання на файл</translation>
+    <translation const="BTN_INSERT_IMAGE" component="adminPanel">Вставити зображення</translation>
+    <translation const="BTN_INSERT_IMAGE_URL" component="adminPanel">BTN_INSERT_IMAGE_URL</translation>
+    <translation const="BTN_VIEWSOURCE" component="adminPanel">Вихідний код</translation>
+    <translation const="TXT_RESET" component="adminPanel">Очистити форматування</translation>
+    <translation const="TXT_H1" component="adminPanel">Заголовок 1</translation>
+    <translation const="TXT_H2" component="adminPanel">Заголовок 2</translation>
+    <translation const="TXT_H3" component="adminPanel">Заголовок 3</translation>
+    <translation const="TXT_H4" component="adminPanel">Заголовок 4</translation>
+    <translation const="TXT_H5" component="adminPanel">Заголовок 5</translation>
+    <translation const="TXT_H6" component="adminPanel">Заголовок 6</translation>
+    <translation const="TXT_ADDRESS" component="adminPanel">Адреса</translation>
+    <translation const="TXT_ERROR_NOT_VIDEO_FILE" component="adminPanel">TXT_ERROR_NOT_VIDEO_FILE</translation>
+    <translation const="BTN_SAVE" component="adminPanel">Зберегти</translation>
+    <translation const="BTN_BOLD" component="adminPanel">Напівжирний</translation>
+    <translation const="BTN_ALIGN_CENTER" component="adminPanel">Вирiвнювання по центру</translation>
+    <translation const="BTN_ALIGN_RIGHT" component="adminPanel">Вирiвнювання справа</translation>
+    <translation const="BTN_ALIGN_JUSTIFY" component="adminPanel">Вирiвнювання по ширинi</translation>
+    <translation const="BTN_EXT_FLASH" component="adminPanel">Вставити embed код</translation>
+    <translation const="BTN_ACTIVATE" component="adminPanel">Активувати</translation>
+    <translation const="ERR_NO_DIV_NAME" component="adminPanel">Необхідно вказати назву розділу для всіх активних мов</translation>
+  </translations>
+  <javascript>
+    <library path="ckeditor/ckeditor"/>
+    <library path="TabPane"/>
+    <library path="Toolbar"/>
+    <library path="Validator"/>
+    <library path="ModalBox"/>
+    <library path="AcplField"/>
+    <library path="Cookie"/>
+    <library path="Form"/>
+    <library path="DivForm"/>
+  </javascript>
+</document>
