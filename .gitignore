@@ -22,3 +22,6 @@ scripts/
 stylesheets/
 templates/
 uploads/
+!engine/
+!engine/core/
+!engine/core/**

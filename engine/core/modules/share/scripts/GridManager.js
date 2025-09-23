@@ -1,4 +1,25 @@
-ScriptLoader.load('TabPane', 'PageList', 'Toolbar',  'ModalBox');
+ScriptLoader.load('lib/tabulator/tabulator.min', 'TabPane', 'PageList', 'Toolbar', 'ModalBox');
+
+(() => {
+    const cssFiles = [
+        'scripts/lib/tabulator/tabulator.min.css',
+        'scripts/lib/tabulator/tabulator_bootstrap5.min.css',
+    ];
+
+    const appendStylesheet = (href) => {
+        if (window.Energine && typeof window.Energine.loadCSS === 'function') {
+            window.Energine.loadCSS(href);
+        } else if (!document.querySelector(`link[href$="${href}"]`)) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            document.head.appendChild(link);
+        }
+    };
+
+    cssFiles.forEach(appendStylesheet);
+})();
+
 class Grid {
     /**
      * @param {HTMLElement|string} element

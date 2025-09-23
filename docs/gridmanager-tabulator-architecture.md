@@ -1,9 +1,9 @@
 # GridManager → Tabulator Architecture
 
 ## Tabulator version and loading strategy
-- **Distribution**: Tabulator 5.x (latest 5.x minor verified against Energine UI). Use the UMD bundle (`tabulator.min.js` and `tabulator.min.css`) to keep compatibility with legacy ScriptLoader and avoid a build step.
-- **Loading**: register the bundle in the existing `ScriptLoader.load('Tabulator', ...)` chain so that GridManager is initialized only after the CSS/JS assets are available. The UMD build exposes `window.Tabulator`, which can be consumed directly inside `GridManager` without refactoring module loaders.
-- **Styling**: keep Bootstrap card markup created by XSLT; mount the Tabulator instance into the `div[data-role="grid-table"]` container inside the grid body. Apply the Bootstrap theme (`tabulator_bootstrap5.min.css`) to blend with existing Energine classes.
+- **Distribution**: Tabulator 5.5.2 (UMD bundle, stored in `scripts/lib/tabulator/`) to keep compatibility with legacy ScriptLoader and avoid a build step. The directory ships `tabulator.min.js`, `tabulator.min.css`, and the Bootstrap 5 theme alongside the upstream MIT license.
+- **Loading**: register `lib/tabulator/tabulator.min` in the existing `ScriptLoader.load(...)` chain so that GridManager waits for the library before instantiation. CSS assets load via `Energine.loadCSS('scripts/lib/tabulator/...')` during module initialization, ensuring the styles are present even when the script executes outside the legacy loader flow.
+- **Styling**: keep Bootstrap card markup created by XSLT; mount the Tabulator instance into the `div[data-role="grid-table"]` container inside the grid body. Apply the Bootstrap theme (`tabulator_bootstrap5.min.css`) to blend with existing Energine classes while relying on the `.tabulator` namespace to avoid global style conflicts.
 
 ## Mapping legacy metadata to Tabulator options
 | Legacy payload | Target Tabulator option | Notes |
