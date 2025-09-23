@@ -20,7 +20,16 @@ class Grid {
             onDoubleClick: null,
             selectable: 1,
             theme: 'bootstrap5',
-            placeholder: (Energine.translations && Energine.translations.get('TXT_NO_RECORDS')) || ''
+            placeholder: (Energine.translations && Energine.translations.get('TXT_NO_RECORDS')) || '',
+            remotePagination: true,
+            remoteSorting: true,
+            remoteFiltering: true,
+            paginationSize: null,
+            paginationSizeSelector: [10, 25, 50, 100],
+            initialPage: 1,
+            paginationElement: null,
+            requestHandler: null,
+            responseHandler: null,
         }, options);
 
         this.data = [];
@@ -40,6 +49,30 @@ class Grid {
         this.columnsDirty = true;
         this.pager = null;
         this.lastResponse = null;
+        this.remoteFilters = [];
+        this.remoteRequestHandler = (typeof this.options.requestHandler === 'function')
+            ? this.options.requestHandler
+            : null;
+        this.remoteResponseHandler = (typeof this.options.responseHandler === 'function')
+            ? this.options.responseHandler
+            : null;
+        this.remotePagination = this.options.remotePagination !== false;
+        this.remoteSorting = this.options.remoteSorting !== false;
+        this.remoteFiltering = this.options.remoteFiltering !== false;
+        this.paginationSize = (typeof this.options.paginationSize === 'number' && this.options.paginationSize > 0)
+            ? this.options.paginationSize
+            : null;
+        this.paginationSizeSelector = Array.isArray(this.options.paginationSizeSelector)
+            ? this.options.paginationSizeSelector.slice()
+            : [10, 25, 50, 100];
+        this.requestedPage = parseInt(this.options.initialPage, 10) || 1;
+        if (this.requestedPage <= 0) {
+            this.requestedPage = 1;
+        }
+        this.currentPage = this.requestedPage;
+        this.pendingSelectionKey = undefined;
+        this.paginationElement = this.options.paginationElement || null;
+        this.pendingReload = false;
 
         this.container = document.createElement('div');
         this.container.classList.add('grid-tabulator');
@@ -768,6 +801,271 @@ class Grid {
         }
     }
 
+    setRequestHandler(handler) {
+        this.remoteRequestHandler = (typeof handler === 'function') ? handler : null;
+    }
+
+    setResponseHandler(handler) {
+        this.remoteResponseHandler = (typeof handler === 'function') ? handler : null;
+    }
+
+    isRemotePaginationEnabled() {
+        return Boolean(this.remotePagination && typeof this.remoteRequestHandler === 'function');
+    }
+
+    isRemoteSortingEnabled() {
+        return Boolean(this.remoteSorting && typeof this.remoteRequestHandler === 'function');
+    }
+
+    isRemoteFilteringEnabled() {
+        return Boolean(this.remoteFiltering && typeof this.remoteRequestHandler === 'function');
+    }
+
+    setRemoteFilters(filters = []) {
+        const normalized = Array.isArray(filters) ? filters.filter(Boolean).map((item) => Object.assign({}, item)) : [];
+        this.remoteFilters = normalized;
+
+        if (!this.tabulator) {
+            return;
+        }
+
+        try {
+            if (this.isTabulatorReady() && normalized.length) {
+                this.tabulator.setFilter(normalized);
+            } else if (this.isTabulatorReady()) {
+                if (typeof this.tabulator.clearFilter === 'function') {
+                    this.tabulator.clearFilter(true);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to apply filters', error);
+        }
+    }
+
+    clearRemoteFilters() {
+        this.remoteFilters = [];
+        if (this.tabulator && this.isTabulatorReady()) {
+            try {
+                if (typeof this.tabulator.clearFilter === 'function') {
+                    this.tabulator.clearFilter(true);
+                } else if (typeof this.tabulator.setFilter === 'function') {
+                    this.tabulator.setFilter([]);
+                }
+            } catch (error) {
+                console.error('Failed to clear filters', error);
+            }
+        }
+    }
+
+    getRemoteFilters() {
+        return this.remoteFilters.map((item) => Object.assign({}, item));
+    }
+
+    getCurrentPage() {
+        if (this.tabulator && typeof this.tabulator.getPage === 'function') {
+            try {
+                const page = this.tabulator.getPage();
+                if (Number.isFinite(page) && page > 0) {
+                    return page;
+                }
+            } catch (error) {}
+        }
+        if (Number.isFinite(this.currentPage) && this.currentPage > 0) {
+            return this.currentPage;
+        }
+        if (this.pager && this.pager.current) {
+            const pagerPage = parseInt(this.pager.current, 10);
+            if (Number.isFinite(pagerPage) && pagerPage > 0) {
+                return pagerPage;
+            }
+        }
+        return 1;
+    }
+
+    updatePageSize(size) {
+        const numericSize = parseInt(size, 10);
+        if (!Number.isFinite(numericSize) || numericSize <= 0) {
+            return;
+        }
+        this.paginationSize = numericSize;
+        if (this.tabulator && typeof this.tabulator.setPageSize === 'function') {
+            try {
+                this.tabulator.setPageSize(numericSize);
+            } catch (error) {
+                console.warn('Failed to update Tabulator page size', error);
+            }
+        }
+    }
+
+    loadPage(page) {
+        return this.reloadData({ page });
+    }
+
+    reloadData(options = {}) {
+        const targetPage = parseInt(options.page, 10);
+        if (Number.isFinite(targetPage) && targetPage > 0) {
+            this.requestedPage = targetPage;
+        }
+
+        this.pendingSelectionKey = this.getSelectedRecordKey();
+
+        if (!this.tabulator) {
+            this.pendingReload = true;
+            return Promise.resolve();
+        }
+
+        if (this.isRemotePaginationEnabled()) {
+            const desiredPage = Number.isFinite(targetPage) && targetPage > 0
+                ? targetPage
+                : this.getCurrentPage();
+
+            this.requestedPage = desiredPage;
+
+            if (typeof this.tabulator.setPage === 'function') {
+                try {
+                    return Promise.resolve(this.tabulator.setPage(desiredPage));
+                } catch (error) {
+                    return Promise.reject(error);
+                }
+            }
+
+            if (typeof this.tabulator.setData === 'function') {
+                try {
+                    return Promise.resolve(this.tabulator.setData());
+                } catch (error) {
+                    return Promise.reject(error);
+                }
+            }
+
+            return Promise.resolve();
+        }
+
+        if (typeof this.tabulator.replaceData === 'function') {
+            try {
+                return Promise.resolve(this.tabulator.replaceData(this.data || []));
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        }
+
+        return Promise.resolve();
+    }
+
+    normalizePager(pager = {}) {
+        const normalized = { raw: pager };
+        if (!pager || typeof pager !== 'object') {
+            return normalized;
+        }
+
+        const totalPages = parseInt(pager.count || pager.totalPages || pager.last_page || pager.lastPage, 10);
+        if (Number.isFinite(totalPages) && totalPages > 0) {
+            normalized.lastPage = totalPages;
+        }
+
+        const currentPage = parseInt(pager.current || pager.page || pager.currentPage, 10);
+        if (Number.isFinite(currentPage) && currentPage > 0) {
+            normalized.currentPage = currentPage;
+        }
+
+        const totalRecords = parseInt(pager.records || pager.totalRecords || pager.total_records, 10);
+        if (Number.isFinite(totalRecords) && totalRecords >= 0) {
+            normalized.totalRecords = totalRecords;
+        }
+
+        const pageSize = parseInt(pager.limit || pager.pageSize || pager.perPage || pager.size, 10);
+        if (Number.isFinite(pageSize) && pageSize > 0) {
+            normalized.pageSize = pageSize;
+        }
+
+        return normalized;
+    }
+
+    handleAjaxRequest(params = {}) {
+        if (!this.remoteRequestHandler) {
+            return Promise.resolve(Array.isArray(this.data) ? this.data.slice() : []);
+        }
+
+        const requestedPage = parseInt(params.page, 10);
+        if (Number.isFinite(requestedPage) && requestedPage > 0) {
+            this.currentPage = requestedPage;
+        }
+
+        try {
+            const result = this.remoteRequestHandler(params) || [];
+            if (result && typeof result.then === 'function') {
+                return result;
+            }
+            return Promise.resolve(result);
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
+    handleAjaxResponse(response, params = {}) {
+        let payload = response;
+        if (this.remoteResponseHandler) {
+            try {
+                const processed = this.remoteResponseHandler(response, params);
+                if (processed !== undefined) {
+                    payload = processed;
+                }
+            } catch (error) {
+                console.error('Remote response handler failed', error);
+            }
+        }
+
+        if (!payload || typeof payload !== 'object') {
+            if (Array.isArray(payload)) {
+                this.data = payload.slice();
+                return payload;
+            }
+            this.data = [];
+            return [];
+        }
+
+        if (!Array.isArray(payload.data) && Array.isArray(response)) {
+            payload.data = response;
+        }
+
+        if (payload.pager) {
+            const normalized = this.normalizePager(payload.pager);
+            if (normalized.pageSize) {
+                this.updatePageSize(normalized.pageSize);
+            }
+            if (normalized.lastPage) {
+                payload.last_page = normalized.lastPage;
+            }
+            if (normalized.currentPage) {
+                payload.current_page = normalized.currentPage;
+                this.currentPage = normalized.currentPage;
+            }
+            if (normalized.totalRecords !== undefined) {
+                payload.total_records = normalized.totalRecords;
+            }
+        } else {
+            if (payload.last_page === undefined) {
+                payload.last_page = 1;
+            }
+            if (payload.current_page === undefined) {
+                const requestedPage = parseInt(params.page, 10);
+                payload.current_page = Number.isFinite(requestedPage) && requestedPage > 0
+                    ? requestedPage
+                    : this.getCurrentPage();
+            }
+            this.currentPage = payload.current_page;
+            if (payload.total_records === undefined) {
+                payload.total_records = Array.isArray(payload.data) ? payload.data.length : 0;
+            }
+        }
+
+        if (params && params.size && !this.paginationSize) {
+            this.updatePageSize(params.size);
+        }
+
+        this.data = Array.isArray(payload.data) ? payload.data.slice() : [];
+        return this.data;
+    }
+
     getSort() {
         let field = this.sort?.field || null;
         let order = this.sort?.order || null;
@@ -1037,13 +1335,19 @@ class Grid {
             return null;
         };
 
-        this.tabulator = new Tabulator(this.container, {
-            data: this.data,
+        const paginationElementOption = this.paginationElement || this.options.paginationElement || null;
+        const remotePaginationEnabled = this.isRemotePaginationEnabled();
+        const remoteSortingEnabled = this.isRemoteSortingEnabled();
+        const remoteFilteringEnabled = this.isRemoteFilteringEnabled();
+
+        const tabulatorOptions = {
+            data: (remotePaginationEnabled || remoteSortingEnabled || remoteFilteringEnabled)
+                ? []
+                : (Array.isArray(this.data) ? this.data : []),
             columns: this.buildColumns(),
             layout: 'fitColumns',
             selectable: selectableOption,
             index: this.keyFieldName || undefined,
-            sortMode: 'local',
             placeholder: placeholderOption,
             theme: themeOption,
             rowClick: (_, row) => {
@@ -1056,15 +1360,110 @@ class Grid {
                 this.selectedRow = row;
                 this.fireEvent('doubleClick', row, extractRowData(row));
             }
-        });
+        };
+
+        if (remotePaginationEnabled || remoteSortingEnabled || remoteFilteringEnabled) {
+            tabulatorOptions.ajaxURL = this.options.ajaxURL || '';
+            tabulatorOptions.ajaxRequestFunc = (url, config, params) => this.handleAjaxRequest(params);
+            tabulatorOptions.ajaxResponse = (url, params, response) => this.handleAjaxResponse(response, params);
+            tabulatorOptions.pagination = true;
+            tabulatorOptions.paginationMode = remotePaginationEnabled ? 'remote' : 'local';
+            tabulatorOptions.paginationInitialPage = this.requestedPage || 1;
+            tabulatorOptions.paginationCounter = 'rows';
+            if (this.paginationSize) {
+                tabulatorOptions.paginationSize = this.paginationSize;
+            }
+            if (Array.isArray(this.paginationSizeSelector) && this.paginationSizeSelector.length) {
+                tabulatorOptions.paginationSizeSelector = this.paginationSizeSelector.slice();
+            }
+            if (paginationElementOption) {
+                tabulatorOptions.paginationElement = paginationElementOption;
+            }
+            tabulatorOptions.sortMode = remoteSortingEnabled ? 'remote' : 'local';
+            tabulatorOptions.filterMode = remoteFilteringEnabled ? 'remote' : 'local';
+            tabulatorOptions.ajaxSorting = remoteSortingEnabled;
+            tabulatorOptions.ajaxFiltering = remoteFilteringEnabled;
+        } else {
+            tabulatorOptions.sortMode = 'local';
+            tabulatorOptions.filterMode = 'local';
+            if (this.remotePagination) {
+                tabulatorOptions.pagination = true;
+                tabulatorOptions.paginationMode = 'local';
+                if (this.paginationSize) {
+                    tabulatorOptions.paginationSize = this.paginationSize;
+                }
+                if (Array.isArray(this.paginationSizeSelector) && this.paginationSizeSelector.length) {
+                    tabulatorOptions.paginationSizeSelector = this.paginationSizeSelector.slice();
+                }
+                if (paginationElementOption) {
+                    tabulatorOptions.paginationElement = paginationElementOption;
+                }
+            }
+        }
+
+        this.tabulator = new Tabulator(this.container, tabulatorOptions);
 
         this.columnsDirty = false;
 
         this.tabulator.on('tableBuilt', () => {
             this.tabulatorReady = true;
+
+            if (this.paginationSize) {
+                try {
+                    this.tabulator.setPageSize(this.paginationSize);
+                } catch (error) {}
+            }
+
+            if (this.remoteFilters.length && this.isRemoteFilteringEnabled()) {
+                try {
+                    this.tabulator.setFilter(this.remoteFilters);
+                } catch (error) {}
+            }
+
             if (this.pendingBuild) {
                 this.pendingBuild = false;
                 this.build();
+            } else if (this.isRemotePaginationEnabled()) {
+                this.reloadData({ page: this.requestedPage || this.currentPage || 1 });
+            } else if (this.pendingReload) {
+                this.pendingReload = false;
+                this.reloadData();
+            }
+        });
+
+        this.tabulator.on('dataLoading', () => {
+            this.fireEvent('dataLoading');
+        });
+
+        this.tabulator.on('dataLoadError', (error) => {
+            this.fireEvent('dataLoadError', error);
+        });
+
+        this.tabulator.on('dataProcessed', () => {
+            try {
+                if (this.tabulator && typeof this.tabulator.getData === 'function') {
+                    this.data = this.tabulator.getData();
+                }
+            } catch (error) {
+                this.data = Array.isArray(this.data) ? this.data : [];
+            }
+
+            if (this.pendingSelectionKey !== undefined) {
+                const key = this.pendingSelectionKey;
+                this.pendingSelectionKey = undefined;
+                if (key !== false && key !== null && key !== undefined) {
+                    this.selectByKey(key);
+                } else {
+                    this.deselectItem();
+                }
+            }
+
+            this.fireEvent('dataLoaded', this.data);
+        });
+
+        this.tabulator.on('pageLoaded', (pageNumber) => {
+            if (Number.isFinite(pageNumber) && pageNumber > 0) {
+                this.currentPage = pageNumber;
             }
         });
 
@@ -1136,53 +1535,66 @@ class Grid {
             this.columnsDirty = false;
         });
 
-        const applyData = () => Promise.resolve(this.tabulator.replaceData(this.data || []))
-            .then(() => {
-                const finalizeSilentSortUpdate = () => {
-                    setTimeout(() => {
-                        this.silentSortUpdate = false;
-                    }, 0);
-                };
-
-                if (this.sort.field && this.sort.order) {
-                    this.silentSortUpdate = true;
-                    try {
-                        this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
-                    } catch (e) {
-                        try {
-                            this.tabulator.setSort(this.sort.field, this.sort.order);
-                        } catch (ignored) {}
-                    } finally {
-                        finalizeSilentSortUpdate();
-                    }
+        const applyData = () => {
+            if (this.isRemotePaginationEnabled()) {
+                if (previouslySelectedRecordKey !== false
+                    && previouslySelectedRecordKey !== undefined
+                    && previouslySelectedRecordKey !== null) {
+                    this.pendingSelectionKey = previouslySelectedRecordKey;
                 } else {
-                    this.silentSortUpdate = true;
-                    try {
-                        if (typeof this.tabulator.clearSort === 'function') {
-                            this.tabulator.clearSort();
+                    this.pendingSelectionKey = undefined;
+                }
+                return this.reloadData({ page: this.requestedPage || this.currentPage || 1 });
+            }
+
+            return Promise.resolve(this.tabulator.replaceData(this.data || []))
+                .then(() => {
+                    const finalizeSilentSortUpdate = () => {
+                        setTimeout(() => {
+                            this.silentSortUpdate = false;
+                        }, 0);
+                    };
+
+                    if (this.sort.field && this.sort.order) {
+                        this.silentSortUpdate = true;
+                        try {
+                            this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
+                        } catch (e) {
+                            try {
+                                this.tabulator.setSort(this.sort.field, this.sort.order);
+                            } catch (ignored) {}
+                        } finally {
+                            finalizeSilentSortUpdate();
                         }
-                    } finally {
-                        finalizeSilentSortUpdate();
+                    } else {
+                        this.silentSortUpdate = true;
+                        try {
+                            if (typeof this.tabulator.clearSort === 'function') {
+                                this.tabulator.clearSort();
+                            }
+                        } finally {
+                            finalizeSilentSortUpdate();
+                        }
                     }
-                }
 
-                const hasData = Array.isArray(this.data) && this.data.length > 0;
-                if (!hasData) {
-                    this.deselectItem();
-                    return;
-                }
+                    const hasData = Array.isArray(this.data) && this.data.length > 0;
+                    if (!hasData) {
+                        this.deselectItem();
+                        return;
+                    }
 
-                if (previouslySelectedRecordKey !== false && previouslySelectedRecordKey !== undefined && previouslySelectedRecordKey !== null) {
-                    this.selectByKey(previouslySelectedRecordKey);
-                }
+                    if (previouslySelectedRecordKey !== false && previouslySelectedRecordKey !== undefined && previouslySelectedRecordKey !== null) {
+                        this.selectByKey(previouslySelectedRecordKey);
+                    }
 
-                const selectedRows = typeof this.tabulator.getSelectedRows === 'function'
-                    ? this.tabulator.getSelectedRows()
-                    : [];
-                if (!selectedRows || !selectedRows.length) {
-                    this.deselectItem();
-                }
-            });
+                    const selectedRows = typeof this.tabulator.getSelectedRows === 'function'
+                        ? this.tabulator.getSelectedRows()
+                        : [];
+                    if (!selectedRows || !selectedRows.length) {
+                        this.deselectItem();
+                    }
+                });
+        };
 
         columnsPromise
             .then(() => applyData())
@@ -1300,6 +1712,8 @@ class GridManager {
         this.langId = 0;
         this.initialized = false;
         this.pendingPage = null;
+        this.currentPage = 1;
+        this.activeFilterDescriptor = null;
 
         // --- Element reference ---
         this.element = (typeof element === 'string') ?
@@ -1315,13 +1729,38 @@ class GridManager {
 
         // --- Pages ---
         this.pageList = new PageList({ onPageSelect: this.loadPage.bind(this) });
+        this.useTabulatorPager = true;
+        this.paginationContainer = this.pageList.getElement();
+        if (this.paginationContainer) {
+            this.paginationContainer.innerHTML = '';
+            this.paginationContainer.classList.add('tabulator-pagination-holder');
+            this.tabulatorPagerElement = document.createElement('div');
+            this.tabulatorPagerElement.classList.add('tabulator-pager-placeholder', 'flex-grow-1');
+            this.paginationContainer.appendChild(this.tabulatorPagerElement);
+            this.paginationSummaryElement = document.createElement('span');
+            this.paginationSummaryElement.classList.add('page-summary', 'text-muted', 'small', 'ms-auto');
+            this.paginationSummaryElement.setAttribute('data-role', 'page-summary');
+            this.paginationContainer.appendChild(this.paginationSummaryElement);
+            this.updatePaginationSummary('');
+        } else {
+            this.tabulatorPagerElement = null;
+            this.paginationSummaryElement = null;
+        }
 
         // --- Grid ---
         this.grid = new Grid(this.element.querySelector('[data-role="grid"]'), {
             onSelect: this.onSelect.bind(this),
             onSortChange: this.onSortChange.bind(this),
             onDoubleClick: this.onDoubleClick.bind(this),
+            paginationElement: this.tabulatorPagerElement || undefined,
+            requestHandler: this.requestGridData.bind(this),
+            responseHandler: this.handleGridResponse.bind(this),
+            initialPage: 1,
         });
+
+        this.grid.on('dataLoading', this.handleDataLoading.bind(this));
+        this.grid.on('dataLoaded', this.handleDataLoaded.bind(this));
+        this.grid.on('dataLoadError', this.handleDataLoadError.bind(this));
 
         // --- Tabs ---
         this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
@@ -1460,6 +1899,7 @@ class GridManager {
         }
         if (this.filter) {
             this.filter.remove();
+            this.clearFilterDescriptor();
             if (typeof this.filter.checkCondition === 'function') {
                 this.filter.checkCondition();
             }
@@ -1477,7 +1917,11 @@ class GridManager {
             if (typeof this[action] === 'function') this[action]();
         }
     }
-    onSortChange() { this.loadPage(1); }
+    onSortChange() {
+        if (!this.grid || !this.grid.isRemoteSortingEnabled || !this.grid.isRemoteSortingEnabled()) {
+            this.loadPage(1);
+        }
+    }
     sortChange() { this.loadPage(1); }
 
     // --- Paging ---
@@ -1485,7 +1929,7 @@ class GridManager {
 
     loadPage(pageNum) {
         const requested = (pageNum === undefined || pageNum === null)
-            ? this.pageList.currentPage
+            ? this.getCurrentPageNumber()
             : parseInt(pageNum, 10);
         const normalizedPage = Number.isFinite(requested) && requested > 0 ? requested : 1;
 
@@ -1495,25 +1939,31 @@ class GridManager {
         if (this.toolbar) this.toolbar.disableControls();
 
         showLoader();
-        if (this.grid) this.grid.clear();
-
-        setTimeout(() => {
-            Energine.request(
-                this.buildRequestURL(normalizedPage),
-                this.buildRequestPostBody(),
-                (response) => this.processServerResponse(response),
-                null,
-                (error) => this.processServerError(error)
-            );
-        }, 0);
+        if (this.grid && typeof this.grid.loadPage === 'function') {
+            this.grid.loadPage(normalizedPage);
+        }
     }
 
-    buildRequestURL(pageNum) {
+    getCurrentPageNumber() {
+        if (this.grid && typeof this.grid.getCurrentPage === 'function') {
+            const page = this.grid.getCurrentPage();
+            if (Number.isFinite(page) && page > 0) {
+                return page;
+            }
+        }
+        if (this.pageList && Number.isFinite(this.pageList.currentPage) && this.pageList.currentPage > 0) {
+            return this.pageList.currentPage;
+        }
+        if (Number.isFinite(this.currentPage) && this.currentPage > 0) {
+            return this.currentPage;
+        }
+        return 1;
+    }
+
+    buildRequestURL(pageNum, sorters = null) {
         const basePath = this.singlePath ? `${this.singlePath.replace(/\/+$/, '')}/` : '';
         const segments = ['get-data'];
-        const sort = (this.grid && typeof this.grid.getSort === 'function')
-            ? this.grid.getSort()
-            : (this.grid && this.grid.sort) || {};
+        const sort = this.normalizeSortParam(sorters);
 
         if (sort.field && sort.order) {
             segments.push(`${sort.field}-${sort.order}`);
@@ -1526,21 +1976,223 @@ class GridManager {
         return `${basePath}${segments.join('/')}`;
     }
 
-    buildRequestPostBody() {
+    buildRequestPostBody(filters = []) {
         const params = [];
 
         if (this.langId !== undefined && this.langId !== null && this.langId !== '') {
             params.push(`languageID=${encodeURIComponent(this.langId)}`);
         }
 
-        if (this.filter && typeof this.filter.getValue === 'function') {
-            const filterValue = this.filter.getValue();
-            if (filterValue) {
-                params.push(filterValue.replace(/^&+|&+$/g, '').replace(/&&+/g, '&'));
+        let filterDescriptors = [];
+
+        if (Array.isArray(filters) && filters.length) {
+            filterDescriptors = filters;
+        } else {
+            filterDescriptors = this.getFilterDescriptors();
+        }
+
+        if (!filterDescriptors.length && this.filter && typeof this.filter.getValue === 'function') {
+            const fallback = this.filter.getValue();
+            if (fallback) {
+                filterDescriptors = [{ queryString: fallback }];
             }
         }
 
+        filterDescriptors.forEach((descriptor) => {
+            if (!descriptor) {
+                return;
+            }
+            const raw = descriptor.queryString || descriptor.query || descriptor.value || '';
+            if (!raw) {
+                return;
+            }
+            const cleaned = String(raw).replace(/^&+|&+$/g, '').replace(/&&+/g, '&');
+            if (cleaned) {
+                params.push(cleaned);
+            }
+        });
+
         return params.join('&');
+    }
+
+    normalizeSortParam(sorters) {
+        if (!sorters) {
+            return (this.grid && typeof this.grid.getSort === 'function')
+                ? this.grid.getSort()
+                : { field: null, order: null };
+        }
+
+        let sorter = null;
+        if (Array.isArray(sorters) && sorters.length) {
+            sorter = sorters[0];
+        } else if (typeof sorters === 'object') {
+            sorter = sorters;
+        }
+
+        if (!sorter || typeof sorter !== 'object') {
+            return (this.grid && typeof this.grid.getSort === 'function')
+                ? this.grid.getSort()
+                : { field: null, order: null };
+        }
+
+        let field = sorter.field;
+        if (!field && sorter.column && typeof sorter.column.getField === 'function') {
+            field = sorter.column.getField();
+        }
+
+        let order = sorter.dir || sorter.direction || sorter.sort || sorter.order;
+        if (order) {
+            order = String(order).toLowerCase();
+            if (order !== 'asc' && order !== 'desc') {
+                if (order.startsWith('asc')) {
+                    order = 'asc';
+                } else if (order.startsWith('desc')) {
+                    order = 'desc';
+                } else {
+                    order = null;
+                }
+            }
+        }
+
+        if (field) {
+            return { field, order: order || 'asc' };
+        }
+
+        return (this.grid && typeof this.grid.getSort === 'function')
+            ? this.grid.getSort()
+            : { field: null, order: null };
+    }
+
+    requestGridData(params = {}) {
+        const pageNumber = parseInt(params.page, 10);
+        const normalizedPage = Number.isFinite(pageNumber) && pageNumber > 0
+            ? pageNumber
+            : (this.pendingPage || this.getCurrentPageNumber());
+
+        const url = this.buildRequestURL(normalizedPage, params.sorters);
+        const body = this.buildRequestPostBody(params.filter);
+
+        return new Promise((resolve, reject) => {
+            Energine.request(
+                url,
+                body ? body : null,
+                (response) => resolve(response || {}),
+                null,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    handleGridResponse(response, params = {}) {
+        const payload = response || {};
+        this.processServerResponse(payload, params);
+        return payload;
+    }
+
+    handleDataLoading() {
+        if (this.pageList) {
+            this.pageList.disable();
+        }
+        if (this.toolbar) {
+            this.toolbar.disableControls();
+        }
+        showLoader();
+    }
+
+    handleDataLoaded() {
+        if (this.pageList) {
+            this.pageList.enable();
+        }
+        const hasToolbarPayload = this.grid && this.grid.lastResponse && this.grid.lastResponse.toolbar;
+        if (this.toolbar && !hasToolbarPayload) {
+            if (this.grid && typeof this.grid.isEmpty === 'function' && this.grid.isEmpty()) {
+                this.toolbar.disableControls();
+            } else {
+                this.toolbar.enableControls();
+            }
+            const addControl = this.toolbar.getControlById ? this.toolbar.getControlById('add') : null;
+            if (addControl) {
+                addControl.enable(true);
+            }
+        }
+        hideLoader();
+    }
+
+    handleDataLoadError(error) {
+        this.processServerError(error);
+    }
+
+    updatePaginationSummary(summaryText) {
+        if (!this.paginationSummaryElement) {
+            return;
+        }
+        const normalized = (summaryText !== undefined && summaryText !== null)
+            ? String(summaryText).trim()
+            : '';
+        if (normalized) {
+            this.paginationSummaryElement.textContent = normalized;
+            this.paginationSummaryElement.classList.remove('d-none');
+        } else {
+            this.paginationSummaryElement.textContent = '';
+            this.paginationSummaryElement.classList.add('d-none');
+        }
+    }
+
+    updatePaginationFromPayload(pager = {}) {
+        if (!pager || typeof pager !== 'object') {
+            if (!this.useTabulatorPager && this.pageList) {
+                this.pageList.clear();
+            }
+            this.updatePaginationSummary('');
+            return;
+        }
+
+        const totalPages = parseInt(pager.count, 10) || 0;
+        const currentPage = parseInt(pager.current, 10) || (this.pendingPage || 1);
+        const recordSummary = (pager.records !== undefined && pager.records !== null) ? pager.records : '';
+
+        this.currentPage = currentPage;
+        if (this.pageList) {
+            this.pageList.currentPage = currentPage;
+        }
+
+        if (!this.useTabulatorPager && this.pageList) {
+            this.pageList.build(totalPages, currentPage, recordSummary);
+        } else {
+            this.updatePaginationSummary(recordSummary);
+        }
+
+        if (pager.limit && this.grid && typeof this.grid.updatePageSize === 'function') {
+            this.grid.updatePageSize(pager.limit);
+        }
+    }
+
+    applyFilterDescriptor(descriptor) {
+        if (descriptor && typeof descriptor === 'object') {
+            this.activeFilterDescriptor = Object.assign({}, descriptor);
+            if (this.grid && typeof this.grid.setRemoteFilters === 'function') {
+                this.grid.setRemoteFilters([descriptor]);
+            }
+        } else {
+            this.clearFilterDescriptor();
+        }
+    }
+
+    clearFilterDescriptor() {
+        this.activeFilterDescriptor = null;
+        if (this.grid && typeof this.grid.clearRemoteFilters === 'function') {
+            this.grid.clearRemoteFilters();
+        }
+    }
+
+    getFilterDescriptors() {
+        if (this.grid && typeof this.grid.getRemoteFilters === 'function') {
+            const filters = this.grid.getRemoteFilters();
+            if (filters && filters.length) {
+                return filters;
+            }
+        }
+        return this.activeFilterDescriptor ? [Object.assign({}, this.activeFilterDescriptor)] : [];
     }
 
     applyToolbarPayload(toolbarData) {
@@ -1614,7 +2266,7 @@ class GridManager {
         return '';
     }
 
-    processServerResponse(result) {
+    processServerResponse(result, requestParams = {}) {
         const payload = result || {};
 
         try {
@@ -1632,25 +2284,41 @@ class GridManager {
                 this.grid.setLastResponse(payload);
             }
 
-            this.grid.setData(payload.data || []);
-            this.grid.build();
+            const remotePaginationActive = this.grid
+                && typeof this.grid.isRemotePaginationEnabled === 'function'
+                && this.grid.isRemotePaginationEnabled();
 
-            if (payload.pager) {
-                const totalPages = parseInt(payload.pager.count, 10) || 0;
-                const currentPage = parseInt(payload.pager.current, 10) || (this.pendingPage || 1);
-                this.pageList.build(totalPages, currentPage, payload.pager.records || '');
+            if (remotePaginationActive) {
+                this.updatePaginationFromPayload(payload.pager || {});
             } else {
-                this.pageList.clear();
-            }
+                this.grid.setData(payload.data || []);
+                this.grid.build();
 
-            if (this.pageList) {
-                this.pageList.enable();
+                if (payload.pager) {
+                    const totalPages = parseInt(payload.pager.count, 10) || 0;
+                    const currentPage = parseInt(payload.pager.current, 10) || (this.pendingPage || 1);
+                    if (!this.useTabulatorPager && this.pageList) {
+                        this.pageList.build(totalPages, currentPage, payload.pager.records || '');
+                    } else {
+                        this.currentPage = currentPage;
+                        this.updatePaginationSummary(payload.pager.records || '');
+                    }
+                } else if (this.pageList && typeof this.pageList.clear === 'function') {
+                    if (!this.useTabulatorPager) {
+                        this.pageList.clear();
+                    }
+                    this.updatePaginationSummary('');
+                }
+
+                if (this.pageList) {
+                    this.pageList.enable();
+                }
             }
 
             if (this.toolbar) {
                 if (payload.toolbar) {
                     this.applyToolbarPayload(payload.toolbar);
-                } else if (this.grid.isEmpty()) {
+                } else if (this.grid && typeof this.grid.isEmpty === 'function' && this.grid.isEmpty()) {
                     this.toolbar.disableControls();
                 } else {
                     this.toolbar.enableControls();
@@ -1663,8 +2331,15 @@ class GridManager {
             }
         } finally {
             this.pendingPage = null;
-            hideLoader();
+            const remotePaginationActive = this.grid
+                && typeof this.grid.isRemotePaginationEnabled === 'function'
+                && this.grid.isRemotePaginationEnabled();
+            if (!remotePaginationActive) {
+                hideLoader();
+            }
         }
+
+        return payload;
     }
 
     processServerError(error) {
@@ -1697,7 +2372,7 @@ class GridManager {
             if (returnValue.afterClose && typeof this[returnValue.afterClose] === 'function') {
                 this[returnValue.afterClose](null);
             } else {
-                this.loadPage(this.pageList.currentPage);
+                this.loadPage(this.getCurrentPageNumber());
             }
             this.grid.fireEvent('dirty');
         }
@@ -1786,7 +2461,7 @@ class GridManager {
                     // this.overlay.hide();
                     hideLoader();
                     this.grid.fireEvent('dirty');
-                    this.loadPage(this.pageList.currentPage);
+                    this.loadPage(this.getCurrentPageNumber());
                 },
                 () => hideLoader(),//{ this.overlay.hide(); },
                 (responseText) => {
@@ -1808,14 +2483,14 @@ class GridManager {
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/up/`,
             (this.filter && this.filter.getValue) ? this.filter.getValue() : null,
-            this.loadPage.bind(this, this.pageList.currentPage)
+            () => this.loadPage(this.getCurrentPageNumber())
         );
     }
     down() {
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/down/`,
             (this.filter && this.filter.getValue) ? this.filter.getValue() : null,
-            this.loadPage.bind(this, this.pageList.currentPage)
+            () => this.loadPage(this.getCurrentPageNumber())
         );
     }
     print() {
@@ -1862,6 +2537,7 @@ class Filter {
         const applyButton = this.element.querySelector('[data-action="apply-filter"]');
         const resetLink = this.element.querySelector('[data-action="reset-filter"]');
         this.active = false;
+        this.currentDescriptor = null;
 
         if (applyButton) {
             applyButton.classList.add('btn', 'btn-primary', 'btn-sm');
@@ -1898,13 +2574,13 @@ class Filter {
 
         // События
         applyButton.addEventListener('click', () => {
-            this.use();
-            gridManager.reload();
+            const descriptor = this.use();
+            gridManager.applyFilterDescriptor(descriptor);
         });
         resetLink.addEventListener('click', (e) => {
             e.preventDefault();
             this.remove();
-            gridManager.reload();
+            gridManager.clearFilterDescriptor();
         });
         this.fields.addEventListener('change', this.checkCondition.bind(this));
         this.condition.addEventListener('change', (event) => {
@@ -1999,29 +2675,46 @@ class Filter {
         if (this.inputs.empty) this.inputs.empty();
         this.element.classList.remove('active');
         this.active = false;
+        this.currentDescriptor = null;
     }
 
     // Пометить как активный если есть значения, иначе очистить
     use() {
-        if (this.inputs.hasValues && this.inputs.hasValues()) {
-            this.element.classList.add('active');
-            this.active = true;
-        } else {
+        if (!(this.inputs.hasValues && this.inputs.hasValues())) {
             this.remove();
+            return null;
         }
-        return this.active;
+
+        this.element.classList.add('active');
+        this.active = true;
+
+        const fieldOption = this.fields.options[this.fields.selectedIndex];
+        const conditionOption = this.condition.options[this.condition.selectedIndex];
+        const fieldName = fieldOption ? fieldOption.value : '';
+        const fieldCondition = conditionOption ? conditionOption.value : '';
+        const values = this.inputs.getRawValues ? this.inputs.getRawValues() : [];
+        const queryString = (this.inputs.getValues)
+            ? this.inputs.getValues('filter' + fieldName) + `&filter[condition]=${fieldCondition}&`
+            : '';
+
+        const descriptor = {
+            field: fieldName,
+            type: fieldCondition,
+            values,
+            value: values.length > 1 ? values.slice() : (values[0] || ''),
+            queryString,
+        };
+
+        this.currentDescriptor = descriptor;
+        return descriptor;
     }
 
     // Получить строку фильтра
     getValue() {
-        let result = '';
-        if (this.active && this.inputs.hasValues && this.inputs.hasValues()) {
-            const fieldName = this.fields.options[this.fields.selectedIndex].value;
-            const fieldCondition = this.condition.options[this.condition.selectedIndex].value;
-            if (this.inputs.getValues)
-                result = this.inputs.getValues('filter' + fieldName) + `&filter[condition]=${fieldCondition}&`;
+        if (this.currentDescriptor && this.currentDescriptor.queryString) {
+            return this.currentDescriptor.queryString;
         }
-        return result;
+        return '';
     }
 }
 
@@ -2103,6 +2796,13 @@ class QueryControls {
         return inputs.map(el => el && el.value ? `${fieldName}[]=${encodeURIComponent(el.value)}` : '')
             .filter(Boolean)
             .join('&');
+    }
+
+    getRawValues() {
+        const inputs = this.isDate ? this.dpsInputs : this.inputs;
+        return inputs
+            .map(el => (el && el.value ? el.value : ''))
+            .filter(value => value !== '');
     }
 
     // Включить режим "между" (2 инпута), сделать маленькими
