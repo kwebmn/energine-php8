@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document debug="1" editable="0">
+  <properties>
+    <property name="keywords"></property>
+    <property name="description">Відкрийте інноваційні можливості нашої демонстраційної платформи! </property>
+    <property name="robots"></property>
+    <property name="ID">80</property>
+    <property name="default">1</property>
+    <property name="is_user">1</property>
+    <property name="single">single</property>
+    <property name="url">https://phpbase.kweb.biz/single/adminPanel/show/?debug</property>
+    <property name="title" alt="">Головна сторінка</property>
+    <property name="base" static="https://phpbase.kweb.biz/" media="https://phpbase.kweb.biz/" resizer="https://phpbase.kweb.biz/resizer/" folder="default" default="https://phpbase.kweb.biz/">https://phpbase.kweb.biz/</property>
+    <property name="lang" abbr="" default="2" real_abbr="uk">2</property>
+  </properties>
+  <component name="adminPanel" module="share" componentAction="main" class="DivisionEditor" state="" template="single/adminPanel/" single_template="single/adminPanel/" sample="DivisionEditor" type="list" exttype="grid" title="Список розділів" site="1">
+    <recordset empty="Немає жодного запису.">
+      <record>
+        <field name="smap_id" type="hidden" mode="2" length="10" title="Розділ" nullable="" key="1" sort="0" index="PRI" tableName="share_sitemap" tabName="Властивості"/>
+        <field name="smap_pid" type="integer" mode="2" length="10" title="Батьківський розділ" nullable="1" key="" sort="1" pattern="/^\d{0,7}$/" message="MSG_BAD_INT_FORMAT" index="MUL" tableName="share_sitemap" tabName="Властивості"/>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="5" tabName="POLAND"/>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="4" tabName="DEUTSCH"/>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="3" tabName="ENGLISH"/>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="1" tabName="Русский"/>
+        <field name="smap_name" type="string" mode="2" length="200" title="Назва розділу" nullable="1" key="" sort="1" index="" tableName="share_sitemap_translation" language="2" tabName="Українська"/>
+      </record>
+    </recordset>
+    <javascript>
+      <behavior name="DivSidebar" path=""/>
+    </javascript>
+    <toolbar name="e-divtree-toolbar">
+      <control id="add" action="" mode="2" title="Додати" icon="➕" onclick="add" type="button"/>
+      <control id="edit" action="" mode="2" title="Редагувати" icon="✎" onclick="edit" type="button"/>
+      <control id="delete" action="" mode="2" title="Видалити" icon="🗙" onclick="del" type="button"/>
+      <control id="sep1" mode="2" type="separator"/>
+      <control id="up" action="" mode="2" title="Підняти" icon="▲" onclick="up" type="button"/>
+      <control id="down" action="" mode="2" title="Опустити" icon="▼" onclick="down" type="button"/>
+    </toolbar>
+    <filter title="Фільтр" apply="Застосувати" reset="Скинути">
+      <operators>
+        <operator title="містить" name="like">
+          <types>
+            <type>string</type>
+            <type>select</type>
+            <type>text</type>
+            <type>htmlblock</type>
+            <type>value</type>
+            <type>phone</type>
+            <type>email</type>
+            <type>code</type>
+          </types>
+        </operator>
+        <operator title="не містить" name="notlike">
+          <types>
+            <type>string</type>
+            <type>select</type>
+            <type>text</type>
+            <type>htmlblock</type>
+            <type>value</type>
+            <type>phone</type>
+            <type>email</type>
+            <type>code</type>
+          </types>
+        </operator>
+        <operator title="=" name="=">
+          <types>
+            <type>string</type>
+            <type>select</type>
+            <type>text</type>
+            <type>htmlblock</type>
+            <type>value</type>
+            <type>phone</type>
+            <type>email</type>
+            <type>code</type>
+            <type>integer</type>
+            <type>float</type>
+            <type>datetime</type>
+            <type>date</type>
+          </types>
+        </operator>
+        <operator title="!=" name="!=">
+          <types>
+            <type>string</type>
+            <type>select</type>
+            <type>text</type>
+            <type>htmlblock</type>
+            <type>value</type>
+            <type>phone</type>
+            <type>email</type>
+            <type>code</type>
+            <type>integer</type>
+            <type>float</type>
+            <type>datetime</type>
+            <type>date</type>
+          </types>
+        </operator>
+        <operator title="&lt;" name="&lt;">
+          <types>
+            <type>datetime</type>
+            <type>date</type>
+            <type>integer</type>
+            <type>float</type>
+          </types>
+        </operator>
+        <operator title="&gt;" name="&gt;">
+          <types>
+            <type>datetime</type>
+            <type>date</type>
+            <type>integer</type>
+            <type>float</type>
+          </types>
+        </operator>
+        <operator title="між" name="between">
+          <types>
+            <type>datetime</type>
+            <type>date</type>
+            <type>integer</type>
+            <type>float</type>
+          </types>
+        </operator>
+        <operator title="TXT_FILTER_SIGN_CHECKED" name="checked">
+          <types>
+            <type>boolean</type>
+          </types>
+        </operator>
+        <operator title="TXT_FILTER_SIGN_UNCHEKED" name="unchecked">
+          <types>
+            <type>boolean</type>
+          </types>
+        </operator>
+      </operators>
+      <field name="smap_pid" tableName="share_sitemap" title="Батьківський розділ" type="integer"/>
+      <field name="smap_name" tableName="share_sitemap_translation" title="Назва розділу" type="string"/>
+    </filter>
+  </component>
+  <translations json="{&quot;TXT_DIVISIONS&quot;:&quot;&lt;img src=\&quot;images\/loading.gif\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot;\/&gt;&quot;,&quot;MSG_CONFIRM_DELETE&quot;:&quot;Ви впевнені, що хочете видалити запис? Відновити дані потім буде неможливо.&quot;,&quot;BTN_ADD&quot;:&quot;Додати&quot;,&quot;BTN_EDIT&quot;:&quot;Редагувати&quot;,&quot;BTN_DELETE&quot;:&quot;Видалити&quot;,&quot;BTN_REFRESH&quot;:&quot;Оновити&quot;,&quot;BTN_UP&quot;:&quot;Підняти&quot;,&quot;BTN_DOWN&quot;:&quot;Опустити&quot;}">
+    <translation const="TXT_DIVISIONS" component="adminPanel">&lt;img src="images/loading.gif" width="32" height="32"/&gt;</translation>
+    <translation const="MSG_CONFIRM_DELETE" component="adminPanel">Ви впевнені, що хочете видалити запис? Відновити дані потім буде неможливо.</translation>
+    <translation const="BTN_ADD" component="adminPanel">Додати</translation>
+    <translation const="BTN_EDIT" component="adminPanel">Редагувати</translation>
+    <translation const="BTN_DELETE" component="adminPanel">Видалити</translation>
+    <translation const="BTN_REFRESH" component="adminPanel">Оновити</translation>
+    <translation const="BTN_UP" component="adminPanel">Підняти</translation>
+    <translation const="BTN_DOWN" component="adminPanel">Опустити</translation>
+  </translations>
+  <javascript>
+    <library path="TabPane"/>
+    <library path="Toolbar"/>
+    <library path="ModalBox"/>
+    <library path="jquery.min"/>
+    <library path="jstree/jstree"/>
+    <library path="DivManager"/>
+    <library path="DivSidebar"/>
+  </javascript>
+</document>

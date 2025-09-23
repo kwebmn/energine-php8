@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document debug="1" editable="0">
+  <properties>
+    <property name="keywords"></property>
+    <property name="description"></property>
+    <property name="robots"></property>
+    <property name="ID">3727</property>
+    <property name="default">0</property>
+    <property name="is_user">1</property>
+    <property name="single">single</property>
+    <property name="url">https://phpbase.kweb.biz/test/single/test_editor/1/edit/?debug</property>
+    <property name="title" alt="">Тест1</property>
+    <property name="base" static="https://phpbase.kweb.biz/" media="https://phpbase.kweb.biz/" resizer="https://phpbase.kweb.biz/resizer/" folder="default" default="https://phpbase.kweb.biz/">https://phpbase.kweb.biz/</property>
+    <property name="lang" abbr="" default="2" real_abbr="uk">2</property>
+  </properties>
+  <component name="test_editor" module="auto" componentAction="edit" class="TestEditor" state="" template="test/single/test_editor/" single_template="test/single/test_editor/" type="form" exttype="grid" title="TXT_TEST_EDITOR">
+    <recordset>
+      <record>
+        <field name="test_id" type="hidden" mode="2" length="10" title="FIELD_TEST_ID" nullable="" key="1" sort="0" index="PRI" tableName="auto_test" tabName="Властивості">1</field>
+        <field name="test_id" type="hidden" mode="2" length="10" title="FIELD_TEST_ID" nullable="" key="1" sort="0" index="PRI" tableName="auto_test" tabName="Властивості">1</field>
+        <field name="test_id" type="hidden" mode="2" length="10" title="FIELD_TEST_ID" nullable="" key="1" sort="0" index="PRI" tableName="auto_test" tabName="Властивості">1</field>
+        <field name="test_id" type="hidden" mode="2" length="10" title="FIELD_TEST_ID" nullable="" key="1" sort="0" index="PRI" tableName="auto_test" tabName="Властивості">1</field>
+        <field name="test_id" type="hidden" mode="2" length="10" title="FIELD_TEST_ID" nullable="" key="1" sort="0" index="PRI" tableName="auto_test" tabName="Властивості">1</field>
+        <field name="test_img" type="file" mode="2" quickUploadPath="uploads/public/fast-upload" quickUploadPid="19" quickUploadEnabled="1" secure="0" media_type="image" mime="image/webp" title="FIELD_TEST_IMG" nullable="1" key="" sort="0" index="" tableName="auto_test" tabName="Властивості">uploads/public/fast-upload/17506349361209.webp</field>
+        <field name="test_date" type="datetime" mode="2" title="FIELD_TEST_DATE" nullable="1" key="" sort="1" pattern="/^(\d{4}-\d{1,2}-\d{1,2}T\d{1,2}:\d{1,2}(:\d{1,2})?)?$/" outputFormat="%Y-%m-%d %H:%M" message="MSG_WRONG_DATETIME_FORMAT" index="" tableName="auto_test" tabName="Властивості" date="2025-06-20 00:49:00">2025-06-20 00:49</field>
+        <field name="test_datetime" type="datetime" mode="2" title="FIELD_TEST_DATETIME" nullable="1" key="" sort="1" pattern="/^(\d{4}-\d{1,2}-\d{1,2}T\d{1,2}:\d{1,2}(:\d{1,2})?)?$/" outputFormat="%Y-%m-%d %H:%M" message="MSG_WRONG_DATETIME_FORMAT" index="" tableName="auto_test" tabName="Властивості" date="2024-11-21 03:16:00">2024-11-21 03:16</field>
+        <field name="test_rtf" type="htmlblock" mode="2" title="FIELD_TEST_RTF" nullable="1" key="" sort="0" index="" tableName="auto_test" tabName="Властивості">&lt;p&gt;1112&lt;/p&gt;
+</field>
+        <field name="test_text" type="text" mode="2" title="FIELD_TEST_TEXT" nullable="1" key="" sort="0" index="" tableName="auto_test" tabName="Властивості"/>
+        <field name="test_name" type="string" mode="2" length="255" title="FIELD_TEST_NAME" nullable="1" key="" sort="1" index="" tableName="auto_test_translation" language="5" languageAbbr="pl" tabName="POLAND">poland111</field>
+        <field name="test_name" type="string" mode="2" length="255" title="FIELD_TEST_NAME" nullable="1" key="" sort="1" index="" tableName="auto_test_translation" language="4" languageAbbr="de" tabName="DEUTSCH">de</field>
+        <field name="test_name" type="string" mode="2" length="255" title="FIELD_TEST_NAME" nullable="1" key="" sort="1" index="" tableName="auto_test_translation" language="3" languageAbbr="en" tabName="ENGLISH"/>
+        <field name="test_name" type="string" mode="2" length="255" title="FIELD_TEST_NAME" nullable="1" key="" sort="1" index="" tableName="auto_test_translation" language="1" languageAbbr="ru" tabName="Русский"/>
+        <field name="test_name" type="string" mode="2" length="255" title="FIELD_TEST_NAME" nullable="1" key="" sort="1" index="" tableName="auto_test_translation" language="2" languageAbbr="uk" tabName="Українська">ua</field>
+        <field name="attached_files" type="tab" mode="2" title="Додаткові файли" sort="0" tableName="auto_test_uploads" tabName="Властивості">1/attachments/</field>
+        <field name="filtersTree" type="tab" mode="2" title="Характеристики" sort="0" tableName="auto_test_filter" tabName="Властивості">1/filtersTree/</field>
+      </record>
+    </recordset>
+    <javascript>
+      <behavior name="Form" path=""/>
+      <variable name="wysiwyg_styles" type="json">{"p.red":{"element":"p","class":"red","caption":"TXT_RED_PARAGRAPH"},"p.underline":{"element":"p","class":"underline","caption":"TXT_TEXT_UNDERLINE"}}</variable>
+    </javascript>
+    <toolbar name="toolbar_test_editor">
+      <control id="save" action="" mode="2" title="Зберегти" onclick="save" type="button"/>
+      <control id="after_save_action" mode="2" title="та" type="select">
+        <options>
+          <option id="reload">Закрити</option>
+          <option id="editNext">Редагувати наступний запис</option>
+          <option id="editPrev">Редагувати попередній запис</option>
+        </options>
+      </control>
+      <control id="sep1" mode="2" type="separator"/>
+      <control id="list" action="" mode="2" title="Закрити" onclick="close" type="button"/>
+    </toolbar>
+  </component>
+  <translations json="{&quot;BTN_ITALIC&quot;:&quot;Курсив&quot;,&quot;BTN_HREF&quot;:&quot;Вставити посилання&quot;,&quot;BTN_UL&quot;:&quot;Ненумерований список&quot;,&quot;BTN_OL&quot;:&quot;Нумерований перелiк&quot;,&quot;BTN_ALIGN_LEFT&quot;:&quot;Вирiвнювання злiва&quot;,&quot;TXT_PREVIEW&quot;:&quot;Режим перегляду&quot;,&quot;BTN_FILE_LIBRARY&quot;:&quot;Вставити посилання на файл&quot;,&quot;BTN_INSERT_IMAGE&quot;:&quot;Вставити зображення&quot;,&quot;BTN_INSERT_IMAGE_URL&quot;:&quot;BTN_INSERT_IMAGE_URL&quot;,&quot;BTN_VIEWSOURCE&quot;:&quot;Вихідний код&quot;,&quot;TXT_RESET&quot;:&quot;Очистити форматування&quot;,&quot;TXT_H1&quot;:&quot;Заголовок 1&quot;,&quot;TXT_H2&quot;:&quot;Заголовок 2&quot;,&quot;TXT_H3&quot;:&quot;Заголовок 3&quot;,&quot;TXT_H4&quot;:&quot;Заголовок 4&quot;,&quot;TXT_H5&quot;:&quot;Заголовок 5&quot;,&quot;TXT_H6&quot;:&quot;Заголовок 6&quot;,&quot;TXT_ADDRESS&quot;:&quot;Адреса&quot;,&quot;TXT_ERROR_NOT_VIDEO_FILE&quot;:&quot;TXT_ERROR_NOT_VIDEO_FILE&quot;,&quot;BTN_SAVE&quot;:&quot;Зберегти&quot;,&quot;BTN_BOLD&quot;:&quot;Напівжирний&quot;,&quot;BTN_ALIGN_CENTER&quot;:&quot;Вирiвнювання по центру&quot;,&quot;BTN_ALIGN_RIGHT&quot;:&quot;Вирiвнювання справа&quot;,&quot;BTN_ALIGN_JUSTIFY&quot;:&quot;Вирiвнювання по ширинi&quot;,&quot;BTN_EXT_FLASH&quot;:&quot;Вставити embed код&quot;,&quot;BTN_ACTIVATE&quot;:&quot;Активувати&quot;,&quot;TXT_CLEAR&quot;:&quot;очистить&quot;,&quot;BTN_QUICK_UPLOAD&quot;:&quot;Швидке завантаження&quot;}">
+    <translation const="BTN_ITALIC" component="test_editor">Курсив</translation>
+    <translation const="BTN_HREF" component="test_editor">Вставити посилання</translation>
+    <translation const="BTN_UL" component="test_editor">Ненумерований список</translation>
+    <translation const="BTN_OL" component="test_editor">Нумерований перелiк</translation>
+    <translation const="BTN_ALIGN_LEFT" component="test_editor">Вирiвнювання злiва</translation>
+    <translation const="TXT_PREVIEW" component="test_editor">Режим перегляду</translation>
+    <translation const="BTN_FILE_LIBRARY" component="test_editor">Вставити посилання на файл</translation>
+    <translation const="BTN_INSERT_IMAGE" component="test_editor">Вставити зображення</translation>
+    <translation const="BTN_INSERT_IMAGE_URL" component="test_editor">BTN_INSERT_IMAGE_URL</translation>
+    <translation const="BTN_VIEWSOURCE" component="test_editor">Вихідний код</translation>
+    <translation const="TXT_RESET" component="test_editor">Очистити форматування</translation>
+    <translation const="TXT_H1" component="test_editor">Заголовок 1</translation>
+    <translation const="TXT_H2" component="test_editor">Заголовок 2</translation>
+    <translation const="TXT_H3" component="test_editor">Заголовок 3</translation>
+    <translation const="TXT_H4" component="test_editor">Заголовок 4</translation>
+    <translation const="TXT_H5" component="test_editor">Заголовок 5</translation>
+    <translation const="TXT_H6" component="test_editor">Заголовок 6</translation>
+    <translation const="TXT_ADDRESS" component="test_editor">Адреса</translation>
+    <translation const="TXT_ERROR_NOT_VIDEO_FILE" component="test_editor">TXT_ERROR_NOT_VIDEO_FILE</translation>
+    <translation const="BTN_SAVE" component="test_editor">Зберегти</translation>
+    <translation const="BTN_BOLD" component="test_editor">Напівжирний</translation>
+    <translation const="BTN_ALIGN_CENTER" component="test_editor">Вирiвнювання по центру</translation>
+    <translation const="BTN_ALIGN_RIGHT" component="test_editor">Вирiвнювання справа</translation>
+    <translation const="BTN_ALIGN_JUSTIFY" component="test_editor">Вирiвнювання по ширинi</translation>
+    <translation const="BTN_EXT_FLASH" component="test_editor">Вставити embed код</translation>
+    <translation const="BTN_ACTIVATE" component="test_editor">Активувати</translation>
+    <translation const="TXT_CLEAR">очистить</translation>
+    <translation const="BTN_QUICK_UPLOAD">Швидке завантаження</translation>
+  </translations>
+  <javascript>
+    <library path="ckeditor/ckeditor"/>
+    <library path="TabPane"/>
+    <library path="Toolbar"/>
+    <library path="Validator"/>
+    <library path="ModalBox"/>
+    <library path="AcplField"/>
+    <library path="Cookie"/>
+    <library path="Form"/>
+  </javascript>
+</document>
