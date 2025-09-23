@@ -88,6 +88,20 @@ class Grid {
         }
     }
 
+    updateTabulatorIndex() {
+        if (!this.tabulator || !this.keyFieldName) {
+            return;
+        }
+
+        if (typeof this.tabulator.setIndex === 'function') {
+            this.tabulator.setIndex(this.keyFieldName);
+        } else if (typeof this.tabulator.setOption === 'function') {
+            this.tabulator.setOption('index', this.keyFieldName);
+        } else if (this.tabulator.options && typeof this.tabulator.options === 'object') {
+            this.tabulator.options.index = this.keyFieldName;
+        }
+    }
+
     setMetadata(metadata = {}) {
         this.metadata = metadata || {};
         this.keyFieldName = null;
@@ -100,9 +114,7 @@ class Grid {
         });
 
         if (this.tabulator) {
-            if (this.keyFieldName) {
-                this.tabulator.setIndex(this.keyFieldName);
-            }
+            this.updateTabulatorIndex();
             this.tabulator.setColumns(this.buildColumns());
         }
     }
@@ -310,9 +322,7 @@ class Grid {
             return;
         }
 
-        if (this.keyFieldName) {
-            this.tabulator.setIndex(this.keyFieldName);
-        }
+        this.updateTabulatorIndex();
 
         this.tabulator.setColumns(this.buildColumns());
         this.tabulator.setData(this.data);
