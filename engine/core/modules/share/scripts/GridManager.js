@@ -18,6 +18,8 @@ class Grid {
             onSelect: null,
             onSortChange: null,
             onDoubleClick: null,
+            selectable: 1,
+            theme: 'bootstrap5',
             placeholder: (Energine.translations && Energine.translations.get('TXT_NO_RECORDS')) || ''
         }, options);
 
@@ -54,6 +56,10 @@ class Grid {
 
         if (typeof this.options.onDoubleClick === 'function') {
             this.on('doubleClick', this.options.onDoubleClick);
+        }
+
+        if (typeof this.options.onSortChange === 'function') {
+            this.on('sortChange', this.options.onSortChange);
         }
     }
 
@@ -954,21 +960,43 @@ class Grid {
         }
 
         this.tabulatorReady = false;
+
+        const selectableOption = (typeof this.options.selectable !== 'undefined')
+            ? this.options.selectable
+            : 1;
+        const themeOption = this.options.theme || 'bootstrap5';
+        const placeholderOption = (typeof this.options.placeholder !== 'undefined')
+            ? this.options.placeholder
+            : '';
+        const extractRowData = (row) => {
+            if (row && typeof row.getData === 'function') {
+                try {
+                    return row.getData();
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        };
+
         this.tabulator = new Tabulator(this.container, {
             data: this.data,
             columns: this.buildColumns(),
             layout: 'fitColumns',
-            selectable: 1,
+            selectable: selectableOption,
             index: this.keyFieldName || undefined,
             sortMode: 'local',
-            placeholder: this.options.placeholder,
-            theme: 'bootstrap5',
+            placeholder: placeholderOption,
+            theme: themeOption,
             rowClick: (_, row) => {
                 this.selectRow(row);
+                this.selectedRow = row;
+                this.fireEvent('rowClick', row, extractRowData(row));
             },
             rowDblClick: (_, row) => {
                 this.selectRow(row);
-                this.fireEvent('doubleClick', row);
+                this.selectedRow = row;
+                this.fireEvent('doubleClick', row, extractRowData(row));
             }
         });
 
@@ -983,10 +1011,10 @@ class Grid {
         });
 
         this.tabulator.on('rowSelectionChanged', (data, rows) => {
-            this.selectedRow = rows && rows[0] ? rows[0] : null;
-            if (this.selectedRow) {
-                this.fireEvent('select', this.selectedRow, data[0]);
-            }
+            const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+            this.selectedRow = row || null;
+            const record = Array.isArray(data) && data.length ? data[0] : extractRowData(row);
+            this.fireEvent('select', this.selectedRow, record);
         });
 
         this.tabulator.on('sortChanged', (sorters) => {
@@ -1011,9 +1039,7 @@ class Grid {
             this.silentSortUpdate = false;
 
             if (!suppressed && (this.sort.field !== previous.field || this.sort.order !== previous.order)) {
-                if (typeof this.options.onSortChange === 'function') {
-                    this.options.onSortChange();
-                }
+                this.fireEvent('sortChange', this.sort, previous, sorter, sorters);
             }
         });
     }
@@ -1114,6 +1140,7 @@ class Grid {
             this.tabulator.deselectRow(selected);
         }
         row.select();
+        this.selectedRow = row;
     }
 
     selectItem(row) {
