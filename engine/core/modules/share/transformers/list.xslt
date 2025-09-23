@@ -146,146 +146,54 @@
             <div class="tab-content" data-role="tab-content">
                 <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1">
                     <div class="grid p-4 bg-body border rounded-3 shadow-sm" data-role="grid">
-                        <xsl:if test="ancestor::component/filter">
+                        <xsl:if test="ancestor::component/filter or ancestor::component[@sample='FileRepository']">
                             <div class="grid-toolbar bg-body-tertiary border rounded-3 p-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-4" data-role="grid-toolbar">
-                                <div class="grid-filter d-flex flex-column flex-lg-row align-items-lg-center gap-3 w-100" data-role="grid-filter">
-                                    <span class="fw-semibold">
-                                        <xsl:value-of select="ancestor::component/filter/@title"/>
-                                        <xsl:text>:&#160;</xsl:text>
-                                    </span>
-                                    <select name="fieldName" class="form-select form-select-sm" data-role="filter-field">
-                                        <xsl:for-each select="ancestor::component/filter/field">
-                                            <option value="[{@tableName}][{@name}]" type="{@type}"><xsl:value-of select="@title"/></option>
-                                        </xsl:for-each>
-                                    </select>
-                                    <select name="condition" class="form-select form-select-sm" data-role="filter-condition">
-                                        <xsl:for-each select="ancestor::component/filter/operators/operator">
-                                            <option value="{@name}">
-                                                <xsl:attribute name="data-types">
-                                                    <xsl:for-each select="types/type">
-                                                        <xsl:value-of select="."/>
-                                                        <xsl:if test="position()!=last()">|</xsl:if>
-                                                    </xsl:for-each>
-                                                </xsl:attribute>
-                                                <xsl:value-of select="@title"/>
-                                            </option>
-                                        </xsl:for-each>
-                                    </select>
-                                    <div class="filter-query flex-grow-1" data-role="filter-query">
-                                        <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
+                                <xsl:if test="ancestor::component/filter">
+                                    <div class="grid-filter d-flex flex-column flex-lg-row align-items-lg-center gap-3 w-100" data-role="grid-filter">
+                                        <span class="fw-semibold">
+                                            <xsl:value-of select="ancestor::component/filter/@title"/>
+                                            <xsl:text>:&#160;</xsl:text>
+                                        </span>
+                                        <select name="fieldName" class="form-select form-select-sm" data-role="filter-field">
+                                            <xsl:for-each select="ancestor::component/filter/field">
+                                                <option value="[{@tableName}][{@name}]" type="{@type}"><xsl:value-of select="@title"/></option>
+                                            </xsl:for-each>
+                                        </select>
+                                        <select name="condition" class="form-select form-select-sm" data-role="filter-condition">
+                                            <xsl:for-each select="ancestor::component/filter/operators/operator">
+                                                <option value="{@name}">
+                                                    <xsl:attribute name="data-types">
+                                                        <xsl:for-each select="types/type">
+                                                            <xsl:value-of select="."/>
+                                                            <xsl:if test="position()!=last()">|</xsl:if>
+                                                        </xsl:for-each>
+                                                    </xsl:attribute>
+                                                    <xsl:value-of select="@title"/>
+                                                </option>
+                                            </xsl:for-each>
+                                        </select>
+                                        <div class="filter-query flex-grow-1" data-role="filter-query">
+                                            <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
+                                        </div>
+                                        <div class="filter-query flex-grow-1 d-none" data-role="filter-query">
+                                            <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
+                                        </div>
+                                        <div class="d-flex flex-wrap align-items-center gap-2 ms-lg-auto">
+                                            <button type="button" class="btn btn-primary btn-sm" data-action="apply-filter">
+                                                <xsl:value-of select="ancestor::component/filter/@apply"/>
+                                            </button>
+                                            <button type="button" class="btn btn-link btn-sm" data-action="reset-filter">
+                                                <xsl:value-of select="ancestor::component/filter/@reset"/>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="filter-query flex-grow-1 d-none" data-role="filter-query">
-                                        <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
-                                    </div>
-                                    <div class="d-flex flex-wrap align-items-center gap-2 ms-lg-auto">
-                                        <button type="button" class="btn btn-primary btn-sm" data-action="apply-filter">
-                                            <xsl:value-of select="ancestor::component/filter/@apply"/>
-                                        </button>
-                                        <button type="button" class="btn btn-link btn-sm" data-action="reset-filter">
-                                            <xsl:value-of select="ancestor::component/filter/@reset"/>
-                                        </button>
-                                    </div>
-                                </div>
+                                </xsl:if>
                                 <xsl:if test="ancestor::component[@sample='FileRepository']">
                                     <div class="grid-breadcrumbs flex-grow-1 alert alert-secondary mb-0 py-2 px-3" id="breadcrumbs"/>
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head border border-bottom-0 rounded-top bg-body-tertiary" data-grid-section="head">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover table-sm mb-0" data-role="grid-table" data-grid-part="head">
-                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
-                                    </xsl:if>
-                                    <xsl:choose>
-                                        <xsl:when test="ancestor::component[@sample='FileRepository']">
-                                            <col id="col_11" style="width:12%"/>
-                                            <col id="col_12" style="width:30%"/>
-                                            <col id="col_13" style="width:28%"/>
-                                            <col id="col_14" style="width:30%"/>
-                                        </xsl:when>
-                                        <xsl:otherwise>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <col id="col_1{position()}"/>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <col id="col_1{position()}"/>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </xsl:otherwise>
-                                    </xsl:choose>
-                                    <thead>
-                                        <tr>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <th name="{@name}"><xsl:value-of select="@title"/></th>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <th name="{@name}"><xsl:value-of select="@title"/></th>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="grid-body border border-top-0 rounded-bottom bg-body" data-grid-section="body">
-                            <div class="table-responsive" data-grid-section="body-inner">
-                                <table class="table table-striped table-hover table-sm mb-0" data-role="grid-table" data-grid-part="body">
-                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
-                                    </xsl:if>
-                                    <xsl:choose>
-                                        <xsl:when test="ancestor::component[@sample='FileRepository']">
-                                            <col id="col_11a" style="width:12%"/>
-                                            <col id="col_12a" style="width:30%"/>
-                                            <col id="col_13a" style="width:28%"/>
-                                            <col id="col_14a" style="width:30%"/>
-                                        </xsl:when>
-                                        <xsl:otherwise>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <col id="col_{position()}a"/>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <col id="col_{position()}a"/>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </xsl:otherwise>
-                                    </xsl:choose>
-                                    <thead style="visibility: hidden;">
-                                        <tr>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <th id="col_{position()}"><xsl:value-of select="@title"/></th>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <th id="col_{position()}"><xsl:value-of select="@title"/></th>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </tr>
-                                    </thead>
-                                    <tbody/>
-                                </table>
-                            </div>
-                        </div>
+                        <div class="grid-table-container bg-body" data-role="grid-table"></div>
                     </div>
                 </div>
             </div>

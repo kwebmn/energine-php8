@@ -73,3 +73,8 @@ Any new helpers (e.g., `TabulatorAdapter`) stay private to keep the public API s
 4. Tabulator renders rows; `rowSelectionChanged` keeps selection state, and `rowDblClick` triggers legacy double-click actions.
 
 This architecture keeps the external behaviour of GridManager intact while delegating rendering, virtual DOM, and remote pagination to Tabulator.
+
+## Related resources
+- Developer onboarding & extension guide: `docs/gridmanager-tabulator-developer-guide.md`
+- Manual QA checklist: `docs/gridmanager-tabulator-testing.md`
+- Session reports and decision log: `docs/gridmanager-tabulator-test-report.md`
