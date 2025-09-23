@@ -23,6 +23,9 @@ class Grid {
 
         this.data = [];
         this.metadata = {};
+        this.metadataRaw = {};
+        this.availableTypes = new Set();
+        this.reportedUnknownTypes = new Set();
         this.keyFieldName = null;
         this.sort = { field: null, order: null };
         this.events = {};
@@ -116,6 +119,550 @@ class Grid {
         }
     }
 
+    normalizeMetadataStructure(metadata) {
+        const result = {
+            fields: {},
+            keyFieldName: null,
+            raw: metadata || {},
+        };
+
+        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+            return result;
+        }
+
+        let fields = metadata;
+        let possibleKey = null;
+
+        if (metadata.fields && typeof metadata.fields === 'object' && !Array.isArray(metadata.fields)) {
+            fields = metadata.fields;
+            if (typeof metadata.key === 'string' && metadata.key) {
+                possibleKey = metadata.key;
+            } else if (typeof metadata.primary === 'string' && metadata.primary) {
+                possibleKey = metadata.primary;
+            } else if (Array.isArray(metadata.keys) && metadata.keys.length) {
+                possibleKey = metadata.keys[0];
+            }
+        }
+
+        if (typeof metadata.key === 'string' && metadata.key) {
+            possibleKey = metadata.key;
+        } else if (typeof metadata.primaryKey === 'string' && metadata.primaryKey) {
+            possibleKey = metadata.primaryKey;
+        }
+
+        if ((!fields || typeof fields !== 'object' || Array.isArray(fields))
+            && metadata.columns && typeof metadata.columns === 'object' && !Array.isArray(metadata.columns)
+        ) {
+            fields = metadata.columns;
+        }
+
+        if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
+            result.fields = fields;
+        }
+
+        result.keyFieldName = this.extractKeyFieldName(result.fields, possibleKey);
+        return result;
+    }
+
+    extractKeyFieldName(fields, fallback) {
+        if (!fields || typeof fields !== 'object') {
+            return fallback || null;
+        }
+
+        if (fallback && Object.prototype.hasOwnProperty.call(fields, fallback)) {
+            return fallback;
+        }
+
+        let detected = null;
+        Object.keys(fields).some((fieldName) => {
+            const info = fields[fieldName];
+            if (!info || typeof info !== 'object') {
+                return false;
+            }
+
+            if (info.key === true
+                || info.key === 1
+                || info.key === '1'
+                || (typeof info.key === 'string' && info.key.toLowerCase() === 'true')
+                || info.primary === true
+                || info.primary === 1
+                || info.isKey === true
+            ) {
+                detected = fieldName;
+                return true;
+            }
+            return false;
+        });
+
+        return detected || fallback || null;
+    }
+
+    normalizeFieldType(type) {
+        if (type === undefined || type === null) {
+            return 'string';
+        }
+
+        const raw = String(type).toLowerCase();
+        const aliasMap = {
+            int: 'integer',
+            bigint: 'integer',
+            smallint: 'integer',
+            tinyint: 'integer',
+            decimal: 'float',
+            double: 'float',
+            real: 'float',
+            numeric: 'float',
+            number: 'float',
+            bool: 'boolean',
+            checkbox: 'boolean',
+            html: 'htmlblock',
+            textblock: 'htmlblock',
+            textarea: 'text',
+            datetimepicker: 'datetime',
+            datepicker: 'date',
+            timepicker: 'time',
+            image: 'file',
+            picture: 'file',
+        };
+
+        return aliasMap[raw] || raw;
+    }
+
+    stringifyValue(value, { separator = ', ', allowHtml = false } = {}) {
+        if (value === undefined || value === null) {
+            return '';
+        }
+
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value);
+        }
+
+        if (value instanceof Date) {
+            return value.toISOString();
+        }
+
+        if (Array.isArray(value)) {
+            return value
+                .map((item) => this.stringifyValue(item, { separator, allowHtml }))
+                .filter((part) => part !== '')
+                .join(separator);
+        }
+
+        if (typeof value === 'object') {
+            if (allowHtml && typeof value.html === 'string' && value.html.trim() !== '') {
+                return value.html;
+            }
+
+            const priorityKeys = ['display', 'label', 'title', 'name', 'caption', 'text'];
+            for (const key of priorityKeys) {
+                if (Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined && value[key] !== null) {
+                    const result = this.stringifyValue(value[key], { separator, allowHtml });
+                    if (result !== '') {
+                        return result;
+                    }
+                }
+            }
+
+            if (Object.prototype.hasOwnProperty.call(value, 'value') && value.value !== undefined && value.value !== null) {
+                const prefix = this.stringifyValue(value.prefix, { separator, allowHtml });
+                const core = this.stringifyValue(value.value, { separator, allowHtml });
+                const suffixes = [];
+                if (value.unit !== undefined && value.unit !== null) {
+                    suffixes.push(this.stringifyValue(value.unit, { separator, allowHtml }));
+                }
+                if (value.suffix !== undefined && value.suffix !== null) {
+                    suffixes.push(this.stringifyValue(value.suffix, { separator, allowHtml }));
+                }
+
+                const parts = [];
+                if (prefix) parts.push(prefix);
+                if (core) parts.push(core);
+                if (suffixes.length) {
+                    parts.push(suffixes.filter(Boolean).join(' '));
+                }
+
+                const assembled = parts.join(' ').replace(/\s+/g, ' ').trim();
+                if (assembled) {
+                    return assembled;
+                }
+            }
+
+            const collected = Object.values(value)
+                .map((item) => this.stringifyValue(item, { separator, allowHtml }))
+                .filter((part) => part !== '');
+            return collected.join(separator);
+        }
+
+        return '';
+    }
+
+    createTextElement(text, { preserveLineBreaks = false, cssClass = [] } = {}) {
+        const span = document.createElement('span');
+        span.textContent = text ?? '';
+        if (preserveLineBreaks) {
+            span.style.whiteSpace = 'pre-line';
+        }
+
+        const classes = Array.isArray(cssClass) ? cssClass : [cssClass];
+        classes.filter(Boolean).forEach((cls) => span.classList.add(cls));
+        return span;
+    }
+
+    createHTMLContainer(html) {
+        if (!html) {
+            return '';
+        }
+        const container = document.createElement('div');
+        container.classList.add('grid-html-cell');
+        container.innerHTML = html;
+        return container;
+    }
+
+    normalizeBoolean(value) {
+        if (value === true || value === false) {
+            return value;
+        }
+
+        if (typeof value === 'number') {
+            return value === 1;
+        }
+
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            return ['1', 'true', 'y', 'yes', 'on'].includes(normalized);
+        }
+
+        if (typeof value === 'object' && value !== null) {
+            if (Object.prototype.hasOwnProperty.call(value, 'value')) {
+                return this.normalizeBoolean(value.value);
+            }
+            if (Object.prototype.hasOwnProperty.call(value, 'checked')) {
+                return this.normalizeBoolean(value.checked);
+            }
+        }
+
+        return Boolean(value);
+    }
+
+    createBooleanElement(value) {
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('form-check', 'm-0', 'd-inline-flex', 'justify-content-center');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.classList.add('form-check-input');
+        checkbox.disabled = true;
+        checkbox.checked = this.normalizeBoolean(value);
+        wrapper.appendChild(checkbox);
+        return wrapper;
+    }
+
+    createTextFormatter(options = {}) {
+        return (cell) => this.createTextElement(this.stringifyValue(cell.getValue()), options);
+    }
+
+    createMultilineTextFormatter() {
+        return (cell) => this.createTextElement(this.stringifyValue(cell.getValue()), { preserveLineBreaks: true, cssClass: ['text-break'] });
+    }
+
+    createHTMLFormatter() {
+        return (cell) => {
+            const raw = cell.getValue();
+            const html = this.stringifyValue(raw, { allowHtml: true });
+            if (!html) {
+                return '';
+            }
+
+            if (this.containsHTML(html)) {
+                return this.createHTMLContainer(html);
+            }
+
+            return this.createTextElement(html, { preserveLineBreaks: true, cssClass: ['text-break'] });
+        };
+    }
+
+    createValueFormatter() {
+        return (cell) => {
+            const raw = cell.getValue();
+            const result = this.stringifyValue(raw, { allowHtml: true });
+            if (!result) {
+                return '';
+            }
+
+            if (this.containsHTML(result)) {
+                return this.createHTMLContainer(result);
+            }
+
+            return this.createTextElement(result);
+        };
+    }
+
+    createNumericFormatter({ decimals } = {}) {
+        return (cell) => {
+            const raw = cell.getValue();
+            if (raw === null || raw === undefined || raw === '') {
+                return '';
+            }
+
+            const textValue = this.stringifyValue(raw);
+            if (textValue === '') {
+                return '';
+            }
+
+            let numeric = null;
+            if (typeof raw === 'number') {
+                numeric = raw;
+            } else {
+                const normalized = textValue.replace(/\s+/g, '').replace(',', '.');
+                const parsed = Number(normalized);
+                if (Number.isFinite(parsed)) {
+                    numeric = parsed;
+                }
+            }
+
+            if (numeric === null) {
+                return this.createTextElement(textValue);
+            }
+
+            const intlOptions = { useGrouping: true };
+            if (typeof decimals === 'number' && decimals >= 0) {
+                intlOptions.minimumFractionDigits = decimals;
+                intlOptions.maximumFractionDigits = decimals;
+            } else if (Number.isInteger(numeric)) {
+                intlOptions.maximumFractionDigits = 0;
+            } else {
+                intlOptions.minimumFractionDigits = 0;
+                intlOptions.maximumFractionDigits = 4;
+            }
+
+            let formatted;
+            try {
+                formatted = numeric.toLocaleString(undefined, intlOptions);
+            } catch (err) {
+                formatted = numeric.toString();
+            }
+
+            return this.createTextElement(formatted);
+        };
+    }
+
+    createEmailFormatter() {
+        return (cell) => {
+            const value = this.stringifyValue(cell.getValue());
+            if (!value) {
+                return '';
+            }
+            const link = document.createElement('a');
+            link.href = `mailto:${value}`;
+            link.textContent = value;
+            link.rel = 'noopener';
+            return link;
+        };
+    }
+
+    createPhoneFormatter() {
+        return (cell) => {
+            const value = this.stringifyValue(cell.getValue());
+            if (!value) {
+                return '';
+            }
+            const normalized = value.replace(/[^0-9+#*]/g, '');
+            const link = document.createElement('a');
+            link.href = `tel:${normalized}`;
+            link.textContent = value;
+            link.rel = 'noopener';
+            return link;
+        };
+    }
+
+    createCodeFormatter() {
+        return (cell) => {
+            const value = this.stringifyValue(cell.getValue());
+            if (!value) {
+                return '';
+            }
+            const pre = document.createElement('pre');
+            pre.classList.add('grid-code-cell', 'mb-0');
+            pre.textContent = value;
+            return pre;
+        };
+    }
+
+    createFileFormatter(fieldMeta = {}) {
+        return (cell) => {
+            const raw = cell.getValue();
+            const info = this.extractFileInfo(raw);
+            if (!info) {
+                return '';
+            }
+
+            if (info.isImage) {
+                const img = document.createElement('img');
+                img.src = this.buildImagePreviewUrl(info.path, fieldMeta);
+                img.classList.add('img-thumbnail', 'rounded');
+
+                const width = parseInt(fieldMeta.thumbWidth || fieldMeta.previewWidth || 40, 10);
+                const height = parseInt(fieldMeta.thumbHeight || fieldMeta.previewHeight || 40, 10);
+                if (!Number.isNaN(width)) {
+                    img.width = width;
+                }
+                if (!Number.isNaN(height)) {
+                    img.height = height;
+                }
+                img.alt = fieldMeta.title ? this.stringifyValue(fieldMeta.title) : (info.label || '');
+
+                const linkUrl = this.buildFileUrl(info.path);
+                if (linkUrl) {
+                    const link = document.createElement('a');
+                    link.href = linkUrl;
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.appendChild(img);
+                    return link;
+                }
+                return img;
+            }
+
+            const text = info.label || this.stringifyValue(raw) || this.extractFileName(info.path);
+            const url = this.buildFileUrl(info.path);
+            if (!url) {
+                return this.createTextElement(text);
+            }
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = text || url;
+            link.classList.add('text-truncate', 'd-inline-block');
+            link.style.maxWidth = '100%';
+            return link;
+        };
+    }
+
+    extractFileInfo(value) {
+        if (value === undefined || value === null) {
+            return null;
+        }
+
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+            return {
+                path: trimmed,
+                label: this.extractFileName(trimmed),
+                isImage: this.isImagePath(trimmed),
+            };
+        }
+
+        if (typeof value === 'object') {
+            const fileKeys = ['url', 'href', 'path', 'src', 'file', 'value'];
+            for (const key of fileKeys) {
+                if (typeof value[key] === 'string' && value[key].trim()) {
+                    const path = value[key].trim();
+                    const labelKeys = ['label', 'name', 'title', 'caption', 'text', 'filename', 'fileName'];
+                    let label = '';
+                    for (const labelKey of labelKeys) {
+                        if (value[labelKey] !== undefined && value[labelKey] !== null) {
+                            label = this.stringifyValue(value[labelKey]);
+                            break;
+                        }
+                    }
+
+                    if (!label) {
+                        label = this.extractFileName(path);
+                    }
+
+                    const isImage = key === 'src' || this.isImagePath(path);
+                    return { path, label, isImage };
+                }
+            }
+        }
+
+        return null;
+    }
+
+    extractFileName(path) {
+        if (typeof path !== 'string') {
+            return '';
+        }
+        const trimmed = path.trim();
+        if (!trimmed) {
+            return '';
+        }
+        const parts = trimmed.split(/[\\/]/);
+        return parts.pop() || trimmed;
+    }
+
+    isImagePath(path) {
+        if (typeof path !== 'string') {
+            return false;
+        }
+        return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(path.trim());
+    }
+
+    buildFileUrl(path) {
+        if (!path) {
+            return '';
+        }
+
+        if (/^(?:[a-z]+:)?\/\//i.test(path)) {
+            return path;
+        }
+
+        if (path.startsWith('/')) {
+            return path;
+        }
+
+        if (window.Energine) {
+            const base = (Energine.root || Energine.base || '').replace(/\/*$/, '/');
+            if (base) {
+                return base + path.replace(/^\/+/, '');
+            }
+        }
+
+        return path;
+    }
+
+    buildImagePreviewUrl(path, fieldMeta = {}) {
+        if (!path) {
+            return '';
+        }
+
+        const resizer = window.Energine && typeof Energine.resizer === 'string' ? Energine.resizer : '';
+        if (!resizer) {
+            return this.buildFileUrl(path);
+        }
+
+        const preset = fieldMeta.previewPreset || fieldMeta.resizerPreset || 'w40-h40';
+        const base = resizer.replace(/\/*$/, '/');
+        const normalizedPreset = String(preset).replace(/^\/+|\/+$/g, '');
+        const normalizedPath = String(path).replace(/^\/+/, '');
+        return `${base}${normalizedPreset}/${normalizedPath}`;
+    }
+
+    containsHTML(text) {
+        if (typeof text !== 'string') {
+            return false;
+        }
+        return /<[a-z][\s\S]*>/i.test(text);
+    }
+
+    trackUnknownType(type) {
+        const normalized = this.normalizeFieldType(type || '');
+        if (!this.reportedUnknownTypes.has(normalized)) {
+            this.reportedUnknownTypes.add(normalized);
+            if (window.console && typeof console.warn === 'function') {
+                console.warn(`Grid: unsupported field type "${type}". Falling back to text formatter.`);
+            }
+        }
+    }
+
     isTabulatorReady() {
         return !!(this.tabulator && this.tabulatorReady);
     }
@@ -160,15 +707,19 @@ class Grid {
     }
 
     setMetadata(metadata = {}) {
-        this.metadata = metadata || {};
-        this.keyFieldName = null;
+        const normalized = this.normalizeMetadataStructure(metadata);
+        this.metadataRaw = normalized.raw || {};
+        this.metadata = normalized.fields || {};
+        this.keyFieldName = normalized.keyFieldName || null;
         this.columnsDirty = true;
 
-        Object.keys(this.metadata).forEach(fieldName => {
-            const fieldMeta = this.metadata[fieldName];
-            if (fieldMeta && fieldMeta.key) {
-                this.keyFieldName = fieldName;
+        this.availableTypes = new Set();
+        Object.values(this.metadata).forEach((fieldMeta) => {
+            if (!fieldMeta || typeof fieldMeta !== 'object') {
+                return;
             }
+            const type = this.normalizeFieldType(fieldMeta.type || 'string');
+            this.availableTypes.add(type);
         });
 
         if (this.tabulator) {
@@ -199,21 +750,46 @@ class Grid {
     }
 
     buildColumns() {
-        if (!this.metadata) {
+        if (!this.metadata || typeof this.metadata !== 'object') {
             return [];
         }
 
         const columns = [];
-        Object.keys(this.metadata).forEach(fieldName => {
+        Object.keys(this.metadata).forEach((fieldName) => {
             const fieldMeta = this.metadata[fieldName];
-            if (!fieldMeta || !fieldMeta.visible || fieldMeta.type === 'hidden') {
+            if (!fieldMeta || typeof fieldMeta !== 'object') {
+                return;
+            }
+
+            const type = this.normalizeFieldType(fieldMeta.type || 'text');
+
+            if (type === 'hidden') {
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(fieldMeta, 'visible') && !this.normalizeBoolean(fieldMeta.visible)) {
                 return;
             }
 
             const column = {
                 field: fieldName,
                 title: fieldMeta.title || fieldMeta.caption || fieldName,
-                tooltip: fieldMeta.hint || false
+                tooltip: fieldMeta.hint || false,
+            };
+
+            const appendCssClass = (cls) => {
+                if (!cls) {
+                    return;
+                }
+                const existing = column.cssClass ? column.cssClass.split(/\s+/).filter(Boolean) : [];
+                cls.split(/\s+/).filter(Boolean).forEach((item) => {
+                    if (!existing.includes(item)) {
+                        existing.push(item);
+                    }
+                });
+                if (existing.length) {
+                    column.cssClass = existing.join(' ');
+                }
             };
 
             if (Object.prototype.hasOwnProperty.call(fieldMeta, 'sort')) {
@@ -229,84 +805,141 @@ class Grid {
                 }
             }
 
+            if (fieldMeta.minWidth) {
+                const minWidth = parseInt(fieldMeta.minWidth, 10);
+                if (!Number.isNaN(minWidth)) {
+                    column.minWidth = minWidth;
+                }
+            }
+
+            if (fieldMeta.maxWidth) {
+                const maxWidth = parseInt(fieldMeta.maxWidth, 10);
+                if (!Number.isNaN(maxWidth)) {
+                    column.maxWidth = maxWidth;
+                }
+            }
+
+            if (fieldMeta.cssClass) {
+                appendCssClass(fieldMeta.cssClass);
+            }
+
+            if (fieldMeta.class) {
+                appendCssClass(fieldMeta.class);
+            }
+
             if (fieldMeta.align) {
                 column.hozAlign = fieldMeta.align;
             }
 
-            const type = fieldMeta.type || 'text';
             switch (type) {
                 case 'boolean': {
                     column.hozAlign = column.hozAlign || 'center';
-                    column.formatter = (cell) => {
-                        const value = cell.getValue();
-                        const normalized = (value !== undefined && value !== null)
-                            ? String(value).toLowerCase()
-                            : '';
-                        const checked = value === true
-                            || value === 1
-                            || normalized === '1'
-                            || normalized === 'true'
-                            || normalized === 'y';
-                        const formCheck = document.createElement('div');
-                        formCheck.classList.add('form-check', 'm-0', 'd-inline-flex', 'justify-content-center');
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.classList.add('form-check-input');
-                        checkbox.disabled = true;
-                        checkbox.checked = checked;
-                        formCheck.appendChild(checkbox);
-                        return formCheck;
-                    };
+                    column.formatter = (cell) => this.createBooleanElement(cell.getValue());
                     break;
                 }
-                case 'value': {
-                    column.formatter = (cell) => {
-                        const value = cell.getValue();
-                        if (value && typeof value === 'object' && value.value !== undefined) {
-                            return value.value;
-                        }
-                        return value ?? '';
-                    };
+
+                case 'integer':
+                case 'float':
+                case 'number': {
+                    column.hozAlign = column.hozAlign || 'right';
+                    const decimals = type === 'integer' ? 0 : undefined;
+                    column.formatter = this.createNumericFormatter({ decimals });
                     break;
                 }
-                case 'textbox': {
-                    column.formatter = (cell) => {
-                        const value = cell.getValue();
-                        if (value && typeof value === 'object') {
-                            return Object.values(value).filter(Boolean).join(', ');
-                        }
-                        return value ?? '';
-                    };
-                    break;
-                }
-                case 'file': {
+
+                case 'datetime':
+                case 'date':
+                case 'time': {
                     column.hozAlign = column.hozAlign || 'center';
+                    appendCssClass('text-nowrap');
+                    column.formatter = this.createTextFormatter();
+                    break;
+                }
+
+                case 'htmlblock': {
+                    appendCssClass('text-break');
+                    column.vertAlign = column.vertAlign || 'top';
+                    column.formatter = this.createHTMLFormatter();
+                    break;
+                }
+
+                case 'text':
+                case 'textbox':
+                case 'multi': {
+                    appendCssClass('text-break');
+                    column.vertAlign = column.vertAlign || 'top';
+                    column.formatter = this.createMultilineTextFormatter();
+                    break;
+                }
+
+                case 'value': {
+                    column.hozAlign = column.hozAlign || 'right';
+                    column.formatter = this.createValueFormatter();
+                    break;
+                }
+
+                case 'file':
+                case 'thumb':
+                case 'media':
+                case 'video': {
+                    column.hozAlign = column.hozAlign || 'center';
+                    column.formatter = this.createFileFormatter(fieldMeta);
+                    break;
+                }
+
+                case 'email': {
+                    column.formatter = this.createEmailFormatter();
+                    break;
+                }
+
+                case 'phone': {
+                    column.formatter = this.createPhoneFormatter();
+                    break;
+                }
+
+                case 'code': {
+                    column.vertAlign = column.vertAlign || 'top';
+                    appendCssClass('text-break');
+                    column.formatter = this.createCodeFormatter();
+                    break;
+                }
+
+                case 'password': {
                     column.formatter = (cell) => {
-                        const value = cell.getValue();
+                        const value = this.stringifyValue(cell.getValue());
                         if (!value) {
                             return '';
                         }
-                        const image = document.createElement('img');
-                        image.src = (window.Energine && Energine.resizer ? Energine.resizer : '') + 'w40-h40/' + value;
-                        image.width = 40;
-                        image.height = 40;
-                        image.classList.add('img-thumbnail', 'rounded');
-                        if (fieldMeta && fieldMeta.title) {
-                            image.alt = fieldMeta.title;
-                        }
-                        return image;
+                        const maskLength = Math.max(6, Math.min(12, value.length));
+                        return this.createTextElement('•'.repeat(maskLength));
                     };
                     break;
                 }
-                default: {
-                    column.formatter = (cell) => {
-                        const value = cell.getValue();
-                        if (value === undefined || value === null) {
-                            return '';
-                        }
-                        return String(value).trim();
-                    };
+
+                case 'info': {
+                    appendCssClass('text-break');
+                    column.vertAlign = column.vertAlign || 'top';
+                    column.formatter = this.createHTMLFormatter();
+                    break;
                 }
+
+                case 'select':
+                case 'string':
+                case 'custom':
+                case 'tab':
+                case 'smap': {
+                    column.formatter = this.createTextFormatter();
+                    break;
+                }
+
+                default: {
+                    this.trackUnknownType(type);
+                    column.formatter = this.createTextFormatter();
+                }
+            }
+
+            if (!column.formatter) {
+                column.formatter = this.createTextFormatter();
             }
 
             columns.push(column);
