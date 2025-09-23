@@ -7,40 +7,28 @@ const FILE_COOKIE_NAME = 'NRGNFRPID';
  * Расширяем Grid: popImage (заглушка для всплывающего превью) и кастомная отрисовка полей (iterateFields)
  */
 class GridWithPopImage extends Grid {
-    /**
-     * Показывает превью изображения (заглушка, реализация по желанию)
-     * @param {string} path
-     * @param {HTMLElement} tmplElement
-     */
     popImage(path, tmplElement) {
-        // Реализуй превью, если нужно
-        // Например, через модальное окно или всплывающее изображение
+        // Stub for compatibility; implement preview if needed.
     }
 
-    /**
-     * Кастомная отрисовка ячеек (перезапись для файлового репозитория)
-     * @param {string} fieldName
-     * @param {Object} record
-     * @param {HTMLElement} row
-     */
-    iterateFields(fieldName, record, row) {
-        if (!this.metadata[fieldName].visible || this.metadata[fieldName].type === 'hidden') return;
+    createColumnDefinition(fieldName, fieldMeta) {
+        const column = super.createColumnDefinition(fieldName, fieldMeta);
 
-        let cell = document.createElement('td');
-        row.appendChild(cell);
+        if (fieldName === 'upl_path') {
+            column.width = 100;
+            column.hozAlign = 'center';
+            column.resizable = false;
+            column.formatter = (cell) => {
+                const record = cell.getData();
+                const value = cell.getValue();
+                const container = document.createElement('div');
+                container.className = 'thumb_container d-flex justify-content-center';
+                const image = document.createElement('img');
+                image.width = 40;
+                image.height = 40;
+                image.className = 'img-thumbnail rounded';
 
-        switch (fieldName) {
-            case 'upl_path': {
-                cell.style.textAlign = 'center';
-                cell.style.verticalAlign = 'middle';
-
-                let image = document.createElement('img');
-                let dimensions = { width: 40, height: 40 };
-                let container = document.createElement('div');
-                container.className = 'thumb_container';
-                cell.appendChild(container);
-
-                switch (record['upl_internal_type']) {
+                switch (record.upl_internal_type) {
                     case 'folder':
                         image.src = 'images/icons/icon_folder.gif';
                         break;
@@ -52,9 +40,8 @@ class GridWithPopImage extends Grid {
                         break;
                     case 'video':
                     case 'image':
-                        // Только если есть полный путь!
-                        if (record[fieldName]) {
-                            image.src = (window.Energine.resizer || '') + 'w60-h45/' + record[fieldName];
+                        if (value) {
+                            image.src = ((window.Energine && window.Energine.resizer) || '') + 'w60-h45/' + value;
                         } else {
                             image.src = 'images/icons/icon_undefined.gif';
                         }
@@ -62,107 +49,108 @@ class GridWithPopImage extends Grid {
                         image.style.border = '1px solid transparent';
                         image.onerror = () => {
                             image.src = 'images/icons/icon_error_image.gif';
-                            container.onmouseenter = null;
-                            container.onmouseleave = null;
+                            image.onerror = null;
                         };
-                        // ... далее твой код ...
                         break;
                     default:
                         image.src = 'images/icons/icon_undefined.gif';
-                        break;
                 }
-                Object.assign(image, dimensions);
+
                 container.appendChild(image);
-                break;
-            }
-
-            case 'upl_publication_date':
-                cell.innerHTML = record[fieldName] ? record[fieldName].toString().trim() : '';
-                break;
-
-            case 'upl_properties': {
-                cell.classList.add('properties');
-                let propsTable = document.createElement('tbody');
-                let table = document.createElement('table');
-                table.appendChild(propsTable);
-                cell.appendChild(table);
-
-                if (!/folder|repo/.test(record['upl_internal_type'])) {
-                    if (!record['upl_is_ready']) {
-                        let tr = document.createElement('tr');
-                        tr.innerHTML = `<td>${this.metadata['upl_is_ready'].title} :</td>
-                                        <td>${Energine.translations['TXT_NOT_READY']}</td>`;
-                        propsTable.appendChild(tr);
-                    }
-                    if (record['upl_mime_type']) {
-                        let video_types = [];
-                        if (record['upl_is_mp4'] === '1') video_types.push('mp4');
-                        if (record['upl_is_webm'] === '1') video_types.push('webm');
-                        if (record['upl_is_flv'] === '1') video_types.push('flv');
-
-                        let tr = document.createElement('tr');
-                        tr.innerHTML = `<td>${this.metadata['upl_mime_type'].title} :</td>
-                                        <td>${video_types.length ? video_types.join(', ') : record['upl_mime_type']}</td>`;
-                        propsTable.appendChild(tr);
-                    }
-                    switch (record['upl_internal_type']) {
-                        case 'video':
-                            if (record['upl_duration']) {
-                                let tr = document.createElement('tr');
-                                tr.innerHTML = `<td>${this.metadata['upl_duration'].title} :</td>
-                                                <td>${record['upl_duration']}</td>`;
-                                propsTable.appendChild(tr);
-                            }
-                            break;
-                        case 'image':
-                            if (record['upl_width']) {
-                                let tr = document.createElement('tr');
-                                tr.innerHTML = `<td>${this.metadata['upl_width'].title} :</td>
-                                                <td>${record['upl_width']}</td>`;
-                                propsTable.appendChild(tr);
-                            }
-                            if (record['upl_height']) {
-                                let tr = document.createElement('tr');
-                                tr.innerHTML = `<td>${this.metadata['upl_height'].title} :</td>
-                                                <td>${record['upl_height']}</td>`;
-                                propsTable.appendChild(tr);
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                break;
-            }
-
-            case 'upl_title':
-                let title = record[fieldName] ? record[fieldName].toString().trim() : '';
-                if (!/folder|repo/.test(record['upl_internal_type'])) {
-                    cell.innerHTML = `<a target="_blank" href="${Energine.media + record['upl_path']}">${title}</a>`;
-                } else {
-                    cell.textContent = title;
-                }
-                break;
-
-            default:
-                // Можно добавить generic отображение
-                break;
+                return container;
+            };
+            return column;
         }
+
+        if (fieldName === 'upl_properties') {
+            column.formatter = (cell) => this.renderProperties(cell.getData());
+            return column;
+        }
+
+        if (fieldName === 'upl_title') {
+            column.formatter = (cell) => {
+                const record = cell.getData();
+                const title = cell.getValue() ? String(cell.getValue()).trim() : '';
+                if (title && !/folder|repo/.test(record.upl_internal_type || '')) {
+                    const link = document.createElement('a');
+                    link.target = '_blank';
+                    link.href = ((window.Energine && window.Energine.media) || '') + record.upl_path;
+                    link.textContent = title;
+                    return link;
+                }
+                return title;
+            };
+            return column;
+        }
+
+        return column;
+    }
+
+    renderProperties(record) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'properties';
+        const table = document.createElement('table');
+        const tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+
+        if (!record || /folder|repo/.test(record.upl_internal_type || '')) {
+            return wrapper;
+        }
+
+        const addRow = (titleKey, value) => {
+            const meta = this.metadata[titleKey] || {};
+            const title = meta.title || titleKey;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${title} :</td><td>${value}</td>`;
+            tbody.appendChild(tr);
+        };
+
+        if (!record.upl_is_ready) {
+            const notReady = (window.Energine && window.Energine.translations && window.Energine.translations['TXT_NOT_READY'])
+                || 'Not ready';
+            addRow('upl_is_ready', notReady);
+        }
+
+        if (record.upl_mime_type) {
+            const videoTypes = [];
+            if (record.upl_is_mp4 === '1') videoTypes.push('mp4');
+            if (record.upl_is_webm === '1') videoTypes.push('webm');
+            if (record.upl_is_flv === '1') videoTypes.push('flv');
+            const value = videoTypes.length ? videoTypes.join(', ') : record.upl_mime_type;
+            addRow('upl_mime_type', value);
+        }
+
+        if (record.upl_internal_type === 'video' && record.upl_duration) {
+            addRow('upl_duration', record.upl_duration);
+        }
+
+        if (record.upl_internal_type === 'image') {
+            if (record.upl_width) {
+                addRow('upl_width', record.upl_width);
+            }
+            if (record.upl_height) {
+                addRow('upl_height', record.upl_height);
+            }
+        }
+
+        return wrapper;
     }
 }
 
-/**
- * Класс FileRepository
- * @extends GridManager
- */
 class FileRepository extends GridManager {
-    constructor(element) {
-        super(element);
-        this.grid = new GridWithPopImage(this.element.querySelector('[data-role="grid"]'), {
+    createGrid(element) {
+        return new GridWithPopImage(element, {
             onSelect: this.onSelect.bind(this),
             onSortChange: this.onSortChange.bind(this),
-            onDoubleClick: this.onDoubleClick.bind(this)
+            onDoubleClick: this.onDoubleClick.bind(this),
+            onDataLoaded: this.processServerResponse.bind(this),
+            onDataError: this.processServerError.bind(this),
         });
+    }
+
+    constructor(element) {
+        super(element);
         // Путь хлебных крошек
         this.pathBreadCrumbs = new PathList(this.element.querySelector('#breadcrumbs'));
         this.currentPID = '';
@@ -275,37 +263,27 @@ class FileRepository extends GridManager {
         });
     }
 
-    processServerResponse(result) {
-        this.grid.headOff.querySelector('th:nth-child(1)').style.width = '100px';
-        if (!this.initialized) {
-            this.grid.setMetadata(result.meta);
-            this.initialized = true;
-        }
-        if (!result.data) result.data = [];
+    processServerResponse(result = {}) {
         if (this.currentPID) {
             Cookie.write(FILE_COOKIE_NAME, this.currentPID, { path: (new URL(Energine.base)).pathname, duration: 1 });
         }
-        this.grid.setData(result.data);
+
+        super.processServerResponse(result);
 
         if (result.pager) {
-            this.pageList.build(result.pager.count, result.pager.current, result.pager.records);
             const toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
-            if (toolbarContainer) toolbarContainer.insertBefore(this.pageList.getElement(), toolbarContainer.firstChild);
-        }
-        if (!this.grid.isEmpty()) {
-            this.toolbar.enableControls();
-            this.pageList.enable();
+            if (toolbarContainer) {
+                toolbarContainer.insertBefore(this.pageList.getElement(), toolbarContainer.firstChild);
+            }
         }
 
-        this.pathBreadCrumbs.load(result.breadcrumbs, (upl_id) => {
-            this.currentPID = upl_id;
-            if (this.filter) this.filter.remove();
-            this.loadPage(1);
-        });
-
-        this.grid.build();
-        // this.overlay.hide();
-        hideLoader();
+        if (result.breadcrumbs) {
+            this.pathBreadCrumbs.load(result.breadcrumbs, (upl_id) => {
+                this.currentPID = upl_id;
+                if (this.filter) this.filter.remove();
+                this.loadPage(1);
+            });
+        }
     }
 
     // Открыть папку или репозиторий

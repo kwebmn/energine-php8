@@ -7,6 +7,7 @@ class PageList extends EventTarget {
 
         this.currentPage = 1;
         this.disabled = false;
+        this.totalPages = 0;
 
         // Основной элемент списка
         this.element = document.createElement('ul');
@@ -38,18 +39,21 @@ class PageList extends EventTarget {
      * @param {number} currentPage
      */
     build(numPages, currentPage) {
-        this.currentPage = currentPage;
+        const total = parseInt(numPages, 10);
+        const current = parseInt(currentPage, 10);
+        this.totalPages = Number.isNaN(total) ? 0 : total;
+        this.currentPage = Number.isNaN(current) ? 1 : current;
         this.clear();
 
-        if (numPages <= 1) {
+        if (this.totalPages <= 1) {
             if (this.element.parentNode) this.element.parentNode.removeChild(this.element);
             return;
         }
 
         const VISIBLE_PAGES_COUNT = 2;
-        let startPage = (currentPage > VISIBLE_PAGES_COUNT) ? currentPage - VISIBLE_PAGES_COUNT : 1;
-        let endPage = currentPage + VISIBLE_PAGES_COUNT;
-        if (endPage > numPages) endPage = numPages;
+        let startPage = (this.currentPage > VISIBLE_PAGES_COUNT) ? this.currentPage - VISIBLE_PAGES_COUNT : 1;
+        let endPage = this.currentPage + VISIBLE_PAGES_COUNT;
+        if (endPage > this.totalPages) endPage = this.totalPages;
 
         // Первые страницы (1 ... 2 ...)
         if (startPage > 1) {
@@ -68,14 +72,14 @@ class PageList extends EventTarget {
         }
 
         // Последние страницы (... N-1 N)
-        if (endPage < numPages) {
-            if (endPage < (numPages - 1)) {
-                if (endPage < (numPages - 2)) {
+        if (endPage < this.totalPages) {
+            if (endPage < (this.totalPages - 1)) {
+                if (endPage < (this.totalPages - 2)) {
                     this._createPageLink('...').appendTo(this.element);
                 }
-                this._createPageLink(numPages - 1, numPages - 1).appendTo(this.element);
+                this._createPageLink(this.totalPages - 1, this.totalPages - 1).appendTo(this.element);
             }
-            this._createPageLink(numPages, numPages).appendTo(this.element);
+            this._createPageLink(this.totalPages, this.totalPages).appendTo(this.element);
         }
 
         // выделяем текущую страницу
@@ -98,26 +102,44 @@ class PageList extends EventTarget {
     }
 
     selectPage(listItem) {
+        const page = parseInt(listItem.dataset.index, 10);
+        if (Number.isNaN(page)) {
+            return;
+        }
+        this.setCurrent(page);
+        if (typeof this.options.onPageSelect === 'function') {
+            this.options.onPageSelect(page);
+        }
+    }
 
+    selectPageByNum(num) {
+        this.setCurrent(num);
+        if (typeof this.options.onPageSelect === 'function') {
+            this.options.onPageSelect(num);
+        }
+    }
+
+    setCurrent(page) {
+        const numeric = parseInt(page, 10);
+        if (Number.isNaN(numeric)) {
+            return;
+        }
+        this.currentPage = numeric;
         const prevCurrent = this.element.querySelector('li.current');
         if (prevCurrent) {
             prevCurrent.classList.remove('current', 'active');
             const prevLink = prevCurrent.querySelector('.page-link');
             if (prevLink) prevLink.removeAttribute('aria-current');
         }
-        this.currentPage = parseInt(listItem.dataset.index, 10);
-        listItem.classList.add('current', 'active');
-        const link = listItem.querySelector('.page-link');
-        if (link) link.setAttribute('aria-current', 'page');
-        // Генерируем событие
-        // this.dispatchEvent(new CustomEvent('pageSelect', { detail: this.currentPage }));
-        this.options.onPageSelect();
-    }
-
-    selectPageByNum(num) {
-        this.currentPage = num;
-        // this.dispatchEvent(new CustomEvent('pageSelect', { detail: this.currentPage }));
-        this.options.onPageSelect(num);
+        if (this.totalPages <= 1) {
+            return;
+        }
+        const next = this.element.querySelector(`li[data-index="${numeric}"]`);
+        if (next) {
+            next.classList.add('current', 'active');
+            const nextLink = next.querySelector('.page-link');
+            if (nextLink) nextLink.setAttribute('aria-current', 'page');
+        }
     }
 
     /**
