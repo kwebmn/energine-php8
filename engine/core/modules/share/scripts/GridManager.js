@@ -56,20 +56,64 @@ class Grid {
 
     ensureAssetsLoaded() {
         const cssFiles = [
-            'scripts/tabulator/tabulator.min.css',
-            'scripts/tabulator/tabulator_bootstrap5.min.css'
+            { path: 'scripts/tabulator/tabulator.min.css', key: 'tabulator-core' },
+            { path: 'scripts/tabulator/tabulator_bootstrap5.min.css', key: 'tabulator-bootstrap5' }
         ];
 
-        cssFiles.forEach((cssPath) => {
+        cssFiles.forEach(({ path, key }) => {
+            if (this.isStylesheetLoaded(key, path)) {
+                return;
+            }
+
             if (window.Energine && typeof Energine.loadCSS === 'function') {
-                Energine.loadCSS(cssPath);
-            } else if (!document.querySelector(`link[href$="${cssPath}"]`)) {
+                Energine.loadCSS(path);
+                this.markStylesheet(key, path);
+            } else {
                 const link = document.createElement('link');
                 link.rel = 'stylesheet';
-                link.href = cssPath;
+                link.href = path;
+                if (key) {
+                    link.dataset.tabulatorStyle = key;
+                }
                 document.head.appendChild(link);
             }
         });
+    }
+
+    isStylesheetLoaded(key, cssPath) {
+        if (key) {
+            const existingByKey = document.head.querySelector(`link[data-tabulator-style="${key}"]`);
+            if (existingByKey) {
+                return true;
+            }
+        }
+
+        const normalizedPath = cssPath || '';
+        const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find((link) => {
+            const href = (link.getAttribute('href') || '').split('?')[0];
+            return href.endsWith(normalizedPath);
+        });
+
+        if (existing && key && !existing.dataset.tabulatorStyle) {
+            existing.dataset.tabulatorStyle = key;
+        }
+
+        return Boolean(existing);
+    }
+
+    markStylesheet(key, cssPath) {
+        if (!key) {
+            return;
+        }
+
+        const link = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find((candidate) => {
+            const href = (candidate.getAttribute('href') || '').split('?')[0];
+            return href.endsWith(cssPath);
+        });
+
+        if (link) {
+            link.dataset.tabulatorStyle = key;
+        }
     }
 
     isTabulatorReady() {
