@@ -30,6 +30,7 @@ class Grid {
             paginationElement: null,
             requestHandler: null,
             responseHandler: null,
+            ajaxURL: '',
         };
 
         this.options = Object.assign({}, defaults, options);
@@ -1176,9 +1177,7 @@ class Grid {
         if (remotePaginationEnabled || remoteSortingEnabled || remoteFilteringEnabled) {
             tabulatorOptions.ajaxRequestFunc = (url, config, params) => this.handleAjaxRequest(params);
             tabulatorOptions.ajaxResponse = (url, params, response) => this.handleAjaxResponse(response, params);
-            if (this.options.ajaxURL) {
-                tabulatorOptions.ajaxURL = this.options.ajaxURL;
-            }
+            tabulatorOptions.ajaxURL = this.options.ajaxURL || '';
         }
 
         if (remotePaginationEnabled || this.remotePagination) {
