@@ -32,6 +32,7 @@ class Grid {
         this.silentSortUpdate = false;
         this.tabulatorReady = false;
         this.pendingBuild = false;
+        this.columnsDirty = true;
 
         this.container = document.createElement('div');
         this.container.classList.add('grid-tabulator');
@@ -117,6 +118,7 @@ class Grid {
     setMetadata(metadata = {}) {
         this.metadata = metadata || {};
         this.keyFieldName = null;
+        this.columnsDirty = true;
 
         Object.keys(this.metadata).forEach(fieldName => {
             const fieldMeta = this.metadata[fieldName];
@@ -281,7 +283,7 @@ class Grid {
             layout: 'fitColumns',
             selectable: 1,
             index: this.keyFieldName || undefined,
-            sortMode: 'remote',
+            sortMode: 'local',
             placeholder: this.options.placeholder,
             theme: 'bootstrap5',
             rowClick: (_, row) => {
@@ -292,6 +294,8 @@ class Grid {
                 this.fireEvent('doubleClick', row);
             }
         });
+
+        this.columnsDirty = false;
 
         this.tabulator.on('tableBuilt', () => {
             this.tabulatorReady = true;
@@ -356,37 +360,62 @@ class Grid {
         this.pendingBuild = false;
         this.updateTabulatorIndex();
 
-        const columns = this.buildColumns();
-        this.tabulator.setColumns(columns);
-        this.tabulator.setData(this.data);
-
-        if (this.sort.field && this.sort.order) {
-            this.silentSortUpdate = true;
-            try {
-                this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
-            } catch (e) {
-                try {
-                    this.silentSortUpdate = true;
-                    this.tabulator.setSort(this.sort.field, this.sort.order);
-                } catch (ignored) {}
-            }
-            setTimeout(() => { this.silentSortUpdate = false; }, 0);
-        } else {
-            this.silentSortUpdate = true;
-            this.tabulator.clearSort();
-            setTimeout(() => { this.silentSortUpdate = false; }, 0);
-        }
-
-        if (previouslySelectedRecordKey && this.dataKeyExists(previouslySelectedRecordKey)) {
-            this.selectByKey(previouslySelectedRecordKey);
-        } else {
-            const rows = this.tabulator.getRows();
-            if (rows && rows.length) {
-                rows[0].select();
+        let columnsPromise;
+        if (this.columnsDirty) {
+            const columns = this.buildColumns();
+            const result = this.tabulator.setColumns(columns);
+            if (result && typeof result.then === 'function') {
+                columnsPromise = result.then(() => { this.columnsDirty = false; });
             } else {
-                this.deselectItem();
+                this.columnsDirty = false;
+                columnsPromise = Promise.resolve();
             }
+        } else {
+            columnsPromise = Promise.resolve();
         }
+
+        const applyData = () => Promise.resolve(this.tabulator.replaceData(this.data || []))
+            .then(() => {
+                if (this.sort.field && this.sort.order) {
+                    this.silentSortUpdate = true;
+                    try {
+                        this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
+                    } catch (e) {
+                        try {
+                            this.silentSortUpdate = true;
+                            this.tabulator.setSort(this.sort.field, this.sort.order);
+                        } catch (ignored) {}
+                    }
+                    setTimeout(() => { this.silentSortUpdate = false; }, 0);
+                } else {
+                    this.silentSortUpdate = true;
+                    this.tabulator.clearSort();
+                    setTimeout(() => { this.silentSortUpdate = false; }, 0);
+                }
+
+                if (previouslySelectedRecordKey && this.dataKeyExists(previouslySelectedRecordKey)) {
+                    this.selectByKey(previouslySelectedRecordKey);
+                } else {
+                    const rows = this.tabulator.getRows();
+                    if (rows && rows.length) {
+                        rows[0].select();
+                    } else {
+                        this.deselectItem();
+                    }
+                }
+            });
+
+        columnsPromise
+            .then(() => {
+                setTimeout(() => {
+                    applyData().catch((error) => {
+                        console.error('Grid build failed', error);
+                    });
+                }, 0);
+            })
+            .catch((error) => {
+                console.error('Grid build failed', error);
+            });
     }
 
     clear() {
