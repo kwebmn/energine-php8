@@ -1,10 +1,6 @@
 ScriptLoader.load('TabPane', 'PageList', 'Toolbar', 'ModalBox', 'tabulator/tabulator.min');
 
 class Grid {
-    /**
-     * @param {HTMLElement|string} element
-     * @param {Object} [options]
-     */
     constructor(element, options = {}) {
         this.element = Energine.utils.resolveElement(element, {
             name: 'Grid root'
@@ -14,13 +10,17 @@ class Grid {
             throw new Error('Tabulator 6.3 is required for GridManager to operate.');
         }
 
-        this.options = Object.assign({
+        const translations = (Energine.translations && typeof Energine.translations.get === 'function')
+            ? Energine.translations.get('TXT_NO_RECORDS')
+            : '';
+
+        const defaults = {
             onSelect: null,
             onSortChange: null,
             onDoubleClick: null,
             selectable: 1,
             theme: 'bootstrap5',
-            placeholder: (Energine.translations && Energine.translations.get('TXT_NO_RECORDS')) || '',
+            placeholder: translations || '',
             remotePagination: true,
             remoteSorting: true,
             remoteFiltering: true,
@@ -30,26 +30,33 @@ class Grid {
             paginationElement: null,
             requestHandler: null,
             responseHandler: null,
-        }, options);
+        };
+
+        this.options = Object.assign({}, defaults, options);
+
+        this.container = document.createElement('div');
+        this.container.classList.add('grid-tabulator');
+        this.element.innerHTML = '';
+        this.element.appendChild(this.container);
 
         this.data = [];
         this.metadata = {};
         this.metadataRaw = {};
-        this.availableTypes = new Set();
-        this.reportedUnknownTypes = new Set();
         this.keyFieldName = null;
         this.sort = { field: null, order: null };
         this.events = {};
-        this.isDirty = false;
-        this.selectedRow = null;
         this.tabulator = null;
-        this.silentSortUpdate = false;
         this.tabulatorReady = false;
-        this.pendingBuild = false;
         this.columnsDirty = true;
+        this.pendingBuild = false;
+        this.pendingReload = false;
+        this.pendingSelectionKey = undefined;
+        this.selectedRow = null;
         this.pager = null;
         this.lastResponse = null;
-        this.remoteFilters = [];
+        this.isDirty = false;
+        this.silentSortUpdate = false;
+
         this.remoteRequestHandler = (typeof this.options.requestHandler === 'function')
             ? this.options.requestHandler
             : null;
@@ -59,25 +66,17 @@ class Grid {
         this.remotePagination = this.options.remotePagination !== false;
         this.remoteSorting = this.options.remoteSorting !== false;
         this.remoteFiltering = this.options.remoteFiltering !== false;
-        this.paginationSize = (typeof this.options.paginationSize === 'number' && this.options.paginationSize > 0)
-            ? this.options.paginationSize
-            : null;
-        this.paginationSizeSelector = Array.isArray(this.options.paginationSizeSelector)
+
+        this.paginationSize = this.parsePositiveNumber(this.options.paginationSize);
+        this.paginationSizeSelector = Array.isArray(this.options.paginationSizeSelector) && this.options.paginationSizeSelector.length
             ? this.options.paginationSizeSelector.slice()
             : [10, 25, 50, 100];
-        this.requestedPage = parseInt(this.options.initialPage, 10) || 1;
-        if (this.requestedPage <= 0) {
-            this.requestedPage = 1;
-        }
-        this.currentPage = this.requestedPage;
-        this.pendingSelectionKey = undefined;
         this.paginationElement = this.options.paginationElement || null;
-        this.pendingReload = false;
 
-        this.container = document.createElement('div');
-        this.container.classList.add('grid-tabulator');
-        this.element.innerHTML = '';
-        this.element.appendChild(this.container);
+        this.requestedPage = this.parsePositiveNumber(this.options.initialPage) || 1;
+        this.currentPage = this.requestedPage;
+
+        this.remoteFilters = [];
 
         this.ensureAssetsLoaded();
 
@@ -98,6 +97,11 @@ class Grid {
         }
     }
 
+    parsePositiveNumber(value) {
+        const numeric = parseInt(value, 10);
+        return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+    }
+
     ensureAssetsLoaded() {
         const cssFiles = [
             { path: 'scripts/tabulator/tabulator.min.css', key: 'tabulator-core' },
@@ -105,13 +109,30 @@ class Grid {
         ];
 
         cssFiles.forEach(({ path, key }) => {
-            if (this.isStylesheetLoaded(key, path)) {
+            if (key && document.head.querySelector(`link[data-tabulator-style="${key}"]`)) {
+                return;
+            }
+
+            const exists = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some((link) => {
+                const href = (link.getAttribute('href') || '').split('?')[0];
+                return href.endsWith(path);
+            });
+
+            if (exists) {
+                if (key) {
+                    const target = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find((link) => {
+                        const href = (link.getAttribute('href') || '').split('?')[0];
+                        return href.endsWith(path);
+                    });
+                    if (target) {
+                        target.dataset.tabulatorStyle = key;
+                    }
+                }
                 return;
             }
 
             if (window.Energine && typeof Energine.loadCSS === 'function') {
                 Energine.loadCSS(path);
-                this.markStylesheet(key, path);
             } else {
                 const link = document.createElement('link');
                 link.rel = 'stylesheet';
@@ -124,40 +145,32 @@ class Grid {
         });
     }
 
-    isStylesheetLoaded(key, cssPath) {
-        if (key) {
-            const existingByKey = document.head.querySelector(`link[data-tabulator-style="${key}"]`);
-            if (existingByKey) {
-                return true;
-            }
+    on(event, handler) {
+        if (!this.events[event]) {
+            this.events[event] = [];
         }
-
-        const normalizedPath = cssPath || '';
-        const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find((link) => {
-            const href = (link.getAttribute('href') || '').split('?')[0];
-            return href.endsWith(normalizedPath);
-        });
-
-        if (existing && key && !existing.dataset.tabulatorStyle) {
-            existing.dataset.tabulatorStyle = key;
+        if (typeof handler === 'function') {
+            this.events[event].push(handler);
         }
-
-        return Boolean(existing);
+        return this;
     }
 
-    markStylesheet(key, cssPath) {
-        if (!key) {
+    off(event, handler) {
+        if (!this.events[event]) {
             return;
         }
+        this.events[event] = this.events[event].filter((fn) => fn !== handler);
+    }
 
-        const link = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find((candidate) => {
-            const href = (candidate.getAttribute('href') || '').split('?')[0];
-            return href.endsWith(cssPath);
-        });
-
-        if (link) {
-            link.dataset.tabulatorStyle = key;
+    fireEvent(event, ...args) {
+        if (!this.events[event]) {
+            return;
         }
+        this.events[event].forEach((fn) => {
+            if (typeof fn === 'function') {
+                fn.apply(this, args);
+            }
+        });
     }
 
     normalizeMetadataStructure(metadata) {
@@ -172,79 +185,51 @@ class Grid {
         }
 
         let fields = metadata;
-        let possibleKey = null;
-
         if (metadata.fields && typeof metadata.fields === 'object' && !Array.isArray(metadata.fields)) {
             fields = metadata.fields;
-            if (typeof metadata.key === 'string' && metadata.key) {
-                possibleKey = metadata.key;
-            } else if (typeof metadata.primary === 'string' && metadata.primary) {
-                possibleKey = metadata.primary;
-            } else if (Array.isArray(metadata.keys) && metadata.keys.length) {
-                possibleKey = metadata.keys[0];
-            }
+        }
+        result.fields = fields || {};
+
+        const possibleKeys = [];
+        if (typeof metadata.key === 'string') possibleKeys.push(metadata.key);
+        if (typeof metadata.primaryKey === 'string') possibleKeys.push(metadata.primaryKey);
+        if (typeof metadata.primary === 'string') possibleKeys.push(metadata.primary);
+        if (typeof metadata.keyField === 'string') possibleKeys.push(metadata.keyField);
+        if (Array.isArray(metadata.keys) && metadata.keys.length) {
+            possibleKeys.push(metadata.keys[0]);
         }
 
-        if (typeof metadata.key === 'string' && metadata.key) {
-            possibleKey = metadata.key;
-        } else if (typeof metadata.primaryKey === 'string' && metadata.primaryKey) {
-            possibleKey = metadata.primaryKey;
-        }
-
-        if ((!fields || typeof fields !== 'object' || Array.isArray(fields))
-            && metadata.columns && typeof metadata.columns === 'object' && !Array.isArray(metadata.columns)
-        ) {
-            fields = metadata.columns;
-        }
-
-        if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
-            result.fields = fields;
-        }
-
-        result.keyFieldName = this.extractKeyFieldName(result.fields, possibleKey);
+        const detected = possibleKeys.find((candidate) => candidate && Object.prototype.hasOwnProperty.call(fields, candidate));
+        result.keyFieldName = detected || this.detectKeyField(fields);
         return result;
     }
 
-    extractKeyFieldName(fields, fallback) {
+    detectKeyField(fields) {
         if (!fields || typeof fields !== 'object') {
-            return fallback || null;
+            return null;
         }
-
-        if (fallback && Object.prototype.hasOwnProperty.call(fields, fallback)) {
-            return fallback;
-        }
-
-        let detected = null;
-        Object.keys(fields).some((fieldName) => {
-            const info = fields[fieldName];
-            if (!info || typeof info !== 'object') {
+        return Object.keys(fields).find((fieldName) => {
+            const meta = fields[fieldName];
+            if (!meta || typeof meta !== 'object') {
                 return false;
             }
-
-            if (info.key === true
-                || info.key === 1
-                || info.key === '1'
-                || (typeof info.key === 'string' && info.key.toLowerCase() === 'true')
-                || info.primary === true
-                || info.primary === 1
-                || info.isKey === true
-            ) {
-                detected = fieldName;
+            const flag = meta.key ?? meta.primary ?? meta.isKey;
+            if (flag === true || flag === 1 || flag === '1') {
+                return true;
+            }
+            if (typeof flag === 'string' && flag.toLowerCase() === 'true') {
                 return true;
             }
             return false;
-        });
-
-        return detected || fallback || null;
+        }) || null;
     }
 
     normalizeFieldType(type) {
         if (type === undefined || type === null) {
             return 'string';
         }
-
         const raw = String(type).toLowerCase();
-        const aliasMap = {
+        const aliases = {
             int: 'integer',
             bigint: 'integer',
             smallint: 'integer',
@@ -265,118 +250,20 @@ class Grid {
             image: 'file',
             picture: 'file',
         };
-
-        return aliasMap[raw] || raw;
-    }
-
-    stringifyValue(value, { separator = ', ', allowHtml = false } = {}) {
-        if (value === undefined || value === null) {
-            return '';
-        }
-
-        if (typeof value === 'string') {
-            return value;
-        }
-
-        if (typeof value === 'number' || typeof value === 'boolean') {
-            return String(value);
-        }
-
-        if (value instanceof Date) {
-            return value.toISOString();
-        }
-
-        if (Array.isArray(value)) {
-            return value
-                .map((item) => this.stringifyValue(item, { separator, allowHtml }))
-                .filter((part) => part !== '')
-                .join(separator);
-        }
-
-        if (typeof value === 'object') {
-            if (allowHtml && typeof value.html === 'string' && value.html.trim() !== '') {
-                return value.html;
-            }
-
-            const priorityKeys = ['display', 'label', 'title', 'name', 'caption', 'text'];
-            for (const key of priorityKeys) {
-                if (Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined && value[key] !== null) {
-                    const result = this.stringifyValue(value[key], { separator, allowHtml });
-                    if (result !== '') {
-                        return result;
-                    }
-                }
-            }
-
-            if (Object.prototype.hasOwnProperty.call(value, 'value') && value.value !== undefined && value.value !== null) {
-                const prefix = this.stringifyValue(value.prefix, { separator, allowHtml });
-                const core = this.stringifyValue(value.value, { separator, allowHtml });
-                const suffixes = [];
-                if (value.unit !== undefined && value.unit !== null) {
-                    suffixes.push(this.stringifyValue(value.unit, { separator, allowHtml }));
-                }
-                if (value.suffix !== undefined && value.suffix !== null) {
-                    suffixes.push(this.stringifyValue(value.suffix, { separator, allowHtml }));
-                }
-
-                const parts = [];
-                if (prefix) parts.push(prefix);
-                if (core) parts.push(core);
-                if (suffixes.length) {
-                    parts.push(suffixes.filter(Boolean).join(' '));
-                }
-
-                const assembled = parts.join(' ').replace(/\s+/g, ' ').trim();
-                if (assembled) {
-                    return assembled;
-                }
-            }
-
-            const collected = Object.values(value)
-                .map((item) => this.stringifyValue(item, { separator, allowHtml }))
-                .filter((part) => part !== '');
-            return collected.join(separator);
-        }
-
-        return '';
-    }
-
-    createTextElement(text, { preserveLineBreaks = false, cssClass = [] } = {}) {
-        const span = document.createElement('span');
-        span.textContent = text ?? '';
-        if (preserveLineBreaks) {
-            span.style.whiteSpace = 'pre-line';
-        }
-
-        const classes = Array.isArray(cssClass) ? cssClass : [cssClass];
-        classes.filter(Boolean).forEach((cls) => span.classList.add(cls));
-        return span;
-    }
-
-    createHTMLContainer(html) {
-        if (!html) {
-            return '';
-        }
-        const container = document.createElement('div');
-        container.classList.add('grid-html-cell');
-        container.innerHTML = html;
-        return container;
+        return aliases[raw] || raw;
     }
 
     normalizeBoolean(value) {
         if (value === true || value === false) {
             return value;
         }
-
         if (typeof value === 'number') {
             return value === 1;
         }
-
         if (typeof value === 'string') {
             const normalized = value.trim().toLowerCase();
             return ['1', 'true', 'y', 'yes', 'on'].includes(normalized);
         }
-
         if (typeof value === 'object' && value !== null) {
             if (Object.prototype.hasOwnProperty.call(value, 'value')) {
                 return this.normalizeBoolean(value.value);
@@ -385,114 +272,223 @@ class Grid {
                 return this.normalizeBoolean(value.checked);
             }
         }
-
         return Boolean(value);
     }
 
-    createBooleanElement(value) {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add('form-check', 'm-0', 'd-inline-flex', 'justify-content-center');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.classList.add('form-check-input');
-        checkbox.disabled = true;
-        checkbox.checked = this.normalizeBoolean(value);
-        wrapper.appendChild(checkbox);
-        return wrapper;
-    }
-
-    createTextFormatter(options = {}) {
-        return (cell) => this.createTextElement(this.stringifyValue(cell.getValue()), options);
-    }
-
-    createMultilineTextFormatter() {
-        return (cell) => this.createTextElement(this.stringifyValue(cell.getValue()), { preserveLineBreaks: true, cssClass: ['text-break'] });
-    }
-
-    createHTMLFormatter() {
-        return (cell) => {
-            const raw = cell.getValue();
-            const html = this.stringifyValue(raw, { allowHtml: true });
-            if (!html) {
-                return '';
+    resolvePlainValue(value, { allowHtml = false, separator = ', ' } = {}) {
+        if (value === undefined || value === null) {
+            return '';
+        }
+        if (typeof value === 'string') {
+            return value;
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value);
+        }
+        if (value instanceof Date) {
+            return value.toISOString();
+        }
+        if (Array.isArray(value)) {
+            return value
+                .map((item) => this.resolvePlainValue(item, { allowHtml, separator }))
+                .filter(Boolean)
+                .join(separator);
+        }
+        if (typeof value === 'object') {
+            if (allowHtml && typeof value.html === 'string' && value.html.trim() !== '') {
+                return value.html;
             }
-
-            if (this.containsHTML(html)) {
-                return this.createHTMLContainer(html);
+            if (Object.prototype.hasOwnProperty.call(value, 'value')) {
+                return this.resolvePlainValue(value.value, { allowHtml, separator });
             }
-
-            return this.createTextElement(html, { preserveLineBreaks: true, cssClass: ['text-break'] });
-        };
-    }
-
-    createValueFormatter() {
-        return (cell) => {
-            const raw = cell.getValue();
-            const result = this.stringifyValue(raw, { allowHtml: true });
-            if (!result) {
-                return '';
-            }
-
-            if (this.containsHTML(result)) {
-                return this.createHTMLContainer(result);
-            }
-
-            return this.createTextElement(result);
-        };
-    }
-
-    createNumericFormatter({ decimals } = {}) {
-        return (cell) => {
-            const raw = cell.getValue();
-            if (raw === null || raw === undefined || raw === '') {
-                return '';
-            }
-
-            const textValue = this.stringifyValue(raw);
-            if (textValue === '') {
-                return '';
-            }
-
-            let numeric = null;
-            if (typeof raw === 'number') {
-                numeric = raw;
-            } else {
-                const normalized = textValue.replace(/\s+/g, '').replace(',', '.');
-                const parsed = Number(normalized);
-                if (Number.isFinite(parsed)) {
-                    numeric = parsed;
+            const priority = ['display', 'label', 'title', 'name', 'caption', 'text'];
+            for (const key of priority) {
+                if (value[key] !== undefined && value[key] !== null) {
+                    const resolved = this.resolvePlainValue(value[key], { allowHtml, separator });
+                    if (resolved) {
+                        return resolved;
+                    }
                 }
             }
+            return Object.values(value)
+                .map((item) => this.resolvePlainValue(item, { allowHtml, separator }))
+                .filter(Boolean)
+                .join(separator);
+        }
+        return '';
+    }
 
-            if (numeric === null) {
-                return this.createTextElement(textValue);
+    escapeHtml(value) {
+        if (value === undefined || value === null) {
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    parseNumericValue(value) {
+        if (value === undefined || value === null || value === '') {
+            return null;
+        }
+        if (typeof value === 'number') {
+            return Number.isFinite(value) ? value : null;
+        }
+        if (typeof value === 'boolean') {
+            return value ? 1 : 0;
+        }
+        const text = this.resolvePlainValue(value).replace(/\s+/g, '').replace(',', '.');
+        const parsed = Number(text);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    extractFileInfo(value) {
+        if (!value) {
+            return null;
+        }
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+            return {
+                path: trimmed,
+                label: this.extractFileName(trimmed),
+                isImage: this.isImagePath(trimmed),
+            };
+        }
+        if (typeof value === 'object') {
+            const fileKeys = ['url', 'href', 'path', 'src', 'file', 'value'];
+            for (const key of fileKeys) {
+                if (typeof value[key] === 'string' && value[key].trim()) {
+                    const path = value[key].trim();
+                    const labelKeys = ['label', 'name', 'title', 'caption', 'text', 'filename', 'fileName'];
+                    let label = '';
+                    for (const labelKey of labelKeys) {
+                        if (value[labelKey] !== undefined && value[labelKey] !== null) {
+                            label = this.resolvePlainValue(value[labelKey]);
+                            break;
+                        }
+                    }
+                    if (!label) {
+                        label = this.extractFileName(path);
+                    }
+                    const isImage = key === 'src' || this.isImagePath(path);
+                    return { path, label, isImage };
+                }
+            }
+        }
+        return null;
+    }
+
+    extractFileName(path) {
+        if (typeof path !== 'string') {
+            return '';
+        }
+        const parts = path.trim().split(/[\\/]/);
+        return parts.pop() || '';
+    }
+
+    isImagePath(path) {
+        if (typeof path !== 'string') {
+            return false;
+        }
+        return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(path.trim());
+    }
+
+    buildFileUrl(path) {
+        if (!path) {
+            return '';
+        }
+        if (/^(?:[a-z]+:)?\/\//i.test(path)) {
+            return path;
+        }
+        if (path.startsWith('/')) {
+            return path;
+        }
+        if (window.Energine) {
+            const base = (Energine.root || Energine.base || '').replace(/\/*$/, '/');
+            if (base) {
+                return base + path.replace(/^\/+/, '');
+            }
+        }
+        return path;
+    }
+
+    buildImagePreviewUrl(path, fieldMeta = {}) {
+        if (!path) {
+            return '';
+        }
+        const resizer = window.Energine && typeof Energine.resizer === 'string' ? Energine.resizer : '';
+        if (!resizer) {
+            return this.buildFileUrl(path);
+        }
+        const preset = fieldMeta.previewPreset || fieldMeta.resizerPreset || 'w40-h40';
+        const base = resizer.replace(/\/*$/, '/');
+        const normalizedPreset = String(preset).replace(/^\/+|\/+$/g, '');
+        const normalizedPath = String(path).replace(/^\/+/, '');
+        return `${base}${normalizedPreset}/${normalizedPath}`;
+    }
+
+    createFileFormatter(fieldMeta = {}) {
+        return (cell) => {
+            const info = this.extractFileInfo(cell.getValue());
+            if (!info) {
+                return '';
+            }
+            const url = this.buildFileUrl(info.path);
+            if (info.isImage) {
+                const img = document.createElement('img');
+                img.src = this.buildImagePreviewUrl(info.path, fieldMeta);
+                img.classList.add('img-thumbnail', 'rounded');
+
+                const width = this.parsePositiveNumber(fieldMeta.thumbWidth || fieldMeta.previewWidth || 40);
+                const height = this.parsePositiveNumber(fieldMeta.thumbHeight || fieldMeta.previewHeight || 40);
+                if (width) {
+                    img.width = width;
+                }
+                if (height) {
+                    img.height = height;
+                }
+                img.alt = info.label || '';
+
+                if (url) {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.appendChild(img);
+                    return link;
+                }
+                return img;
             }
 
-            const intlOptions = { useGrouping: true };
-            if (typeof decimals === 'number' && decimals >= 0) {
-                intlOptions.minimumFractionDigits = decimals;
-                intlOptions.maximumFractionDigits = decimals;
-            } else if (Number.isInteger(numeric)) {
-                intlOptions.maximumFractionDigits = 0;
-            } else {
-                intlOptions.minimumFractionDigits = 0;
-                intlOptions.maximumFractionDigits = 4;
+            const text = info.label || this.resolvePlainValue(cell.getValue());
+            if (!url) {
+                const span = document.createElement('span');
+                span.textContent = text;
+                span.classList.add('text-truncate', 'd-inline-block');
+                span.style.maxWidth = '100%';
+                return span;
             }
 
-            let formatted;
-            try {
-                formatted = numeric.toLocaleString(undefined, intlOptions);
-            } catch (err) {
-                formatted = numeric.toString();
-            }
-
-            return this.createTextElement(formatted);
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = text || url;
+            link.classList.add('text-truncate', 'd-inline-block');
+            link.style.maxWidth = '100%';
+            return link;
         };
     }
 
     createEmailFormatter() {
         return (cell) => {
-            const value = this.stringifyValue(cell.getValue());
+            const value = this.resolvePlainValue(cell.getValue());
             if (!value) {
                 return '';
             }
@@ -506,7 +502,7 @@ class Grid {
 
     createPhoneFormatter() {
         return (cell) => {
-            const value = this.stringifyValue(cell.getValue());
+            const value = this.resolvePlainValue(cell.getValue());
             if (!value) {
                 return '';
             }
@@ -521,223 +517,207 @@ class Grid {
 
     createCodeFormatter() {
         return (cell) => {
-            const value = this.stringifyValue(cell.getValue());
-            if (!value) {
-                return '';
-            }
             const pre = document.createElement('pre');
             pre.classList.add('grid-code-cell', 'mb-0');
-            pre.textContent = value;
+            pre.textContent = this.resolvePlainValue(cell.getValue());
             return pre;
         };
     }
 
-    createFileFormatter(fieldMeta = {}) {
-        return (cell) => {
-            const raw = cell.getValue();
-            const info = this.extractFileInfo(raw);
-            if (!info) {
-                return '';
-            }
-
-            if (info.isImage) {
-                const img = document.createElement('img');
-                img.src = this.buildImagePreviewUrl(info.path, fieldMeta);
-                img.classList.add('img-thumbnail', 'rounded');
-
-                const width = parseInt(fieldMeta.thumbWidth || fieldMeta.previewWidth || 40, 10);
-                const height = parseInt(fieldMeta.thumbHeight || fieldMeta.previewHeight || 40, 10);
-                if (!Number.isNaN(width)) {
-                    img.width = width;
-                }
-                if (!Number.isNaN(height)) {
-                    img.height = height;
-                }
-                img.alt = fieldMeta.title ? this.stringifyValue(fieldMeta.title) : (info.label || '');
-
-                const linkUrl = this.buildFileUrl(info.path);
-                if (linkUrl) {
-                    const link = document.createElement('a');
-                    link.href = linkUrl;
-                    link.target = '_blank';
-                    link.rel = 'noopener';
-                    link.appendChild(img);
-                    return link;
-                }
-                return img;
-            }
-
-            const text = info.label || this.stringifyValue(raw) || this.extractFileName(info.path);
-            const url = this.buildFileUrl(info.path);
-            if (!url) {
-                return this.createTextElement(text);
-            }
-
-            const link = document.createElement('a');
-            link.href = url;
-            link.target = '_blank';
-            link.rel = 'noopener';
-            link.textContent = text || url;
-            link.classList.add('text-truncate', 'd-inline-block');
-            link.style.maxWidth = '100%';
-            return link;
-        };
+    mergeColumnClasses(column, ...classes) {
+        const existing = column.cssClass ? column.cssClass.split(/\s+/).filter(Boolean) : [];
+        const combined = new Set(existing);
+        classes.filter(Boolean).forEach((item) => {
+            String(item).split(/\s+/).filter(Boolean).forEach((name) => combined.add(name));
+        });
+        column.cssClass = Array.from(combined).join(' ');
     }
 
-    extractFileInfo(value) {
-        if (value === undefined || value === null) {
-            return null;
-        }
-
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (!trimmed) {
-                return null;
-            }
-            return {
-                path: trimmed,
-                label: this.extractFileName(trimmed),
-                isImage: this.isImagePath(trimmed),
-            };
-        }
-
-        if (typeof value === 'object') {
-            const fileKeys = ['url', 'href', 'path', 'src', 'file', 'value'];
-            for (const key of fileKeys) {
-                if (typeof value[key] === 'string' && value[key].trim()) {
-                    const path = value[key].trim();
-                    const labelKeys = ['label', 'name', 'title', 'caption', 'text', 'filename', 'fileName'];
-                    let label = '';
-                    for (const labelKey of labelKeys) {
-                        if (value[labelKey] !== undefined && value[labelKey] !== null) {
-                            label = this.stringifyValue(value[labelKey]);
-                            break;
+    getTypeDefinition(type, fieldMeta = {}) {
+        switch (type) {
+            case 'boolean':
+                return {
+                    accessor: (value) => this.normalizeBoolean(value),
+                    formatter: 'tickCross',
+                    hozAlign: 'center',
+                };
+            case 'integer':
+            case 'float':
+            case 'number':
+                return {
+                    accessor: (value) => this.parseNumericValue(value),
+                    formatter: (cell) => {
+                        const numeric = cell.getValue();
+                        if (numeric === null || numeric === undefined || numeric === '') {
+                            return '';
                         }
-                    }
+                        if (typeof numeric !== 'number' || !Number.isFinite(numeric)) {
+                            return this.escapeHtml(numeric);
+                        }
+                        const intlOptions = { useGrouping: true };
+                        const decimals = fieldMeta.decimals ?? (type === 'integer' ? 0 : null);
+                        if (typeof decimals === 'number' && decimals >= 0) {
+                            intlOptions.minimumFractionDigits = decimals;
+                            intlOptions.maximumFractionDigits = decimals;
+                        }
+                        return this.escapeHtml(new Intl.NumberFormat(undefined, intlOptions).format(numeric));
+                    },
+                    hozAlign: 'right',
+                    sorter: 'number',
+                };
+            case 'datetime':
+            case 'date':
+            case 'time':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value),
+                    formatter: 'plaintext',
+                    hozAlign: 'center',
+                    cssClass: 'text-nowrap',
+                };
+            case 'htmlblock':
+            case 'info':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value, { allowHtml: true }),
+                    formatter: 'html',
+                    cssClass: 'text-break',
+                    vertAlign: 'top',
+                };
+            case 'text':
+            case 'textbox':
+            case 'multi':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value),
+                    formatter: 'plaintext',
+                    cssClass: 'text-break',
+                    vertAlign: 'top',
+                };
+            case 'value':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value, { allowHtml: true }),
+                    formatter: 'html',
+                    hozAlign: 'right',
+                };
+            case 'file':
+            case 'thumb':
+            case 'media':
+            case 'video':
+                return {
+                    accessor: (value) => value,
+                    formatter: this.createFileFormatter(fieldMeta),
+                    hozAlign: 'center',
+                };
+            case 'email':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value),
+                    formatter: this.createEmailFormatter(),
+                };
+            case 'phone':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value),
+                    formatter: this.createPhoneFormatter(),
+                };
+            case 'code':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value),
+                    formatter: this.createCodeFormatter(),
+                    cssClass: 'text-break',
+                    vertAlign: 'top',
+                };
+            case 'password':
+                return {
+                    accessor: (value) => this.resolvePlainValue(value),
+                    formatter: (cell) => {
+                        const value = cell.getValue();
+                        if (!value) {
+                            return '';
+                        }
+                        const length = Math.max(6, Math.min(12, String(value).length));
+                        return '•'.repeat(length);
+                    },
+                };
+            default:
+                return {
+                    accessor: (value) => this.resolvePlainValue(value),
+                    formatter: 'plaintext',
+                };
+        }
+    }
 
-                    if (!label) {
-                        label = this.extractFileName(path);
-                    }
-
-                    const isImage = key === 'src' || this.isImagePath(path);
-                    return { path, label, isImage };
-                }
+    buildColumns() {
+        if (!this.metadata || typeof this.metadata !== 'object') {
+            return [];
+        }
+        const columns = [];
+        Object.keys(this.metadata).forEach((fieldName) => {
+            const fieldMeta = this.metadata[fieldName];
+            if (!fieldMeta || typeof fieldMeta !== 'object') {
+                return;
             }
-        }
-
-        return null;
-    }
-
-    extractFileName(path) {
-        if (typeof path !== 'string') {
-            return '';
-        }
-        const trimmed = path.trim();
-        if (!trimmed) {
-            return '';
-        }
-        const parts = trimmed.split(/[\\/]/);
-        return parts.pop() || trimmed;
-    }
-
-    isImagePath(path) {
-        if (typeof path !== 'string') {
-            return false;
-        }
-        return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(path.trim());
-    }
-
-    buildFileUrl(path) {
-        if (!path) {
-            return '';
-        }
-
-        if (/^(?:[a-z]+:)?\/\//i.test(path)) {
-            return path;
-        }
-
-        if (path.startsWith('/')) {
-            return path;
-        }
-
-        if (window.Energine) {
-            const base = (Energine.root || Energine.base || '').replace(/\/*$/, '/');
-            if (base) {
-                return base + path.replace(/^\/+/, '');
+            const type = this.normalizeFieldType(fieldMeta.type || 'string');
+            if (type === 'hidden') {
+                return;
             }
-        }
-
-        return path;
-    }
-
-    buildImagePreviewUrl(path, fieldMeta = {}) {
-        if (!path) {
-            return '';
-        }
-
-        const resizer = window.Energine && typeof Energine.resizer === 'string' ? Energine.resizer : '';
-        if (!resizer) {
-            return this.buildFileUrl(path);
-        }
-
-        const preset = fieldMeta.previewPreset || fieldMeta.resizerPreset || 'w40-h40';
-        const base = resizer.replace(/\/*$/, '/');
-        const normalizedPreset = String(preset).replace(/^\/+|\/+$/g, '');
-        const normalizedPath = String(path).replace(/^\/+/, '');
-        return `${base}${normalizedPreset}/${normalizedPath}`;
-    }
-
-    containsHTML(text) {
-        if (typeof text !== 'string') {
-            return false;
-        }
-        return /<[a-z][\s\S]*>/i.test(text);
-    }
-
-    trackUnknownType(type) {
-        const normalized = this.normalizeFieldType(type || '');
-        if (!this.reportedUnknownTypes.has(normalized)) {
-            this.reportedUnknownTypes.add(normalized);
-            if (window.console && typeof console.warn === 'function') {
-                console.warn(`Grid: unsupported field type "${type}". Falling back to text formatter.`);
+            if (Object.prototype.hasOwnProperty.call(fieldMeta, 'visible') && !this.normalizeBoolean(fieldMeta.visible)) {
+                return;
             }
-        }
-    }
 
-    isTabulatorReady() {
-        return !!(this.tabulator && this.tabulatorReady);
-    }
+            const column = {
+                field: fieldName,
+                title: fieldMeta.title || fieldMeta.caption || fieldName,
+                tooltip: fieldMeta.hint || false,
+            };
 
-    // --- Event system ---
-    on(event, handler) {
-        if (!this.events[event]) this.events[event] = [];
-        if (typeof handler === 'function') {
-            this.events[event].push(handler);
-        }
-        return this;
-    }
+            if (Object.prototype.hasOwnProperty.call(fieldMeta, 'sort')) {
+                column.headerSort = this.normalizeBoolean(fieldMeta.sort);
+            } else {
+                column.headerSort = true;
+            }
 
-    off(event, handler) {
-        if (this.events[event]) {
-            this.events[event] = this.events[event].filter(fn => fn !== handler);
-        }
-    }
+            const width = this.parsePositiveNumber(fieldMeta.width);
+            if (width) {
+                column.width = width;
+            }
+            const minWidth = this.parsePositiveNumber(fieldMeta.minWidth);
+            if (minWidth) {
+                column.minWidth = minWidth;
+            }
+            const maxWidth = this.parsePositiveNumber(fieldMeta.maxWidth);
+            if (maxWidth) {
+                column.maxWidth = maxWidth;
+            }
 
-    fireEvent(event, ...args) {
-        if (this.events[event]) {
-            this.events[event].forEach(fn => {
-                if (typeof fn === 'function') {
-                    fn.apply(this, args);
-                }
-            });
-        }
+            if (fieldMeta.align) {
+                column.hozAlign = fieldMeta.align;
+            }
+
+            if (fieldMeta.cssClass) {
+                this.mergeColumnClasses(column, fieldMeta.cssClass);
+            }
+            if (fieldMeta.class) {
+                this.mergeColumnClasses(column, fieldMeta.class);
+            }
+
+            const typeDefinition = this.getTypeDefinition(type, fieldMeta);
+            if (typeDefinition.cssClass) {
+                this.mergeColumnClasses(column, typeDefinition.cssClass);
+                delete typeDefinition.cssClass;
+            }
+
+            Object.assign(column, typeDefinition);
+
+            if (!column.formatter) {
+                column.formatter = 'plaintext';
+            }
+
+            columns.push(column);
+        });
+        return columns;
     }
 
     updateTabulatorIndex() {
         if (!this.tabulator || !this.keyFieldName) {
             return;
         }
-
         if (typeof this.tabulator.setIndex === 'function') {
             this.tabulator.setIndex(this.keyFieldName);
         } else if (typeof this.tabulator.setOption === 'function') {
@@ -754,25 +734,15 @@ class Grid {
         this.keyFieldName = normalized.keyFieldName || null;
         this.columnsDirty = true;
 
-        this.availableTypes = new Set();
-        Object.values(this.metadata).forEach((fieldMeta) => {
-            if (!fieldMeta || typeof fieldMeta !== 'object') {
-                return;
-            }
-            const type = this.normalizeFieldType(fieldMeta.type || 'string');
-            this.availableTypes.add(type);
-        });
-
         if (this.tabulator) {
             this.updateTabulatorIndex();
 
             if (this.isTabulatorReady()) {
                 try {
                     const columns = this.buildColumns();
-                    const updateResult = this.tabulator.setColumns(columns);
+                    const result = this.tabulator.setColumns(columns);
                     this.columnsDirty = false;
-
-                    Promise.resolve(updateResult).catch((error) => {
+                    Promise.resolve(result).catch((error) => {
                         console.error('Failed to apply grid columns from metadata', error);
                         this.columnsDirty = true;
                     });
@@ -838,17 +808,17 @@ class Grid {
         const normalized = Array.isArray(filters) ? filters.filter(Boolean).map((item) => Object.assign({}, item)) : [];
         this.remoteFilters = normalized;
 
-        if (!this.tabulator) {
+        if (!this.tabulator || !this.isTabulatorReady()) {
             return;
         }
 
         try {
-            if (this.isTabulatorReady() && normalized.length) {
+            if (normalized.length) {
                 this.tabulator.setFilter(normalized);
-            } else if (this.isTabulatorReady()) {
-                if (typeof this.tabulator.clearFilter === 'function') {
-                    this.tabulator.clearFilter(true);
-                }
+            } else if (typeof this.tabulator.clearFilter === 'function') {
+                this.tabulator.clearFilter(true);
+            } else {
+                this.tabulator.setFilter([]);
             }
         } catch (error) {
             console.error('Failed to apply filters', error);
@@ -896,8 +866,8 @@ class Grid {
     }
 
     updatePageSize(size) {
-        const numericSize = parseInt(size, 10);
-        if (!Number.isFinite(numericSize) || numericSize <= 0) {
+        const numericSize = this.parsePositiveNumber(size);
+        if (!numericSize) {
             return;
         }
         this.paginationSize = numericSize;
@@ -915,8 +885,8 @@ class Grid {
     }
 
     reloadData(options = {}) {
-        const targetPage = parseInt(options.page, 10);
-        if (Number.isFinite(targetPage) && targetPage > 0) {
+        const targetPage = this.parsePositiveNumber(options.page);
+        if (targetPage) {
             this.requestedPage = targetPage;
         }
 
@@ -928,10 +898,7 @@ class Grid {
         }
 
         if (this.isRemotePaginationEnabled()) {
-            const desiredPage = Number.isFinite(targetPage) && targetPage > 0
-                ? targetPage
-                : this.getCurrentPage();
-
+            const desiredPage = targetPage || this.getCurrentPage();
             this.requestedPage = desiredPage;
 
             if (typeof this.tabulator.setPage === 'function') {
@@ -953,44 +920,48 @@ class Grid {
             return Promise.resolve();
         }
 
-        if (typeof this.tabulator.replaceData === 'function') {
-            try {
-                return Promise.resolve(this.tabulator.replaceData(this.data || []));
-            } catch (error) {
-                return Promise.reject(error);
-            }
+        try {
+            return Promise.resolve(this.tabulator.replaceData(this.data || []))
+                .then(() => {
+                    const finalize = () => {
+                        setTimeout(() => {
+                            this.silentSortUpdate = false;
+                        }, 0);
+                    };
+
+                    if (this.sort.field && this.sort.order) {
+                        this.silentSortUpdate = true;
+                        try {
+                            this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
+                        } catch (e) {
+                            try {
+                                this.tabulator.setSort(this.sort.field, this.sort.order);
+                            } catch (ignored) {}
+                        } finally {
+                            finalize();
+                        }
+                    } else if (typeof this.tabulator.clearSort === 'function') {
+                        this.silentSortUpdate = true;
+                        try {
+                            this.tabulator.clearSort();
+                        } finally {
+                            finalize();
+                        }
+                    }
+
+                    if (this.pendingSelectionKey !== undefined) {
+                        const key = this.pendingSelectionKey;
+                        this.pendingSelectionKey = undefined;
+                        if (key !== false && key !== null && key !== undefined) {
+                            this.selectByKey(key);
+                        } else {
+                            this.deselectItem();
+                        }
+                    }
+                });
+        } catch (error) {
+            return Promise.reject(error);
         }
-
-        return Promise.resolve();
-    }
-
-    normalizePager(pager = {}) {
-        const normalized = { raw: pager };
-        if (!pager || typeof pager !== 'object') {
-            return normalized;
-        }
-
-        const totalPages = parseInt(pager.count || pager.totalPages || pager.last_page || pager.lastPage, 10);
-        if (Number.isFinite(totalPages) && totalPages > 0) {
-            normalized.lastPage = totalPages;
-        }
-
-        const currentPage = parseInt(pager.current || pager.page || pager.currentPage, 10);
-        if (Number.isFinite(currentPage) && currentPage > 0) {
-            normalized.currentPage = currentPage;
-        }
-
-        const totalRecords = parseInt(pager.records || pager.totalRecords || pager.total_records, 10);
-        if (Number.isFinite(totalRecords) && totalRecords >= 0) {
-            normalized.totalRecords = totalRecords;
-        }
-
-        const pageSize = parseInt(pager.limit || pager.pageSize || pager.perPage || pager.size, 10);
-        if (Number.isFinite(pageSize) && pageSize > 0) {
-            normalized.pageSize = pageSize;
-        }
-
-        return normalized;
     }
 
     handleAjaxRequest(params = {}) {
@@ -998,8 +969,8 @@ class Grid {
             return Promise.resolve(Array.isArray(this.data) ? this.data.slice() : []);
         }
 
-        const requestedPage = parseInt(params.page, 10);
-        if (Number.isFinite(requestedPage) && requestedPage > 0) {
+        const requestedPage = this.parsePositiveNumber(params.page);
+        if (requestedPage) {
             this.currentPage = requestedPage;
         }
 
@@ -1014,30 +985,52 @@ class Grid {
         }
     }
 
-    handleAjaxResponse(response, params = {}) {
-        let payload = response;
-        if (this.remoteResponseHandler) {
-            try {
-                const processed = this.remoteResponseHandler(response, params);
-                if (processed !== undefined) {
-                    payload = processed;
-                }
-            } catch (error) {
-                console.error('Remote response handler failed', error);
-            }
+    normalizePager(pager = {}) {
+        const normalized = { raw: pager };
+        if (!pager || typeof pager !== 'object') {
+            return normalized;
         }
 
-        if (!payload || typeof payload !== 'object') {
-            if (Array.isArray(payload)) {
-                this.data = payload.slice();
-                return payload;
+        const parseValue = (value, { allowZero = false } = {}) => {
+            const numeric = parseInt(value, 10);
+            if (!Number.isFinite(numeric)) {
+                return null;
             }
-            this.data = [];
-            return [];
+            if (numeric === 0 && !allowZero) {
+                return null;
+            }
+            if (numeric < 0) {
+                return null;
+            }
+            return numeric;
+        };
+
+        const lastPage = parseValue(pager.count ?? pager.totalPages ?? pager.last_page ?? pager.lastPage);
+        if (lastPage) {
+            normalized.lastPage = lastPage;
         }
 
-        if (!Array.isArray(payload.data) && Array.isArray(response)) {
-            payload.data = response;
+        const current = parseValue(pager.current ?? pager.page ?? pager.currentPage, { allowZero: false });
+        if (current) {
+            normalized.currentPage = current;
+        }
+
+        const totalRecords = parseValue(pager.records ?? pager.totalRecords ?? pager.total_records, { allowZero: true });
+        if (totalRecords !== null) {
+            normalized.totalRecords = totalRecords;
+        }
+
+        const pageSize = parseValue(pager.limit ?? pager.pageSize ?? pager.perPage ?? pager.size);
+        if (pageSize) {
+            normalized.pageSize = pageSize;
+        }
+
+        return normalized;
+    }
+
+    applyPagerFromPayload(payload = {}, params = {}) {
+        if (!payload) {
+            return;
         }
 
         if (payload.pager) {
@@ -1055,60 +1048,75 @@ class Grid {
             if (normalized.totalRecords !== undefined) {
                 payload.total_records = normalized.totalRecords;
             }
-        } else {
-            if (payload.last_page === undefined) {
-                payload.last_page = 1;
-            }
-            if (payload.current_page === undefined) {
-                const requestedPage = parseInt(params.page, 10);
-                payload.current_page = Number.isFinite(requestedPage) && requestedPage > 0
-                    ? requestedPage
-                    : this.getCurrentPage();
-            }
-            this.currentPage = payload.current_page;
-            if (payload.total_records === undefined) {
-                payload.total_records = Array.isArray(payload.data) ? payload.data.length : 0;
+            this.setPager(payload.pager);
+            return;
+        }
+
+        if (payload.last_page === undefined) {
+            payload.last_page = 1;
+        }
+        if (payload.current_page === undefined) {
+            const requestedPage = this.parsePositiveNumber(params.page);
+            payload.current_page = requestedPage || this.getCurrentPage();
+        }
+        this.currentPage = payload.current_page;
+
+        if (payload.total_records === undefined) {
+            payload.total_records = Array.isArray(payload.data) ? payload.data.length : 0;
+        }
+
+        if (payload.limit && !this.paginationSize) {
+            this.updatePageSize(payload.limit);
+        }
+
+        if (payload.per_page && !this.paginationSize) {
+            this.updatePageSize(payload.per_page);
+        }
+
+        this.setPager({
+            count: payload.last_page,
+            current: payload.current_page,
+            records: payload.total_records,
+            limit: payload.limit || payload.per_page || this.paginationSize,
+        });
+    }
+
+    handleAjaxResponse(response, params = {}) {
+        let payload = response;
+        if (this.remoteResponseHandler) {
+            try {
+                const processed = this.remoteResponseHandler(response, params);
+                if (processed !== undefined) {
+                    payload = processed;
+                }
+            } catch (error) {
+                console.error('Remote response handler failed', error);
             }
         }
+
+        if (Array.isArray(payload)) {
+            this.data = payload.slice();
+            return this.data;
+        }
+
+        if (!payload || typeof payload !== 'object') {
+            this.data = [];
+            return [];
+        }
+
+        if (!Array.isArray(payload.data) && Array.isArray(response)) {
+            payload.data = response;
+        }
+
+        this.applyPagerFromPayload(payload, params);
 
         if (params && params.size && !this.paginationSize) {
             this.updatePageSize(params.size);
         }
 
         this.data = Array.isArray(payload.data) ? payload.data.slice() : [];
+        this.setLastResponse(payload);
         return this.data;
-    }
-
-    getSort() {
-        let field = this.sort?.field || null;
-        let order = this.sort?.order || null;
-
-        if ((!field || !order) && this.tabulator && typeof this.tabulator.getSorters === 'function') {
-            const sorters = this.tabulator.getSorters();
-            if (Array.isArray(sorters) && sorters.length) {
-                const sorter = sorters[0];
-                field = sorter.field || (sorter.column && sorter.column.getField && sorter.column.getField()) || field;
-                order = sorter.dir || sorter.direction || sorter.sort || sorter.order || order;
-            }
-        }
-
-        field = (field !== undefined && field !== null) ? String(field).trim() : null;
-        if (order !== undefined && order !== null) {
-            order = String(order).toLowerCase();
-            if (order !== 'asc' && order !== 'desc') {
-                if (order.startsWith('asc')) {
-                    order = 'asc';
-                } else if (order.startsWith('desc')) {
-                    order = 'desc';
-                } else {
-                    order = null;
-                }
-            }
-        } else {
-            order = null;
-        }
-
-        return { field: field || null, order: order || null };
     }
 
     setData(data = []) {
@@ -1124,205 +1132,6 @@ class Grid {
         return !this.data || !this.data.length;
     }
 
-    buildColumns() {
-        if (!this.metadata || typeof this.metadata !== 'object') {
-            return [];
-        }
-
-        const columns = [];
-        Object.keys(this.metadata).forEach((fieldName) => {
-            const fieldMeta = this.metadata[fieldName];
-            if (!fieldMeta || typeof fieldMeta !== 'object') {
-                return;
-            }
-
-            const type = this.normalizeFieldType(fieldMeta.type || 'text');
-
-            if (type === 'hidden') {
-                return;
-            }
-
-            if (Object.prototype.hasOwnProperty.call(fieldMeta, 'visible') && !this.normalizeBoolean(fieldMeta.visible)) {
-                return;
-            }
-
-            const column = {
-                field: fieldName,
-                title: fieldMeta.title || fieldMeta.caption || fieldName,
-                tooltip: fieldMeta.hint || false,
-            };
-
-            const appendCssClass = (cls) => {
-                if (!cls) {
-                    return;
-                }
-                const existing = column.cssClass ? column.cssClass.split(/\s+/).filter(Boolean) : [];
-                cls.split(/\s+/).filter(Boolean).forEach((item) => {
-                    if (!existing.includes(item)) {
-                        existing.push(item);
-                    }
-                });
-                if (existing.length) {
-                    column.cssClass = existing.join(' ');
-                }
-            };
-
-            if (Object.prototype.hasOwnProperty.call(fieldMeta, 'sort')) {
-                column.headerSort = fieldMeta.sort === 1 || fieldMeta.sort === '1' || fieldMeta.sort === true;
-            } else {
-                column.headerSort = true;
-            }
-
-            if (fieldMeta.width) {
-                const width = parseInt(fieldMeta.width, 10);
-                if (!Number.isNaN(width)) {
-                    column.width = width;
-                }
-            }
-
-            if (fieldMeta.minWidth) {
-                const minWidth = parseInt(fieldMeta.minWidth, 10);
-                if (!Number.isNaN(minWidth)) {
-                    column.minWidth = minWidth;
-                }
-            }
-
-            if (fieldMeta.maxWidth) {
-                const maxWidth = parseInt(fieldMeta.maxWidth, 10);
-                if (!Number.isNaN(maxWidth)) {
-                    column.maxWidth = maxWidth;
-                }
-            }
-
-            if (fieldMeta.cssClass) {
-                appendCssClass(fieldMeta.cssClass);
-            }
-
-            if (fieldMeta.class) {
-                appendCssClass(fieldMeta.class);
-            }
-
-            if (fieldMeta.align) {
-                column.hozAlign = fieldMeta.align;
-            }
-
-            switch (type) {
-                case 'boolean': {
-                    column.hozAlign = column.hozAlign || 'center';
-                    column.formatter = (cell) => this.createBooleanElement(cell.getValue());
-                    break;
-                }
-
-                case 'integer':
-                case 'float':
-                case 'number': {
-                    column.hozAlign = column.hozAlign || 'right';
-                    const decimals = type === 'integer' ? 0 : undefined;
-                    column.formatter = this.createNumericFormatter({ decimals });
-                    break;
-                }
-
-                case 'datetime':
-                case 'date':
-                case 'time': {
-                    column.hozAlign = column.hozAlign || 'center';
-                    appendCssClass('text-nowrap');
-                    column.formatter = this.createTextFormatter();
-                    break;
-                }
-
-                case 'htmlblock': {
-                    appendCssClass('text-break');
-                    column.vertAlign = column.vertAlign || 'top';
-                    column.formatter = this.createHTMLFormatter();
-                    break;
-                }
-
-                case 'text':
-                case 'textbox':
-                case 'multi': {
-                    appendCssClass('text-break');
-                    column.vertAlign = column.vertAlign || 'top';
-                    column.formatter = this.createMultilineTextFormatter();
-                    break;
-                }
-
-                case 'value': {
-                    column.hozAlign = column.hozAlign || 'right';
-                    column.formatter = this.createValueFormatter();
-                    break;
-                }
-
-                case 'file':
-                case 'thumb':
-                case 'media':
-                case 'video': {
-                    column.hozAlign = column.hozAlign || 'center';
-                    column.formatter = this.createFileFormatter(fieldMeta);
-                    break;
-                }
-
-                case 'email': {
-                    column.formatter = this.createEmailFormatter();
-                    break;
-                }
-
-                case 'phone': {
-                    column.formatter = this.createPhoneFormatter();
-                    break;
-                }
-
-                case 'code': {
-                    column.vertAlign = column.vertAlign || 'top';
-                    appendCssClass('text-break');
-                    column.formatter = this.createCodeFormatter();
-                    break;
-                }
-
-                case 'password': {
-                    column.formatter = (cell) => {
-                        const value = this.stringifyValue(cell.getValue());
-                        if (!value) {
-                            return '';
-                        }
-                        const maskLength = Math.max(6, Math.min(12, value.length));
-                        return this.createTextElement('•'.repeat(maskLength));
-                    };
-                    break;
-                }
-
-                case 'info': {
-                    appendCssClass('text-break');
-                    column.vertAlign = column.vertAlign || 'top';
-                    column.formatter = this.createHTMLFormatter();
-                    break;
-                }
-
-                case 'select':
-                case 'string':
-                case 'custom':
-                case 'tab':
-                case 'smap': {
-                    column.formatter = this.createTextFormatter();
-                    break;
-                }
-
-                default: {
-                    this.trackUnknownType(type);
-                    column.formatter = this.createTextFormatter();
-                }
-            }
-
-            if (!column.formatter) {
-                column.formatter = this.createTextFormatter();
-            }
-
-            columns.push(column);
-        });
-
-        return columns;
-    }
-
     initializeTabulator() {
         if (this.tabulator) {
             return;
@@ -1330,25 +1139,6 @@ class Grid {
 
         this.tabulatorReady = false;
 
-        const selectableOption = (typeof this.options.selectable !== 'undefined')
-            ? this.options.selectable
-            : 1;
-        const themeOption = this.options.theme || 'bootstrap5';
-        const placeholderOption = (typeof this.options.placeholder !== 'undefined')
-            ? this.options.placeholder
-            : '';
-        const extractRowData = (row) => {
-            if (row && typeof row.getData === 'function') {
-                try {
-                    return row.getData();
-                } catch (e) {
-                    return null;
-                }
-            }
-            return null;
-        };
-
-        const paginationElementOption = this.paginationElement || this.options.paginationElement || null;
         const remotePaginationEnabled = this.isRemotePaginationEnabled();
         const remoteSortingEnabled = this.isRemoteSortingEnabled();
         const remoteFilteringEnabled = this.isRemoteFilteringEnabled();
@@ -1359,26 +1149,39 @@ class Grid {
                 : (Array.isArray(this.data) ? this.data : []),
             columns: this.buildColumns(),
             layout: 'fitColumns',
-            selectable: selectableOption,
+            selectable: this.options.selectable,
             index: this.keyFieldName || undefined,
-            placeholder: placeholderOption,
-            theme: themeOption,
+            placeholder: this.options.placeholder,
+            theme: this.options.theme,
             rowClick: (_, row) => {
                 this.selectRow(row);
-                this.selectedRow = row;
-                this.fireEvent('rowClick', row, extractRowData(row));
+                const data = row && typeof row.getData === 'function' ? row.getData() : null;
+                this.fireEvent('rowClick', row, data);
             },
             rowDblClick: (_, row) => {
                 this.selectRow(row);
-                this.selectedRow = row;
-                this.fireEvent('doubleClick', row, extractRowData(row));
-            }
+                const data = row && typeof row.getData === 'function' ? row.getData() : null;
+                this.fireEvent('doubleClick', row, data);
+            },
+            rowSelectionChanged: (data, rows) => {
+                const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+                this.selectedRow = row || null;
+                const record = Array.isArray(data) && data.length
+                    ? data[0]
+                    : (row && typeof row.getData === 'function' ? row.getData() : null);
+                this.fireEvent('select', this.selectedRow, record);
+            },
         };
 
         if (remotePaginationEnabled || remoteSortingEnabled || remoteFilteringEnabled) {
-            tabulatorOptions.ajaxURL = this.options.ajaxURL || '';
             tabulatorOptions.ajaxRequestFunc = (url, config, params) => this.handleAjaxRequest(params);
             tabulatorOptions.ajaxResponse = (url, params, response) => this.handleAjaxResponse(response, params);
+            if (this.options.ajaxURL) {
+                tabulatorOptions.ajaxURL = this.options.ajaxURL;
+            }
+        }
+
+        if (remotePaginationEnabled || this.remotePagination) {
             tabulatorOptions.pagination = true;
             tabulatorOptions.paginationMode = remotePaginationEnabled ? 'remote' : 'local';
             tabulatorOptions.paginationInitialPage = this.requestedPage || 1;
@@ -1389,37 +1192,22 @@ class Grid {
             if (Array.isArray(this.paginationSizeSelector) && this.paginationSizeSelector.length) {
                 tabulatorOptions.paginationSizeSelector = this.paginationSizeSelector.slice();
             }
-            if (paginationElementOption) {
-                tabulatorOptions.paginationElement = paginationElementOption;
-            }
-            tabulatorOptions.sortMode = remoteSortingEnabled ? 'remote' : 'local';
-            tabulatorOptions.filterMode = remoteFilteringEnabled ? 'remote' : 'local';
-            tabulatorOptions.ajaxSorting = remoteSortingEnabled;
-            tabulatorOptions.ajaxFiltering = remoteFilteringEnabled;
-        } else {
-            tabulatorOptions.sortMode = 'local';
-            tabulatorOptions.filterMode = 'local';
-            if (this.remotePagination) {
-                tabulatorOptions.pagination = true;
-                tabulatorOptions.paginationMode = 'local';
-                if (this.paginationSize) {
-                    tabulatorOptions.paginationSize = this.paginationSize;
-                }
-                if (Array.isArray(this.paginationSizeSelector) && this.paginationSizeSelector.length) {
-                    tabulatorOptions.paginationSizeSelector = this.paginationSizeSelector.slice();
-                }
-                if (paginationElementOption) {
-                    tabulatorOptions.paginationElement = paginationElementOption;
-                }
+            if (this.paginationElement) {
+                tabulatorOptions.paginationElement = this.paginationElement;
             }
         }
 
-        this.tabulator = new Tabulator(this.container, tabulatorOptions);
+        tabulatorOptions.sortMode = remoteSortingEnabled ? 'remote' : 'local';
+        tabulatorOptions.filterMode = remoteFilteringEnabled ? 'remote' : 'local';
+        tabulatorOptions.ajaxSorting = remoteSortingEnabled;
+        tabulatorOptions.ajaxFiltering = remoteFilteringEnabled;
 
+        this.tabulator = new Tabulator(this.container, tabulatorOptions);
         this.columnsDirty = false;
 
         this.tabulator.on('tableBuilt', () => {
             this.tabulatorReady = true;
+            this.updateTabulatorIndex();
 
             if (this.paginationSize) {
                 try {
@@ -1480,13 +1268,6 @@ class Grid {
             }
         });
 
-        this.tabulator.on('rowSelectionChanged', (data, rows) => {
-            const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-            this.selectedRow = row || null;
-            const record = Array.isArray(data) && data.length ? data[0] : extractRowData(row);
-            this.fireEvent('select', this.selectedRow, record);
-        });
-
         this.tabulator.on('sortChanged', (sorters) => {
             const sorter = Array.isArray(sorters) && sorters.length ? sorters[0] : null;
             const previous = Object.assign({}, this.sort);
@@ -1495,7 +1276,7 @@ class Grid {
                 const dir = sorter.dir || sorter.direction || sorter.sort || sorter.order;
                 this.sort = {
                     field: field || null,
-                    order: dir || null
+                    order: dir || null,
                 };
             } else {
                 this.sort = { field: null, order: null };
@@ -1512,6 +1293,10 @@ class Grid {
                 this.fireEvent('sortChange', this.sort, previous, sorter, sorters);
             }
         });
+    }
+
+    isTabulatorReady() {
+        return !!(this.tabulator && this.tabulatorReady);
     }
 
     build() {
@@ -1533,84 +1318,27 @@ class Grid {
         this.pendingBuild = false;
         this.updateTabulatorIndex();
 
-        let columnsPromise = Promise.resolve();
-        if (this.columnsDirty) {
-            try {
+        const columnsPromise = this.columnsDirty
+            ? Promise.resolve().then(() => {
                 const columns = this.buildColumns();
                 const result = this.tabulator.setColumns(columns);
-                columnsPromise = Promise.resolve(result);
-            } catch (error) {
-                columnsPromise = Promise.reject(error);
-            }
-        }
-
-        columnsPromise = columnsPromise.then(() => {
-            this.columnsDirty = false;
-        });
-
-        const applyData = () => {
-            if (this.isRemotePaginationEnabled()) {
-                if (previouslySelectedRecordKey !== false
-                    && previouslySelectedRecordKey !== undefined
-                    && previouslySelectedRecordKey !== null) {
-                    this.pendingSelectionKey = previouslySelectedRecordKey;
-                } else {
-                    this.pendingSelectionKey = undefined;
-                }
-                return this.reloadData({ page: this.requestedPage || this.currentPage || 1 });
-            }
-
-            return Promise.resolve(this.tabulator.replaceData(this.data || []))
-                .then(() => {
-                    const finalizeSilentSortUpdate = () => {
-                        setTimeout(() => {
-                            this.silentSortUpdate = false;
-                        }, 0);
-                    };
-
-                    if (this.sort.field && this.sort.order) {
-                        this.silentSortUpdate = true;
-                        try {
-                            this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
-                        } catch (e) {
-                            try {
-                                this.tabulator.setSort(this.sort.field, this.sort.order);
-                            } catch (ignored) {}
-                        } finally {
-                            finalizeSilentSortUpdate();
-                        }
-                    } else {
-                        this.silentSortUpdate = true;
-                        try {
-                            if (typeof this.tabulator.clearSort === 'function') {
-                                this.tabulator.clearSort();
-                            }
-                        } finally {
-                            finalizeSilentSortUpdate();
-                        }
-                    }
-
-                    const hasData = Array.isArray(this.data) && this.data.length > 0;
-                    if (!hasData) {
-                        this.deselectItem();
-                        return;
-                    }
-
-                    if (previouslySelectedRecordKey !== false && previouslySelectedRecordKey !== undefined && previouslySelectedRecordKey !== null) {
-                        this.selectByKey(previouslySelectedRecordKey);
-                    }
-
-                    const selectedRows = typeof this.tabulator.getSelectedRows === 'function'
-                        ? this.tabulator.getSelectedRows()
-                        : [];
-                    if (!selectedRows || !selectedRows.length) {
-                        this.deselectItem();
-                    }
-                });
-        };
+                this.columnsDirty = false;
+                return result;
+            })
+            : Promise.resolve();
 
         columnsPromise
-            .then(() => applyData())
+            .then(() => {
+                if (this.isRemotePaginationEnabled()) {
+                    if (previouslySelectedRecordKey !== false && previouslySelectedRecordKey !== undefined && previouslySelectedRecordKey !== null) {
+                        this.pendingSelectionKey = previouslySelectedRecordKey;
+                    }
+                    return this.reloadData({ page: this.requestedPage || this.currentPage || 1 });
+                }
+
+                this.pendingSelectionKey = previouslySelectedRecordKey;
+                return this.reloadData();
+            })
             .catch((error) => {
                 console.error('Grid build failed', error);
             });
@@ -1628,13 +1356,14 @@ class Grid {
         if (!row || !this.tabulator) {
             return;
         }
-        const selected = typeof this.tabulator.getSelectedRows === 'function'
-            ? this.tabulator.getSelectedRows()
-            : [];
-        if (selected && selected.length) {
-            this.tabulator.deselectRow(selected);
-        }
-        row.select();
+        try {
+            if (typeof this.tabulator.deselectRow === 'function') {
+                this.tabulator.deselectRow();
+            }
+        } catch (error) {}
+        try {
+            row.select();
+        } catch (error) {}
         this.selectedRow = row;
     }
 
@@ -1643,27 +1372,31 @@ class Grid {
     }
 
     deselectItem() {
-        if (this.tabulator) {
-            const selected = typeof this.tabulator.getSelectedRows === 'function'
-                ? this.tabulator.getSelectedRows()
-                : [];
-            if (selected && selected.length) {
-                this.tabulator.deselectRow(selected);
-            }
+        if (this.tabulator && typeof this.tabulator.deselectRow === 'function') {
+            try {
+                this.tabulator.deselectRow();
+            } catch (error) {}
         }
         this.selectedRow = null;
     }
 
     getSelectedItem() {
-        return this.selectedRow;
+        if (this.selectedRow) {
+            return this.selectedRow;
+        }
+        if (this.tabulator && typeof this.tabulator.getSelectedRows === 'function') {
+            const selected = this.tabulator.getSelectedRows();
+            if (selected && selected.length) {
+                return selected[0];
+            }
+        }
+        return null;
     }
 
     getSelectedRecord() {
-        if (!this.getSelectedItem()) {
-            return false;
-        }
-        if (typeof this.selectedRow.getData === 'function') {
-            return this.selectedRow.getData();
+        const row = this.getSelectedItem();
+        if (row && typeof row.getData === 'function') {
+            return row.getData();
         }
         return false;
     }
@@ -1680,7 +1413,10 @@ class Grid {
         if (!this.tabulator || !this.keyFieldName || key === false || key === undefined || key === null) {
             return;
         }
-        const row = this.tabulator.getRow(key);
+        let row = null;
+        try {
+            row = this.tabulator.getRow(key);
+        } catch (error) {}
         if (row) {
             this.selectRow(row);
             if (typeof row.scrollTo === 'function') {
@@ -1693,7 +1429,7 @@ class Grid {
         if (!this.data || !this.keyFieldName) {
             return false;
         }
-        return this.data.some(item => item && item[this.keyFieldName] == key);
+        return this.data.some((item) => item && item[this.keyFieldName] == key);
     }
 
     getAdjacentRow(direction) {
@@ -1709,12 +1445,6 @@ class Grid {
     }
 }
 
-// Экспорт для ES-модуля (если нужно)
-// export default Grid;
-
-/**
- * GridManager (ES6 version)
- */
 class GridManager {
     /**
      * @param {HTMLElement|string} element Main holder element for the GridManager
