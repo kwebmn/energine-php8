@@ -540,7 +540,11 @@ class TabulatorGrid {
         });
         this.table.setColumns(columns);
         if (this.keyFieldName) {
-            this.table.setOptions({ index: this.keyFieldName });
+            if (typeof this.table.setOptions === 'function') {
+                this.table.setOptions({ index: this.keyFieldName });
+            } else if (this.table && this.table.options) {
+                this.table.options.index = this.keyFieldName;
+            }
         }
     }
 
