@@ -270,7 +270,14 @@ class TabulatorGrid {
                 this.off('response', onResponse);
                 this.off('loadError', onError);
             };
-            const onResponse = (payload) => { cleanup(); resolve(payload); };
+            const onResponse = (payload) => {
+                cleanup();
+                if (payload && payload.data !== undefined) {
+                    resolve(payload.data);
+                } else {
+                    resolve(this.data);
+                }
+            };
             const onError = (error) => { cleanup(); reject(error); };
             this.on('response', onResponse);
             this.on('loadError', onError);
@@ -402,32 +409,49 @@ class TabulatorGrid {
     _ajaxResponse(url, params, response) {
         const payload = this._normalizeResponse(response) || {};
         this.lastResponse = payload;
+
+        const dataArray = Array.isArray(payload.data) ? payload.data : [];
+        payload.data = dataArray;
+
         if (payload.meta) {
             this.setMetadata(payload.meta);
         }
+
         if (payload.pager) {
             const totalPages = parseInt(payload.pager.count, 10);
-            if (!Number.isNaN(totalPages)) {
+            if (!Number.isNaN(totalPages) && totalPages > 0) {
                 payload.last_page = totalPages;
                 if (typeof this.table.setMaxPage === 'function') {
                     this.table.setMaxPage(totalPages);
                 }
+            } else {
+                payload.last_page = payload.last_page || 1;
+                if (typeof this.table.setMaxPage === 'function') {
+                    this.table.setMaxPage(payload.last_page);
+                }
             }
+
             const currentPage = parseInt(payload.pager.current, 10);
             if (!Number.isNaN(currentPage)
                 && this.table
                 && this.table.modules
                 && this.table.modules.pagination) {
                 payload.page = currentPage;
+                payload.current_page = currentPage;
                 this.table.modules.pagination.page = currentPage;
             }
             this.lastPager = payload.pager;
         } else {
+            payload.last_page = payload.last_page || 1;
+            if (typeof this.table.setMaxPage === 'function') {
+                this.table.setMaxPage(payload.last_page);
+            }
             this.lastPager = null;
         }
-        this.data = Array.isArray(payload.data) ? payload.data : [];
+
+        this.data = dataArray;
         this.fireEvent('response', payload);
-        return this.data;
+        return payload;
     }
 
     /**
