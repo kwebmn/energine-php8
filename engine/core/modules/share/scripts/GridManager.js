@@ -38,6 +38,8 @@ class Grid {
         this.tabulatorReady = false;
         this.pendingBuild = false;
         this.columnsDirty = true;
+        this.pager = null;
+        this.lastResponse = null;
 
         this.container = document.createElement('div');
         this.container.classList.add('grid-tabulator');
@@ -742,6 +744,62 @@ class Grid {
         return this.metadata;
     }
 
+    setPager(pager = null) {
+        if (pager && typeof pager === 'object') {
+            this.pager = Object.assign({}, pager);
+        } else {
+            this.pager = null;
+        }
+    }
+
+    getPager() {
+        return this.pager;
+    }
+
+    setLastResponse(payload = null) {
+        if (!payload) {
+            this.lastResponse = null;
+            return;
+        }
+        if (typeof payload === 'object') {
+            this.lastResponse = Object.assign({}, payload);
+        } else {
+            this.lastResponse = payload;
+        }
+    }
+
+    getSort() {
+        let field = this.sort?.field || null;
+        let order = this.sort?.order || null;
+
+        if ((!field || !order) && this.tabulator && typeof this.tabulator.getSorters === 'function') {
+            const sorters = this.tabulator.getSorters();
+            if (Array.isArray(sorters) && sorters.length) {
+                const sorter = sorters[0];
+                field = sorter.field || (sorter.column && sorter.column.getField && sorter.column.getField()) || field;
+                order = sorter.dir || sorter.direction || sorter.sort || sorter.order || order;
+            }
+        }
+
+        field = (field !== undefined && field !== null) ? String(field).trim() : null;
+        if (order !== undefined && order !== null) {
+            order = String(order).toLowerCase();
+            if (order !== 'asc' && order !== 'desc') {
+                if (order.startsWith('asc')) {
+                    order = 'asc';
+                } else if (order.startsWith('desc')) {
+                    order = 'desc';
+                } else {
+                    order = null;
+                }
+            }
+        } else {
+            order = null;
+        }
+
+        return { field: field || null, order: order || null };
+    }
+
     setData(data = []) {
         if (!this.metadata) {
             alert('Cannot set data without specified metadata.');
@@ -1241,6 +1299,7 @@ class GridManager {
         this.mvElementId = null;
         this.langId = 0;
         this.initialized = false;
+        this.pendingPage = null;
 
         // --- Element reference ---
         this.element = (typeof element === 'string') ?
@@ -1266,6 +1325,14 @@ class GridManager {
 
         // --- Tabs ---
         this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
+
+        const activeTab = (this.tabPane && typeof this.tabPane.getCurrentTab === 'function')
+            ? this.tabPane.getCurrentTab()
+            : null;
+        const initialTabData = this.extractTabData(activeTab);
+        if (initialTabData && Object.prototype.hasOwnProperty.call(initialTabData, 'lang')) {
+            this.langId = initialTabData.lang;
+        }
 
         // --- Toolbar placement ---
         let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
@@ -1309,36 +1376,94 @@ class GridManager {
     // --- Toolbar ---
     attachToolbar(toolbar) {
         this.toolbar = toolbar;
-        let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
-        if (toolbarContainer) {
-            toolbarContainer.appendChild(this.toolbar.getElement());
-        } else {
-            this.tabPane.element.appendChild(this.toolbar.getElement());
+        const toolbarElement = this.toolbar ? this.toolbar.getElement() : null;
+        const gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
+
+        if (toolbarElement) {
+            if (!toolbarElement.getAttribute('data-role')) {
+                toolbarElement.setAttribute('data-role', 'grid-actions-list');
+            }
+
+            if (gridToolbar) {
+                let actionsContainer = gridToolbar.querySelector('[data-role="grid-actions"]');
+                if (!actionsContainer) {
+                    actionsContainer = document.createElement('div');
+                    actionsContainer.classList.add('grid-actions', 'd-flex', 'flex-wrap', 'align-items-center', 'gap-2', 'ms-lg-auto');
+                    actionsContainer.setAttribute('data-role', 'grid-actions');
+                    gridToolbar.appendChild(actionsContainer);
+                }
+                actionsContainer.appendChild(toolbarElement);
+            } else {
+                let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
+                if (!toolbarContainer) {
+                    toolbarContainer = this.tabPane.element;
+                }
+                toolbarContainer.appendChild(toolbarElement);
+            }
         }
-        if (this.toolbar.disableControls) this.toolbar.disableControls();
-        if (this.toolbar.bindTo) this.toolbar.bindTo(this);
+
+        if (this.toolbar?.disableControls) this.toolbar.disableControls();
+        if (this.toolbar?.bindTo) this.toolbar.bindTo(this);
         // this.reload(); // Можно сделать отложенную загрузку при необходимости
+    }
+
+    parseTabMeta(metaText) {
+        if (typeof metaText !== 'string') {
+            return {};
+        }
+        const trimmed = metaText.trim();
+        if (!trimmed) {
+            return {};
+        }
+        if (typeof TabPane !== 'undefined' && typeof TabPane.safeJsonParse === 'function') {
+            return TabPane.safeJsonParse(trimmed) || {};
+        }
+        const normalized = trimmed.replace(/([\{,]\s*)(\w+)\s*:/g, '$1"$2":');
+        try {
+            return JSON.parse(normalized);
+        } catch (e) {
+            return {};
+        }
+    }
+
+    extractTabData(source) {
+        if (!source) {
+            return {};
+        }
+        if (source instanceof Element) {
+            if (source.data && typeof source.data === 'object') {
+                return source.data;
+            }
+            const metaHolder = source.querySelector('[data-role="tab-meta"]');
+            if (metaHolder) {
+                return this.parseTabMeta(metaHolder.textContent || '');
+            }
+            return {};
+        }
+        if (typeof source === 'string') {
+            return this.parseTabMeta(source);
+        }
+        if (typeof source === 'object') {
+            if (source.data && typeof source.data === 'object') {
+                return source.data;
+            }
+            return source;
+        }
+        return {};
     }
 
     // --- Tabs ---
     onTabChange(data) {
-        if (data instanceof Element) {
-            // Ищем внутри .data
-            const span = data.querySelector('[data-role="tab-meta"]');
-            if (span) {
-                // Преобразуем строку к валидному JSON
-                const jsonString = span.textContent.replace(/(\w+)\s*:/g, '"$1":');
-                data = JSON.parse(jsonString);
-            } else {
-                throw new Error('Нет .data внутри элемента!');
-            }
-        } else if (typeof data === 'string') {
-            // Если пришла строка
-            const jsonString = data.replace(/(\w+)\s*:/g, '"$1":');
-            data = JSON.parse(jsonString);
+        const tabData = this.extractTabData(data);
+        if (tabData && Object.prototype.hasOwnProperty.call(tabData, 'lang')) {
+            this.langId = tabData.lang;
         }
-        this.langId = data.lang;
-        if (this.filter) this.filter.remove();
+        if (this.filter) {
+            this.filter.remove();
+            if (typeof this.filter.checkCondition === 'function') {
+                this.filter.checkCondition();
+            }
+        }
         this.reload();
     }
 
@@ -1359,76 +1484,211 @@ class GridManager {
     reload() { this.loadPage(1); }
 
     loadPage(pageNum) {
-        this.pageList.disable();
+        const requested = (pageNum === undefined || pageNum === null)
+            ? this.pageList.currentPage
+            : parseInt(pageNum, 10);
+        const normalizedPage = Number.isFinite(requested) && requested > 0 ? requested : 1;
+
+        this.pendingPage = normalizedPage;
+
+        if (this.pageList) this.pageList.disable();
         if (this.toolbar) this.toolbar.disableControls();
-        //this.overlay.show();
+
         showLoader();
-        this.grid.clear();
-        if(this.pageList.currentPage)
-        {
-            pageNum = this.pageList.currentPage;
-        }
-        // "Delay" replacement for browser layout quirks (setTimeout = 0)
+        if (this.grid) this.grid.clear();
+
         setTimeout(() => {
             Energine.request(
-                this.buildRequestURL(pageNum),
+                this.buildRequestURL(normalizedPage),
                 this.buildRequestPostBody(),
-                this.processServerResponse.bind(this),
+                (response) => this.processServerResponse(response),
                 null,
-                this.processServerError.bind(this)
+                (error) => this.processServerError(error)
             );
         }, 0);
     }
 
     buildRequestURL(pageNum) {
-        let url = '';
-        if (this.grid.sort && this.grid.sort.order) {
-            url = `${this.singlePath}get-data/${this.grid.sort.field}-${this.grid.sort.order}/page-${pageNum}`;
-        } else {
-            url = `${this.singlePath}get-data/page-${pageNum}`;
+        const basePath = this.singlePath ? `${this.singlePath.replace(/\/+$/, '')}/` : '';
+        const segments = ['get-data'];
+        const sort = (this.grid && typeof this.grid.getSort === 'function')
+            ? this.grid.getSort()
+            : (this.grid && this.grid.sort) || {};
+
+        if (sort.field && sort.order) {
+            segments.push(`${sort.field}-${sort.order}`);
         }
-        return url;
+
+        const pageNumber = parseInt(pageNum, 10);
+        const normalizedPage = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+        segments.push(`page-${normalizedPage}`);
+
+        return `${basePath}${segments.join('/')}`;
     }
 
     buildRequestPostBody() {
-        let postBody = '';
-        if (this.langId) {
-            postBody += `languageID=${this.langId}&`;
+        const params = [];
+
+        if (this.langId !== undefined && this.langId !== null && this.langId !== '') {
+            params.push(`languageID=${encodeURIComponent(this.langId)}`);
         }
-        if (this.filter && this.filter.getValue) {
-            postBody += this.filter.getValue();
+
+        if (this.filter && typeof this.filter.getValue === 'function') {
+            const filterValue = this.filter.getValue();
+            if (filterValue) {
+                params.push(filterValue.replace(/^&+|&+$/g, '').replace(/&&+/g, '&'));
+            }
         }
-        return postBody;
+
+        return params.join('&');
+    }
+
+    applyToolbarPayload(toolbarData) {
+        if (!this.toolbar || !toolbarData) {
+            return;
+        }
+
+        const applyState = (id, state = {}) => {
+            if (!id) {
+                return;
+            }
+            const control = this.toolbar.getControlById ? this.toolbar.getControlById(id) : null;
+            if (!control) {
+                return;
+            }
+            const shouldDisable = state.disabled === true || state.enable === false || state.enabled === false;
+            const shouldEnable = state.disabled === false || state.enable === true || state.enabled === true;
+
+            if (shouldDisable) {
+                control.disable();
+            }
+            if (shouldEnable) {
+                control.enable(true);
+            }
+        };
+
+        const handleDescriptor = (descriptor) => {
+            if (!descriptor || typeof descriptor !== 'object') {
+                return;
+            }
+            const id = descriptor.id || descriptor.control || descriptor.name;
+            applyState(id, descriptor);
+        };
+
+        if (Array.isArray(toolbarData)) {
+            toolbarData.forEach(handleDescriptor);
+            return;
+        }
+
+        if (typeof toolbarData === 'object') {
+            if (Array.isArray(toolbarData.controls)) {
+                toolbarData.controls.forEach(handleDescriptor);
+            }
+
+            const disableList = [].concat(toolbarData.disabled || toolbarData.disable || []);
+            disableList.forEach((id) => applyState(id, { disabled: true }));
+
+            const enableList = [].concat(toolbarData.enabled || toolbarData.enable || []);
+            enableList.forEach((id) => applyState(id, { enabled: true }));
+        }
+    }
+
+    extractErrorMessage(error) {
+        if (!error) {
+            return '';
+        }
+        if (typeof error === 'string') {
+            return error;
+        }
+        if (typeof error === 'object') {
+            if (typeof error.responseText === 'string' && error.responseText.trim()) {
+                return error.responseText;
+            }
+            if (typeof error.statusText === 'string' && error.statusText.trim()) {
+                return error.statusText;
+            }
+            if (typeof error.message === 'string' && error.message.trim()) {
+                return error.message;
+            }
+        }
+        return '';
     }
 
     processServerResponse(result) {
-        let control = false;
-        if (this.toolbar && this.toolbar.getControlById) {
-            control = this.toolbar.getControlById('add');
-        }
+        const payload = result || {};
 
-        if (!this.initialized) {
-            this.grid.setMetadata(result.meta);
-            this.initialized = true;
-        }
-        this.grid.setData(result.data || []);
+        try {
+            if (payload.meta) {
+                this.grid.setMetadata(payload.meta);
+                this.initialized = true;
+            } else if (!this.initialized && this.grid.getMetadata && Object.keys(this.grid.getMetadata() || {}).length) {
+                this.initialized = true;
+            }
 
-        if (result.pager) {
-            this.pageList.build(result.pager.count, result.pager.current, result.pager.records);
+            if (typeof this.grid.setPager === 'function') {
+                this.grid.setPager(payload.pager || null);
+            }
+            if (typeof this.grid.setLastResponse === 'function') {
+                this.grid.setLastResponse(payload);
+            }
+
+            this.grid.setData(payload.data || []);
+            this.grid.build();
+
+            if (payload.pager) {
+                const totalPages = parseInt(payload.pager.count, 10) || 0;
+                const currentPage = parseInt(payload.pager.current, 10) || (this.pendingPage || 1);
+                this.pageList.build(totalPages, currentPage, payload.pager.records || '');
+            } else {
+                this.pageList.clear();
+            }
+
+            if (this.pageList) {
+                this.pageList.enable();
+            }
+
+            if (this.toolbar) {
+                if (payload.toolbar) {
+                    this.applyToolbarPayload(payload.toolbar);
+                } else if (this.grid.isEmpty()) {
+                    this.toolbar.disableControls();
+                } else {
+                    this.toolbar.enableControls();
+                }
+
+                const addControl = this.toolbar.getControlById ? this.toolbar.getControlById('add') : null;
+                if (addControl) {
+                    addControl.enable(true);
+                }
+            }
+        } finally {
+            this.pendingPage = null;
+            hideLoader();
         }
-        if (!this.grid.isEmpty()) {
-            if (this.toolbar) this.toolbar.enableControls();
-            this.pageList.enable();
-        }
-        if (control) control.enable();
-        this.grid.build();
-        // this.overlay.hide();
-        hideLoader();
     }
 
-    processServerError(responseText) {
-        alert(responseText);
-        // this.overlay.hide();
+    processServerError(error) {
+        const message = this.extractErrorMessage(error);
+
+        if (message) {
+            console.error('GridManager request error:', message, error);
+            alert(message);
+        } else {
+            console.error('GridManager request error:', error);
+        }
+
+        if (this.pageList) {
+            this.pageList.enable();
+        }
+        if (this.toolbar) {
+            this.toolbar.enableControls();
+            const addControl = this.toolbar.getControlById ? this.toolbar.getControlById('add') : null;
+            if (addControl) {
+                addControl.enable(true);
+            }
+        }
+
+        this.pendingPage = null;
         hideLoader();
     }
 

@@ -8,28 +8,44 @@ class PageList extends EventTarget {
         this.currentPage = 1;
         this.disabled = false;
 
-        // Основной элемент списка
+        // Контейнер постраничной навигации
+        this.container = document.createElement('div');
+        this.container.className = 'grid-pagination d-flex flex-wrap align-items-center justify-content-between gap-3 w-100';
+        this.container.setAttribute('data-role', 'grid-pager');
+        this.container.setAttribute('unselectable', 'on');
+
+        // Основной элемент списка страниц
         this.element = document.createElement('ul');
         this.element.className = 'pagination pagination-sm mb-0 flex-wrap gap-2';
         this.element.setAttribute('data-role', 'page-list');
-        this.element.setAttribute('unselectable', 'on');
+        this.container.appendChild(this.element);
+
+        // Элемент с информацией о количестве записей
+        this.summaryElement = document.createElement('span');
+        this.summaryElement.className = 'page-summary text-muted small d-none';
+        this.summaryElement.setAttribute('data-role', 'page-summary');
+        this.container.appendChild(this.summaryElement);
 
         // Мержим опции (если есть)
         this.options = Object.assign({ onPageSelect: null }, options);
     }
 
     getElement() {
-        return this.element;
+        return this.container;
     }
 
     disable() {
         this.disabled = true;
-        this.element.style.opacity = 0.25;
+        this.container.classList.add('disabled');
+        this.container.style.pointerEvents = 'none';
+        this.container.style.opacity = 0.5;
     }
 
     enable() {
         this.disabled = false;
-        this.element.style.opacity = 1;
+        this.container.classList.remove('disabled');
+        this.container.style.pointerEvents = '';
+        this.container.style.opacity = 1;
     }
 
     /**
@@ -37,19 +53,24 @@ class PageList extends EventTarget {
      * @param {number} numPages
      * @param {number} currentPage
      */
-    build(numPages, currentPage) {
-        this.currentPage = currentPage;
+    build(numPages, currentPage, recordSummary = '') {
+        const totalPages = parseInt(numPages, 10) || 0;
+        this.currentPage = parseInt(currentPage, 10) || 1;
         this.clear();
 
-        if (numPages <= 1) {
-            if (this.element.parentNode) this.element.parentNode.removeChild(this.element);
+        this.updateSummary(recordSummary);
+
+        if (totalPages <= 1) {
+            this.element.classList.add('d-none');
             return;
         }
 
+        this.element.classList.remove('d-none');
+
         const VISIBLE_PAGES_COUNT = 2;
-        let startPage = (currentPage > VISIBLE_PAGES_COUNT) ? currentPage - VISIBLE_PAGES_COUNT : 1;
-        let endPage = currentPage + VISIBLE_PAGES_COUNT;
-        if (endPage > numPages) endPage = numPages;
+        let startPage = (this.currentPage > VISIBLE_PAGES_COUNT) ? this.currentPage - VISIBLE_PAGES_COUNT : 1;
+        let endPage = this.currentPage + VISIBLE_PAGES_COUNT;
+        if (endPage > totalPages) endPage = totalPages;
 
         // Первые страницы (1 ... 2 ...)
         if (startPage > 1) {
@@ -68,14 +89,14 @@ class PageList extends EventTarget {
         }
 
         // Последние страницы (... N-1 N)
-        if (endPage < numPages) {
-            if (endPage < (numPages - 1)) {
-                if (endPage < (numPages - 2)) {
+        if (endPage < totalPages) {
+            if (endPage < (totalPages - 1)) {
+                if (endPage < (totalPages - 2)) {
                     this._createPageLink('...').appendTo(this.element);
                 }
-                this._createPageLink(numPages - 1, numPages - 1).appendTo(this.element);
+                this._createPageLink(totalPages - 1, totalPages - 1).appendTo(this.element);
             }
-            this._createPageLink(numPages, numPages).appendTo(this.element);
+            this._createPageLink(totalPages, totalPages).appendTo(this.element);
         }
 
         // выделяем текущую страницу
@@ -87,12 +108,12 @@ class PageList extends EventTarget {
         }
 
         // Кнопки prev/next
-        if (currentPage !== 1) {
-            this._createPageLink('previous', currentPage - 1, 'fas fa-angle-left')
+        if (this.currentPage !== 1) {
+            this._createPageLink('previous', this.currentPage - 1, 'fas fa-angle-left')
                 .prependTo(this.element);
         }
-        if (currentPage !== numPages) {
-            this._createPageLink('next', currentPage + 1, 'fas fa-angle-right')
+        if (this.currentPage !== totalPages) {
+            this._createPageLink('next', this.currentPage + 1, 'fas fa-angle-right')
                 .appendTo(this.element);
         }
     }
@@ -182,6 +203,22 @@ class PageList extends EventTarget {
     }
     clear() {
         this.element.innerHTML = '';
+        this.element.classList.add('d-none');
+        this.updateSummary('');
+    }
+
+    updateSummary(text) {
+        if (!this.summaryElement) {
+            return;
+        }
+        const normalized = (text !== null && text !== undefined) ? String(text).trim() : '';
+        if (normalized) {
+            this.summaryElement.textContent = normalized;
+            this.summaryElement.classList.remove('d-none');
+        } else {
+            this.summaryElement.textContent = '';
+            this.summaryElement.classList.add('d-none');
+        }
     }
 
     // Подключение CSS
