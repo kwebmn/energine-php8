@@ -49,6 +49,8 @@ class GridManager {
         this.lastRequest = null;
         this.hasLoaded = false;
         this.lastPager = null;
+        this.tableBuilt = false;
+        this._tableBuiltWaiters = [];
 
         this.tableContainer = this.element.querySelector('[data-role="grid-table"]');
         if (!this.tableContainer) {
@@ -93,6 +95,14 @@ class GridManager {
 
         this.table = new Tabulator(this.tableContainer, tabulatorOptions);
 
+        this.table.on('tableBuilt', () => {
+            this.tableBuilt = true;
+            this._flushTableBuiltQueue();
+        });
+        if (this.table && this.table.initialized) {
+            this.tableBuilt = true;
+            this._flushTableBuiltQueue();
+        }
         this.table.on('pageLoaded', (page) => this._handlePageLoaded(page));
 
         this.on('dirty', () => {
@@ -236,11 +246,18 @@ class GridManager {
 
         const urlChanged = !!(requestClone.url && requestClone.url !== request.url);
         const shouldUseSetData = forceReload || !preferSetPage || !this.hasLoaded || urlChanged;
-        const actionPromise = shouldUseSetData
-            ? this.table.setData(request.url, { page }, 'POST')
-            : this.table.setPage(page);
+        const performRequest = () => {
+            const actionPromise = shouldUseSetData
+                ? this.table.setData(request.url, { page }, 'POST')
+                : this.table.setPage(page);
+            return this._wrapRequestPromise(actionPromise);
+        };
 
-        return this._wrapRequestPromise(actionPromise);
+        if (this.tableBuilt) {
+            return performRequest();
+        }
+
+        return this._waitForTableBuilt().then(() => performRequest());
     }
 
     /**
@@ -259,6 +276,29 @@ class GridManager {
             this.on('loadError', onError);
             if (requestPromise && typeof requestPromise.catch === 'function') {
                 requestPromise.catch(() => {});
+            }
+        });
+    }
+
+    _waitForTableBuilt() {
+        if (this.tableBuilt) {
+            return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+            this._tableBuiltWaiters.push(resolve);
+        });
+    }
+
+    _flushTableBuiltQueue() {
+        if (!Array.isArray(this._tableBuiltWaiters) || !this._tableBuiltWaiters.length) {
+            this._tableBuiltWaiters = [];
+            return;
+        }
+        const waiters = this._tableBuiltWaiters.slice();
+        this._tableBuiltWaiters.length = 0;
+        waiters.forEach((resolve) => {
+            if (typeof resolve === 'function') {
+                resolve();
             }
         });
     }
