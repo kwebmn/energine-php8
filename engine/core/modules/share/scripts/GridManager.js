@@ -30,6 +30,8 @@ class Grid {
         this.selectedRow = null;
         this.tabulator = null;
         this.silentSortUpdate = false;
+        this.tabulatorReady = false;
+        this.pendingBuild = false;
 
         this.container = document.createElement('div');
         this.container.classList.add('grid-tabulator');
@@ -52,15 +54,25 @@ class Grid {
     }
 
     ensureAssetsLoaded() {
-        const cssPath = 'scripts/tabulator/tabulator.min.css';
-        if (window.Energine && typeof Energine.loadCSS === 'function') {
-            Energine.loadCSS(cssPath);
-        } else if (!document.querySelector(`link[href$="${cssPath}"]`)) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = cssPath;
-            document.head.appendChild(link);
-        }
+        const cssFiles = [
+            'scripts/tabulator/tabulator.min.css',
+            'scripts/tabulator/tabulator_bootstrap5.min.css'
+        ];
+
+        cssFiles.forEach((cssPath) => {
+            if (window.Energine && typeof Energine.loadCSS === 'function') {
+                Energine.loadCSS(cssPath);
+            } else if (!document.querySelector(`link[href$="${cssPath}"]`)) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = cssPath;
+                document.head.appendChild(link);
+            }
+        });
+    }
+
+    isTabulatorReady() {
+        return !!(this.tabulator && this.tabulatorReady);
     }
 
     // --- Event system ---
@@ -115,7 +127,11 @@ class Grid {
 
         if (this.tabulator) {
             this.updateTabulatorIndex();
-            this.tabulator.setColumns(this.buildColumns());
+            if (this.isTabulatorReady()) {
+                this.tabulator.setColumns(this.buildColumns());
+            } else {
+                this.pendingBuild = true;
+            }
         }
     }
 
@@ -258,6 +274,7 @@ class Grid {
             return;
         }
 
+        this.tabulatorReady = false;
         this.tabulator = new Tabulator(this.container, {
             data: this.data,
             columns: this.buildColumns(),
@@ -266,12 +283,21 @@ class Grid {
             index: this.keyFieldName || undefined,
             sortMode: 'remote',
             placeholder: this.options.placeholder,
+            theme: 'bootstrap5',
             rowClick: (_, row) => {
                 this.selectRow(row);
             },
             rowDblClick: (_, row) => {
                 this.selectRow(row);
                 this.fireEvent('doubleClick', row);
+            }
+        });
+
+        this.tabulator.on('tableBuilt', () => {
+            this.tabulatorReady = true;
+            if (this.pendingBuild) {
+                this.pendingBuild = false;
+                this.build();
             }
         });
 
@@ -322,9 +348,16 @@ class Grid {
             return;
         }
 
+        if (!this.isTabulatorReady()) {
+            this.pendingBuild = true;
+            return;
+        }
+
+        this.pendingBuild = false;
         this.updateTabulatorIndex();
 
-        this.tabulator.setColumns(this.buildColumns());
+        const columns = this.buildColumns();
+        this.tabulator.setColumns(columns);
         this.tabulator.setData(this.data);
 
         if (this.sort.field && this.sort.order) {
