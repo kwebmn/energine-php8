@@ -43,7 +43,7 @@
   array (
     0 => 'Validator',
   ),
-  'GridManager' =>
+  'GridManager' => 
   array (
     0 => 'TabPane',
     1 => 'PageList',
