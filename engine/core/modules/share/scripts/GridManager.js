@@ -1063,59 +1063,71 @@ class Grid {
         this.pendingBuild = false;
         this.updateTabulatorIndex();
 
-        let columnsPromise;
+        let columnsPromise = Promise.resolve();
         if (this.columnsDirty) {
-            const columns = this.buildColumns();
-            const result = this.tabulator.setColumns(columns);
-            if (result && typeof result.then === 'function') {
-                columnsPromise = result.then(() => { this.columnsDirty = false; });
-            } else {
-                this.columnsDirty = false;
-                columnsPromise = Promise.resolve();
+            try {
+                const columns = this.buildColumns();
+                const result = this.tabulator.setColumns(columns);
+                columnsPromise = Promise.resolve(result);
+            } catch (error) {
+                columnsPromise = Promise.reject(error);
             }
-        } else {
-            columnsPromise = Promise.resolve();
         }
+
+        columnsPromise = columnsPromise.then(() => {
+            this.columnsDirty = false;
+        });
 
         const applyData = () => Promise.resolve(this.tabulator.replaceData(this.data || []))
             .then(() => {
+                const finalizeSilentSortUpdate = () => {
+                    setTimeout(() => {
+                        this.silentSortUpdate = false;
+                    }, 0);
+                };
+
                 if (this.sort.field && this.sort.order) {
                     this.silentSortUpdate = true;
                     try {
                         this.tabulator.setSort([{ column: this.sort.field, dir: this.sort.order }]);
                     } catch (e) {
                         try {
-                            this.silentSortUpdate = true;
                             this.tabulator.setSort(this.sort.field, this.sort.order);
                         } catch (ignored) {}
+                    } finally {
+                        finalizeSilentSortUpdate();
                     }
-                    setTimeout(() => { this.silentSortUpdate = false; }, 0);
                 } else {
                     this.silentSortUpdate = true;
-                    this.tabulator.clearSort();
-                    setTimeout(() => { this.silentSortUpdate = false; }, 0);
+                    try {
+                        if (typeof this.tabulator.clearSort === 'function') {
+                            this.tabulator.clearSort();
+                        }
+                    } finally {
+                        finalizeSilentSortUpdate();
+                    }
                 }
 
-                if (previouslySelectedRecordKey && this.dataKeyExists(previouslySelectedRecordKey)) {
+                const hasData = Array.isArray(this.data) && this.data.length > 0;
+                if (!hasData) {
+                    this.deselectItem();
+                    return;
+                }
+
+                if (previouslySelectedRecordKey !== false && previouslySelectedRecordKey !== undefined && previouslySelectedRecordKey !== null) {
                     this.selectByKey(previouslySelectedRecordKey);
-                } else {
-                    const rows = this.tabulator.getRows();
-                    if (rows && rows.length) {
-                        rows[0].select();
-                    } else {
-                        this.deselectItem();
-                    }
+                }
+
+                const selectedRows = typeof this.tabulator.getSelectedRows === 'function'
+                    ? this.tabulator.getSelectedRows()
+                    : [];
+                if (!selectedRows || !selectedRows.length) {
+                    this.deselectItem();
                 }
             });
 
         columnsPromise
-            .then(() => {
-                setTimeout(() => {
-                    applyData().catch((error) => {
-                        console.error('Grid build failed', error);
-                    });
-                }, 0);
-            })
+            .then(() => applyData())
             .catch((error) => {
                 console.error('Grid build failed', error);
             });
