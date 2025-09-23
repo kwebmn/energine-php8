@@ -765,8 +765,21 @@ class Grid {
 
         if (this.tabulator) {
             this.updateTabulatorIndex();
+
             if (this.isTabulatorReady()) {
-                this.tabulator.setColumns(this.buildColumns());
+                try {
+                    const columns = this.buildColumns();
+                    const updateResult = this.tabulator.setColumns(columns);
+                    this.columnsDirty = false;
+
+                    Promise.resolve(updateResult).catch((error) => {
+                        console.error('Failed to apply grid columns from metadata', error);
+                        this.columnsDirty = true;
+                    });
+                } catch (error) {
+                    console.error('Failed to build columns from metadata', error);
+                    this.columnsDirty = true;
+                }
             } else {
                 this.pendingBuild = true;
             }
@@ -1805,6 +1818,7 @@ class GridManager {
 
         // --- Start! ---
         this.reload();
+        this.grid.build();
     }
 
     // --- Move Element ID API ---
