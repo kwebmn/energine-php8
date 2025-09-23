@@ -74,11 +74,6 @@ Any new helpers (e.g., `TabulatorAdapter`) stay private to keep the public API s
 
 This architecture keeps the external behaviour of GridManager intact while delegating rendering, virtual DOM, and remote pagination to Tabulator.
 
-## Implementation notes for maintainers
-- The legacy DOM table, scroll handlers, and column width calculations were removed. Tabulator now owns layout and virtualization, so GridManager no longer manipulates `<table>` markup or listens for manual resize events.
-- `TabulatorGrid` intentionally mirrors the former Grid API (events, selection helpers, paging helpers). Each public method now carries a short JSDoc comment summarising the integration points to ease onboarding.
-- When adding new toolbar actions or listeners, subscribe to the adapter events (`select`, `response`, `pageLoaded`) instead of touching Tabulator directly; this keeps downstream modules decoupled from the third-party library.
-
 ## Related resources
 - Developer onboarding & extension guide: `docs/gridmanager-tabulator-developer-guide.md`
 - Manual QA checklist: `docs/gridmanager-tabulator-testing.md`

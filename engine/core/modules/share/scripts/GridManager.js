@@ -26,7 +26,8 @@ ScriptLoader.load('lib/tabulator/tabulator.min', 'TabPane', 'PageList', 'Toolbar
  * The class is intentionally verbose so other modules can hook into request/response
  * milestones without depending on Tabulator internals.
  */
-class TabulatorGrid {
+class GridManager {
+
     constructor(element, options = {}) {
         this.element = (typeof element === 'string') ? document.querySelector(element) : element;
         if (!this.element) {
