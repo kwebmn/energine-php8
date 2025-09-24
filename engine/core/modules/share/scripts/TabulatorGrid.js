@@ -354,6 +354,32 @@
                 this.fireEvent('ready', this);
             });
 
+            this.table.on('rowClick', (e, row) => {
+                if (!row) {
+                    return;
+                }
+
+                try {
+                    const selectableSetting = (this.table && this.table.options)
+                        ? this.table.options.selectableRows
+                        : undefined;
+                    const selectionDisabled = selectableSetting === false || selectableSetting === 0;
+
+                    if (!selectionDisabled
+                        && typeof row.isSelected === 'function'
+                        && !row.isSelected()
+                        && typeof row.select === 'function') {
+                        row.select();
+                    }
+                } catch (error) {
+                    if (global.console && typeof global.console.warn === 'function') {
+                        global.console.warn('TabulatorGrid: unable to select row on click', error);
+                    }
+                }
+
+                this.fireEvent('rowClick', row.getData(), row);
+            });
+
             this.table.on('rowSelected', (row) => {
                 this.selectedRow = row;
                 this.fireEvent('select', row.getData(), row);
