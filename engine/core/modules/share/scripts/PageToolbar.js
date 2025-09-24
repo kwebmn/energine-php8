@@ -98,7 +98,7 @@ class PageToolbar extends Toolbar {
 
         const layoutContainer = document.createElement('div');
         PageToolbar._addClass(layoutContainer, 'e-layout');
-        layoutContainer.classList.add('container-fluid', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-4', 'py-3', 'px-3', 'px-lg-4', 'align-items-stretch');
+        layoutContainer.classList.add('container-fluid', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-3', 'pt-3', 'pb-4', 'px-3', 'px-lg-4', 'align-items-stretch', 'mt-0');
 
         const mainFrame = document.createElement('div');
         PageToolbar._addClass(mainFrame, 'e-mainframe');
@@ -107,10 +107,10 @@ class PageToolbar extends Toolbar {
 
         const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
-        topFrame.classList.add('navbar', 'navbar-expand-lg', 'navbar-light', 'bg-white', 'border-bottom', 'shadow-sm', 'sticky-top', 'py-0');
+        topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-white', 'border-bottom', 'shadow-sm', 'sticky-top', 'py-0', 'px-0');
 
         const container = document.createElement('div');
-        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'gap-3', 'flex-wrap');
+        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'flex-wrap');
         topFrame.appendChild(container);
 
         const translations = window?.Energine?.translations;
@@ -129,13 +129,17 @@ class PageToolbar extends Toolbar {
         };
 
         const headerStack = document.createElement('div');
-        headerStack.classList.add('d-flex', 'align-items-center', 'gap-3', 'flex-grow-1', 'min-w-0');
+        headerStack.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-grow-1', 'min-w-0');
         container.appendChild(headerStack);
 
+        const brandStack = document.createElement('div');
+        brandStack.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-shrink-0');
+        headerStack.appendChild(brandStack);
+
+        const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
         const sidebarToggle = document.createElement('button');
         sidebarToggle.type = 'button';
-        sidebarToggle.classList.add('btn', 'btn-outline-secondary', 'd-flex', 'align-items-center', 'justify-content-center', 'p-1', 'p-lg-2', 'rounded-circle', 'flex-shrink-0');
-        const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
+        sidebarToggle.classList.add('btn', 'btn-outline-secondary', 'btn-sm', 'd-flex', 'align-items-center', 'justify-content-center', 'p-1', 'flex-shrink-0');
         if (sidebarLabel) {
             sidebarToggle.setAttribute('aria-label', sidebarLabel);
         }
@@ -143,46 +147,21 @@ class PageToolbar extends Toolbar {
         logoImage.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
         logoImage.alt = '';
         logoImage.classList.add('img-fluid');
-        logoImage.style.height = '38px';
+        logoImage.style.height = '26px';
         logoImage.style.width = 'auto';
         sidebarToggle.appendChild(logoImage);
-        headerStack.appendChild(sidebarToggle);
+        brandStack.appendChild(sidebarToggle);
         this.sidebarToggleButton = sidebarToggle;
 
+        const toolbarLabelText = getTranslation('TXT_ADMIN_PANEL', 'TXT_CONTROL_PANEL', 'TXT_SETTINGS');
+        if (toolbarLabelText) {
+            const toolbarLabel = document.createElement('span');
+            toolbarLabel.classList.add('text-uppercase', 'fw-semibold', 'small', 'text-muted', 'd-none', 'd-sm-inline');
+            toolbarLabel.textContent = toolbarLabelText;
+            brandStack.appendChild(toolbarLabel);
+        }
+
         const environmentLabel = PageToolbar._extractEnvironmentLabel();
-        let envDisplayedInTop = false;
-        const pageInfoFragments = [];
-
-        const pageTitle = PageToolbar._extractPageTitle();
-        if (pageTitle) {
-            const titleEl = document.createElement('div');
-            titleEl.classList.add('fw-semibold', 'text-truncate', 'text-body');
-            titleEl.textContent = pageTitle;
-            pageInfoFragments.push(titleEl);
-        }
-
-        const pageTrail = PageToolbar._extractBreadcrumbTrail(pageTitle);
-        if (pageTrail) {
-            const trailEl = document.createElement('div');
-            trailEl.classList.add('text-uppercase', 'text-muted', 'small', 'text-truncate');
-            trailEl.textContent = pageTrail;
-            pageInfoFragments.push(trailEl);
-        }
-
-        if (environmentLabel && pageInfoFragments.length) {
-            const envBadge = document.createElement('span');
-            envBadge.classList.add('badge', 'bg-info', 'text-dark', 'text-uppercase', 'fw-semibold', 'rounded-pill');
-            envBadge.textContent = environmentLabel;
-            pageInfoFragments.push(envBadge);
-            envDisplayedInTop = true;
-        }
-
-        if (pageInfoFragments.length) {
-            const pageInfoWrap = document.createElement('div');
-            pageInfoWrap.classList.add('d-flex', 'flex-column', 'align-items-start', 'justify-content-center', 'gap-1', 'flex-grow-1', 'min-w-0');
-            pageInfoFragments.forEach(fragment => pageInfoWrap.appendChild(fragment));
-            headerStack.appendChild(pageInfoWrap);
-        }
 
         const collapseIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
         const collapseId = (`${collapseIdBase}-collapse`).replace(/[^A-Za-z0-9_-]/g, '-');
@@ -211,6 +190,15 @@ class PageToolbar extends Toolbar {
         this.element.classList.add('py-2', 'py-lg-0', 'gap-2');
         collapse.appendChild(this.element);
 
+        this.element.classList.add('justify-content-end', 'ms-auto');
+        this.element.querySelectorAll('button.btn').forEach(button => {
+            button.classList.add('rounded-2', 'px-3');
+            if (!button.classList.contains('btn-primary')) {
+                button.classList.remove('btn-secondary');
+                button.classList.add('btn-outline-secondary');
+            }
+        });
+
         // Перенос body-children (кроме svg и e-overlay)
         const toMove = Array.from(document.body.childNodes).filter(el =>
             el.nodeType === 1 && !((el.tagName.toLowerCase() !== 'svg') && PageToolbar._hasClass(el, 'e-overlay'))
@@ -235,7 +223,7 @@ class PageToolbar extends Toolbar {
 
             const sidebarFrameContent = document.createElement('div');
             PageToolbar._addClass(sidebarFrameContent, 'e-sideframe-content');
-            sidebarFrameContent.classList.add('offcanvas-body', 'p-0', 'd-flex', 'flex-column', 'bg-white');
+            sidebarFrameContent.classList.add('offcanvas-body', 'd-flex', 'flex-column', 'gap-3', 'p-0', 'bg-body-tertiary');
             sidebarFrameContent.style.minHeight = '0';
 
             const sidebarFrameBorder = document.createElement('div');
@@ -248,32 +236,58 @@ class PageToolbar extends Toolbar {
 
             this.sidebarFrameElement = sidebarFrame;
 
+            const syncSidebarOffset = () => {
+                if (!this.sidebarFrameElement) {
+                    return;
+                }
+                const navHeight = Math.max(0, Math.round(topFrame.getBoundingClientRect().height || 0));
+                this.sidebarFrameElement.style.top = navHeight ? `${navHeight}px` : '0';
+                this.sidebarFrameElement.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
+            };
+            syncSidebarOffset();
+            window.addEventListener('resize', syncSidebarOffset);
+            ['shown.bs.collapse', 'hidden.bs.collapse'].forEach(eventName => {
+                collapse.addEventListener(eventName, syncSidebarOffset);
+            });
+
             const sidebarHeader = document.createElement('div');
-            sidebarHeader.classList.add('d-flex', 'align-items-center', 'gap-2', 'px-3', 'py-3', 'border-bottom', 'bg-light');
+            sidebarHeader.classList.add('d-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'px-3', 'py-2', 'border-bottom', 'bg-white');
 
-            const sidebarTitle = document.createElement('span');
-            sidebarTitle.classList.add('fw-semibold', 'flex-grow-1', 'text-truncate');
-            sidebarTitle.textContent = getTranslation('TXT_SITE_STRUCTURE', 'TXT_STRUCTURE', 'TXT_SITEMAP', 'TXT_NAVIGATION', 'TXT_SECTIONS', 'TXT_PAGES') || 'Site structure';
-            sidebarHeader.appendChild(sidebarTitle);
+            const sidebarHeaderContent = document.createElement('div');
+            sidebarHeaderContent.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap');
+            sidebarHeader.appendChild(sidebarHeaderContent);
 
-            if (environmentLabel && !envDisplayedInTop) {
+            if (environmentLabel) {
                 const sidebarEnv = document.createElement('span');
-                sidebarEnv.classList.add('badge', 'bg-info', 'text-dark', 'text-uppercase', 'fw-semibold', 'rounded-pill', 'ms-auto', 'd-none', 'd-xl-inline-flex', 'align-items-center');
+                sidebarEnv.classList.add('badge', 'text-bg-secondary', 'text-uppercase', 'fw-semibold');
                 sidebarEnv.textContent = environmentLabel;
-                sidebarHeader.appendChild(sidebarEnv);
+                sidebarHeaderContent.appendChild(sidebarEnv);
             }
+
+            const headerActions = document.createElement('div');
+            headerActions.classList.add('d-flex', 'align-items-center', 'gap-2', 'ms-auto');
+            sidebarHeader.appendChild(headerActions);
 
             const closeLabel = getTranslation('TXT_CLOSE', 'BTN_CLOSE', 'TXT_CANCEL', 'BTN_CANCEL') || 'Close';
             const sidebarCloseButton = document.createElement('button');
             sidebarCloseButton.type = 'button';
-            sidebarCloseButton.classList.add('btn-close', 'ms-auto', 'd-lg-none');
+            sidebarCloseButton.classList.add('btn', 'btn-sm', 'btn-outline-secondary');
             sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
             if (closeLabel) {
                 sidebarCloseButton.setAttribute('aria-label', closeLabel);
+                sidebarCloseButton.textContent = closeLabel;
             }
-            sidebarHeader.appendChild(sidebarCloseButton);
+            headerActions.appendChild(sidebarCloseButton);
 
             sidebarFrameContent.appendChild(sidebarHeader);
+
+            const sidebarBody = document.createElement('div');
+            sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1', 'p-3');
+            sidebarFrameContent.appendChild(sidebarBody);
+
+            const iframeWrapper = document.createElement('div');
+            iframeWrapper.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'rounded-3', 'border', 'bg-white', 'shadow-sm', 'overflow-hidden');
+            sidebarBody.appendChild(iframeWrapper);
 
             const iframe = document.createElement('iframe');
             PageToolbar._setProperties(iframe, {
@@ -281,7 +295,7 @@ class PageToolbar extends Toolbar {
                 frameBorder: '0'
             });
             iframe.classList.add('flex-grow-1', 'w-100', 'border-0');
-            sidebarFrameContent.appendChild(iframe);
+            iframeWrapper.appendChild(iframe);
 
             this._updateSidebarToggleState = (state = PageToolbar._hasClass(html, 'e-has-sideframe')) => {
                 const pressed = state ? 'true' : 'false';
@@ -300,12 +314,14 @@ class PageToolbar extends Toolbar {
             this._updateSidebarToggleState(shouldShowSidebar);
 
             const handleSidebarShown = () => {
+                syncSidebarOffset();
                 PageToolbar._addClass(html, 'e-has-sideframe');
                 this._updateSidebarToggleState(true);
                 PageToolbar._persistSidebarState(true);
             };
 
             const handleSidebarHidden = () => {
+                syncSidebarOffset();
                 PageToolbar._removeClass(html, 'e-has-sideframe');
                 this._updateSidebarToggleState(false);
                 PageToolbar._persistSidebarState(false);
