@@ -110,7 +110,7 @@ class PageToolbar extends Toolbar {
         topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
 
         const container = document.createElement('div');
-        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'flex-wrap', 'py-0');
+        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'justify-content-between', 'gap-3', 'flex-wrap', 'py-0');
         topFrame.appendChild(container);
 
         const translations = window?.Energine?.translations;
@@ -192,16 +192,27 @@ class PageToolbar extends Toolbar {
         container.appendChild(toggler);
 
         const collapse = document.createElement('div');
-        collapse.classList.add('collapse', 'navbar-collapse', 'justify-content-end', 'py-2', 'py-lg-0');
+        collapse.classList.add('collapse', 'navbar-collapse', 'py-2', 'py-lg-0');
+        collapse.classList.add('w-100');
+        collapse.style.flexGrow = '1';
+        collapse.style.flexBasis = '100%';
         collapse.id = collapseId;
         container.appendChild(collapse);
 
-        this.element.classList.add('py-2', 'py-lg-0');
-        collapse.appendChild(this.element);
+        const actionStack = document.createElement('div');
+        actionStack.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100', 'align-items-start');
+        collapse.appendChild(actionStack);
 
-        this.element.classList.add('justify-content-end', 'ms-auto');
-        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
-        this.element.classList.add('gap-1', 'bg-transparent', 'p-0');
+        const primaryRow = document.createElement('div');
+        primaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
+        actionStack.appendChild(primaryRow);
+
+        this.element.classList.add('py-2', 'py-lg-0');
+        primaryRow.appendChild(this.element);
+
+        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap');
+        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
+        this.element.classList.add('bg-transparent', 'p-0');
         this.element.querySelectorAll('button.btn').forEach(button => {
             button.classList.add('rounded-1', 'px-3');
             button.classList.add('btn-sm');
@@ -211,14 +222,44 @@ class PageToolbar extends Toolbar {
             }
         });
 
+        const editControlIds = ['add', 'edit', 'delete'];
+        const editButtons = editControlIds
+            .map(id => this.getControlById(id))
+            .filter(control => control && control.element instanceof HTMLElement)
+            .map(control => control.element);
+
+        let editBand = null;
+        if (editButtons.length) {
+            editBand = document.createElement('div');
+            editBand.classList.add('e-toolbar-editband', 'bg-body', 'border', 'shadow-sm', 'rounded-3', 'px-3', 'py-2', 'd-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
+
+            editButtons.forEach(button => {
+                button.classList.add('shadow-sm');
+                editBand.appendChild(button);
+            });
+
+            actionStack.appendChild(editBand);
+        }
+
         // Перенос body-children (кроме svg и e-overlay)
         const toMove = Array.from(document.body.childNodes).filter(el =>
             el.nodeType === 1 && !((el.tagName.toLowerCase() !== 'svg') && PageToolbar._hasClass(el, 'e-overlay'))
         );
+        const anchor = toMove.length ? toMove[0] : null;
         layoutContainer.appendChild(mainFrame);
-        document.body.appendChild(topFrame);
-        document.body.appendChild(layoutContainer);
-        toMove.forEach(child => mainFrame.appendChild(child));
+
+        const contentFragment = document.createDocumentFragment();
+        toMove.forEach(child => contentFragment.appendChild(child));
+        mainFrame.appendChild(contentFragment);
+
+        const mountFragment = document.createDocumentFragment();
+        mountFragment.appendChild(topFrame);
+        mountFragment.appendChild(layoutContainer);
+        if (anchor && anchor.parentNode === document.body) {
+            document.body.insertBefore(mountFragment, anchor);
+        } else {
+            document.body.appendChild(mountFragment);
+        }
 
         // Боковая панель (sidebar)
         if (!this.properties['noSideFrame']) {
