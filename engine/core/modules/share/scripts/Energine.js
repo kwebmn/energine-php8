@@ -30,6 +30,36 @@ window.Energine = {
     media: '',
     root: '',
     lang: '',
+    _assetRegistry: {
+        scripts: new Map(),
+        styles: new Map(),
+    },
+    _resolveAssetURL(file) {
+        if (!file) {
+            return file;
+        }
+        if (/^(?:[a-z]+:)?\/\//i.test(file) || file.startsWith('/')) {
+            return file;
+        }
+        const base = this.static || '';
+        if (!base) {
+            return file;
+        }
+        const separator = base.endsWith('/') ? '' : '/';
+        return `${base}${separator}${file.replace(/^\//, '')}`;
+    },
+    _normalizeAssetURL(file) {
+        try {
+            return new URL(file, document.baseURI).href;
+        } catch (e) {
+            if (typeof safeConsoleError === 'function') {
+                safeConsoleError(e, 'normalizeAssetURL');
+            } else if (window.console && console.error) {
+                console.error(e);
+            }
+            return file;
+        }
+    },
     translations: {
         get(constant) {
             return (window.Energine.translations[constant] || null);
@@ -103,8 +133,21 @@ window.Energine = {
                         }
                     });
                 }
-                alert(msg);
-                if (onUserError) onUserError(response);
+                let handled = false;
+                if (onUserError) {
+                    try {
+                        handled = onUserError(response, msg) === true;
+                    } catch (callbackError) {
+                        if (typeof safeConsoleError === 'function') {
+                            safeConsoleError(callbackError, 'Energine.request:onUserError');
+                        } else if (console && console.error) {
+                            console.error(callbackError);
+                        }
+                    }
+                }
+                if (!handled) {
+                    alert(msg);
+                }
             }
         } catch (e) {
             console.error(e);
@@ -188,12 +231,87 @@ window.Energine = {
     },
 
     loadCSS: function(file) {
-        if (!document.querySelector(`link[href$="${file}"]`)) {
-            const link = document.createElement('link');
-            link.rel = "stylesheet";
-            link.href = file;
-            document.head.appendChild(link);
+        const resolved = this._resolveAssetURL(file);
+        const href = this._normalizeAssetURL(resolved);
+
+        if (this._assetRegistry.styles.has(href)) {
+            return this._assetRegistry.styles.get(href);
         }
+
+        const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+            .find(link => link.href === href);
+        if (existing) {
+            const ready = existing.sheet ? Promise.resolve(existing) : new Promise(resolve => {
+                existing.addEventListener('load', () => resolve(existing), { once: true });
+            });
+            this._assetRegistry.styles.set(href, ready);
+            return ready;
+        }
+
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = resolved;
+        link.dataset.energineAsset = 'css';
+
+        const ready = new Promise((resolve, reject) => {
+            link.addEventListener('load', () => resolve(link), { once: true });
+            link.addEventListener('error', () => {
+                this._assetRegistry.styles.delete(href);
+                reject(new Error(`Failed to load stylesheet ${href}`));
+            }, { once: true });
+        });
+
+        this._assetRegistry.styles.set(href, ready);
+        document.head.appendChild(link);
+
+        return ready;
+    },
+
+    loadScript: function(file) {
+        const resolved = this._resolveAssetURL(file);
+        const src = this._normalizeAssetURL(resolved);
+
+        if (this._assetRegistry.scripts.has(src)) {
+            return this._assetRegistry.scripts.get(src);
+        }
+
+        const existing = Array.from(document.querySelectorAll('script[src]'))
+            .find(script => script.src === src);
+        if (existing) {
+            const ready = existing.dataset.loaded === 'true'
+                ? Promise.resolve(existing)
+                : new Promise((resolve, reject) => {
+                    existing.addEventListener('load', () => resolve(existing), { once: true });
+                    existing.addEventListener('error', () => {
+                        this._assetRegistry.scripts.delete(src);
+                        reject(new Error(`Failed to load script ${src}`));
+                    }, { once: true });
+                });
+            this._assetRegistry.scripts.set(src, ready);
+            return ready;
+        }
+
+        const script = document.createElement('script');
+        script.src = resolved;
+        script.async = false;
+        script.defer = false;
+        script.dataset.energineAsset = 'script';
+
+        const ready = new Promise((resolve, reject) => {
+            script.addEventListener('load', () => {
+                script.dataset.loaded = 'true';
+                resolve(script);
+            }, { once: true });
+            script.addEventListener('error', () => {
+                this._assetRegistry.scripts.delete(src);
+                reject(new Error(`Failed to load script ${src}`));
+            }, { once: true });
+        });
+
+        this._assetRegistry.scripts.set(src, ready);
+        document.head.appendChild(script);
+
+        return ready;
     },
 
     addTask: function(task, priority = 5)

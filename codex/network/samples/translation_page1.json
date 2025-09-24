@@ -1,0 +1,293 @@
+{
+    "meta": {
+        "ltag_id": {
+            "title": "FIELD_LTAG_ID",
+            "type": "hidden",
+            "key": true,
+            "visible": true,
+            "name": "share_lang_tags[ltag_id]",
+            "rights": null,
+            "field": "ltag_id",
+            "sort": 0
+        },
+        "ltag_name": {
+            "title": "Назва тега",
+            "type": "string",
+            "key": false,
+            "visible": true,
+            "name": "share_lang_tags[ltag_name]",
+            "rights": null,
+            "field": "ltag_name",
+            "sort": 1
+        },
+        "ltag_value_rtf": {
+            "title": "Переклад",
+            "type": "htmlblock",
+            "key": false,
+            "visible": true,
+            "name": "share_lang_tags_translation[ltag_value_rtf]",
+            "rights": null,
+            "field": "ltag_value_rtf",
+            "sort": 0
+        }
+    },
+    "data": [
+        {
+            "ltag_id": 1568,
+            "ltag_name": "BAD_SOCIAL_AUTH",
+            "ltag_value_rtf": "Пользователь с таким e-mail уже зарегистрирован.\nВойдите в систему под другим аккаунтом или зарегистрируйте новый аккаунт на другой e-mail."
+        },
+        {
+            "ltag_id": 493,
+            "ltag_name": "BTN_ACTIVATE",
+            "ltag_value_rtf": "Активувати"
+        },
+        {
+            "ltag_id": 43,
+            "ltag_name": "BTN_ADD",
+            "ltag_value_rtf": "Додати"
+        },
+        {
+            "ltag_id": 1288,
+            "ltag_name": "BTN_ADD_ARTICLE",
+            "ltag_value_rtf": "Додати"
+        },
+        {
+            "ltag_id": 313,
+            "ltag_name": "BTN_ADD_DIR",
+            "ltag_value_rtf": "Створити папку"
+        },
+        {
+            "ltag_id": 446,
+            "ltag_name": "BTN_ADD_FILE",
+            "ltag_value_rtf": "Вставити з репозиторію"
+        },
+        {
+            "ltag_id": 868,
+            "ltag_name": "BTN_ADD_GALLERY",
+            "ltag_value_rtf": "Додати фотогалерею"
+        },
+        {
+            "ltag_id": 742,
+            "ltag_name": "BTN_ADD_GROUP",
+            "ltag_value_rtf": "Додати групу"
+        },
+        {
+            "ltag_id": 426,
+            "ltag_name": "BTN_ADD_NEWS",
+            "ltag_value_rtf": "Додати новину"
+        },
+        {
+            "ltag_id": 57,
+            "ltag_name": "BTN_ADD_PAGE",
+            "ltag_value_rtf": "Додати сторінку"
+        },
+        {
+            "ltag_id": 495,
+            "ltag_name": "BTN_ADD_PHOTO",
+            "ltag_value_rtf": "Додати фотогалерею"
+        },
+        {
+            "ltag_id": 743,
+            "ltag_name": "BTN_ADD_SHORTCUT",
+            "ltag_value_rtf": "Додати посилання"
+        },
+        {
+            "ltag_id": 1290,
+            "ltag_name": "BTN_ADD_STAFF",
+            "ltag_value_rtf": "Додати співробітника"
+        },
+        {
+            "ltag_id": 464,
+            "ltag_name": "BTN_ALIGN_CENTER",
+            "ltag_value_rtf": "Вирiвнювання по центру"
+        },
+        {
+            "ltag_id": 465,
+            "ltag_name": "BTN_ALIGN_JUSTIFY",
+            "ltag_value_rtf": "Вирiвнювання по ширинi"
+        },
+        {
+            "ltag_id": 462,
+            "ltag_name": "BTN_ALIGN_LEFT",
+            "ltag_value_rtf": "Вирiвнювання злiва"
+        },
+        {
+            "ltag_id": 463,
+            "ltag_name": "BTN_ALIGN_RIGHT",
+            "ltag_value_rtf": "Вирiвнювання справа"
+        },
+        {
+            "ltag_id": 1208,
+            "ltag_name": "BTN_APPLY",
+            "ltag_value_rtf": "Применить"
+        },
+        {
+            "ltag_id": 327,
+            "ltag_name": "BTN_APPLY_FILTER",
+            "ltag_value_rtf": "Застосувати"
+        },
+        {
+            "ltag_id": 701,
+            "ltag_name": "BTN_APPROVE",
+            "ltag_value_rtf": "Дозволити"
+        },
+        {
+            "ltag_id": 1112473,
+            "ltag_name": "BTN_AUTH",
+            "ltag_value_rtf": "Авторизація"
+        },
+        {
+            "ltag_id": 2041,
+            "ltag_name": "BTN_BAN",
+            "ltag_value_rtf": "Забанити"
+        },
+        {
+            "ltag_id": 457,
+            "ltag_name": "BTN_BOLD",
+            "ltag_value_rtf": "Напівжирний"
+        },
+        {
+            "ltag_id": 347,
+            "ltag_name": "BTN_CANCEL",
+            "ltag_value_rtf": "Відмінити"
+        },
+        {
+            "ltag_id": 55,
+            "ltag_name": "BTN_CHANGE",
+            "ltag_value_rtf": "Зберегти зміни"
+        },
+        {
+            "ltag_id": 134,
+            "ltag_name": "BTN_CLOSE",
+            "ltag_value_rtf": "Закрити"
+        },
+        {
+            "ltag_id": 1766,
+            "ltag_name": "BTN_COPY",
+            "ltag_value_rtf": "Скопіювати"
+        },
+        {
+            "ltag_id": 1502,
+            "ltag_name": "BTN_COPY_DAY",
+            "ltag_value_rtf": "Скопіювати день"
+        },
+        {
+            "ltag_id": 1158,
+            "ltag_name": "BTN_CREATE",
+            "ltag_value_rtf": "Створити"
+        },
+        {
+            "ltag_id": 47,
+            "ltag_name": "BTN_DELETE",
+            "ltag_value_rtf": "Видалити"
+        },
+        {
+            "ltag_id": 1287,
+            "ltag_name": "BTN_DELETE_ARTICLE",
+            "ltag_value_rtf": "Видалити"
+        },
+        {
+            "ltag_id": 428,
+            "ltag_name": "BTN_DELETE_NEWS",
+            "ltag_value_rtf": "Видалити новину"
+        },
+        {
+            "ltag_id": 59,
+            "ltag_name": "BTN_DELETE_PAGE",
+            "ltag_value_rtf": "Видалити сторінку"
+        },
+        {
+            "ltag_id": 497,
+            "ltag_name": "BTN_DELETE_PHOTO",
+            "ltag_value_rtf": "Видалити фотогалерею"
+        },
+        {
+            "ltag_id": 1292,
+            "ltag_name": "BTN_DELETE_STAFF",
+            "ltag_value_rtf": "Видалити співробітника"
+        },
+        {
+            "ltag_id": 448,
+            "ltag_name": "BTN_DEL_FILE",
+            "ltag_value_rtf": "Видалити"
+        },
+        {
+            "ltag_id": 323,
+            "ltag_name": "BTN_DIV_EDITOR",
+            "ltag_value_rtf": "Структура сайту"
+        },
+        {
+            "ltag_id": 546,
+            "ltag_name": "BTN_DOWN",
+            "ltag_value_rtf": "Опустити"
+        },
+        {
+            "ltag_id": 46,
+            "ltag_name": "BTN_EDIT",
+            "ltag_value_rtf": "Редагувати"
+        },
+        {
+            "ltag_id": 1289,
+            "ltag_name": "BTN_EDIT_ARTICLE",
+            "ltag_value_rtf": "Редагувати"
+        },
+        {
+            "ltag_id": 1135,
+            "ltag_name": "BTN_EDIT_BLOCKS",
+            "ltag_value_rtf": "Керування блоками"
+        },
+        {
+            "ltag_id": 1375,
+            "ltag_name": "BTN_EDIT_DAY",
+            "ltag_value_rtf": "Редагувати"
+        },
+        {
+            "ltag_id": 2047,
+            "ltag_name": "BTN_EDIT_FILE",
+            "ltag_value_rtf": "Редагувати файл"
+        },
+        {
+            "ltag_id": 1160,
+            "ltag_name": "BTN_EDIT_FORM",
+            "ltag_value_rtf": "Редагувати форму"
+        },
+        {
+            "ltag_id": 56,
+            "ltag_name": "BTN_EDIT_MODE",
+            "ltag_value_rtf": "Режим редагування"
+        },
+        {
+            "ltag_id": 427,
+            "ltag_name": "BTN_EDIT_NEWS",
+            "ltag_value_rtf": "Редагувати новину"
+        },
+        {
+            "ltag_id": 1197,
+            "ltag_name": "BTN_EDIT_NEXT",
+            "ltag_value_rtf": "Редагувати наступний запис"
+        },
+        {
+            "ltag_id": 58,
+            "ltag_name": "BTN_EDIT_PAGE",
+            "ltag_value_rtf": "Редагувати сторінку"
+        },
+        {
+            "ltag_id": 1425,
+            "ltag_name": "BTN_EDIT_PHOTO",
+            "ltag_value_rtf": "Редагувати фотогалерею"
+        },
+        {
+            "ltag_id": 1198,
+            "ltag_name": "BTN_EDIT_PREV",
+            "ltag_value_rtf": "Редагувати попередній запис"
+        }
+    ],
+    "result": true,
+    "mode": "select",
+    "pager": {
+        "current": 1,
+        "count": 23,
+        "records": "Всього: 1113"
+    }
+}

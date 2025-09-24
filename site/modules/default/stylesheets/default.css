@@ -403,3 +403,35 @@ ul.nostyle div.checkbox
     margin-top: 20px;
     margin-bottom: 50px;
 }
+
+/* GridManager × Tabulator integration */
+[data-role="grid"] [data-role="tabulator-shell"] {
+    position: relative;
+}
+
+[data-role="grid"] [data-role="tabulator-container"] {
+    position: relative;
+    min-height: 320px;
+    border: var(--bs-border-width, 1px) solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--bs-border-radius-lg, 0.5rem);
+    background-color: var(--bs-body-bg, #ffffff);
+    overflow: hidden;
+}
+
+[data-role="grid"] [data-role="tabulator-container"] .tabulator {
+    border: 0;
+    background-color: transparent;
+}
+
+[data-role="grid"] [data-role="tabulator-container"] .tabulator .tabulator-header {
+    background-color: var(--bs-body-tertiary, #f8f9fa);
+    border-bottom: var(--bs-border-width, 1px) solid var(--bs-border-color, #dee2e6);
+}
+
+[data-role="grid"] [data-role="tabulator-container"] .tabulator .tabulator-tableholder {
+    background-color: var(--bs-body-bg, #ffffff);
+}
+
+[data-role="grid"] [data-role="tabulator-placeholder"] {
+    min-height: 200px;
+}

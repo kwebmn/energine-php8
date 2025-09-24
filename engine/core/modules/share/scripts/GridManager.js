@@ -1,482 +1,43 @@
-ScriptLoader.load('TabPane', 'PageList', 'Toolbar',  'ModalBox');
-class Grid {
-    /**
-     * @param {HTMLElement|string} element
-     * @param {Object} [options]
-     */
-    constructor(element, options = {}) {
-        // Универсальная обертка для работы с элементами по селектору или объекту
-        this.element = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+ScriptLoader.load('TabPane', 'PageList', 'Toolbar', 'ModalBox', 'lib/tabulator/tabulator.min', 'TabulatorGrid');
+Energine.loadCSS('scripts/lib/tabulator/tabulator.min.css');
+Energine.loadCSS('scripts/lib/tabulator/tabulator_bootstrap5.min.css');
 
-        this.data = [];
-        this.metadata = {};
-        this.selectedItem = null;
-        this.sort = { field: null, order: null };
-        this.isDirty = false;
-        this.keyFieldName = null;
-        this.prevDataLength = 0;
-        this.options = options;
-        this.events = {};
-
-        // --- DOM привязка ---
-        this.headOff = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] thead');
-        if (this.headOff) this.headOff.style.display = 'none';
-
-        this.tbody = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] tbody');
-        this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
-        this.headers.forEach(header => {
-            header.addEventListener('click', this.onChangeSort.bind(this));
-            header.classList.add('text-center', 'align-middle', 'fw-semibold');
-            header.style.cursor = 'pointer';
-        });
-
-        const bodyTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
-        if (bodyTable) {
-            bodyTable.classList.add('table', 'table-hover', 'table-striped', 'table-sm', 'align-middle', 'mb-0');
-        }
-
-        const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
-        if (headTable) {
-            headTable.classList.add('table', 'table-sm', 'align-middle', 'mb-0');
-        }
-
-        this.handleWindowResize = () => {
-            this.fitGridFormSize();
-        };
-        window.addEventListener('resize', this.handleWindowResize);
-
-        // Поддержка событий
-        this.on('dirty', () => {
-            this.isDirty = true;
-        });
-
-        // Структура для дальнейших ссылок
-        this.paneContent = null;
-        this.gridToolbar = null;
-        this.gridHeadContainer = null;
-        this.gridContainer = null;
-        this.minGridHeight = null;
-        this.pane = null;
-        this.gridBodyContainer = null;
-
-        this.on('doubleClick', this.options.onDoubleClick);
-
-    }
-
-
-    // --- Event system ---
-    on(event, handler) {
-        if (!this.events[event]) this.events[event] = [];
-        this.events[event].push(handler);
-    }
-    off(event, handler) {
-        if (this.events[event])
-            this.events[event] = this.events[event].filter(fn => fn !== handler);
-    }
-    fireEvent(event, ...args) {
-        if (this.events[event])
-            this.events[event].forEach(fn => fn.apply(this, args));
-    }
-
-    setMetadata(metadata) {
-        for (let fieldName in metadata) {
-            if (metadata[fieldName].key) {
-                this.keyFieldName = fieldName;
-            }
-        }
-        this.metadata = metadata;
-    }
-    getMetadata() { return this.metadata; }
-    setData(data) {
-        if (!this.metadata) {
-            alert('Cannot set data without specified metadata.');
-            return false;
-        }
-        this.data = data;
-        return true;
-    }
-
-    selectItem(item) {
-        this.deselectItem();
-        if (item) {
-            item.classList.add('table-active');
-            this.selectedItem = item;
-            this.fireEvent('select', item);
-        }
-    }
-    deselectItem() {
-        if (this.selectedItem) {
-            this.selectedItem.classList.remove('table-active');
-            this.selectedItem = null;
-        }
-    }
-    getSelectedItem() { return this.selectedItem; }
-    isEmpty() { return !this.data || !this.data.length; }
-
-    getSelectedRecord() {
-        if (!this.getSelectedItem()) return false;
-        return this.getSelectedItem().record;
-    }
-    getSelectedRecordKey() {
-        if (!this.keyFieldName) return false;
-        let rec = this.getSelectedRecord();
-        return rec ? rec[this.keyFieldName] : false;
-    }
-    dataKeyExists(key) {
-        if (!this.data) return false;
-        if (!this.keyFieldName) return false;
-        return this.data.some(item => item[this.keyFieldName] == key);
-    }
-
-    clear() {
-        this.deselectItem();
-        while (this.tbody.firstChild) {
-            this.tbody.removeChild(this.tbody.firstChild);
-        }
-    }
-
-    build() {
-
-        let preiouslySelectedRecordKey = this.getSelectedRecordKey();
-        this.selectedItem = null;
-        this.clear();
-
-        if (!this.isEmpty()) {
-            if (!this.dataKeyExists(preiouslySelectedRecordKey)) {
-                preiouslySelectedRecordKey = false;
-            }
-            this.data.forEach((record, id) => {
-                this.addRecord(record, id, preiouslySelectedRecordKey);
-            });
-            if (!this.selectedItem && !preiouslySelectedRecordKey && this.tbody.firstChild) {
-                this.selectItem(this.tbody.firstChild);
-            }
-        } else {
-            this.tbody.appendChild(document.createElement('tr'));
-        }
-
-        this.paneContent = this.element.closest('[data-role="pane-item"]');
-        this.gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
-        if (this.gridToolbar) {
-            this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2', 'mb-3');
-        }
-        this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
-        if (this.gridHeadContainer) {
-            this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0', 'rounded-top');
-        }
-        this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
-        if (this.gridContainer) {
-            this.gridContainer.classList.add('table-responsive', 'bg-body', 'border', 'border-top-0', 'rounded-bottom', 'shadow-sm');
-        }
-        this.pane = this.element.closest('[data-role="pane"]');
-        this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
-
-        this.adjustColumns();
-        this.fitGridFormSize();
-
-        if (!this.minGridHeight) {
-            let h = this.gridContainer.style.height;
-            this.minGridHeight = h ? parseInt(h, 10) : 300;
-            this.fitGridFormSize();
-        }
-    }
-
-    addRecord(record, id, currentKey) {
-        // Проверяем соответствие записи метаданным
-        for (let fieldName in record) {
-            if (!this.metadata[fieldName]) {
-                alert('Grid: record doesn\'t conform to metadata.');
-                return;
-            }
-        }
-
-        let row = document.createElement('tr');
-        row.setAttribute('unselectable', 'on');
-        this.tbody.appendChild(row);
-
-        row.record = record;
-
-        for (let fieldName in record) {
-            this.iterateFields(fieldName, record, row);
-        }
-
-        if (row.firstChild) row.firstChild.classList.add('firstColumn');
-
-        if (currentKey === record[this.keyFieldName]) {
-            this.selectItem(row);
-            // row.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-
-        // Навешиваем события
-        row.addEventListener('mouseover', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.add('highlighted', 'table-active');
-            }
-        });
-        row.addEventListener('mouseout', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.remove('highlighted', 'table-active');
-            } else {
-                row.classList.remove('highlighted');
-            }
-        });
-        row.addEventListener('click', () => {
-            if (row !== this.getSelectedItem()) this.selectItem(row);
-        });
-        row.addEventListener('dblclick', () => {
-            this.fireEvent('doubleClick');
-        });
-    }
-
-    iterateFields(fieldName, record, row) {
-        if (!this.metadata[fieldName].visible || this.metadata[fieldName].type === 'hidden') {
-            return;
-        }
-        let cell = document.createElement('td');
-        row.appendChild(cell);
-
-        const fieldMeta = this.metadata[fieldName];
-        const fieldType = fieldMeta.type;
-        cell.classList.add('align-middle', 'text-break');
-
-        switch (fieldType) {
-            case 'boolean': {
-                const formCheck = document.createElement('div');
-                formCheck.classList.add('form-check', 'm-0', 'd-inline-flex', 'justify-content-center');
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.classList.add('form-check-input');
-                checkbox.disabled = true;
-                const value = record[fieldName];
-                const normalized = (value !== undefined && value !== null)
-                    ? String(value).toLowerCase()
-                    : '';
-                checkbox.checked = value === true
-                    || value === 1
-                    || normalized === '1'
-                    || normalized === 'true'
-                    || normalized === 'y';
-                formCheck.appendChild(checkbox);
-                cell.classList.add('text-center');
-                cell.appendChild(formCheck);
-                break;
-            }
-            case 'value': {
-                const value = (record[fieldName] && record[fieldName].value !== undefined)
-                    ? record[fieldName].value
-                    : '&nbsp;';
-                cell.innerHTML = value;
-                break;
-            }
-            case 'textbox':
-                if (record[fieldName] && Object.keys(record[fieldName]).length) {
-                    cell.innerHTML = Object.values(record[fieldName]).join(', ');
-                } else {
-                    cell.innerHTML = '&nbsp;';
+function gmTranslate(key, fallback) {
+    if (window.Energine && window.Energine.translations) {
+        const { translations } = window.Energine;
+        if (translations) {
+            if (typeof translations.get === 'function') {
+                const value = translations.get(key);
+                if (value !== undefined && value !== null && value !== '') {
+                    return value;
                 }
-                break;
-            case 'file':
-                if (record[fieldName]) {
-                    let image = document.createElement('img');
-                    image.src = (window.Energine && Energine.resizer ? Energine.resizer : '') + 'w40-h40/' + record[fieldName];
-                    image.width = 40;
-                    image.height = 40;
-                    image.classList.add('img-thumbnail', 'rounded');
-                    const altText = (fieldMeta && fieldMeta.title) ? fieldMeta.title : '';
-                    if (altText) image.alt = altText;
-                    cell.classList.add('text-center');
-                    cell.appendChild(image);
-                } else {
-                    cell.innerHTML = '&nbsp;';
-                }
-                break;
-            default: {
-                let fieldValue = '';
-                if (record[fieldName] || record[fieldName] === 0) {
-                    fieldValue = (record[fieldName] + '').trim();
-                }
-                let prevRow = row.previousElementSibling;
-                if (
-                    fieldType === 'select' &&
-                    row.firstChild === cell &&
-                    prevRow &&
-                    prevRow.record &&
-                    prevRow.record[fieldName] === record[fieldName]
-                ) {
-                    fieldValue = '';
-                    if (prevRow.firstChild) prevRow.firstChild.classList.add('fw-bold');
-                }
-                cell.innerHTML = fieldValue !== '' ? fieldValue : '&#160;';
+            } else if (translations[key] !== undefined && translations[key] !== null && translations[key] !== '') {
+                return translations[key];
             }
         }
     }
-
-    adjustColumns() {
-        // NOTE: This is a simplified version, needs adaptation for your layout.
-        let gridHeadContainer = this.gridHeadContainer;
-        if (!gridHeadContainer) return;
-        let table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
-        if (!table) return;
-        let fixedColumns = table.dataset.fixedColumns === 'true';
-        let tbodyTr = this.tbody.querySelector('tr');
-        if (!tbodyTr) return;
-        let tds = Array.from(tbodyTr.children);
-        let ths = Array.from(gridHeadContainer.querySelectorAll('th'));
-        let headCols = Array.from(gridHeadContainer.querySelectorAll('col'));
-        let bodyCols = Array.from(this.element.querySelectorAll('[data-role="grid-table"][data-grid-part="body"] col'));
-
-        // Padding for scrollbar
-        let ScrollBarWidth = 16;
-        gridHeadContainer.style.paddingRight = ScrollBarWidth + 'px';
-
-        if (!fixedColumns) {
-            let headers = tds.map(td => td.offsetWidth);
-            headers.forEach((width, n) => {
-                if (headCols[n]) headCols[n].style.width = width + 'px';
-                if (bodyCols[n]) bodyCols[n].style.width = width + 'px';
-            });
-
-            let oversizeHead = ths.map((th, n) =>
-                th.offsetWidth > headers[n]
-            );
-            if (oversizeHead.some(v => v)) {
-                let newWidth = ths.map((th, n) => oversizeHead[n] ? th.offsetWidth : 0);
-                let colWidth = [0, 0];
-                headers.forEach((w, n) => {
-                    if (oversizeHead[n]) {
-                        colWidth[1] += newWidth[n] - w;
-                    } else {
-                        colWidth[0] += w;
-                    }
-                });
-                colWidth[1] += colWidth[0];
-                let scaleCoef = colWidth[0] / colWidth[1];
-                headers = headers.map((w, n) =>
-                    oversizeHead[n] ? newWidth[n] : Math.floor(w * scaleCoef)
-                );
-                headers.forEach((width, n) => {
-                    if (headCols[n]) headCols[n].style.width = width + 'px';
-                    if (bodyCols[n]) bodyCols[n].style.width = width + 'px';
-                });
-            }
-        } else {
-            let tableParent = this.tbody.parentElement;
-            if (tableParent) tableParent.style.tableLayout = 'fixed';
-        }
-        this.tbody.parentElement.style.wordWrap = 'break-word';
-    }
-
-    fitGridSize() {
-        if (this.paneContent) {
-            let margin = parseInt(this.element.style.marginTop) || 0;
-            let eBToolbar = document.body.querySelector('[data-pane-part="footer"]');
-            let gridHeight = this.paneContent.offsetHeight
-                - (this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0)
-                - (this.gridToolbar ? this.gridToolbar.offsetHeight : 0)
-                - margin
-                - (eBToolbar ? eBToolbar.offsetHeight : 0);
-
-            if (gridHeight > 0) {
-                if (gridHeight < 100) gridHeight = 300;
-                this.gridContainer.style.height = gridHeight ;
-            }
-            else
-            {
-
-            }
-        }
-    }
-
-    fitGridFormSize() {
-        if (!this.gridContainer) {
-            return;
-        }
-
-        if (!this.pane) {
-            this.fitGridSize();
-            return;
-        }
-
-        const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
-        const gridHeadHeight = this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0;
-        const paneToolbarTop = this.pane.querySelector('[data-pane-part="header"]');
-        const paneToolbarBottom = this.pane.querySelector('[data-pane-part="footer"]');
-        const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
-        const paneToolbarBottomHeight = paneToolbarBottom ? paneToolbarBottom.offsetHeight : 0;
-        const paneHeight = this.pane.offsetHeight;
-        const margin = parseInt(this.element.style.marginTop, 10) || 0;
-        const gridBodyContainer = this.gridBodyContainer
-            || this.element.querySelector('[data-grid-section="body-inner"]');
-        let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderTopWidth || 0, 10)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderBottomWidth || 0, 10);
-
-        if (this.minGridHeight && gridBodyHeight < this.minGridHeight) {
-            gridBodyHeight = this.minGridHeight;
-        }
-
-        const totalHeight = toolbarHeight
-            + gridHeadHeight
-            + gridBodyHeight
-            + paneToolbarTopHeight
-            + paneToolbarBottomHeight
-            + margin
-            + 3;
-        const viewportHeight = window.innerHeight;
-        let freeSpace = viewportHeight;
-
-        if ((document.body.scrollHeight - 16 - 81) < viewportHeight) {
-            freeSpace -= (this.pane.offsetTop + 16 + 81);
-        }
-
-        if (totalHeight > paneHeight) {
-            this.pane.style.height = ((totalHeight > freeSpace) ? freeSpace : totalHeight) + 'px';
-        }
-
-        this.fitGridSize();
-    }
-
-    // --- Sorting
-    onChangeSort(event) {
-        let getNextDirectionOrderItem = current => {
-            let sortDirectionOrder = ['', 'asc', 'desc'],
-                currentIndex, result;
-            current = current || '';
-            currentIndex = sortDirectionOrder.indexOf(current);
-            if (currentIndex !== -1) {
-                result = sortDirectionOrder[(currentIndex + 1) % sortDirectionOrder.length];
-            } else {
-                result = sortDirectionOrder[0];
-            }
-            return result;
-        };
-
-        let header = event.target;
-        let sortFieldName = header.getAttribute('name');
-        let sortDirection = header.className;
-
-
-        if (this.metadata[sortFieldName] && this.metadata[sortFieldName].sort === 1) {
-            this.sort.field = sortFieldName;
-            this.sort.order = getNextDirectionOrderItem(sortDirection);
-
-            header.className = ''; // remove all sort classes
-            if (this.sort.order) header.classList.add(this.sort.order);
-
-            this.fireEvent('sortChange');
-            this.options.onSortChange();
-        }
-    }
+    return fallback;
 }
 
-// Экспорт для ES-модуля (если нужно)
-// export default Grid;
+const GRID_DEFAULT_ERROR_MESSAGE = gmTranslate('MSG_LOADING_ERROR', 'Ошибка загрузки данных');
+const GRID_DEFAULT_WARNING_MESSAGE = gmTranslate('GRID_DATA_WARNING', 'Получены данные неожиданного формата');
 
-/**
- * GridManager (ES6 version)
- */
+const GRID_SELECTION_ACTIONS = new Set([
+    'view',
+    'edit',
+    'del',
+    'delete',
+    'move',
+    'moveFirst',
+    'moveLast',
+    'moveAbove',
+    'moveBelow',
+    'moveTo',
+    'copy',
+    'use',
+    'up',
+    'down',
+]);
 class GridManager {
     /**
      * @param {HTMLElement|string} element Main holder element for the GridManager
@@ -486,6 +47,9 @@ class GridManager {
         this.mvElementId = null;
         this.langId = 0;
         this.initialized = false;
+        this.selectionAwareControls = [];
+        this.lastMetaSignature = null;
+        this.addControl = null;
 
         // --- Element reference ---
         this.element = (typeof element === 'string') ?
@@ -503,11 +67,29 @@ class GridManager {
         this.pageList = new PageList({ onPageSelect: this.loadPage.bind(this) });
 
         // --- Grid ---
-        this.grid = new Grid(this.element.querySelector('[data-role="grid"]'), {
-            onSelect: this.onSelect.bind(this),
-            onSortChange: this.onSortChange.bind(this),
-            onDoubleClick: this.onDoubleClick.bind(this),
+        this.gridElement = this.element.querySelector('[data-role="grid"]');
+        if (!this.gridElement) {
+            throw new Error('GridManager: grid container not found.');
+        }
+
+        this.tabulatorShell = this.gridElement.querySelector('[data-role="tabulator-shell"]');
+        this.tabulatorContainer = this.gridElement.querySelector('[data-role="tabulator-container"]');
+        if (!this.tabulatorContainer) {
+            throw new Error('GridManager: tabulator container not found.');
+        }
+
+        const tabulatorPlaceholder = this.gridElement.querySelector('[data-role="tabulator-placeholder"]');
+        if (tabulatorPlaceholder && tabulatorPlaceholder.parentNode) {
+            tabulatorPlaceholder.parentNode.removeChild(tabulatorPlaceholder);
+        }
+        this.tabulatorContainer.innerHTML = '';
+
+        this.grid = new TabulatorGrid(this.tabulatorContainer, {
+            tableOptions: {
+                sortMode: 'remote',
+            },
         });
+        this.bindGridEvents();
 
         // --- Tabs ---
         this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
@@ -519,9 +101,6 @@ class GridManager {
         } else {
             this.tabPane.element.appendChild(this.pageList.getElement());
         }
-
-        // --- Overlay (Visual imitation of waiting) ---
-        // this.overlay = new Overlay(this.element);
 
         // --- Property 'single_template' of main holder element ---
         this.singlePath = this.element.getAttribute('single_template') || '';
@@ -546,6 +125,298 @@ class GridManager {
         this.reload();
     }
 
+    logUnexpected(context, payload) {
+        const errorCandidate = (payload && payload.err instanceof Error)
+            ? payload.err
+            : (payload instanceof Error ? payload : null);
+        if (typeof window.safeConsoleError === 'function') {
+            window.safeConsoleError(errorCandidate || new Error(context), `GridManager:${context}`);
+        } else if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn(`GridManager unexpected state: ${context}`, payload);
+        }
+        if (payload && payload !== errorCandidate && window.console && typeof window.console.debug === 'function') {
+            window.console.debug('GridManager payload:', payload);
+        }
+    }
+
+    buildErrorMessageFromResponse(response, fallbackMessage = GRID_DEFAULT_ERROR_MESSAGE) {
+        if (!response) {
+            return fallbackMessage;
+        }
+        if (typeof response === 'string') {
+            return response;
+        }
+
+        const parts = [];
+        if (response.title) {
+            parts.push(response.title);
+        }
+        if (Array.isArray(response.errors) && response.errors.length) {
+            response.errors.forEach((error) => {
+                if (!error) {
+                    return;
+                }
+                if (typeof error === 'string') {
+                    parts.push(error);
+                    return;
+                }
+                const field = error.field ? `${error.field}: ` : '';
+                if (error.message) {
+                    parts.push(`${field}${error.message}`);
+                } else {
+                    parts.push(`${field}${error}`);
+                }
+            });
+        }
+        if (response.message) {
+            parts.push(response.message);
+        }
+        if (response.description) {
+            parts.push(response.description);
+        }
+        const message = parts.join('\n').trim();
+        return message || fallbackMessage;
+    }
+
+    presentError(message) {
+        const text = message || GRID_DEFAULT_ERROR_MESSAGE;
+        if (window.Energine && typeof window.Energine.alertBox === 'function') {
+            window.Energine.alertBox(text);
+        } else {
+            alert(text);
+        }
+    }
+
+    presentWarning(message) {
+        const text = message || GRID_DEFAULT_WARNING_MESSAGE;
+        if (window.Energine && typeof window.Energine.noticeBox === 'function') {
+            window.Energine.noticeBox(text, 'warning');
+        } else if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn(text);
+        }
+    }
+
+    showGridErrorOverlay(message) {
+        if (this.grid && typeof this.grid.showErrorOverlay === 'function') {
+            this.grid.showErrorOverlay(message);
+        }
+    }
+
+    clearGridOverlay() {
+        if (this.grid && typeof this.grid.clearOverlay === 'function') {
+            this.grid.clearOverlay();
+        }
+    }
+
+    bindGridEvents() {
+        if (!this.grid) {
+            return;
+        }
+        this.grid.on('select', (...args) => {
+            this.updateToolbarSelectionState();
+            this.onSelect(...args);
+        });
+        this.grid.on('deselect', () => {
+            this.updateToolbarSelectionState();
+        });
+        this.grid.on('selectionChange', () => {
+            this.updateToolbarSelectionState();
+        });
+        this.grid.on('doubleClick', (...args) => {
+            this.onDoubleClick(...args);
+        });
+        this.grid.on('sortChange', () => {
+            this.onSortChange();
+        });
+        this.grid.on('dataLoaded', () => {
+            this.updateToolbarSelectionState();
+        });
+        this.grid.on('dataFiltered', (filteredData) => {
+            const dataset = Array.isArray(filteredData)
+                ? filteredData
+                : this.getActiveGridData();
+            this.handleDataLoad(dataset);
+        });
+        this.grid.on('filterCleared', () => {
+            this.handleDataLoad(this.getActiveGridData());
+        });
+        this.grid.on('pagerUpdate', (pager) => {
+            if (pager && typeof pager.current === 'number' && this.pageList) {
+                this.pageList.currentPage = pager.current;
+            }
+        });
+    }
+
+    resolveSelectionAwareControls() {
+        if (!this.toolbar || !Array.isArray(this.toolbar.controls)) {
+            this.selectionAwareControls = [];
+            return;
+        }
+        this.selectionAwareControls = this.toolbar.controls.filter((control) => {
+            if (!control || !control.properties) {
+                return false;
+            }
+            const action = control.properties.action || '';
+            const controlId = control.properties.id || '';
+            return GRID_SELECTION_ACTIONS.has(action) || GRID_SELECTION_ACTIONS.has(controlId);
+        });
+    }
+
+    getAddControl() {
+        if (!this.toolbar) {
+            return null;
+        }
+        if (this.addControl) {
+            return this.addControl;
+        }
+        if (typeof this.toolbar.getControlById === 'function') {
+            const control = this.toolbar.getControlById('add');
+            if (control) {
+                this.addControl = control;
+                return control;
+            }
+        }
+        return null;
+    }
+
+    getActiveGridData() {
+        if (!this.grid) {
+            return [];
+        }
+        if (typeof this.grid.getActiveData === 'function') {
+            try {
+                const data = this.grid.getActiveData();
+                if (Array.isArray(data)) {
+                    return data;
+                }
+            } catch (err) {
+                // ignore and fallback to cached data
+            }
+        }
+        return Array.isArray(this.grid.data) ? this.grid.data : [];
+    }
+
+    updateToolbarSelectionState() {
+        if (!this.toolbar) {
+            return;
+        }
+        if (!Array.isArray(this.selectionAwareControls) || !this.selectionAwareControls.length) {
+            this.resolveSelectionAwareControls();
+        }
+        const hasSelection = !!(this.grid && typeof this.grid.getSelectedRecord === 'function' && this.grid.getSelectedRecord());
+        this.selectionAwareControls.forEach((control) => {
+            if (!control || typeof control.enable !== 'function' || typeof control.disable !== 'function') {
+                return;
+            }
+            if (hasSelection) {
+                control.enable(true);
+            } else {
+                control.disable();
+            }
+        });
+    }
+
+    ensureFirstRowSelected() {
+        if (!this.grid || typeof this.grid.getTabulator !== 'function') {
+            return;
+        }
+        const table = this.grid.getTabulator();
+        if (!table || typeof table.getRows !== 'function') {
+            return;
+        }
+        const selectedRows = (typeof table.getSelectedRows === 'function') ? table.getSelectedRows() : [];
+        if (selectedRows && selectedRows.length) {
+            return;
+        }
+        const rows = table.getRows();
+        if (rows && rows.length && typeof rows[0].select === 'function') {
+            rows[0].select();
+        }
+    }
+
+    getSelectedRowComponent() {
+        if (!this.grid || typeof this.grid.getTabulator !== 'function') {
+            return null;
+        }
+        const table = this.grid.getTabulator();
+        if (!table || typeof table.getSelectedRows !== 'function') {
+            return null;
+        }
+        const rows = table.getSelectedRows();
+        return (rows && rows.length) ? rows[0] : null;
+    }
+
+    shouldRefreshMetadata(meta) {
+        if (!meta) {
+            return false;
+        }
+        const signature = JSON.stringify(meta);
+        return this.lastMetaSignature !== signature;
+    }
+
+    handleDataLoad(data, addControl) {
+        const control = addControl || this.getAddControl();
+        const hasData = Array.isArray(data)
+            ? data.length > 0
+            : !(this.grid && typeof this.grid.isEmpty === 'function' && this.grid.isEmpty());
+        if (hasData) {
+            if (this.toolbar && typeof this.toolbar.enableControls === 'function') {
+                this.toolbar.enableControls();
+            }
+            if (this.pageList && typeof this.pageList.enable === 'function') {
+                this.pageList.enable();
+            }
+            this.ensureFirstRowSelected();
+        } else {
+            if (this.toolbar && typeof this.toolbar.disableControls === 'function') {
+                this.toolbar.disableControls();
+            }
+        }
+        if (control && typeof control.enable === 'function') {
+            control.enable();
+        }
+        this.updateToolbarSelectionState();
+    }
+
+    applyClientFilter(descriptor) {
+        if (!this.grid || typeof this.grid.applyFilter !== 'function') {
+            return Promise.resolve(this.getActiveGridData());
+        }
+        if (!descriptor) {
+            return this.clearClientFilter();
+        }
+        return Promise.resolve(this.grid.applyFilter(descriptor))
+            .then((dataset) => {
+                const data = Array.isArray(dataset) ? dataset : this.getActiveGridData();
+                this.handleDataLoad(data);
+                return data;
+            })
+            .catch((error) => {
+                if (typeof window !== 'undefined' && window.console && typeof window.console.error === 'function') {
+                    window.console.error('GridManager: unable to apply client filter', error);
+                }
+                return this.getActiveGridData();
+            });
+    }
+
+    clearClientFilter() {
+        if (!this.grid || typeof this.grid.clearFilter !== 'function') {
+            return Promise.resolve(this.getActiveGridData());
+        }
+        return Promise.resolve(this.grid.clearFilter())
+            .then((dataset) => {
+                const data = Array.isArray(dataset) ? dataset : this.getActiveGridData();
+                this.handleDataLoad(data);
+                return data;
+            })
+            .catch((error) => {
+                if (typeof window !== 'undefined' && window.console && typeof window.console.error === 'function') {
+                    window.console.error('GridManager: unable to clear client filter', error);
+                }
+                return this.getActiveGridData();
+            });
+    }
+
     // --- Move Element ID API ---
     setMvElementId(id) { this.mvElementId = id; }
     getMvElementId() { return this.mvElementId; }
@@ -562,6 +433,12 @@ class GridManager {
         }
         if (this.toolbar.disableControls) this.toolbar.disableControls();
         if (this.toolbar.bindTo) this.toolbar.bindTo(this);
+        this.addControl = (this.toolbar && typeof this.toolbar.getControlById === 'function')
+            ? this.toolbar.getControlById('add')
+            : null;
+        this.resolveSelectionAwareControls();
+        const currentData = this.getActiveGridData();
+        this.handleDataLoad(currentData, this.addControl);
         // this.reload(); // Можно сделать отложенную загрузку при необходимости
     }
 
@@ -584,6 +461,7 @@ class GridManager {
         }
         this.langId = data.lang;
         if (this.filter) this.filter.remove();
+        this.clearClientFilter();
         this.reload();
     }
 
@@ -606,7 +484,9 @@ class GridManager {
     loadPage(pageNum) {
         this.pageList.disable();
         if (this.toolbar) this.toolbar.disableControls();
-        //this.overlay.show();
+        if (this.grid && typeof this.grid.showLoadingOverlay === 'function') {
+            this.grid.showLoadingOverlay();
+        }
         showLoader();
         this.grid.clear();
         if(this.pageList.currentPage)
@@ -619,7 +499,7 @@ class GridManager {
                 this.buildRequestURL(pageNum),
                 this.buildRequestPostBody(),
                 this.processServerResponse.bind(this),
-                null,
+                this.processServerUserError.bind(this),
                 this.processServerError.bind(this)
             );
         }, 0);
@@ -646,35 +526,90 @@ class GridManager {
         return postBody;
     }
 
-    processServerResponse(result) {
-        let control = false;
-        if (this.toolbar && this.toolbar.getControlById) {
-            control = this.toolbar.getControlById('add');
-        }
-
-        if (!this.initialized) {
-            this.grid.setMetadata(result.meta);
-            this.initialized = true;
-        }
-        this.grid.setData(result.data || []);
-
-        if (result.pager) {
-            this.pageList.build(result.pager.count, result.pager.current, result.pager.records);
-        }
-        if (!this.grid.isEmpty()) {
-            if (this.toolbar) this.toolbar.enableControls();
+    processServerUserError(response, fallbackMessage) {
+        hideLoader();
+        const message = this.buildErrorMessageFromResponse(response, fallbackMessage || GRID_DEFAULT_ERROR_MESSAGE);
+        this.presentError(message);
+        this.showGridErrorOverlay(message);
+        if (this.pageList && typeof this.pageList.enable === 'function') {
             this.pageList.enable();
         }
-        if (control) control.enable();
-        this.grid.build();
-        // this.overlay.hide();
-        hideLoader();
+        if (this.toolbar && typeof this.toolbar.disableControls === 'function') {
+            this.toolbar.disableControls();
+        }
+        return true;
+    }
+
+    processServerResponse(result) {
+        const addControl = this.getAddControl();
+
+        const meta = (result && typeof result.meta === 'object') ? result.meta : null;
+        if (!meta) {
+            this.logUnexpected('response-meta-missing', result);
+        }
+        if (!this.initialized) {
+            this.grid.setMetadata(meta || {});
+            this.lastMetaSignature = meta ? JSON.stringify(meta) : null;
+            this.initialized = true;
+        } else if (meta && this.shouldRefreshMetadata(meta)) {
+            this.grid.setMetadata(meta);
+            this.lastMetaSignature = JSON.stringify(meta);
+        }
+
+        if (result && result.pager) {
+            this.pageList.build(result.pager.count, result.pager.current, result.pager.records);
+            if (this.grid && typeof this.grid.setPager === 'function') {
+                this.grid.setPager(result.pager);
+            }
+        }
+
+        if (result && Array.isArray(result.errors) && result.errors.length) {
+            const warningMessage = this.buildErrorMessageFromResponse({
+                title: result.title,
+                errors: result.errors,
+                message: result.message,
+            }, GRID_DEFAULT_WARNING_MESSAGE);
+            this.presentWarning(warningMessage);
+        }
+
+        let data = [];
+        if (result && Array.isArray(result.data)) {
+            data = result.data;
+        } else if (result && result.data) {
+            this.logUnexpected('response-data-shape', result.data);
+        }
+
+        Promise.resolve(this.grid.setData(data))
+            .then((resolvedData) => {
+                const dataset = Array.isArray(resolvedData) ? resolvedData : data;
+                this.handleDataLoad(dataset, addControl);
+                this.clearGridOverlay();
+            })
+            .catch((error) => {
+                if (typeof window !== 'undefined' && window.console && typeof window.console.error === 'function') {
+                    window.console.error('GridManager: unable to apply grid data', error);
+                }
+                this.logUnexpected('grid-set-data', { err: error });
+                this.handleDataLoad([], addControl);
+                this.showGridErrorOverlay(GRID_DEFAULT_ERROR_MESSAGE);
+            })
+            .finally(() => {
+                hideLoader();
+            });
     }
 
     processServerError(responseText) {
-        alert(responseText);
-        // this.overlay.hide();
         hideLoader();
+        const message = this.buildErrorMessageFromResponse(responseText, GRID_DEFAULT_ERROR_MESSAGE);
+        this.presentError(message);
+        this.showGridErrorOverlay(message);
+        if (this.pageList && typeof this.pageList.enable === 'function') {
+            this.pageList.enable();
+        }
+        if (this.toolbar && typeof this.toolbar.disableControls === 'function') {
+            this.toolbar.disableControls();
+        }
+        this.logUnexpected('server-error', responseText);
     }
 
     processAfterCloseAction(returnValue) {
@@ -725,38 +660,39 @@ class GridManager {
     }
     moveTo(dir, fromId, toId) {
         toId = toId || '';
-        // this.overlay.show();
         showLoader();
         Energine.request(
             `${this.singlePath}move/${fromId}/${dir}/${toId}/`,
             null,
             () => {
-                // this.overlay.hide();
                 hideLoader();
                 ModalBox.setReturnValue(true);
                 this.close();
             },
-            () => hideLoader(),//{ this.overlay.hide(); },
+            () => hideLoader(),
             (responseText) => {
                 alert(responseText);
-                // this.overlay.hide();
                 hideLoader();
             }
         );
     }
     editPrev() {
-        let prevRow;
-        let curr = this.grid.getSelectedItem();
-        if (curr && (prevRow = curr.previousElementSibling)) {
-            this.grid.selectItem(prevRow);
+        const currentRow = this.getSelectedRowComponent();
+        const prevRow = currentRow && typeof currentRow.getPrevRow === 'function'
+            ? currentRow.getPrevRow()
+            : null;
+        if (prevRow && typeof prevRow.select === 'function') {
+            prevRow.select();
             this.edit();
         }
     }
     editNext() {
-        let nextRow;
-        let curr = this.grid.getSelectedItem();
-        if (curr && (nextRow = curr.nextElementSibling)) {
-            this.grid.selectItem(nextRow);
+        const currentRow = this.getSelectedRowComponent();
+        const nextRow = currentRow && typeof currentRow.getNextRow === 'function'
+            ? currentRow.getNextRow()
+            : null;
+        if (nextRow && typeof nextRow.select === 'function') {
+            nextRow.select();
             this.edit();
         }
     }
@@ -764,21 +700,18 @@ class GridManager {
         let MSG_CONFIRM_DELETE = (Energine.translations && Energine.translations.get('MSG_CONFIRM_DELETE')) ||
             'Do you really want to delete the chosen record?';
         if (confirm(MSG_CONFIRM_DELETE)) {
-            // this.overlay.show();
             showLoader();
             Energine.request(
                 `${this.singlePath}${this.grid.getSelectedRecordKey()}/delete/`,
                 null,
                 () => {
-                    // this.overlay.hide();
                     hideLoader();
                     this.grid.fireEvent('dirty');
                     this.loadPage(this.pageList.currentPage);
                 },
-                () => hideLoader(),//{ this.overlay.hide(); },
+                () => hideLoader(),
                 (responseText) => {
                     alert(responseText);
-                    // this.overlay.hide();
                     hideLoader();
                 }
             );
@@ -812,17 +745,7 @@ class GridManager {
         window.location.href = `${this.element.getAttribute('single_template')}csv/`;
     }
 
-    // --- Static stub for Filter (should be redefined elsewhere) ---
-    static Filter = class {
-        constructor(manager) { /* ... */ }
-        getValue() { return ''; }
-        remove() {}
-    };
 }
-
-// Для совместимости (глобально)
-// window.GridManager = GridManager;
-// export default GridManager;
 
 /**
  * Filter tool.
@@ -843,6 +766,8 @@ class Filter {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
+        this.gridManager = gridManager;
+        this.mode = this.normaliseMode(this.element.dataset.filterMode || this.element.getAttribute('data-filter-mode') || 'server');
         this.element.classList.add('bg-light', 'border', 'border-light', 'rounded-3', 'p-3', 'mb-3', 'shadow-sm');
 
         // Привязки к основным элементам управления
@@ -884,15 +809,34 @@ class Filter {
         });
 
         // События
-        applyButton.addEventListener('click', () => {
-            this.use();
-            gridManager.reload();
-        });
-        resetLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.remove();
-            gridManager.reload();
-        });
+        if (applyButton) {
+            applyButton.addEventListener('click', () => {
+                const descriptor = this.buildFilterDescriptor();
+                const isActive = this.use();
+                if (this.shouldApplyClientFilter()) {
+                    if (isActive) {
+                        gridManager.applyClientFilter(descriptor);
+                    } else {
+                        gridManager.clearClientFilter();
+                    }
+                } else {
+                    gridManager.clearClientFilter();
+                }
+                if (this.shouldReloadServer()) {
+                    gridManager.reload();
+                }
+            });
+        }
+        if (resetLink) {
+            resetLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.remove();
+                gridManager.clearClientFilter();
+                if (this.shouldReloadServer()) {
+                    gridManager.reload();
+                }
+            });
+        }
         this.fields.addEventListener('change', this.checkCondition.bind(this));
         this.condition.addEventListener('change', (event) => {
             const fieldType = this.fields.options[this.fields.selectedIndex].getAttribute('type');
@@ -900,6 +844,25 @@ class Filter {
         });
 
         this.checkCondition();
+    }
+
+    normaliseMode(mode) {
+        const normalized = (mode || '').toString().toLowerCase();
+        if (normalized === 'client' || normalized === 'server') {
+            return normalized;
+        }
+        if (normalized === 'hybrid' || normalized === 'both') {
+            return 'hybrid';
+        }
+        return 'server';
+    }
+
+    shouldApplyClientFilter() {
+        return this.mode === 'client' || this.mode === 'hybrid';
+    }
+
+    shouldReloadServer() {
+        return this.mode === 'server' || this.mode === 'hybrid';
     }
 
     // Проверка условий фильтрации
@@ -1010,6 +973,20 @@ class Filter {
         }
         return result;
     }
+
+    buildFilterDescriptor() {
+        const fieldOption = this.fields && this.fields.options ? this.fields.options[this.fields.selectedIndex] : null;
+        const conditionOption = this.condition && this.condition.options ? this.condition.options[this.condition.selectedIndex] : null;
+        return {
+            field: fieldOption ? fieldOption.value : null,
+            fieldLabel: fieldOption ? fieldOption.textContent : '',
+            fieldType: fieldOption ? fieldOption.getAttribute('type') : null,
+            condition: conditionOption ? conditionOption.value : null,
+            conditionLabel: conditionOption ? conditionOption.textContent : '',
+            values: (this.inputs && typeof this.inputs.getActiveValues === 'function') ? this.inputs.getActiveValues() : [],
+            mode: this.mode,
+        };
+    }
 }
 
 // Привязка к глобальному пространству
@@ -1092,6 +1069,13 @@ class QueryControls {
             .join('&');
     }
 
+    getActiveValues() {
+        const inputs = this.isDate ? this.dpsInputs : this.inputs;
+        return inputs
+            .map((el) => (el && typeof el.value === 'string') ? el.value.trim() : '')
+            .filter((value) => value !== '');
+    }
+
     // Включить режим "между" (2 инпута), сделать маленькими
     asPeriod() {
         this.show();
@@ -1127,37 +1111,3 @@ class QueryControls {
 }
 // Привязка к глобальному пространству
 GridManager.Filter.QueryControls = QueryControls;
-
-document.addEventListener('DOMContentLoaded', function () {
-    /**
-     * Scroll bar width of the browser.
-     * @type {number}
-     */
-    // window.ScrollBarWidth = (window.top.ScrollBarWidth !== undefined)
-    //     ? window.top.ScrollBarWidth
-    //     : (function () {
-    //         // Создаём внешний контейнер
-    //         const parent = document.createElement('div');
-    //         parent.style.height = '1px';
-    //         parent.style.overflow = 'scroll';
-    //         parent.style.visibility = 'hidden';
-    //         parent.style.position = 'absolute'; // чтобы не влиять на макет
-    //         parent.style.width = '100px';
-    //
-    //         // Создаём внутренний элемент
-    //         const child = document.createElement('div');
-    //         child.style.height = '2px';
-    //         parent.appendChild(child);
-    //
-    //         document.body.appendChild(parent);
-    //
-    //         // Вычисляем ширину полосы прокрутки
-    //         const width = parent.offsetWidth - parent.clientWidth;
-    //
-    //         // Удаляем временные элементы
-    //         document.body.removeChild(parent);
-    //
-    //         return width;
-    //     })();
-});
-;

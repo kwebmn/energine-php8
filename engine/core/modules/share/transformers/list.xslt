@@ -191,99 +191,21 @@
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head border border-bottom-0 rounded-top bg-body-tertiary" data-grid-section="head">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover table-sm mb-0" data-role="grid-table" data-grid-part="head">
-                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
-                                    </xsl:if>
-                                    <xsl:choose>
-                                        <xsl:when test="ancestor::component[@sample='FileRepository']">
-                                            <col id="col_11" style="width:12%"/>
-                                            <col id="col_12" style="width:30%"/>
-                                            <col id="col_13" style="width:28%"/>
-                                            <col id="col_14" style="width:30%"/>
-                                        </xsl:when>
-                                        <xsl:otherwise>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <col id="col_1{position()}"/>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <col id="col_1{position()}"/>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </xsl:otherwise>
-                                    </xsl:choose>
-                                    <thead>
-                                        <tr>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <th name="{@name}"><xsl:value-of select="@title"/></th>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <th name="{@name}"><xsl:value-of select="@title"/></th>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="grid-body border border-top-0 rounded-bottom bg-body" data-grid-section="body">
-                            <div class="table-responsive" data-grid-section="body-inner">
-                                <table class="table table-striped table-hover table-sm mb-0" data-role="grid-table" data-grid-part="body">
-                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
-                                    </xsl:if>
-                                    <xsl:choose>
-                                        <xsl:when test="ancestor::component[@sample='FileRepository']">
-                                            <col id="col_11a" style="width:12%"/>
-                                            <col id="col_12a" style="width:30%"/>
-                                            <col id="col_13a" style="width:28%"/>
-                                            <col id="col_14a" style="width:30%"/>
-                                        </xsl:when>
-                                        <xsl:otherwise>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <col id="col_{position()}a"/>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <col id="col_{position()}a"/>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </xsl:otherwise>
-                                    </xsl:choose>
-                                    <thead style="visibility: hidden;">
-                                        <tr>
-                                            <xsl:for-each select="$FIELDS[@type!='hidden']">
-                                                <xsl:choose>
-                                                    <xsl:when test="@language">
-                                                        <xsl:if test="@language = $LANG_ID">
-                                                            <th id="col_{position()}"><xsl:value-of select="@title"/></th>
-                                                        </xsl:if>
-                                                    </xsl:when>
-                                                    <xsl:otherwise>
-                                                        <th id="col_{position()}"><xsl:value-of select="@title"/></th>
-                                                    </xsl:otherwise>
-                                                </xsl:choose>
-                                            </xsl:for-each>
-                                        </tr>
-                                    </thead>
-                                    <tbody/>
-                                </table>
+                        <div class="tabulator-shell" data-role="tabulator-shell">
+                            <div class="tabulator-container bg-body border rounded-3" id="{$TAB_ID}-tabulator" data-role="tabulator-container">
+                                <div class="tabulator-placeholder text-body-secondary text-center py-5" data-role="tabulator-placeholder">
+                                    <span class="spinner-border spinner-border-sm align-middle me-2" role="status" aria-hidden="true"/>
+                                    <span class="align-middle">
+                                        <xsl:choose>
+                                            <xsl:when test="ancestor::component/@loadingLabel">
+                                                <xsl:value-of select="ancestor::component/@loadingLabel"/>
+                                            </xsl:when>
+                                            <xsl:otherwise>
+                                                <xsl:text>Loading…</xsl:text>
+                                            </xsl:otherwise>
+                                        </xsl:choose>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
