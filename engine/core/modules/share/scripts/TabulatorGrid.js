@@ -311,9 +311,26 @@
                 columnDefaults: this.options.columnDefaults,
                 locale: localisation.locale,
                 langs: localisation.langs,
-                renderHorizontal: 'virtual',
-                renderVertical: 'virtual',
             }, this.options.tableOptions || {}));
+
+            this.tableReady = false;
+            this.tableReadyPromise = new Promise((resolve) => {
+                const markReady = () => {
+                    if (this.tableReady) {
+                        return;
+                    }
+                    this.tableReady = true;
+                    resolve();
+                };
+
+                if (this.table && typeof this.table.on === 'function') {
+                    this.table.on('tableBuilt', markReady);
+                    this.table.on('renderComplete', markReady);
+                }
+                if (this.table && this.table.tableBuilt) {
+                    markReady();
+                }
+            });
 
             this.registerEventBridges();
         }
@@ -488,6 +505,19 @@
         }
 
         /**
+         * Возвращает Promise, резолвящийся после инициализации табличного компонента.
+         */
+        waitForReady() {
+            if (!this.table) {
+                return Promise.resolve();
+            }
+            if (this.tableReady) {
+                return Promise.resolve();
+            }
+            return this.tableReadyPromise || Promise.resolve();
+        }
+
+        /**
          * Регистрирует обработчик пользовательского события адаптера.
          */
         on(event, handler) {
@@ -532,19 +562,30 @@
             this.metadata = metadata || {};
             this.keyFieldName = this.detectKeyField(metadata);
             this.columns = this.buildColumnsFromMetadata(metadata);
-
-            if (this.keyFieldName) {
-                if (typeof this.table.setIndex === 'function') {
-                    this.table.setIndex(this.keyFieldName);
-                } else {
-                    this.table.options.index = this.keyFieldName;
-                }
+            if (!this.table) {
+                return;
             }
 
-            if (this.columns.length) {
-                this.table.setColumns(this.columns);
+            const applyToTable = () => {
+                if (this.keyFieldName) {
+                    if (typeof this.table.setIndex === 'function') {
+                        this.table.setIndex(this.keyFieldName);
+                    } else {
+                        this.table.options.index = this.keyFieldName;
+                    }
+                }
+
+                if (this.columns.length) {
+                    this.table.setColumns(this.columns);
+                } else {
+                    this.table.setColumns([]);
+                }
+            };
+
+            if (this.tableReady) {
+                applyToTable();
             } else {
-                this.table.setColumns([]);
+                this.waitForReady().then(applyToTable);
             }
         }
 
@@ -980,28 +1021,31 @@
             if (!this.table) {
                 return Promise.resolve(this.data);
             }
+            const apply = () => {
+                this.suspendSortEvent = true;
+                let result;
+                try {
+                    result = this.table.setData(this.data);
+                } catch (err) {
+                    this.suspendSortEvent = false;
+                    throw err;
+                }
 
-            this.suspendSortEvent = true;
-            let result;
-            try {
-                result = this.table.setData(this.data);
-            } catch (err) {
-                this.suspendSortEvent = false;
-                throw err;
-            }
+                const finalize = () => {
+                    this.suspendSortEvent = false;
+                };
 
-            const finalize = () => {
-                this.suspendSortEvent = false;
+                return Promise.resolve(result)
+                    .then((resolved) => {
+                        finalize();
+                        return resolved;
+                    }, (error) => {
+                        finalize();
+                        throw error;
+                    });
             };
 
-            return Promise.resolve(result)
-                .then((resolved) => {
-                    finalize();
-                    return resolved;
-                }, (error) => {
-                    finalize();
-                    throw error;
-                });
+            return this.waitForReady().then(apply);
         }
 
         /**
@@ -1013,31 +1057,34 @@
             if (!this.table) {
                 return Promise.resolve();
             }
-
-            this.suspendSortEvent = true;
-            let result;
-            try {
-                if (typeof this.table.deselectRow === 'function') {
-                    this.table.deselectRow();
+            const apply = () => {
+                this.suspendSortEvent = true;
+                let result;
+                try {
+                    if (typeof this.table.deselectRow === 'function') {
+                        this.table.deselectRow();
+                    }
+                    result = this.table.clearData();
+                } catch (err) {
+                    this.suspendSortEvent = false;
+                    throw err;
                 }
-                result = this.table.clearData();
-            } catch (err) {
-                this.suspendSortEvent = false;
-                throw err;
-            }
 
-            const finalize = () => {
-                this.suspendSortEvent = false;
+                const finalize = () => {
+                    this.suspendSortEvent = false;
+                };
+
+                return Promise.resolve(result)
+                    .then((resolved) => {
+                        finalize();
+                        return resolved;
+                    }, (error) => {
+                        finalize();
+                        throw error;
+                    });
             };
 
-            return Promise.resolve(result)
-                .then((resolved) => {
-                    finalize();
-                    return resolved;
-                }, (error) => {
-                    finalize();
-                    throw error;
-                });
+            return this.waitForReady().then(apply);
         }
 
         /**
@@ -1045,6 +1092,16 @@
          */
         redraw(force = false) {
             if (!this.table || typeof this.table.redraw !== 'function') {
+                return false;
+            }
+            if (!this.tableReady) {
+                this.waitForReady().then(() => {
+                    try {
+                        this.table.redraw(force);
+                    } catch (err) {
+                        this.logUnexpected('redraw', { err });
+                    }
+                });
                 return false;
             }
             try {
@@ -1060,7 +1117,7 @@
          * Возвращает текущий набор данных с учётом фильтров и сортировки.
          */
         getActiveData() {
-            if (this.table && typeof this.table.getData === 'function') {
+            if (this.table && this.tableReady && typeof this.table.getData === 'function') {
                 try {
                     return this.table.getData();
                 } catch (err) {
@@ -1081,7 +1138,7 @@
          * Возвращает выбранную запись (single select).
          */
         getSelectedRecord() {
-            if (!this.table) {
+            if (!this.table || !this.tableReady) {
                 return null;
             }
             const selected = this.table.getSelectedData();
@@ -1106,8 +1163,28 @@
             if (!this.table || !this.keyFieldName || recordId === undefined || recordId === null) {
                 return Promise.resolve(false);
             }
-            this.table.deselectRow();
-            return this.table.selectRow(recordId, true);
+            const performSelection = () => {
+                try {
+                    if (typeof this.table.deselectRow === 'function') {
+                        this.table.deselectRow();
+                    }
+                } catch (err) {
+                    this.logUnexpected('select-record-deselect', { err, recordId });
+                }
+
+                try {
+                    return this.table.selectRow(recordId, true);
+                } catch (err) {
+                    this.logUnexpected('select-record', { err, recordId });
+                    return false;
+                }
+            };
+
+            if (this.tableReady) {
+                return Promise.resolve(performSelection());
+            }
+
+            return this.waitForReady().then(performSelection);
         }
 
         /**
@@ -1117,11 +1194,28 @@
             if (!record || !this.table) {
                 return Promise.resolve(false);
             }
-            const key = this.keyFieldName ? record[this.keyFieldName] : null;
-            if (key === undefined || key === null) {
-                return this.table.updateData([record]);
+            const performUpdate = () => {
+                const key = this.keyFieldName ? record[this.keyFieldName] : null;
+                if (key === undefined || key === null) {
+                    return this.table.updateData([record]);
+                }
+                return this.table.updateOrAddData([record]);
+            };
+
+            const execute = () => {
+                try {
+                    return performUpdate();
+                } catch (err) {
+                    this.logUnexpected('update-record', { err, record });
+                    throw err;
+                }
+            };
+
+            if (this.tableReady) {
+                return Promise.resolve(execute());
             }
-            return this.table.updateOrAddData([record]);
+
+            return this.waitForReady().then(execute);
         }
 
         /**
@@ -1137,18 +1231,54 @@
             if (key === undefined || key === null) {
                 return Promise.resolve(false);
             }
-            return this.table.deleteRow(key);
+            const execute = () => {
+                try {
+                    return this.table.deleteRow(key);
+                } catch (err) {
+                    this.logUnexpected('delete-record', { err, recordOrKey });
+                    throw err;
+                }
+            };
+
+            if (this.tableReady) {
+                return Promise.resolve(execute());
+            }
+
+            return this.waitForReady().then(execute);
         }
 
         /**
          * Снимает выделение.
          */
         deselect() {
-            if (this.table) {
-                this.table.deselectRow();
+            const finalize = () => {
+                this.selectedRow = null;
+            };
+
+            if (!this.table) {
+                finalize();
+                return Promise.resolve();
             }
-            this.selectedRow = null;
-            return Promise.resolve();
+
+            const execute = () => {
+                try {
+                    if (typeof this.table.deselectRow === 'function') {
+                        this.table.deselectRow();
+                    }
+                } catch (err) {
+                    this.logUnexpected('deselect', { err });
+                }
+                finalize();
+            };
+
+            if (this.tableReady) {
+                execute();
+                return Promise.resolve();
+            }
+
+            return this.waitForReady().then(() => {
+                execute();
+            });
         }
 
         /**
@@ -1156,49 +1286,91 @@
          */
         applyFilter(descriptor) {
             if (!this.table) {
-                return Promise.resolve(this.getActiveData());
-            }
-            this.table.clearFilter(true);
-
-            if (!descriptor) {
-                this.activeFilter = null;
-                this.fireEvent('filterCleared');
-                return Promise.resolve(this.getActiveData());
-            }
-
-            const predicate = this.createFilterPredicate(descriptor);
-            if (!predicate) {
-                this.activeFilter = null;
-                this.table.clearFilter(true);
-                this.fireEvent('filterCleared');
-                return Promise.resolve(this.getActiveData());
-            }
-
-            this.activeFilter = descriptor;
-            this.table.setFilter((data, row) => {
-                try {
-                    return predicate(data, row);
-                } catch (err) {
-                    if (global.console && typeof global.console.error === 'function') {
-                        global.console.error('TabulatorGrid filter predicate error:', err);
-                    }
-                    return true;
+                if (!descriptor) {
+                    this.activeFilter = null;
+                    this.fireEvent('filterCleared');
+                } else {
+                    this.activeFilter = descriptor;
+                    this.fireEvent('filterApplied', descriptor);
                 }
-            });
-            this.fireEvent('filterApplied', descriptor);
-            return Promise.resolve(this.getActiveData());
+                return Promise.resolve(this.getActiveData());
+            }
+            const execute = () => {
+                this.table.clearFilter(true);
+
+                if (!descriptor) {
+                    this.activeFilter = null;
+                    this.fireEvent('filterCleared');
+                    return this.getActiveData();
+                }
+
+                const predicate = this.createFilterPredicate(descriptor);
+                if (!predicate) {
+                    this.activeFilter = null;
+                    this.table.clearFilter(true);
+                    this.fireEvent('filterCleared');
+                    return this.getActiveData();
+                }
+
+                this.activeFilter = descriptor;
+                this.table.setFilter((data, row) => {
+                    try {
+                        return predicate(data, row);
+                    } catch (err) {
+                        if (global.console && typeof global.console.error === 'function') {
+                            global.console.error('TabulatorGrid filter predicate error:', err);
+                        }
+                        return true;
+                    }
+                });
+                this.fireEvent('filterApplied', descriptor);
+                return this.getActiveData();
+            };
+
+            const apply = () => {
+                try {
+                    return Promise.resolve(execute());
+                } catch (err) {
+                    this.logUnexpected('apply-filter', { err, descriptor });
+                    return Promise.resolve(this.getActiveData());
+                }
+            };
+
+            if (this.tableReady) {
+                return apply();
+            }
+
+            return this.waitForReady().then(apply);
         }
 
         /**
          * Сбрасывает клиентский фильтр.
          */
         clearFilter() {
-            if (this.table) {
-                this.table.clearFilter(true);
+            const finalize = () => {
+                this.activeFilter = null;
+                this.fireEvent('filterCleared');
+                return this.getActiveData();
+            };
+
+            if (!this.table) {
+                return Promise.resolve(finalize());
             }
-            this.activeFilter = null;
-            this.fireEvent('filterCleared');
-            return Promise.resolve(this.getActiveData());
+
+            const execute = () => {
+                try {
+                    this.table.clearFilter(true);
+                } catch (err) {
+                    this.logUnexpected('clear-filter', { err });
+                }
+                return finalize();
+            };
+
+            if (this.tableReady) {
+                return Promise.resolve(execute());
+            }
+
+            return this.waitForReady().then(() => execute());
         }
 
         /**
@@ -1389,8 +1561,16 @@
             if (!this.table || typeof this.table.showOverlay !== 'function') {
                 return;
             }
-            const content = this.buildOverlayMarkup(message, variant);
-            this.table.showOverlay(content);
+            const apply = () => {
+                const content = this.buildOverlayMarkup(message, variant);
+                this.table.showOverlay(content);
+            };
+
+            if (this.tableReady) {
+                apply();
+            } else {
+                this.waitForReady().then(apply);
+            }
         }
 
         showLoadingOverlay(message) {
@@ -1403,7 +1583,15 @@
 
         clearOverlay() {
             if (this.table && typeof this.table.clearOverlay === 'function') {
-                this.table.clearOverlay();
+                const apply = () => {
+                    this.table.clearOverlay();
+                };
+
+                if (this.tableReady) {
+                    apply();
+                } else {
+                    this.waitForReady().then(apply);
+                }
             }
         }
 
