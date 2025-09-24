@@ -430,13 +430,30 @@
                 if (this.suspendSortEvent) {
                     return;
                 }
+
+                const previousField = this.sort.field;
+                const previousOrder = this.sort.order;
+
                 if (Array.isArray(sorters) && sorters.length) {
-                    this.sort.field = sorters[0].field;
-                    this.sort.order = sorters[0].dir;
+                    const sorter = sorters[0] || {};
+                    const column = sorter.column;
+                    const field = sorter.field
+                        || (column && typeof column.getField === 'function'
+                            ? column.getField()
+                            : null);
+                    const order = sorter.dir ? String(sorter.dir).toLowerCase() : null;
+
+                    this.sort.field = field || null;
+                    this.sort.order = order === 'asc' || order === 'desc' ? order : null;
                 } else {
                     this.sort.field = null;
                     this.sort.order = null;
                 }
+
+                if (previousField === this.sort.field && previousOrder === this.sort.order) {
+                    return;
+                }
+
                 this.fireEvent('sortChange', sorters);
             });
 
