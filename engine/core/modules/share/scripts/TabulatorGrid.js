@@ -434,8 +434,20 @@
                 const previousField = this.sort.field;
                 const previousOrder = this.sort.order;
 
-                if (Array.isArray(sorters) && sorters.length) {
-                    const sorter = sorters[0] || {};
+                let activeSorters = Array.isArray(sorters) ? sorters.slice() : [];
+                if (!activeSorters.length && this.table && typeof this.table.getSorters === 'function') {
+                    try {
+                        const tableSorters = this.table.getSorters();
+                        if (Array.isArray(tableSorters) && tableSorters.length) {
+                            activeSorters = tableSorters.slice();
+                        }
+                    } catch (err) {
+                        this.logUnexpected('get-sorters', { err });
+                    }
+                }
+
+                if (activeSorters.length) {
+                    const sorter = activeSorters[0] || {};
                     const column = sorter.column;
                     const field = sorter.field
                         || (column && typeof column.getField === 'function'
@@ -454,7 +466,7 @@
                     return;
                 }
 
-                this.fireEvent('sortChange', sorters);
+                this.fireEvent('sortChange', activeSorters);
             });
 
             this.table.on('dataLoaded', (data) => {
