@@ -234,7 +234,8 @@
                 layout: 'fitDataStretch',
                 height: '100%',
                 responsiveLayout: 'collapse',
-                selectable: 1,
+                selectableRows: 1,
+                selectableRowsRollingSelection: false,
                 placeholder: translate('MSG_GRID_EMPTY', 'Нет данных'),
                 locale: DEFAULT_LOCALE_KEY,
                 columnDefaults: {
@@ -244,6 +245,15 @@
                     tooltip: true,
                 },
             }, options);
+
+            if (options && options.selectable !== undefined && options.selectableRows === undefined) {
+                this.options.selectableRows = options.selectable;
+            }
+
+            if (options && options.selectableRollingSelection !== undefined
+                && options.selectableRowsRollingSelection === undefined) {
+                this.options.selectableRowsRollingSelection = options.selectableRollingSelection;
+            }
 
             this.events = {};
             this.metadata = {};
@@ -276,8 +286,8 @@
                 height: this.options.height,
                 responsiveLayout: this.options.responsiveLayout,
                 placeholder: this.options.placeholder,
-                selectable: this.options.selectable,
-                selectableRollingSelection: false,
+                selectableRows: this.options.selectableRows,
+                selectableRowsRollingSelection: this.options.selectableRowsRollingSelection,
                 columnDefaults: this.options.columnDefaults,
                 locale: localisation.locale,
                 langs: localisation.langs,
