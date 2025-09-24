@@ -193,21 +193,11 @@ class PageToolbar extends Toolbar {
 
         const collapse = document.createElement('div');
         collapse.classList.add('collapse', 'navbar-collapse', 'py-2', 'py-lg-0');
-        collapse.classList.add('flex-grow-1');
-        collapse.style.flexBasis = 'auto';
-        collapse.style.minWidth = '0';
+        collapse.classList.add('w-100');
+        collapse.style.flexGrow = '1';
+        collapse.style.flexBasis = '100%';
         collapse.id = collapseId;
         container.appendChild(collapse);
-
-        const updateCollapseWidth = () => {
-            if (window.matchMedia('(min-width: 992px)').matches) {
-                collapse.classList.remove('w-100');
-            } else {
-                collapse.classList.add('w-100');
-            }
-        };
-        updateCollapseWidth();
-        window.addEventListener('resize', updateCollapseWidth);
 
         const actionStack = document.createElement('div');
         actionStack.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100', 'align-items-start');
@@ -220,107 +210,9 @@ class PageToolbar extends Toolbar {
         this.element.classList.add('py-2', 'py-lg-0');
         primaryRow.appendChild(this.element);
 
-        const normalizeGroup = group => {
-            if (!(group instanceof HTMLElement)) {
-                return;
-            }
-            group.classList.add('d-flex', 'flex-wrap', 'gap-1', 'justify-content-start');
-            group.classList.remove('ms-auto', 'justify-content-end', 'float-end');
-        };
-
-        const toolbarWrapper = document.createElement('div');
-        toolbarWrapper.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100');
-        primaryRow.replaceChild(toolbarWrapper, this.element);
-        toolbarWrapper.appendChild(this.element);
-
-        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap', 'w-100');
-        this.element.classList.remove(
-            'gap-2',
-            'bg-body',
-            'border',
-            'rounded-3',
-            'shadow-sm',
-            'p-2',
-            'ms-auto',
-            'justify-content-end',
-            'align-items-stretch'
-        );
+        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap');
+        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
         this.element.classList.add('bg-transparent', 'p-0');
-
-        const toolbarSecondaryRow = document.createElement('div');
-        toolbarSecondaryRow.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap', 'w-100');
-        toolbarSecondaryRow.classList.add('e-toolbar-secondary');
-
-        const editControlIds = ['add', 'edit', 'delete'];
-        const editControlSelector = editControlIds.map(id => `[id="${id}"]`).join(', ');
-        const secondaryGroups = new Set();
-
-        const markGroupSecondary = group => {
-            if (!group || secondaryGroups.has(group)) {
-                return;
-            }
-            secondaryGroups.add(group);
-            group.classList.add('e-toolbar-secondary-group');
-        };
-
-        editControlIds
-            .map(id => this.getControlById(id))
-            .filter(control => control && control.element instanceof HTMLElement)
-            .forEach(control => {
-                const group = control.element.closest('.btn-group');
-                if (group) {
-                    markGroupSecondary(group);
-                }
-            });
-
-        const placeGroup = (group, { forceSecondary = false } = {}) => {
-            if (!(group instanceof HTMLElement)) {
-                return;
-            }
-            normalizeGroup(group);
-            const shouldGoSecondary =
-                forceSecondary ||
-                secondaryGroups.has(group) ||
-                (!!editControlSelector && group.querySelector(editControlSelector));
-            if (shouldGoSecondary) {
-                if (!toolbarSecondaryRow.parentNode) {
-                    toolbarWrapper.appendChild(toolbarSecondaryRow);
-                }
-                toolbarSecondaryRow.appendChild(group);
-                markGroupSecondary(group);
-                return;
-            }
-            this.element.appendChild(group);
-        };
-
-        const initialGroups = Array.from(this.element.querySelectorAll(':scope > .btn-group'));
-        initialGroups.forEach(group => {
-            const shouldBeSecondary = secondaryGroups.has(group) || group.querySelector(editControlSelector);
-            placeGroup(group, { forceSecondary: shouldBeSecondary });
-        });
-
-        if (!toolbarSecondaryRow.childElementCount && toolbarSecondaryRow.parentNode === toolbarWrapper) {
-            toolbarWrapper.removeChild(toolbarSecondaryRow);
-        }
-
-        if (typeof MutationObserver !== 'undefined') {
-            const observer = new MutationObserver(mutations => {
-                mutations.forEach(mutation => {
-                    mutation.addedNodes.forEach(node => {
-                        if (!(node instanceof HTMLElement)) {
-                            return;
-                        }
-                        if (node.classList.contains('btn-group')) {
-                            placeGroup(node, { forceSecondary: true });
-                            return;
-                        }
-                        node.querySelectorAll?.('.btn-group').forEach(group => placeGroup(group, { forceSecondary: true }));
-                    });
-                });
-            });
-            observer.observe(this.element, { childList: true, subtree: true });
-            this._toolbarGroupsObserver = observer;
-        }
         this.element.querySelectorAll('button.btn').forEach(button => {
             button.classList.add('rounded-1', 'px-3');
             button.classList.add('btn-sm');
@@ -329,6 +221,129 @@ class PageToolbar extends Toolbar {
                 button.classList.add('btn-light', 'border', 'border-secondary-subtle', 'text-uppercase', 'fw-semibold', 'text-secondary');
             }
         });
+
+        const toolbarSecondaryRow = document.createElement('div');
+        toolbarSecondaryRow.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-2', 'flex-wrap', 'w-100');
+        toolbarSecondaryRow.classList.add('e-toolbar-secondary');
+
+        const ensureSecondaryRowAttachment = () => {
+            if (toolbarSecondaryRow.childElementCount) {
+                if (toolbarSecondaryRow.parentNode !== actionStack) {
+                    actionStack.appendChild(toolbarSecondaryRow);
+                }
+            } else if (toolbarSecondaryRow.parentNode) {
+                toolbarSecondaryRow.parentNode.removeChild(toolbarSecondaryRow);
+            }
+        };
+
+        const secondaryToolbars = new Set();
+        const secondaryGroups = new Set();
+        const moveToSecondaryRow = toolbar => {
+            if (!(toolbar instanceof HTMLElement) || toolbar === this.element) {
+                return;
+            }
+            if (secondaryToolbars.has(toolbar)) {
+                return;
+            }
+            secondaryToolbars.add(toolbar);
+
+            toolbar.classList.remove('ms-auto', 'ms-lg-auto', 'ms-md-auto', 'float-end', 'justify-content-end');
+            toolbar.classList.add('justify-content-start');
+
+            if (!toolbar.classList.contains('w-100')) {
+                toolbar.classList.add('w-100');
+            }
+
+            if (toolbar.classList.contains('mt-lg-0')) {
+                toolbar.classList.remove('mt-lg-0');
+            }
+
+            if (toolbar.parentNode) {
+                toolbar.parentNode.removeChild(toolbar);
+            }
+
+            ensureSecondaryRowAttachment();
+            toolbarSecondaryRow.appendChild(toolbar);
+        };
+
+        const editControlIds = ['add', 'edit', 'delete'];
+        const editControlSelector = editControlIds.map(id => `[data-control-id="${id}"]`).join(', ');
+
+        const moveGroupToSecondary = group => {
+            if (!(group instanceof HTMLElement) || secondaryGroups.has(group)) {
+                return;
+            }
+            if (editControlSelector && !group.querySelector(editControlSelector)) {
+                return;
+            }
+
+            secondaryGroups.add(group);
+            group.classList.add('d-flex', 'flex-wrap', 'gap-1', 'justify-content-start');
+            group.classList.remove('ms-auto', 'justify-content-end', 'float-end');
+
+            if (group.parentNode) {
+                group.parentNode.removeChild(group);
+            }
+
+            ensureSecondaryRowAttachment();
+            toolbarSecondaryRow.appendChild(group);
+        };
+
+        const scanForSecondaryGroups = root => {
+            if (!editControlSelector || !(root instanceof HTMLElement)) {
+                return;
+            }
+            if (root.classList && root.classList.contains('btn-group')) {
+                moveGroupToSecondary(root);
+            }
+            if (typeof root.querySelectorAll === 'function') {
+                root.querySelectorAll('.btn-group').forEach(group => moveGroupToSecondary(group));
+            }
+        };
+
+        scanForSecondaryGroups(this.element);
+
+        const scanForSecondaryToolbars = root => {
+            if (!(root instanceof HTMLElement)) {
+                return;
+            }
+            if (root !== this.element && root.matches('.btn-toolbar[data-toolbar]')) {
+                moveToSecondaryRow(root);
+            }
+            if (typeof root.querySelectorAll === 'function') {
+                root.querySelectorAll('.btn-toolbar[data-toolbar]').forEach(toolbar => {
+                    if (toolbar !== this.element) {
+                        moveToSecondaryRow(toolbar);
+                    }
+                });
+            }
+        };
+
+        scanForSecondaryToolbars(container);
+        scanForSecondaryToolbars(topFrame);
+        ensureSecondaryRowAttachment();
+
+        if (typeof MutationObserver !== 'undefined') {
+            const secondaryGroupsObserver = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        scanForSecondaryGroups(node);
+                    });
+                });
+            });
+            secondaryGroupsObserver.observe(this.element, { childList: true, subtree: true });
+            this._secondaryGroupsObserver = secondaryGroupsObserver;
+
+            const secondaryToolbarObserver = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        scanForSecondaryToolbars(node);
+                    });
+                });
+            });
+            secondaryToolbarObserver.observe(topFrame, { childList: true, subtree: true });
+            this._secondaryToolbarObserver = secondaryToolbarObserver;
+        }
 
         // Перенос body-children (кроме svg и e-overlay)
         const toMove = Array.from(document.body.childNodes).filter(el =>
