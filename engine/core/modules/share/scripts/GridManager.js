@@ -508,21 +508,35 @@ class GridManager {
             this.grid.showLoadingOverlay();
         }
         showLoader();
-        this.grid.clear();
-        if(this.pageList.currentPage)
-        {
-            pageNum = this.pageList.currentPage;
-        }
-        // "Delay" replacement for browser layout quirks (setTimeout = 0)
-        setTimeout(() => {
-            Energine.request(
-                this.buildRequestURL(pageNum),
-                this.buildRequestPostBody(),
-                this.processServerResponse.bind(this),
-                this.processServerUserError.bind(this),
-                this.processServerError.bind(this)
-            );
-        }, 0);
+        const performRequest = () => {
+            let targetPage = pageNum;
+            if (this.pageList && this.pageList.currentPage) {
+                targetPage = this.pageList.currentPage;
+            }
+
+            // "Delay" replacement for browser layout quirks (setTimeout = 0)
+            setTimeout(() => {
+                Energine.request(
+                    this.buildRequestURL(targetPage),
+                    this.buildRequestPostBody(),
+                    this.processServerResponse.bind(this),
+                    this.processServerUserError.bind(this),
+                    this.processServerError.bind(this)
+                );
+            }, 0);
+        };
+
+        const clearPromise = (this.grid && typeof this.grid.clear === 'function')
+            ? this.grid.clear()
+            : null;
+
+        Promise.resolve(clearPromise)
+            .catch((error) => {
+                if (typeof window !== 'undefined' && window.console && typeof window.console.warn === 'function') {
+                    window.console.warn('GridManager: unable to clear grid before reload', error);
+                }
+            })
+            .finally(performRequest);
     }
 
     buildRequestURL(pageNum) {
