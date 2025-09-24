@@ -964,6 +964,22 @@
         }
 
         /**
+         * Перестраивает таблицу и пересчитывает ширины колонок (актуально при показе в скрытом табе).
+         */
+        redraw(force = false) {
+            if (!this.table || typeof this.table.redraw !== 'function') {
+                return false;
+            }
+            try {
+                this.table.redraw(force);
+                return true;
+            } catch (err) {
+                this.logUnexpected('redraw', { err });
+                return false;
+            }
+        }
+
+        /**
          * Возвращает текущий набор данных с учётом фильтров и сортировки.
          */
         getActiveData() {

@@ -376,6 +376,25 @@ class GridManager {
             control.enable();
         }
         this.updateToolbarSelectionState();
+        this.scheduleGridRedraw(true);
+    }
+
+    scheduleGridRedraw(force = false) {
+        if (!this.grid || typeof this.grid.redraw !== 'function') {
+            return;
+        }
+        const redraw = () => {
+            try {
+                this.grid.redraw(force);
+            } catch (err) {
+                this.logUnexpected('grid-redraw', { err });
+            }
+        };
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(redraw);
+        } else {
+            setTimeout(redraw, 0);
+        }
     }
 
     applyClientFilter(descriptor) {
@@ -463,6 +482,7 @@ class GridManager {
         if (this.filter) this.filter.remove();
         this.clearClientFilter();
         this.reload();
+        this.scheduleGridRedraw(true);
     }
 
     // --- Grid events ---
