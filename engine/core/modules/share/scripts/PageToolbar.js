@@ -454,7 +454,6 @@ class PageToolbar extends Toolbar {
 
         // Деактивируем editBlocks если editMode включён
         const editBlocksButton = this.getControlById('editBlocks');
-        const editModeControl = this.getControlById('editMode');
         if (editModeControl && typeof editModeControl.getState === 'function' && editModeControl.getState() && editBlocksButton) {
             editBlocksButton.disable();
         }
