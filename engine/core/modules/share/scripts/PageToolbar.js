@@ -107,10 +107,10 @@ class PageToolbar extends Toolbar {
 
         const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
-        topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-white', 'border-bottom', 'shadow-sm', 'sticky-top', 'py-0', 'px-0');
+        topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
 
         const container = document.createElement('div');
-        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'flex-wrap');
+        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'flex-wrap', 'py-0');
         topFrame.appendChild(container);
 
         const translations = window?.Energine?.translations;
@@ -139,17 +139,26 @@ class PageToolbar extends Toolbar {
         const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
         const sidebarToggle = document.createElement('button');
         sidebarToggle.type = 'button';
-        sidebarToggle.classList.add('btn', 'btn-outline-secondary', 'btn-sm', 'd-flex', 'align-items-center', 'justify-content-center', 'p-1', 'flex-shrink-0');
+        sidebarToggle.classList.add('btn', 'btn-sm', 'btn-light', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0');
         if (sidebarLabel) {
             sidebarToggle.setAttribute('aria-label', sidebarLabel);
         }
+        const logoWrapper = document.createElement('span');
+        logoWrapper.classList.add('d-inline-flex', 'align-items-center', 'justify-content-center', 'rounded-1', 'bg-white', 'border', 'border-secondary-subtle', 'shadow-sm');
+        logoWrapper.style.width = '32px';
+        logoWrapper.style.height = '32px';
+        logoWrapper.style.lineHeight = '0';
+
         const logoImage = document.createElement('img');
         logoImage.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
         logoImage.alt = '';
         logoImage.classList.add('img-fluid');
-        logoImage.style.height = '26px';
-        logoImage.style.width = 'auto';
-        sidebarToggle.appendChild(logoImage);
+        logoImage.style.width = '70%';
+        logoImage.style.height = '70%';
+        logoImage.style.objectFit = 'contain';
+        logoWrapper.appendChild(logoImage);
+
+        sidebarToggle.appendChild(logoWrapper);
         brandStack.appendChild(sidebarToggle);
         this.sidebarToggleButton = sidebarToggle;
 
@@ -187,15 +196,18 @@ class PageToolbar extends Toolbar {
         collapse.id = collapseId;
         container.appendChild(collapse);
 
-        this.element.classList.add('py-2', 'py-lg-0', 'gap-2');
+        this.element.classList.add('py-2', 'py-lg-0');
         collapse.appendChild(this.element);
 
         this.element.classList.add('justify-content-end', 'ms-auto');
+        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
+        this.element.classList.add('gap-1', 'bg-transparent', 'p-0');
         this.element.querySelectorAll('button.btn').forEach(button => {
-            button.classList.add('rounded-2', 'px-3');
+            button.classList.add('rounded-1', 'px-3');
+            button.classList.add('btn-sm');
             if (!button.classList.contains('btn-primary')) {
-                button.classList.remove('btn-secondary');
-                button.classList.add('btn-outline-secondary');
+                button.classList.remove('btn-secondary', 'btn-outline-secondary');
+                button.classList.add('btn-light', 'border', 'border-secondary-subtle', 'text-uppercase', 'fw-semibold', 'text-secondary');
             }
         });
 
@@ -341,7 +353,7 @@ class PageToolbar extends Toolbar {
                 }
 
                 this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
-                    backdrop: true,
+                    backdrop: false,
                     scroll: false
                 });
 
