@@ -234,6 +234,8 @@
                 layout: 'fitDataStretch',
                 height: '100%',
                 responsiveLayout: 'collapse',
+                selectable: 1,
+                selectableRollingSelection: false,
                 selectableRows: 1,
                 selectableRowsRollingSelection: false,
                 placeholder: translate('MSG_GRID_EMPTY', 'Нет данных'),
@@ -246,13 +248,28 @@
                 },
             }, options);
 
-            if (options && options.selectable !== undefined && options.selectableRows === undefined) {
+            const providedSelectable = options && Object.prototype.hasOwnProperty.call(options, 'selectable');
+            const providedSelectableRows = options && Object.prototype.hasOwnProperty.call(options, 'selectableRows');
+
+            if (providedSelectable && !providedSelectableRows) {
                 this.options.selectableRows = options.selectable;
             }
 
-            if (options && options.selectableRollingSelection !== undefined
-                && options.selectableRowsRollingSelection === undefined) {
+            if (!providedSelectable && providedSelectableRows) {
+                this.options.selectable = options.selectableRows;
+            }
+
+            const providedSelectableRolling = options
+                && Object.prototype.hasOwnProperty.call(options, 'selectableRollingSelection');
+            const providedSelectableRowsRolling = options
+                && Object.prototype.hasOwnProperty.call(options, 'selectableRowsRollingSelection');
+
+            if (providedSelectableRolling && !providedSelectableRowsRolling) {
                 this.options.selectableRowsRollingSelection = options.selectableRollingSelection;
+            }
+
+            if (!providedSelectableRolling && providedSelectableRowsRolling) {
+                this.options.selectableRollingSelection = options.selectableRowsRollingSelection;
             }
 
             this.events = {};
@@ -286,6 +303,8 @@
                 height: this.options.height,
                 responsiveLayout: this.options.responsiveLayout,
                 placeholder: this.options.placeholder,
+                selectable: this.options.selectable,
+                selectableRollingSelection: this.options.selectableRollingSelection,
                 selectableRows: this.options.selectableRows,
                 selectableRowsRollingSelection: this.options.selectableRowsRollingSelection,
                 columnDefaults: this.options.columnDefaults,
@@ -360,16 +379,21 @@
                 }
 
                 try {
-                    const selectableSetting = (this.table && this.table.options)
-                        ? this.table.options.selectableRows
-                        : undefined;
+                    const tableOptions = (this.table && this.table.options) ? this.table.options : {};
+                    const selectableSetting = (tableOptions.selectableRows !== undefined)
+                        ? tableOptions.selectableRows
+                        : tableOptions.selectable;
                     const selectionDisabled = selectableSetting === false || selectableSetting === 0;
+                    const singleSelection = selectableSetting === 1 || selectableSetting === '1';
 
-                    if (!selectionDisabled
-                        && typeof row.isSelected === 'function'
-                        && !row.isSelected()
-                        && typeof row.select === 'function') {
-                        row.select();
+                    if (!selectionDisabled && typeof row.isSelected === 'function' && !row.isSelected()) {
+                        if (singleSelection && this.table && typeof this.table.deselectRow === 'function') {
+                            this.table.deselectRow();
+                        }
+
+                        if (typeof row.select === 'function') {
+                            row.select();
+                        }
                     }
                 } catch (error) {
                     if (global.console && typeof global.console.warn === 'function') {
