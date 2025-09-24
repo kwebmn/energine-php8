@@ -281,6 +281,7 @@
             this.selectedRow = null;
             this.activeFilter = null;
             this.pagination = {};
+            this.suspendSortEvent = false;
             this.placeholderText = translate('GRID_PLACEHOLDER_EMPTY', DEFAULT_PLACEHOLDER);
             this.placeholderHTML = escapeHtml(this.placeholderText);
             this.displayLocale = resolveDisplayLocale();
@@ -426,6 +427,9 @@
             });
 
             this.table.on('sortChanged', (sorters) => {
+                if (this.suspendSortEvent) {
+                    return;
+                }
                 if (Array.isArray(sorters) && sorters.length) {
                     this.sort.field = sorters[0].field;
                     this.sort.order = sorters[0].dir;
@@ -944,10 +948,31 @@
          */
         setData(data = []) {
             this.data = Array.isArray(data) ? data : [];
-            if (this.table) {
-                return this.table.setData(this.data);
+            if (!this.table) {
+                return Promise.resolve(this.data);
             }
-            return Promise.resolve(this.data);
+
+            this.suspendSortEvent = true;
+            let result;
+            try {
+                result = this.table.setData(this.data);
+            } catch (err) {
+                this.suspendSortEvent = false;
+                throw err;
+            }
+
+            const finalize = () => {
+                this.suspendSortEvent = false;
+            };
+
+            return Promise.resolve(result)
+                .then((resolved) => {
+                    finalize();
+                    return resolved;
+                }, (error) => {
+                    finalize();
+                    throw error;
+                });
         }
 
         /**
@@ -956,11 +981,34 @@
         clear() {
             this.data = [];
             this.selectedRow = null;
-            if (this.table) {
-                this.table.deselectRow();
-                return this.table.clearData();
+            if (!this.table) {
+                return Promise.resolve();
             }
-            return Promise.resolve();
+
+            this.suspendSortEvent = true;
+            let result;
+            try {
+                if (typeof this.table.deselectRow === 'function') {
+                    this.table.deselectRow();
+                }
+                result = this.table.clearData();
+            } catch (err) {
+                this.suspendSortEvent = false;
+                throw err;
+            }
+
+            const finalize = () => {
+                this.suspendSortEvent = false;
+            };
+
+            return Promise.resolve(result)
+                .then((resolved) => {
+                    finalize();
+                    return resolved;
+                }, (error) => {
+                    finalize();
+                    throw error;
+                });
         }
 
         /**
