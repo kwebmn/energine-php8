@@ -210,9 +210,46 @@ class PageToolbar extends Toolbar {
         this.element.classList.add('py-2', 'py-lg-0');
         primaryRow.appendChild(this.element);
 
-        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap');
-        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
+        this.element.classList.add('d-flex', 'flex-column', 'align-items-start', 'gap-2', 'w-100');
+        this.element.classList.remove(
+            'gap-1',
+            'bg-body',
+            'border',
+            'rounded-3',
+            'shadow-sm',
+            'p-2',
+            'ms-auto',
+            'justify-content-end',
+            'align-items-center',
+            'justify-content-start',
+            'flex-wrap'
+        );
         this.element.classList.add('bg-transparent', 'p-0');
+        const normalizeGroup = group => {
+            if (!(group instanceof HTMLElement)) {
+                return;
+            }
+            group.classList.add('d-flex', 'flex-wrap', 'gap-1', 'justify-content-start');
+            group.classList.remove('ms-auto', 'justify-content-end', 'float-end');
+        };
+        this.element.querySelectorAll('.btn-group').forEach(normalizeGroup);
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (!(node instanceof HTMLElement)) {
+                            return;
+                        }
+                        if (node.classList.contains('btn-group')) {
+                            normalizeGroup(node);
+                        }
+                        node.querySelectorAll?.('.btn-group').forEach(normalizeGroup);
+                    });
+                });
+            });
+            observer.observe(this.element, { childList: true });
+            this._toolbarGroupsObserver = observer;
+        }
         this.element.querySelectorAll('button.btn').forEach(button => {
             button.classList.add('rounded-1', 'px-3');
             button.classList.add('btn-sm');
