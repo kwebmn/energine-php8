@@ -193,11 +193,21 @@ class PageToolbar extends Toolbar {
 
         const collapse = document.createElement('div');
         collapse.classList.add('collapse', 'navbar-collapse', 'py-2', 'py-lg-0');
-        collapse.classList.add('w-100');
-        collapse.style.flexGrow = '1';
-        collapse.style.flexBasis = '100%';
+        collapse.classList.add('flex-grow-1');
+        collapse.style.flexBasis = 'auto';
+        collapse.style.minWidth = '0';
         collapse.id = collapseId;
         container.appendChild(collapse);
+
+        const updateCollapseWidth = () => {
+            if (window.matchMedia('(min-width: 992px)').matches) {
+                collapse.classList.remove('w-100');
+            } else {
+                collapse.classList.add('w-100');
+            }
+        };
+        updateCollapseWidth();
+        window.addEventListener('resize', updateCollapseWidth);
 
         const actionStack = document.createElement('div');
         actionStack.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100', 'align-items-start');
