@@ -218,9 +218,14 @@ class PageToolbar extends Toolbar {
             group.classList.remove('ms-auto', 'justify-content-end', 'float-end');
         };
 
-        this.element.classList.add('d-flex', 'flex-column', 'align-items-stretch', 'gap-2', 'w-100');
+        const toolbarWrapper = document.createElement('div');
+        toolbarWrapper.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100');
+        primaryRow.replaceChild(toolbarWrapper, this.element);
+        toolbarWrapper.appendChild(this.element);
+
+        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap', 'w-100');
         this.element.classList.remove(
-            'gap-1',
+            'gap-2',
             'bg-body',
             'border',
             'rounded-3',
@@ -228,45 +233,65 @@ class PageToolbar extends Toolbar {
             'p-2',
             'ms-auto',
             'justify-content-end',
-            'align-items-center'
+            'align-items-stretch'
         );
         this.element.classList.add('bg-transparent', 'p-0');
 
-        const toolbarPrimaryRow = document.createElement('div');
-        toolbarPrimaryRow.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap', 'w-100');
-
         const toolbarSecondaryRow = document.createElement('div');
         toolbarSecondaryRow.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap', 'w-100');
+        toolbarSecondaryRow.classList.add('e-toolbar-secondary');
 
-        const ensureSecondaryMounted = () => {
-            if (!toolbarSecondaryRow.parentNode && toolbarSecondaryRow.childElementCount) {
-                this.element.appendChild(toolbarSecondaryRow);
+        const editControlIds = ['add', 'edit', 'delete'];
+        const editControlSelector = editControlIds.map(id => `[id="${id}"]`).join(', ');
+        const secondaryGroups = new Set();
+
+        const markGroupSecondary = group => {
+            if (!group || secondaryGroups.has(group)) {
+                return;
             }
+            secondaryGroups.add(group);
+            group.classList.add('e-toolbar-secondary-group');
         };
 
-        const assignGroupToRow = (group, isInitial = false) => {
+        editControlIds
+            .map(id => this.getControlById(id))
+            .filter(control => control && control.element instanceof HTMLElement)
+            .forEach(control => {
+                const group = control.element.closest('.btn-group');
+                if (group) {
+                    markGroupSecondary(group);
+                }
+            });
+
+        const placeGroup = (group, { forceSecondary = false } = {}) => {
             if (!(group instanceof HTMLElement)) {
                 return;
             }
             normalizeGroup(group);
-            if (!toolbarPrimaryRow.childElementCount) {
-                toolbarPrimaryRow.appendChild(group);
-                if (!isInitial && !toolbarPrimaryRow.parentNode) {
-                    this.element.appendChild(toolbarPrimaryRow);
+            const shouldGoSecondary =
+                forceSecondary ||
+                secondaryGroups.has(group) ||
+                (!!editControlSelector && group.querySelector(editControlSelector));
+            if (shouldGoSecondary) {
+                if (!toolbarSecondaryRow.parentNode) {
+                    toolbarWrapper.appendChild(toolbarSecondaryRow);
                 }
+                toolbarSecondaryRow.appendChild(group);
+                markGroupSecondary(group);
                 return;
             }
-            toolbarSecondaryRow.appendChild(group);
-            ensureSecondaryMounted();
+            this.element.appendChild(group);
         };
 
         const initialGroups = Array.from(this.element.querySelectorAll(':scope > .btn-group'));
-        initialGroups.forEach(group => assignGroupToRow(group, true));
+        initialGroups.forEach(group => {
+            const shouldBeSecondary = secondaryGroups.has(group) || group.querySelector(editControlSelector);
+            placeGroup(group, { forceSecondary: shouldBeSecondary });
+        });
 
-        if (!toolbarPrimaryRow.parentNode) {
-            this.element.appendChild(toolbarPrimaryRow);
+        if (!toolbarSecondaryRow.childElementCount && toolbarSecondaryRow.parentNode === toolbarWrapper) {
+            toolbarWrapper.removeChild(toolbarSecondaryRow);
         }
-        ensureSecondaryMounted();
 
         if (typeof MutationObserver !== 'undefined') {
             const observer = new MutationObserver(mutations => {
@@ -276,10 +301,10 @@ class PageToolbar extends Toolbar {
                             return;
                         }
                         if (node.classList.contains('btn-group')) {
-                            assignGroupToRow(node);
+                            placeGroup(node, { forceSecondary: true });
                             return;
                         }
-                        node.querySelectorAll?.('.btn-group').forEach(assignGroupToRow);
+                        node.querySelectorAll?.('.btn-group').forEach(group => placeGroup(group, { forceSecondary: true }));
                     });
                 });
             });
@@ -294,25 +319,6 @@ class PageToolbar extends Toolbar {
                 button.classList.add('btn-light', 'border', 'border-secondary-subtle', 'text-uppercase', 'fw-semibold', 'text-secondary');
             }
         });
-
-        const editControlIds = ['add', 'edit', 'delete'];
-        const editButtons = editControlIds
-            .map(id => this.getControlById(id))
-            .filter(control => control && control.element instanceof HTMLElement)
-            .map(control => control.element);
-
-        let editBand = null;
-        if (editButtons.length) {
-            editBand = document.createElement('div');
-            editBand.classList.add('e-toolbar-editband', 'bg-body', 'border', 'shadow-sm', 'rounded-3', 'px-3', 'py-2', 'd-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
-
-            editButtons.forEach(button => {
-                button.classList.add('shadow-sm');
-                editBand.appendChild(button);
-            });
-
-            actionStack.appendChild(editBand);
-        }
 
         // Перенос body-children (кроме svg и e-overlay)
         const toMove = Array.from(document.body.childNodes).filter(el =>
