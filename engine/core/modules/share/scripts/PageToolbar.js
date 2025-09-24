@@ -210,8 +210,8 @@ class PageToolbar extends Toolbar {
         this.element.classList.add('py-2', 'py-lg-0');
         primaryRow.appendChild(this.element);
 
-        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap');
-        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
+        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-2', 'flex-wrap', 'flex-lg-nowrap', 'w-100');
+        this.element.classList.remove('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
         this.element.classList.add('bg-transparent', 'p-0');
         this.element.querySelectorAll('button.btn').forEach(button => {
             button.classList.add('rounded-1', 'px-3');
@@ -222,38 +222,17 @@ class PageToolbar extends Toolbar {
             }
         });
 
-        const editModeControl = this.getControlById('editMode');
-        if (editModeControl?.element instanceof HTMLElement) {
-            const editModeButton = editModeControl.element;
-            const nextSibling = editModeButton.nextElementSibling;
+        const feedToolbarElement = document.querySelector('[data-toolbar="feed_toolbar"]');
+        if (feedToolbarElement instanceof HTMLElement && feedToolbarElement !== this.element) {
+            feedToolbarElement.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-2', 'flex-wrap', 'flex-lg-nowrap', 'w-100');
+            feedToolbarElement.classList.remove('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
+            feedToolbarElement.classList.add('bg-transparent', 'p-0');
 
-            editModeButton.classList.add('flex-shrink-0');
-            headerStack.classList.remove('gap-2');
-            headerStack.classList.add('flex-wrap', 'gap-3');
-            headerStack.appendChild(editModeButton);
-
-            if (nextSibling && nextSibling.getAttribute?.('role') === 'separator') {
-                nextSibling.remove();
-            }
-        }
-
-        const editControlIds = ['add', 'edit', 'delete'];
-        const editButtons = editControlIds
-            .map(id => this.getControlById(id))
-            .filter(control => control && control.element instanceof HTMLElement)
-            .map(control => control.element);
-
-        let editBand = null;
-        if (editButtons.length) {
-            editBand = document.createElement('div');
-            editBand.classList.add('e-toolbar-editband', 'bg-body', 'border', 'shadow-sm', 'rounded-3', 'px-3', 'py-2', 'd-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
-
-            editButtons.forEach(button => {
-                button.classList.add('shadow-sm');
-                editBand.appendChild(button);
+            feedToolbarElement.querySelectorAll('button.btn').forEach(button => {
+                button.classList.add('rounded-1', 'px-3', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
             });
 
-            actionStack.appendChild(editBand);
+            actionStack.appendChild(feedToolbarElement);
         }
 
         // Перенос body-children (кроме svg и e-overlay)
