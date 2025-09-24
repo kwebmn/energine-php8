@@ -210,7 +210,15 @@ class PageToolbar extends Toolbar {
         this.element.classList.add('py-2', 'py-lg-0');
         primaryRow.appendChild(this.element);
 
-        this.element.classList.add('d-flex', 'flex-column', 'align-items-start', 'gap-2', 'w-100');
+        const normalizeGroup = group => {
+            if (!(group instanceof HTMLElement)) {
+                return;
+            }
+            group.classList.add('d-flex', 'flex-wrap', 'gap-1', 'justify-content-start');
+            group.classList.remove('ms-auto', 'justify-content-end', 'float-end');
+        };
+
+        this.element.classList.add('d-flex', 'flex-column', 'align-items-stretch', 'gap-2', 'w-100');
         this.element.classList.remove(
             'gap-1',
             'bg-body',
@@ -220,19 +228,46 @@ class PageToolbar extends Toolbar {
             'p-2',
             'ms-auto',
             'justify-content-end',
-            'align-items-center',
-            'justify-content-start',
-            'flex-wrap'
+            'align-items-center'
         );
         this.element.classList.add('bg-transparent', 'p-0');
-        const normalizeGroup = group => {
+
+        const toolbarPrimaryRow = document.createElement('div');
+        toolbarPrimaryRow.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap', 'w-100');
+
+        const toolbarSecondaryRow = document.createElement('div');
+        toolbarSecondaryRow.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap', 'w-100');
+
+        const ensureSecondaryMounted = () => {
+            if (!toolbarSecondaryRow.parentNode && toolbarSecondaryRow.childElementCount) {
+                this.element.appendChild(toolbarSecondaryRow);
+            }
+        };
+
+        const assignGroupToRow = (group, isInitial = false) => {
             if (!(group instanceof HTMLElement)) {
                 return;
             }
-            group.classList.add('d-flex', 'flex-wrap', 'gap-1', 'justify-content-start');
-            group.classList.remove('ms-auto', 'justify-content-end', 'float-end');
+            normalizeGroup(group);
+            if (!toolbarPrimaryRow.childElementCount) {
+                toolbarPrimaryRow.appendChild(group);
+                if (!isInitial && !toolbarPrimaryRow.parentNode) {
+                    this.element.appendChild(toolbarPrimaryRow);
+                }
+                return;
+            }
+            toolbarSecondaryRow.appendChild(group);
+            ensureSecondaryMounted();
         };
-        this.element.querySelectorAll('.btn-group').forEach(normalizeGroup);
+
+        const initialGroups = Array.from(this.element.querySelectorAll(':scope > .btn-group'));
+        initialGroups.forEach(group => assignGroupToRow(group, true));
+
+        if (!toolbarPrimaryRow.parentNode) {
+            this.element.appendChild(toolbarPrimaryRow);
+        }
+        ensureSecondaryMounted();
+
         if (typeof MutationObserver !== 'undefined') {
             const observer = new MutationObserver(mutations => {
                 mutations.forEach(mutation => {
@@ -241,13 +276,14 @@ class PageToolbar extends Toolbar {
                             return;
                         }
                         if (node.classList.contains('btn-group')) {
-                            normalizeGroup(node);
+                            assignGroupToRow(node);
+                            return;
                         }
-                        node.querySelectorAll?.('.btn-group').forEach(normalizeGroup);
+                        node.querySelectorAll?.('.btn-group').forEach(assignGroupToRow);
                     });
                 });
             });
-            observer.observe(this.element, { childList: true });
+            observer.observe(this.element, { childList: true, subtree: true });
             this._toolbarGroupsObserver = observer;
         }
         this.element.querySelectorAll('button.btn').forEach(button => {
