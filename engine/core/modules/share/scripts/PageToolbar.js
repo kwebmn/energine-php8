@@ -222,6 +222,21 @@ class PageToolbar extends Toolbar {
             }
         });
 
+        const editModeControl = this.getControlById('editMode');
+        if (editModeControl?.element instanceof HTMLElement) {
+            const editModeButton = editModeControl.element;
+            const nextSibling = editModeButton.nextElementSibling;
+
+            editModeButton.classList.add('flex-shrink-0');
+            headerStack.classList.remove('gap-2');
+            headerStack.classList.add('flex-wrap', 'gap-3');
+            headerStack.appendChild(editModeButton);
+
+            if (nextSibling && nextSibling.getAttribute?.('role') === 'separator') {
+                nextSibling.remove();
+            }
+        }
+
         const editControlIds = ['add', 'edit', 'delete'];
         const editButtons = editControlIds
             .map(id => this.getControlById(id))
