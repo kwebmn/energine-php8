@@ -198,6 +198,64 @@ ul.toolbar li.icon i {
     vertical-align: middle;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Admin top toolbar layout                                          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The updated bootstrap-based top toolbar renders the logo button, the main
+ * toolbar (with the "Режим редагування" switcher) and the feed toolbar
+ * ("Додати", "Редагувати", "Видалити") inside a single fluid container.
+ * The markup already wraps these blocks with descriptive classes, so we only
+ * need to adjust the layout to place the logo + main toolbar on the first
+ * line and the feed toolbar on the second line.
+ */
+.e-topframe.navbar .container-fluid {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0.5rem 1rem;
+}
+
+/* Keep the sidebar toggle / logo in the top-left corner */
+.e-topframe.navbar .container-fluid > .d-flex.align-items-center {
+    grid-row: 1;
+    grid-column: 1;
+}
+
+/* Place the responsive navbar toggle in the top-right corner */
+.e-topframe.navbar .container-fluid > .navbar-toggler {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+}
+
+/* Allow the collapse content to participate directly in the grid */
+.e-topframe.navbar .container-fluid > .collapse.navbar-collapse {
+    display: contents;
+}
+
+/* Main toolbar (contains the edit mode switch) stays on the first row */
+.e-topframe.navbar .container-fluid > .collapse.navbar-collapse > .d-flex.flex-column {
+    grid-row: 1;
+    grid-column: 2;
+}
+
+/* Feed toolbar (add / edit / delete) takes the full second row */
+.e-topframe.navbar .container-fluid > .collapse.navbar-collapse > .feed_toolbar {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+/* Ensure the feed toolbar buttons align nicely on smaller widths */
+.e-topframe.navbar .feed_toolbar {
+    gap: 0.5rem;
+}
+
 /* Аккуратные отступы между всеми кнопками */
 ul.toolbar li:not(.separator) {
     margin: 0 2px !important;
