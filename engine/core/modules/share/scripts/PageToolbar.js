@@ -129,7 +129,7 @@ class PageToolbar extends Toolbar {
         };
 
         const headerStack = document.createElement('div');
-        headerStack.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-grow-1', 'min-w-0');
+        headerStack.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-grow-0', 'flex-shrink-0');
         container.appendChild(headerStack);
 
         const brandStack = document.createElement('div');
@@ -192,25 +192,23 @@ class PageToolbar extends Toolbar {
         container.appendChild(toggler);
 
         const collapse = document.createElement('div');
-        collapse.classList.add('collapse', 'navbar-collapse', 'py-2', 'py-lg-0');
-        collapse.classList.add('w-100');
-        collapse.style.flexGrow = '1';
-        collapse.style.flexBasis = '100%';
+        collapse.classList.add('collapse', 'navbar-collapse', 'py-2', 'py-lg-0', 'w-100', 'w-lg-auto', 'flex-lg-grow-1');
+        collapse.style.minWidth = '0';
         collapse.id = collapseId;
         container.appendChild(collapse);
 
         const actionStack = document.createElement('div');
-        actionStack.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100', 'align-items-start');
+        actionStack.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100');
         collapse.appendChild(actionStack);
 
         const primaryRow = document.createElement('div');
-        primaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
+        primaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'justify-content-start', 'w-100', 'w-lg-auto');
         actionStack.appendChild(primaryRow);
 
         this.element.classList.add('py-2', 'py-lg-0');
         primaryRow.appendChild(this.element);
 
-        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-2', 'flex-wrap', 'flex-lg-nowrap', 'w-100');
+        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-2', 'flex-wrap', 'flex-lg-nowrap', 'w-100', 'w-lg-auto');
         this.element.classList.remove('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
         this.element.classList.add('bg-transparent', 'p-0');
         this.element.querySelectorAll('button.btn').forEach(button => {
@@ -222,6 +220,11 @@ class PageToolbar extends Toolbar {
             }
         });
 
+        const secondaryRow = document.createElement('div');
+        secondaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'justify-content-start', 'w-100');
+
+        let hasSecondaryContent = false;
+
         const feedToolbarElement = document.querySelector('[data-toolbar="feed_toolbar"]');
         if (feedToolbarElement instanceof HTMLElement && feedToolbarElement !== this.element) {
             feedToolbarElement.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-2', 'flex-wrap', 'flex-lg-nowrap', 'w-100');
@@ -232,7 +235,12 @@ class PageToolbar extends Toolbar {
                 button.classList.add('rounded-1', 'px-3', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
             });
 
-            actionStack.appendChild(feedToolbarElement);
+            secondaryRow.appendChild(feedToolbarElement);
+            hasSecondaryContent = true;
+        }
+
+        if (hasSecondaryContent) {
+            actionStack.appendChild(secondaryRow);
         }
 
         // Перенос body-children (кроме svg и e-overlay)
