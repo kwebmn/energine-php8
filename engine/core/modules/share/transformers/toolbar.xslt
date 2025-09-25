@@ -177,7 +177,7 @@
             <nav class="mt-3" aria-label="Pagination">
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <xsl:if test="$PAGER_TITLE">
-                        <span class="text-muted small text-uppercase fw-semibold">
+                        <span class="text-muted small fw-semibold">
                             <xsl:value-of select="$PAGER_TITLE"/>
                         </span>
                     </xsl:if>

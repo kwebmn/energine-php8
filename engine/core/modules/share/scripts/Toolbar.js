@@ -561,7 +561,7 @@ class Toolbar {
             this.element.classList.add('custom_select', 'dropdown', 'toolbar-dropdown', 'd-flex', 'flex-column', 'gap-1');
             if (this.properties.title) {
                 let span = document.createElement('span');
-                span.classList.add('label', 'text-body-secondary', 'small', 'text-uppercase', 'fw-semibold');
+                span.classList.add('label', 'text-body-secondary', 'small', 'fw-semibold');
                 span.textContent = this.properties.title;
                 this.element.appendChild(span);
             }

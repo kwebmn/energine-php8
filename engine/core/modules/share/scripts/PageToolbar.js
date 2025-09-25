@@ -171,7 +171,7 @@ class PageToolbar extends Toolbar {
         const toolbarLabelText = getTranslation('TXT_ADMIN_PANEL', 'TXT_CONTROL_PANEL', 'TXT_SETTINGS');
         if (toolbarLabelText) {
             const toolbarLabel = document.createElement('span');
-            toolbarLabel.classList.add('text-uppercase', 'fw-semibold', 'small', 'text-muted', 'd-none', 'd-sm-inline');
+            toolbarLabel.classList.add('fw-semibold', 'small', 'text-muted', 'd-none', 'd-sm-inline');
             toolbarLabel.textContent = toolbarLabelText;
             brandStack.appendChild(toolbarLabel);
         }
@@ -198,7 +198,7 @@ class PageToolbar extends Toolbar {
             button.classList.add('btn-sm');
             if (!button.classList.contains('btn-primary')) {
                 button.classList.remove('btn-secondary', 'btn-outline-secondary');
-                button.classList.add('btn-light', 'border', 'border-secondary-subtle', 'text-uppercase', 'fw-semibold', 'text-secondary');
+                button.classList.add('btn-light', 'border', 'border-secondary-subtle', 'fw-semibold', 'text-secondary');
             }
             const label = button.textContent ? button.textContent.trim() : '';
             if (label && !button.getAttribute('title')) {
@@ -314,7 +314,7 @@ class PageToolbar extends Toolbar {
 
             if (environmentLabel) {
                 const sidebarEnv = document.createElement('span');
-                sidebarEnv.classList.add('badge', 'text-bg-secondary', 'text-uppercase', 'fw-semibold');
+                sidebarEnv.classList.add('badge', 'text-bg-secondary', 'fw-semibold');
                 sidebarEnv.textContent = environmentLabel;
                 sidebarHeaderContent.appendChild(sidebarEnv);
             }

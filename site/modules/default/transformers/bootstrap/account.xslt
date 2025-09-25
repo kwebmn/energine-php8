@@ -25,7 +25,7 @@
                     <div class="col-sm-4 col-xl-3 col-xxl-2">
                         <div class="card h-100 shadow-sm">
                             <div class="card-header bg-white border-0">
-                                <span class="fw-semibold text-uppercase small">
+                                <span class="fw-semibold small">
                                     <xsl:value-of select="//translation[@const='TXT_PROFILE']"/>
                                 </span>
                             </div>

@@ -34,7 +34,7 @@
                             <xsl:attribute name="loading">lazy</xsl:attribute>
                         </img>
                     </xsl:if>
-                    <span class="fw-semibold text-uppercase">
+                    <span class="fw-semibold">
                         <xsl:choose>
                             <xsl:when test="string-length($SITE_NAME) &gt; 0">
                                 <xsl:value-of select="$SITE_NAME"/>
@@ -76,13 +76,13 @@
                             <xsl:when test="$IS_USER">
                                 <a class="btn btn-outline-primary" href="{$BASE}{$LANG_ABBR}my">
                                     <i class="fas fa-user-large me-2" aria-hidden="true"></i>
-                                    <span class="fw-semibold text-uppercase small"><xsl:value-of select="//translation[@const='TXT_PROFILE']"/></span>
+                                    <span class="fw-semibold small"><xsl:value-of select="//translation[@const='TXT_PROFILE']"/></span>
                                 </a>
                             </xsl:when>
                             <xsl:otherwise>
                                 <a class="btn btn-primary" href="{$BASE}{$LANG_ABBR}login">
                                     <i class="fas fa-user-large me-2" aria-hidden="true"></i>
-                                    <span class="fw-semibold text-uppercase small"><xsl:value-of select="//translation[@const='TXT_SIGN_IN_ONLY']"/></span>
+                                    <span class="fw-semibold small"><xsl:value-of select="//translation[@const='TXT_SIGN_IN_ONLY']"/></span>
                                 </a>
                             </xsl:otherwise>
                         </xsl:choose>

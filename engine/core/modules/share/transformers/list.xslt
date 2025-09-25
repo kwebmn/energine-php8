@@ -150,7 +150,7 @@
                             <div class="grid-toolbar bg-body-tertiary p-0 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-0" data-role="grid-toolbar">
                                 <div class="grid-filter row row-cols-lg-auto g-3 align-items-center w-100 border border-light-subtle bg-body px-3 py-3 mb-0" data-role="grid-filter">
                                     <div class="col-auto d-flex align-items-center gap-2">
-                                        <span class="text-uppercase fw-semibold small text-secondary">
+                                        <span class="fw-semibold small text-secondary">
                                             <xsl:value-of select="ancestor::component/filter/@title"/>
                                             <xsl:text>:&#160;</xsl:text>
                                         </span>
