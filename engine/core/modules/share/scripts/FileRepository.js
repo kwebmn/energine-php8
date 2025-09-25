@@ -276,7 +276,13 @@ class FileRepository extends GridManager {
     }
 
     processServerResponse(result) {
-        this.grid.headOff.querySelector('th:nth-child(1)').style.width = '100px';
+        const headReference = this.grid.headOff || (this.grid.table ? this.grid.table.tHead : null);
+        if (headReference) {
+            const firstHeaderCell = headReference.querySelector('th:nth-child(1)');
+            if (firstHeaderCell) {
+                firstHeaderCell.style.width = '100px';
+            }
+        }
         if (!this.initialized) {
             this.grid.setMetadata(result.meta);
             this.initialized = true;

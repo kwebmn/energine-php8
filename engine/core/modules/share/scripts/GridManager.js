@@ -19,28 +19,63 @@ class Grid {
         this.prevDataLength = 0;
         this.options = options;
         this.events = {};
+        this.pendingSelectionKey = null;
 
         // --- DOM привязка ---
-        this.headOff = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] thead');
-        if (this.headOff) this.headOff.style.display = 'none';
+        this.useCombinedTable = false;
+        this.table = null;
+        this.tbody = null;
 
-        this.tbody = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"] tbody');
-        this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
+        this.headOff = null;
+
+        const combinedTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="table"]');
+        if (combinedTable) {
+            this.useCombinedTable = true;
+            this.table = combinedTable;
+            this.tbody = combinedTable.querySelector('tbody');
+            if (!this.tbody) {
+                this.tbody = document.createElement('tbody');
+                combinedTable.appendChild(this.tbody);
+            }
+            this.headers = Array.from(combinedTable.querySelectorAll('thead th'));
+            this.headOff = combinedTable.tHead || null;
+            combinedTable.classList.add('table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0');
+        } else {
+            this.table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
+            if (this.table) {
+                this.headOff = this.table.querySelector('thead');
+                if (this.headOff) this.headOff.style.display = 'none';
+                this.tbody = this.table.querySelector('tbody');
+                this.table.classList.add('table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0');
+            }
+            const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
+            if (headTable) {
+                headTable.classList.add('table', 'table-sm', 'align-middle', 'mb-0');
+            }
+            this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
+        }
+
+        if (!this.tbody && this.table) {
+            this.tbody = this.table.querySelector('tbody');
+            if (!this.tbody) {
+                this.tbody = document.createElement('tbody');
+                this.table.appendChild(this.tbody);
+            }
+        }
+
+        this.headers = this.headers || [];
         this.headers.forEach(header => {
             header.addEventListener('click', this.onChangeSort.bind(this));
             header.classList.add('text-center', 'align-middle', 'fw-semibold');
             header.style.cursor = 'pointer';
         });
 
-        const bodyTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
-        if (bodyTable) {
-            bodyTable.classList.add('table', 'table-hover', 'table-striped', 'table-sm', 'align-middle', 'mb-0');
-        }
-
-        const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
-        if (headTable) {
-            headTable.classList.add('table', 'table-sm', 'align-middle', 'mb-0');
-        }
+        this.headers.forEach(header => {
+            if (!header.dataset.originalLabel) {
+                header.dataset.originalLabel = header.textContent.trim();
+            }
+        });
+        this.refreshSortIndicators();
 
         this.handleWindowResize = () => {
             this.fitGridFormSize();
@@ -140,19 +175,25 @@ class Grid {
     build() {
 
         let preiouslySelectedRecordKey = this.getSelectedRecordKey();
+        if ((preiouslySelectedRecordKey === false || preiouslySelectedRecordKey === undefined || preiouslySelectedRecordKey === null) && this.pendingSelectionKey) {
+            preiouslySelectedRecordKey = this.pendingSelectionKey;
+        }
+        this.pendingSelectionKey = null;
+        if (preiouslySelectedRecordKey !== false && preiouslySelectedRecordKey !== undefined && preiouslySelectedRecordKey !== null) {
+            preiouslySelectedRecordKey = String(preiouslySelectedRecordKey);
+        } else {
+            preiouslySelectedRecordKey = null;
+        }
         this.selectedItem = null;
         this.clear();
 
         if (!this.isEmpty()) {
-            if (!this.dataKeyExists(preiouslySelectedRecordKey)) {
-                preiouslySelectedRecordKey = false;
+            if (preiouslySelectedRecordKey !== null && !this.dataKeyExists(preiouslySelectedRecordKey)) {
+                preiouslySelectedRecordKey = null;
             }
             this.data.forEach((record, id) => {
                 this.addRecord(record, id, preiouslySelectedRecordKey);
             });
-            if (!this.selectedItem && !preiouslySelectedRecordKey && this.tbody.firstChild) {
-                this.selectItem(this.tbody.firstChild);
-            }
         } else {
             this.tbody.appendChild(document.createElement('tr'));
         }
@@ -163,20 +204,32 @@ class Grid {
             this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2', 'mb-3');
         }
         this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
-        if (this.gridHeadContainer) {
-            this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0', 'rounded-top');
+        if (!this.gridHeadContainer && this.useCombinedTable) {
+            const fallbackHead = this.element.querySelector('.grid-table-wrapper');
+            this.gridHeadContainer = fallbackHead || (this.table ? this.table.parentElement : null);
+        }
+        if (this.gridHeadContainer && this.gridHeadContainer !== this.table) {
+            this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0');
         }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
-        if (this.gridContainer) {
-            this.gridContainer.classList.add('table-responsive', 'bg-body', 'border', 'border-top-0', 'rounded-bottom', 'shadow-sm');
+        if (!this.gridContainer && this.useCombinedTable) {
+            this.gridContainer = this.gridHeadContainer;
+        }
+        if (this.gridContainer && this.gridContainer !== this.gridHeadContainer) {
+            const bodyClasses = ['table-responsive', 'bg-body', 'border', 'border-top-0'];
+            this.gridContainer.classList.add(...bodyClasses);
         }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
+        if (!this.gridBodyContainer && this.useCombinedTable && this.table) {
+            this.gridBodyContainer = this.table.parentElement;
+        }
 
         this.adjustColumns();
         this.fitGridFormSize();
+        this.refreshSortIndicators();
 
-        if (!this.minGridHeight) {
+        if (!this.minGridHeight && this.gridContainer) {
             let h = this.gridContainer.style.height;
             this.minGridHeight = h ? parseInt(h, 10) : 300;
             this.fitGridFormSize();
@@ -204,7 +257,9 @@ class Grid {
 
         if (row.firstChild) row.firstChild.classList.add('firstColumn');
 
-        if (currentKey === record[this.keyFieldName]) {
+        const recordKey = record[this.keyFieldName];
+        const normalizedRecordKey = (recordKey !== undefined && recordKey !== null) ? String(recordKey) : null;
+        if (currentKey !== null && normalizedRecordKey !== null && currentKey === normalizedRecordKey) {
             this.selectItem(row);
             // row.scrollIntoView({ behavior: "smooth", block: "center" });
         }
@@ -240,6 +295,8 @@ class Grid {
         const fieldMeta = this.metadata[fieldName];
         const fieldType = fieldMeta.type;
         cell.classList.add('align-middle', 'text-break');
+        cell.style.minHeight = '48px';
+        cell.style.height = '48px';
 
         switch (fieldType) {
             case 'boolean': {
@@ -279,15 +336,25 @@ class Grid {
                 break;
             case 'file':
                 if (record[fieldName]) {
-                    let image = document.createElement('img');
+                    const imageWrapper = document.createElement('div');
+                    imageWrapper.classList.add('d-inline-flex', 'justify-content-center', 'align-items-center');
+                    imageWrapper.style.width = '48px';
+                    imageWrapper.style.height = '48px';
+                    imageWrapper.style.border = '1px solid var(--bs-border-color)';
+                    imageWrapper.style.backgroundColor = 'var(--bs-body-bg)';
+
+                    const image = document.createElement('img');
                     image.src = (window.Energine && Energine.resizer ? Energine.resizer : '') + 'w40-h40/' + record[fieldName];
                     image.width = 40;
                     image.height = 40;
-                    image.classList.add('img-thumbnail', 'rounded');
+                    image.style.objectFit = 'cover';
+                    image.style.borderRadius = '2px';
                     const altText = (fieldMeta && fieldMeta.title) ? fieldMeta.title : '';
                     if (altText) image.alt = altText;
+
+                    imageWrapper.appendChild(image);
                     cell.classList.add('text-center');
-                    cell.appendChild(image);
+                    cell.appendChild(imageWrapper);
                 } else {
                     cell.innerHTML = '&nbsp;';
                 }
@@ -313,67 +380,114 @@ class Grid {
         }
     }
 
+    refreshSortIndicators() {
+        if (!Array.isArray(this.headers)) {
+            return;
+        }
+        this.headers.forEach(header => this.updateSortIndicator(header));
+    }
+
+    updateSortIndicator(header) {
+        if (!header) {
+            return;
+        }
+        const baseLabel = header.dataset.originalLabel || header.textContent.trim();
+        header.dataset.originalLabel = baseLabel;
+        let suffix = '';
+        if (header.classList.contains('asc')) {
+            suffix = ' ▲';
+        } else if (header.classList.contains('desc')) {
+            suffix = ' ▼';
+        }
+        header.textContent = suffix ? `${baseLabel}${suffix}` : baseLabel;
+    }
+
     adjustColumns() {
-        // NOTE: This is a simplified version, needs adaptation for your layout.
-        let gridHeadContainer = this.gridHeadContainer;
-        if (!gridHeadContainer) return;
-        let table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
-        if (!table) return;
-        let fixedColumns = table.dataset.fixedColumns === 'true';
-        let tbodyTr = this.tbody.querySelector('tr');
-        if (!tbodyTr) return;
-        let tds = Array.from(tbodyTr.children);
-        let ths = Array.from(gridHeadContainer.querySelectorAll('th'));
-        let headCols = Array.from(gridHeadContainer.querySelectorAll('col'));
-        let bodyCols = Array.from(this.element.querySelectorAll('[data-role="grid-table"][data-grid-part="body"] col'));
+        if (!this.table || !this.tbody) {
+            return;
+        }
 
-        // Padding for scrollbar
-        let ScrollBarWidth = 16;
-        gridHeadContainer.style.paddingRight = ScrollBarWidth + 'px';
+        const fixedColumns = this.table.dataset.fixedColumns === 'true';
+        const tbodyTr = this.tbody.querySelector('tr');
+        if (!tbodyTr) {
+            return;
+        }
 
-        if (!fixedColumns) {
-            let headers = tds.map(td => td.offsetWidth);
-            headers.forEach((width, n) => {
-                if (headCols[n]) headCols[n].style.width = width + 'px';
-                if (bodyCols[n]) bodyCols[n].style.width = width + 'px';
-            });
+        const tds = Array.from(tbodyTr.children);
+        const ths = this.headers || [];
+        const cols = Array.from(this.table.querySelectorAll('col'));
 
-            let oversizeHead = ths.map((th, n) =>
-                th.offsetWidth > headers[n]
-            );
-            if (oversizeHead.some(v => v)) {
-                let newWidth = ths.map((th, n) => oversizeHead[n] ? th.offsetWidth : 0);
-                let colWidth = [0, 0];
-                headers.forEach((w, n) => {
-                    if (oversizeHead[n]) {
-                        colWidth[1] += newWidth[n] - w;
-                    } else {
-                        colWidth[0] += w;
+        if (this.useCombinedTable) {
+            if (fixedColumns) {
+                this.table.style.tableLayout = 'fixed';
+            } else if (tds.length) {
+                const widths = tds.map(td => td.offsetWidth);
+                widths.forEach((width, index) => {
+                    if (cols[index]) {
+                        cols[index].style.width = width + 'px';
                     }
                 });
-                colWidth[1] += colWidth[0];
-                let scaleCoef = colWidth[0] / colWidth[1];
-                headers = headers.map((w, n) =>
-                    oversizeHead[n] ? newWidth[n] : Math.floor(w * scaleCoef)
-                );
+            }
+        } else {
+            const gridHeadContainer = this.gridHeadContainer;
+            if (!gridHeadContainer) {
+                return;
+            }
+            const headCols = Array.from(gridHeadContainer.querySelectorAll('col'));
+            const bodyCols = Array.from(this.table.querySelectorAll('col'));
+
+            const ScrollBarWidth = 16;
+            gridHeadContainer.style.paddingRight = ScrollBarWidth + 'px';
+
+            if (!fixedColumns) {
+                let headers = tds.map(td => td.offsetWidth);
                 headers.forEach((width, n) => {
                     if (headCols[n]) headCols[n].style.width = width + 'px';
                     if (bodyCols[n]) bodyCols[n].style.width = width + 'px';
                 });
+
+                let oversizeHead = ths.map((th, n) => th.offsetWidth > headers[n]);
+                if (oversizeHead.some(Boolean)) {
+                    let newWidth = ths.map((th, n) => oversizeHead[n] ? th.offsetWidth : 0);
+                    let colWidth = [0, 0];
+                    headers.forEach((w, n) => {
+                        if (oversizeHead[n]) {
+                            colWidth[1] += newWidth[n] - w;
+                        } else {
+                            colWidth[0] += w;
+                        }
+                    });
+                    colWidth[1] += colWidth[0];
+                    let scaleCoef = colWidth[0] / colWidth[1];
+                    headers = headers.map((w, n) => oversizeHead[n] ? newWidth[n] : Math.floor(w * scaleCoef));
+                    headers.forEach((width, n) => {
+                        if (headCols[n]) headCols[n].style.width = width + 'px';
+                        if (bodyCols[n]) bodyCols[n].style.width = width + 'px';
+                    });
+                }
+            } else {
+                let tableParent = this.tbody.parentElement;
+                if (tableParent) tableParent.style.tableLayout = 'fixed';
             }
-        } else {
-            let tableParent = this.tbody.parentElement;
-            if (tableParent) tableParent.style.tableLayout = 'fixed';
         }
-        this.tbody.parentElement.style.wordWrap = 'break-word';
+
+        if (this.tbody.parentElement) {
+            this.tbody.parentElement.style.wordWrap = 'break-word';
+        }
     }
 
     fitGridSize() {
+        if (!this.gridContainer) {
+            return;
+        }
         if (this.paneContent) {
             let margin = parseInt(this.element.style.marginTop) || 0;
             let eBToolbar = document.body.querySelector('[data-pane-part="footer"]');
+            const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
+                ? this.table.tHead
+                : this.gridHeadContainer;
             let gridHeight = this.paneContent.offsetHeight
-                - (this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0)
+                - (headElement ? headElement.offsetHeight : 0)
                 - (this.gridToolbar ? this.gridToolbar.offsetHeight : 0)
                 - margin
                 - (eBToolbar ? eBToolbar.offsetHeight : 0);
@@ -400,7 +514,10 @@ class Grid {
         }
 
         const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
-        const gridHeadHeight = this.gridHeadContainer ? this.gridHeadContainer.offsetHeight : 0;
+        const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
+            ? this.table.tHead
+            : this.gridHeadContainer;
+        const gridHeadHeight = headElement ? headElement.offsetHeight : 0;
         const paneToolbarTop = this.pane.querySelector('[data-pane-part="header"]');
         const paneToolbarBottom = this.pane.querySelector('[data-pane-part="footer"]');
         const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
@@ -440,33 +557,34 @@ class Grid {
 
     // --- Sorting
     onChangeSort(event) {
-        let getNextDirectionOrderItem = current => {
-            let sortDirectionOrder = ['', 'asc', 'desc'],
-                currentIndex, result;
-            current = current || '';
-            currentIndex = sortDirectionOrder.indexOf(current);
-            if (currentIndex !== -1) {
-                result = sortDirectionOrder[(currentIndex + 1) % sortDirectionOrder.length];
-            } else {
-                result = sortDirectionOrder[0];
+        const getNextDirectionOrderItem = current => {
+            const sortDirectionOrder = ['', 'asc', 'desc'];
+            const currentIndex = sortDirectionOrder.indexOf(current || '');
+            if (currentIndex === -1) {
+                return sortDirectionOrder[0];
             }
-            return result;
+            return sortDirectionOrder[(currentIndex + 1) % sortDirectionOrder.length];
         };
 
-        let header = event.target;
-        let sortFieldName = header.getAttribute('name');
-        let sortDirection = header.className;
+        const header = event.currentTarget || event.target;
+        const sortFieldName = header.getAttribute('name');
+        const hasAsc = header.classList.contains('asc');
+        const hasDesc = header.classList.contains('desc');
+        const sortDirection = hasAsc ? 'asc' : hasDesc ? 'desc' : '';
 
 
         if (this.metadata[sortFieldName] && this.metadata[sortFieldName].sort === 1) {
             this.sort.field = sortFieldName;
             this.sort.order = getNextDirectionOrderItem(sortDirection);
 
-            header.className = ''; // remove all sort classes
-            if (this.sort.order) header.classList.add(this.sort.order);
+            header.classList.remove('asc', 'desc');
+            if (this.sort.order) {
+                header.classList.add(this.sort.order);
+            }
 
             this.fireEvent('sortChange');
             this.options.onSortChange();
+            this.refreshSortIndicators();
         }
     }
 }
@@ -604,6 +722,13 @@ class GridManager {
     reload() { this.loadPage(1); }
 
     loadPage(pageNum) {
+        const currentSelectionKey = this.grid.getSelectedRecordKey();
+        if (currentSelectionKey !== false && currentSelectionKey !== undefined && currentSelectionKey !== null) {
+            this.gridPendingSelection = String(currentSelectionKey);
+        } else {
+            this.gridPendingSelection = null;
+        }
+
         this.pageList.disable();
         if (this.toolbar) this.toolbar.disableControls();
         //this.overlay.show();
@@ -636,14 +761,17 @@ class GridManager {
     }
 
     buildRequestPostBody() {
-        let postBody = '';
+        const parts = [];
         if (this.langId) {
-            postBody += `languageID=${this.langId}&`;
+            parts.push(`languageID=${encodeURIComponent(this.langId)}`);
         }
-        if (this.filter && this.filter.getValue) {
-            postBody += this.filter.getValue();
+        if (this.filter && typeof this.filter.getValue === 'function') {
+            const filterQuery = this.filter.getValue();
+            if (filterQuery) {
+                parts.push(filterQuery);
+            }
         }
-        return postBody;
+        return parts.join('&');
     }
 
     processServerResponse(result) {
@@ -652,11 +780,17 @@ class GridManager {
             control = this.toolbar.getControlById('add');
         }
 
+        const pendingSelection = this.gridPendingSelection || null;
+        this.gridPendingSelection = null;
+
         if (!this.initialized) {
             this.grid.setMetadata(result.meta);
             this.initialized = true;
         }
         this.grid.setData(result.data || []);
+        if (pendingSelection !== null) {
+            this.grid.pendingSelectionKey = pendingSelection;
+        }
 
         if (result.pager) {
             this.pageList.build(result.pager.count, result.pager.current, result.pager.records);
@@ -792,16 +926,18 @@ class GridManager {
         ModalBox.close();
     }
     up() {
+        const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/up/`,
-            (this.filter && this.filter.getValue) ? this.filter.getValue() : null,
+            payload || undefined,
             this.loadPage.bind(this, this.pageList.currentPage)
         );
     }
     down() {
+        const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/down/`,
-            (this.filter && this.filter.getValue) ? this.filter.getValue() : null,
+            payload || undefined,
             this.loadPage.bind(this, this.pageList.currentPage)
         );
     }
@@ -843,7 +979,8 @@ class Filter {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
-        this.element.classList.add('bg-light', 'border', 'border-light', 'rounded-3', 'p-3', 'mb-3', 'shadow-sm');
+        this.element.classList.add('row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'border', 'border-light-subtle', 'bg-body', 'px-3', 'py-3');
+        this.element.classList.remove('mb-3');
 
         // Привязки к основным элементам управления
         const applyButton = this.element.querySelector('[data-action="apply-filter"]');
@@ -851,10 +988,11 @@ class Filter {
         this.active = false;
 
         if (applyButton) {
-            applyButton.classList.add('btn', 'btn-primary', 'btn-sm');
+            applyButton.classList.add('btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
         }
         if (resetLink) {
-            resetLink.classList.add('btn', 'btn-link', 'btn-sm', 'p-0', 'text-decoration-none');
+            resetLink.classList.remove('btn-link', 'p-0', 'text-decoration-none');
+            resetLink.classList.add('btn', 'btn-outline-secondary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
             resetLink.setAttribute('role', 'button');
         }
 
@@ -1001,14 +1139,40 @@ class Filter {
 
     // Получить строку фильтра
     getValue() {
-        let result = '';
-        if (this.active && this.inputs.hasValues && this.inputs.hasValues()) {
-            const fieldName = this.fields.options[this.fields.selectedIndex].value;
-            const fieldCondition = this.condition.options[this.condition.selectedIndex].value;
-            if (this.inputs.getValues)
-                result = this.inputs.getValues('filter' + fieldName) + `&filter[condition]=${fieldCondition}&`;
+        if (!this.active || !this.inputs.hasValues || !this.inputs.hasValues()) {
+            return '';
         }
-        return result;
+
+        const fieldOption = this.fields.options[this.fields.selectedIndex];
+        if (!fieldOption || !fieldOption.value) {
+            return '';
+        }
+
+        const pathMatch = /^\[([^\]]+)]\[([^\]]+)]$/.exec(fieldOption.value);
+        if (!pathMatch) {
+            return '';
+        }
+
+        const [, tableName, columnName] = pathMatch;
+        const values = (this.inputs.getValues && this.inputs.getValues()) || [];
+        if (!Array.isArray(values) || values.length === 0) {
+            return '';
+        }
+
+        const conditionOption = this.condition.options[this.condition.selectedIndex];
+        const fieldCondition = conditionOption ? conditionOption.value : '';
+        if (!fieldCondition) {
+            return '';
+        }
+
+        if (fieldCondition === 'between' && values.length !== 2) {
+            return '';
+        }
+
+        const baseKey = `filter[${tableName}][${columnName}]`;
+        const encodedValues = values.map(value => `${baseKey}[]=${encodeURIComponent(value)}`);
+        encodedValues.push(`filter[condition]=${encodeURIComponent(fieldCondition)}`);
+        return encodedValues.join('&');
     }
 }
 
@@ -1024,14 +1188,47 @@ class QueryControls {
     constructor(containers, applyAction) {
         this.hiddenClass = 'd-none';
 
-        // containers — массив или NodeList
-        this.containers = Array.from(containers);
-        this.containers.forEach(container => {
-            container.classList.add('d-flex', 'flex-nowrap', 'align-items-center', 'gap-2', 'mb-2');
-        });
+        const containerList = Array.from(containers).filter(Boolean);
+        if (containerList.length === 1) {
+            const firstContainer = containerList[0];
+            const containerClone = firstContainer.cloneNode(false);
+            if (containerClone.hasAttribute('id')) containerClone.removeAttribute('id');
+            const clonedInput = document.createElement('input');
+            clonedInput.type = 'text';
+            clonedInput.classList.add('form-control', 'form-control-sm');
+            clonedInput.setAttribute('data-role', 'filter-query-input');
+            containerClone.appendChild(clonedInput);
 
-        // Убираем класс скрытия у первого контейнера
-        if (this.containers[0]) this.containers[0].classList.remove(this.hiddenClass);
+            const wrapper = firstContainer.closest('.col');
+            if (wrapper && wrapper.parentNode) {
+                const wrapperClone = wrapper.cloneNode(false);
+                if (wrapperClone.hasAttribute('id')) wrapperClone.removeAttribute('id');
+                wrapperClone.appendChild(containerClone);
+                wrapper.parentNode.insertBefore(wrapperClone, wrapper.nextSibling);
+            } else if (firstContainer.parentNode) {
+                firstContainer.parentNode.insertBefore(containerClone, firstContainer.nextSibling);
+            }
+
+            containerList.push(containerClone);
+        }
+
+        this.containers = containerList;
+        this.wrapperMap = new Map();
+        this.wrapperGroups = new Map();
+
+        this.containers.forEach((container, index) => {
+            container.classList.add('d-flex', 'flex-nowrap', 'align-items-center', 'gap-2');
+            container.classList.remove('mb-2');
+            const wrapper = container.closest('.col');
+            if (wrapper) {
+                this.wrapperMap.set(container, wrapper);
+                if (!this.wrapperGroups.has(wrapper)) {
+                    this.wrapperGroups.set(wrapper, new Set());
+                }
+                this.wrapperGroups.get(wrapper).add(container);
+            }
+            this.setVisibility(container, index === 0);
+        });
 
         // this.inputs — все инпуты внутри контейнеров (первый input в каждом)
         this.inputs = this.containers.map(container => {
@@ -1073,10 +1270,14 @@ class QueryControls {
         this.isDate = false;
     }
 
+    // Получить активные инпуты (учитывая режим даты)
+    getActiveInputs() {
+        return (this.isDate ? this.dpsInputs : this.inputs).filter(Boolean);
+    }
+
     // Проверяет: есть ли значения в активных инпутах
     hasValues() {
-        const inputs = this.isDate ? this.dpsInputs : this.inputs;
-        return inputs.some(el => el && el.value);
+        return this.getActiveInputs().some(el => el && el.value !== '');
     }
 
     // Очищает все инпуты (текстовые и для дат)
@@ -1084,33 +1285,35 @@ class QueryControls {
         [...this.dpsInputs, ...this.inputs].forEach(el => { if (el) el.value = ''; });
     }
 
-    // Формирует query-строку для запроса
-    getValues(fieldName) {
-        const inputs = this.isDate ? this.dpsInputs : this.inputs;
-        return inputs.map(el => el && el.value ? `${fieldName}[]=${encodeURIComponent(el.value)}` : '')
-            .filter(Boolean)
-            .join('&');
+    // Возвращает массив введённых значений (в порядке отображения)
+    getValues() {
+        return this.getActiveInputs()
+            .map(input => (typeof input.value === 'string') ? input.value : '')
+            .filter(value => value !== '');
     }
 
     // Включить режим "между" (2 инпута), сделать маленькими
     asPeriod() {
-        this.show();
+        this.containers.forEach((container, index) => {
+            this.setVisibility(container, index < 2);
+        });
     }
 
     // Включить режим одного инпута, остальные скрыть и убрать "маленькость"
     asScalar() {
-        this.show();
-        this.containers.slice(1).forEach(container => container.classList.add(this.hiddenClass));
+        this.containers.forEach((container, index) => {
+            this.setVisibility(container, index === 0);
+        });
     }
 
     // Показать все контейнеры
     show() {
-        this.containers.forEach(c => c.classList.remove(this.hiddenClass));
+        this.containers.forEach(container => this.setVisibility(container, true));
     }
 
     // Скрыть все контейнеры
     hide() {
-        this.containers.forEach(c => c.classList.add(this.hiddenClass));
+        this.containers.forEach(container => this.setVisibility(container, false));
     }
 
     // Показать или скрыть datepicker-инпуты
@@ -1122,6 +1325,22 @@ class QueryControls {
         } else {
             this.inputs.forEach(el => { if (el) el.classList.remove(this.hiddenClass); });
             this.dpsInputs.forEach(el => { if (el) el.classList.add(this.hiddenClass); });
+        }
+    }
+
+    setVisibility(container, visible) {
+        if (!container) return;
+        container.classList.toggle(this.hiddenClass, !visible);
+        if (!this.wrapperMap) return;
+        const wrapper = this.wrapperMap.get(container);
+        if (!wrapper) return;
+
+        const group = this.wrapperGroups && this.wrapperGroups.get(wrapper);
+        if (group && group.size > 0) {
+            const shouldShowWrapper = Array.from(group).some(node => node && !node.classList.contains(this.hiddenClass));
+            wrapper.classList.toggle(this.hiddenClass, !shouldShowWrapper);
+        } else {
+            wrapper.classList.toggle(this.hiddenClass, !visible);
         }
     }
 }
