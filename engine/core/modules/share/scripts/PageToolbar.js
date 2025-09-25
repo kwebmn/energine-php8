@@ -92,25 +92,29 @@ class PageToolbar extends Toolbar {
         const html = document.documentElement;
         html.classList.add('h-100');
         document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-light');
-        if (!PageToolbar._hasClass(html, 'e-has-topframe1')) {
-            PageToolbar._addClass(html, 'e-has-topframe1');
-        }
+        // if (!PageToolbar._hasClass(html, 'e-has-topframe1')) {
+        //     PageToolbar._addClass(html, 'e-has-topframe1');
+        // }
 
         const layoutContainer = document.createElement('div');
         PageToolbar._addClass(layoutContainer, 'e-layout');
-        layoutContainer.classList.add('container-fluid', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-3', 'pt-3', 'pb-4', 'px-3', 'px-lg-4', 'align-items-stretch', 'mt-0');
+        // layoutContainer.classList.add('container-fluid');
+        // layoutContainer.classList.add('container-fluid', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-3', 'pt-3', 'pb-4', 'px-3', 'px-lg-4', 'align-items-stretch', 'mt-0');
 
         const mainFrame = document.createElement('div');
         PageToolbar._addClass(mainFrame, 'e-mainframe');
-        mainFrame.classList.add('flex-grow-1', 'bg-white', 'rounded-3', 'shadow-sm', 'p-4', 'border');
+        // mainFrame.classList.add('flex-grow-1', 'bg-white', 'rounded-3', 'shadow-sm', 'p-4', 'border');
+        // mainFrame.classList.add('flex-grow-1', 'bg-white', 'rounded-3', 'shadow-sm', 'p-4', 'border');
         mainFrame.style.minHeight = '0';
 
         const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
-        topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
+        topFrame.classList.add( 'sticky-top', 'py-1', 'px-0', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
+
+        // topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
 
         const container = document.createElement('div');
-        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'justify-content-between', 'gap-3', 'flex-wrap', 'py-0');
+        container.classList.add('container-fluid', 'd-flex', 'align-items-start', 'justify-content-start', 'gap-3', 'flex-wrap', 'py-0');
         topFrame.appendChild(container);
 
         const translations = window?.Energine?.translations;
@@ -129,7 +133,8 @@ class PageToolbar extends Toolbar {
         };
 
         const headerStack = document.createElement('div');
-        headerStack.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-grow-1', 'min-w-0');
+        // headerStack.classList.add('d-flex', 'align-items-center', 'gap-3', 'flex-wrap', 'w-100', 'min-w-0');
+        headerStack.classList.add('d-flex', 'align-items-center', 'gap-3', 'flex-wrap', 'w-100', 'min-w-0');
         container.appendChild(headerStack);
 
         const brandStack = document.createElement('div');
@@ -139,7 +144,8 @@ class PageToolbar extends Toolbar {
         const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
         const sidebarToggle = document.createElement('button');
         sidebarToggle.type = 'button';
-        sidebarToggle.classList.add('btn', 'btn-sm', 'btn-light', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0');
+        sidebarToggle.classList.add('btn', 'btn-sm', 'btn-light', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0', 'border-0');
+        // sidebarToggle.classList.add('btn', 'btn-sm', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0');
         if (sidebarLabel) {
             sidebarToggle.setAttribute('aria-label', sidebarLabel);
         }
@@ -172,47 +178,21 @@ class PageToolbar extends Toolbar {
 
         const environmentLabel = PageToolbar._extractEnvironmentLabel();
 
-        const collapseIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
-        const collapseId = (`${collapseIdBase}-collapse`).replace(/[^A-Za-z0-9_-]/g, '-');
+        const toolbarIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
 
-        const toggler = document.createElement('button');
-        toggler.classList.add('navbar-toggler');
-        toggler.type = 'button';
-        toggler.setAttribute('data-bs-toggle', 'collapse');
-        toggler.setAttribute('data-bs-target', `#${collapseId}`);
-        toggler.setAttribute('aria-controls', collapseId);
-        toggler.setAttribute('aria-expanded', 'false');
-        const togglerLabel = getTranslation('TXT_MENU', 'TXT_TOOLBAR') || 'Toggle toolbar';
-        if (togglerLabel) {
-            toggler.setAttribute('aria-label', togglerLabel);
-        }
-        const togglerIcon = document.createElement('span');
-        togglerIcon.classList.add('navbar-toggler-icon');
-        toggler.appendChild(togglerIcon);
-        container.appendChild(toggler);
-
-        const collapse = document.createElement('div');
-        collapse.classList.add('collapse', 'navbar-collapse', 'py-2', 'py-lg-0');
-        collapse.classList.add('w-100');
-        collapse.style.flexGrow = '1';
-        collapse.style.flexBasis = '100%';
-        collapse.id = collapseId;
-        container.appendChild(collapse);
-
-        const actionStack = document.createElement('div');
-        actionStack.classList.add('d-flex', 'flex-column', 'gap-2', 'w-100', 'align-items-start');
-        collapse.appendChild(actionStack);
+        const actionsColumn = document.createElement('div');
+        actionsColumn.classList.add('d-flex', 'flex-column', 'gap-2', 'flex-grow-1', 'min-w-0');
+        headerStack.appendChild(actionsColumn);
 
         const primaryRow = document.createElement('div');
-        primaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
-        actionStack.appendChild(primaryRow);
+        primaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'justify-content-start', 'w-100', 'min-w-0', 'py-2', 'py-lg-0');
+        actionsColumn.appendChild(primaryRow);
 
-        this.element.classList.add('py-2', 'py-lg-0');
         primaryRow.appendChild(this.element);
 
         this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap');
         this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
-        this.element.classList.add('bg-transparent', 'p-0');
+        this.element.classList.add('bg-transparent', 'p-0', 'flex-grow-1', 'min-w-0');
         this.element.querySelectorAll('button.btn').forEach(button => {
             button.classList.add('rounded-1', 'px-3');
             button.classList.add('btn-sm');
@@ -220,7 +200,27 @@ class PageToolbar extends Toolbar {
                 button.classList.remove('btn-secondary', 'btn-outline-secondary');
                 button.classList.add('btn-light', 'border', 'border-secondary-subtle', 'text-uppercase', 'fw-semibold', 'text-secondary');
             }
+            const label = button.textContent ? button.textContent.trim() : '';
+            if (label && !button.getAttribute('title')) {
+                button.setAttribute('title', label);
+            }
         });
+
+        const updateResponsiveToolbar = () => {
+            const compact = window.innerWidth < 576;
+            this.element.classList.toggle('e-toolbar-compact', compact);
+            this.element.querySelectorAll('button.btn').forEach(button => {
+                if (compact) {
+                    button.classList.remove('px-3');
+                    button.classList.add('px-2');
+                } else {
+                    button.classList.add('px-3');
+                    button.classList.remove('px-2');
+                }
+            });
+        };
+        updateResponsiveToolbar();
+        window.addEventListener('resize', updateResponsiveToolbar);
 
         const editControlIds = ['add', 'edit', 'delete'];
         const editButtons = editControlIds
@@ -232,13 +232,14 @@ class PageToolbar extends Toolbar {
         if (editButtons.length) {
             editBand = document.createElement('div');
             editBand.classList.add('e-toolbar-editband', 'bg-body', 'border', 'shadow-sm', 'rounded-3', 'px-3', 'py-2', 'd-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
+            
 
             editButtons.forEach(button => {
                 button.classList.add('shadow-sm');
                 editBand.appendChild(button);
             });
 
-            actionStack.appendChild(editBand);
+            actionsColumn.appendChild(editBand);
         }
 
         // Перенос body-children (кроме svg и e-overlay)
@@ -263,7 +264,7 @@ class PageToolbar extends Toolbar {
 
         // Боковая панель (sidebar)
         if (!this.properties['noSideFrame']) {
-            const sidebarId = (`${collapseIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
+            const sidebarId = (`${toolbarIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
             const sidebarFrame = document.createElement('div');
             PageToolbar._addClass(sidebarFrame, 'e-sideframe');
             sidebarFrame.classList.add('offcanvas', 'offcanvas-start', 'shadow', 'border-0', 'bg-light');
@@ -299,9 +300,10 @@ class PageToolbar extends Toolbar {
             };
             syncSidebarOffset();
             window.addEventListener('resize', syncSidebarOffset);
-            ['shown.bs.collapse', 'hidden.bs.collapse'].forEach(eventName => {
-                collapse.addEventListener(eventName, syncSidebarOffset);
-            });
+            if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(() => syncSidebarOffset());
+                resizeObserver.observe(topFrame);
+            }
 
             const sidebarHeader = document.createElement('div');
             sidebarHeader.classList.add('d-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'px-3', 'py-2', 'border-bottom', 'bg-white');
@@ -335,7 +337,8 @@ class PageToolbar extends Toolbar {
             sidebarFrameContent.appendChild(sidebarHeader);
 
             const sidebarBody = document.createElement('div');
-            sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1', 'p-3');
+            //sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1', 'p-3');
+            sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1');
             sidebarFrameContent.appendChild(sidebarBody);
 
             const iframeWrapper = document.createElement('div');

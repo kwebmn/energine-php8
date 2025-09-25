@@ -8,8 +8,8 @@ class FeedToolbar extends Toolbar {
         super('feed_toolbar');
 
         // Подключаем CSS динамически (эмуляция Asset.css)
-        FeedToolbar.loadCSS('stylesheets/pagetoolbar.css');
-        FeedToolbar.loadCSS('stylesheets/feedtoolbar.css');
+        // FeedToolbar.loadCSS('stylesheets/pagetoolbar.css');
+         FeedToolbar.loadCSS('stylesheets/feedtoolbar.css');
 
         this.bindTo = this.bindTo?.bind?.(this) || (() => {}); // если осталась поддержка bindTo
         this.bindTo(this);

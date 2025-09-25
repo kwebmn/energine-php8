@@ -35,8 +35,11 @@ class Toolbar {
 
     dock() {
         this.element.classList.add('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
+        // this.element.classList.add( 'p-2',);
     }
     undock() {
+        // this.element.classList.add( 'p-2', 'ps-5');
+
         this.element.classList.remove('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
     }
     getElement() {

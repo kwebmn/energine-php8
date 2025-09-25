@@ -45,7 +45,7 @@
         
     <!-- вывод дерева разделов в боковом тулбаре -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivSidebar'][@sample='DivisionEditor'][@componentAction='main'][@type='list']]">
-        <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+        <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3 p-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
             <aside id="treeContainer" data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
             <main data-role="editor-content" class="division-editor__content flex-grow-1"></main>
         </div>
@@ -228,7 +228,7 @@
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
         </xsl:variable>
-        <div class="d-flex flex-wrap align-items-start gap-2">
+        <div class="d-flex flex-wrap align-items-start gap- 2">
             <select id="{$FIELD_ID}">
                 <xsl:attribute name="class">
                     <xsl:text>form-select</xsl:text>
