@@ -133,7 +133,7 @@ final class QAL extends DBA {
 
         $build = function($cond) use (&$build, $prepared, &$args) {
             if (empty($cond)) return '';
-
+            
             if (is_string($cond)) {
                 return ' WHERE '.$cond;
             }

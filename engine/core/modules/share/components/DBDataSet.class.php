@@ -79,8 +79,9 @@ class DBDataSet extends DataSet
         $raw = (!$this->getTranslationTableName())
             ? $this->commonLoadData()
             : $this->multiLoadData();    // FIX: гарантирует array|false
-
+        
         $data = $this->modify($raw);
+        
         return $data;
     }
 
@@ -272,13 +273,16 @@ class DBDataSet extends DataSet
         }
 
         $filterCondition = $this->getFilter();
+        
         if (!empty($filterCondition)) {
-            $filter = $this->dbh->buildWhereCondition($filterCondition)
+        
+            $filter = $this->dbh->buildWhereCondition($filterCondition[0])
                 . ($this->getParam('onlyCurrentLang') ? ' AND lang_id = ' . $this->getDataLanguage() : '');
-        } elseif ($this->getDataLanguage() && $this->getParam('onlyCurrentLang')) {
+                
+        } elseif ($this->getDataLanguage() && $this->getParam('onlyCurrentLang')) {            
             $filter = ' WHERE lang_id = ' . $this->getDataLanguage();
         }
-
+        
         if ($this->getOrder()) {
             $order = $this->dbh->buildOrderCondition($this->getOrder());
         }
@@ -286,6 +290,7 @@ class DBDataSet extends DataSet
         if (!is_null($this->getLimit())) {
             $limit = $this->dbh->buildLimitStatement($this->getLimit());
         }
+        
 
         if ($this->getType() != self::COMPONENT_TYPE_FORM_ADD) {
             $request = sprintf(
@@ -305,7 +310,7 @@ class DBDataSet extends DataSet
                 $order,
                 $limit
             );
-
+            
             $sel = $this->dbh->selectRequest($request);
             $data = is_array($sel) ? $sel : false;   // FIX: нормализуем — только массив или false
 
