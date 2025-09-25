@@ -28,9 +28,10 @@
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
         </xsl:attribute>
+        <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
         <xsl:attribute name="name"><xsl:choose>
-            <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name"/>]</xsl:when>
-            <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+            <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+            <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
         </xsl:choose></xsl:attribute>
         <xsl:if test="@length and not(@type='htmlblock')">
             <xsl:attribute name="maxlength"><xsl:value-of select="@length"/></xsl:attribute>
@@ -54,9 +55,10 @@
         <xsl:attribute name="type">hidden</xsl:attribute>
         <xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute>
         <xsl:attribute name="id"><xsl:value-of select="@name"/></xsl:attribute>
+        <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
         <xsl:attribute name="name"><xsl:choose>
-            <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
-            <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+            <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+            <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
         </xsl:choose></xsl:attribute>
     </xsl:template>
 

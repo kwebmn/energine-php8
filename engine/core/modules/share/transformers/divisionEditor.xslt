@@ -122,9 +122,10 @@
                 </button>
             </div>
             <input type="hidden" id="{$HIDDEN_ID}" value="{.}">
+                <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
                 <xsl:attribute name="name"><xsl:choose>
-                    <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name" />]</xsl:when>
-                    <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+                    <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
                 </xsl:choose></xsl:attribute>
             </input>
             <xsl:call-template name="render-field-messages"/>
@@ -149,12 +150,11 @@
             </xsl:if>
             <span class="form-control-plaintext d-block"><xsl:value-of select="@data_name" disable-output-escaping="yes"/></span>
             <input type="hidden" value="{.}">
-                <xsl:attribute name="name">
-                    <xsl:choose>
-                        <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name" />]</xsl:when>
-                        <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-                    </xsl:choose>
-                </xsl:attribute>
+                <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
+                <xsl:attribute name="name"><xsl:choose>
+                    <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
+                </xsl:choose></xsl:attribute>
             </input>
             <xsl:call-template name="render-field-messages"/>
         </div>
@@ -234,9 +234,10 @@
                     <xsl:text>form-select</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
                 </xsl:attribute>
+                <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
                 <xsl:attribute name="name"><xsl:choose>
-                    <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
-                    <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+                    <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
                 </xsl:choose></xsl:attribute>
                 <xsl:if test="not(@nullable) or @nullable='0'">
                     <xsl:attribute name="required">required</xsl:attribute>
