@@ -56,6 +56,14 @@ class ModalBoxClass {
 
         instance.isClosing = true;
 
+        if (typeof instance.gridCleanup === 'function') {
+            try {
+                instance.gridCleanup();
+            } catch (err) {
+                // ignore cleanup failures
+            }
+        }
+
         if (returnValue !== undefined) {
             instance.returnValue = returnValue;
         }
@@ -204,8 +212,14 @@ class ModalBoxClass {
         iframe.tabIndex = 0;
         modalBody.appendChild(iframe);
 
+        const shouldEnhanceGrid = this._shouldEnhanceGridLayout(options);
+
         iframe.onload = () => {
             hideLoader(modalBody);
+
+            if (shouldEnhanceGrid) {
+                this._enhanceGridLayout(iframe, instance, options.gridLayout || {});
+            }
         };
 
         document.body.appendChild(modal);
@@ -221,6 +235,7 @@ class ModalBoxClass {
             previousActiveElement,
             returnValue: undefined,
             isClosing: false,
+            gridCleanup: null,
         };
 
         const closeModal = (returnValue) => {
@@ -339,6 +354,302 @@ class ModalBoxClass {
 
     close(returnValue) {
         this._closeInstance(this.getCurrent(), returnValue);
+    }
+
+    _shouldEnhanceGridLayout(options) {
+        if (!options || !options.url) {
+            return false;
+        }
+
+        if (typeof options.forceGridLayout === 'boolean') {
+            return options.forceGridLayout;
+        }
+
+        if (typeof options.enableGridLayout === 'boolean') {
+            return options.enableGridLayout;
+        }
+
+        try {
+            const parsedUrl = new URL(options.url, window.location.href);
+            const combined = `${parsedUrl.pathname} ${parsedUrl.search}`.toLowerCase();
+            if (combined.includes('component=grid')) {
+                return true;
+            }
+
+            if (/\bgrid\b/.test(parsedUrl.pathname.toLowerCase())) {
+                return true;
+            }
+
+            for (const value of parsedUrl.searchParams.values()) {
+                if (typeof value === 'string' && value.toLowerCase().includes('grid')) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (err) {
+            return /grid/i.test(String(options.url));
+        }
+    }
+
+    _enhanceGridLayout(iframe, instance, layoutOptions = {}) {
+        if (!iframe) {
+            return;
+        }
+
+        if (instance && typeof instance.gridCleanup === 'function') {
+            try {
+                instance.gridCleanup();
+            } catch (err) {
+                // ignore existing cleanup errors
+            }
+        }
+
+        const applyLayout = () => {
+            let doc;
+
+            try {
+                doc = iframe.contentDocument || iframe.contentWindow?.document;
+            } catch (err) {
+                return;
+            }
+
+            if (!doc || !doc.body) {
+                return;
+            }
+
+            const html = doc.documentElement;
+            if (html) {
+                html.classList.add('modalbox-grid-html');
+                html.style.height = '100%';
+            }
+
+            const body = doc.body;
+            body.classList.add('modalbox-grid-body');
+            body.style.height = '100%';
+            body.style.minHeight = '100%';
+            body.style.display = 'flex';
+            body.style.flexDirection = 'column';
+            body.style.overflow = 'hidden';
+
+            const gridRootSelectors = [];
+            if (layoutOptions.rootSelector) {
+                gridRootSelectors.push(layoutOptions.rootSelector);
+            }
+            gridRootSelectors.push(
+                '[data-module="grid"]',
+                '[data-component="grid"]',
+                '[data-role="grid"]',
+                '.grid',
+                '.grid-component',
+                '.grid-container',
+                '.c-grid',
+                '.admin-grid'
+            );
+
+            let gridRoot = null;
+            for (const selector of gridRootSelectors) {
+                if (!selector) {
+                    continue;
+                }
+
+                const candidate = body.querySelector(selector);
+                if (candidate) {
+                    gridRoot = candidate;
+                    break;
+                }
+            }
+
+            if (!gridRoot && body.children.length === 1) {
+                gridRoot = body.children[0];
+            }
+
+            if (!gridRoot) {
+                return;
+            }
+
+            gridRoot.classList.add('modalbox-grid-root');
+            gridRoot.style.display = 'flex';
+            gridRoot.style.flexDirection = 'column';
+            gridRoot.style.flex = '1 1 auto';
+            gridRoot.style.minHeight = '0';
+
+            const toolbarSelectors = [];
+            if (layoutOptions.toolbarSelector) {
+                toolbarSelectors.push(layoutOptions.toolbarSelector);
+            }
+            toolbarSelectors.push('.toolbar', '.grid-toolbar', '.btn-toolbar', '[data-role="toolbar"]');
+
+            let toolbar = null;
+            for (const selector of toolbarSelectors) {
+                if (!selector) {
+                    continue;
+                }
+
+                const candidate = gridRoot.querySelector(selector);
+                if (candidate) {
+                    toolbar = candidate;
+                    break;
+                }
+            }
+
+            if (toolbar) {
+                toolbar.classList.add('modalbox-grid-toolbar');
+                toolbar.style.flex = '0 0 auto';
+                toolbar.style.marginTop = 'auto';
+            }
+
+            const tabsSelectors = [];
+            if (layoutOptions.tabsSelector) {
+                tabsSelectors.push(layoutOptions.tabsSelector);
+            }
+            tabsSelectors.push('.tabset', '.nav-tabs', '[role="tablist"]');
+
+            const tabs = tabsSelectors
+                .map((selector) => selector && gridRoot.querySelector(selector))
+                .find(Boolean);
+
+            if (tabs) {
+                tabs.classList.add('modalbox-grid-tabs');
+                tabs.style.flex = '0 0 auto';
+            }
+
+            const scrollSelectors = [];
+            if (layoutOptions.scrollSelector) {
+                scrollSelectors.push(layoutOptions.scrollSelector);
+            }
+            scrollSelectors.push(
+                '.grid-body',
+                '.grid-content',
+                '.grid-data',
+                '.grid-table',
+                '.table-responsive',
+                '.table-wrapper',
+                '.dataTables_wrapper',
+                '.data-grid'
+            );
+
+            let scrollContainer = null;
+            for (const selector of scrollSelectors) {
+                if (!selector) {
+                    continue;
+                }
+
+                const candidate = gridRoot.querySelector(selector);
+                if (candidate) {
+                    scrollContainer = candidate;
+                    break;
+                }
+            }
+
+            if (!scrollContainer) {
+                const firstTable = gridRoot.querySelector('table');
+                if (firstTable) {
+                    scrollContainer = firstTable.closest('.table-responsive') || firstTable.parentElement;
+                }
+            }
+
+            if (!scrollContainer) {
+                const children = Array.from(gridRoot.children).filter((child) => child !== toolbar && child !== tabs);
+                if (children.length) {
+                    scrollContainer = children[children.length > 1 ? 1 : 0];
+                }
+            }
+
+            if (scrollContainer) {
+                scrollContainer.classList.add('modalbox-grid-scroll');
+                scrollContainer.style.flex = '1 1 auto';
+                scrollContainer.style.minHeight = '0';
+                if (!scrollContainer.style.overflowY) {
+                    scrollContainer.style.overflowY = 'auto';
+                }
+                if (!scrollContainer.style.overflowX) {
+                    scrollContainer.style.overflowX = 'auto';
+                }
+            }
+
+            const styleId = 'modalbox-grid-style';
+            if (!doc.getElementById(styleId)) {
+                const styleTag = doc.createElement('style');
+                styleTag.id = styleId;
+                styleTag.textContent = `
+                    html.modalbox-grid-html,
+                    body.modalbox-grid-body {
+                        height: 100%;
+                    }
+
+                    body.modalbox-grid-body {
+                        gap: 0;
+                        background-color: inherit;
+                    }
+
+                    .modalbox-grid-root {
+                        gap: 0.75rem;
+                    }
+
+                    .modalbox-grid-root .modalbox-grid-scroll {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                    }
+
+                    .modalbox-grid-toolbar {
+                        padding-top: 0.75rem;
+                    }
+                `;
+                doc.head.appendChild(styleTag);
+            }
+        };
+
+        let layoutTimer = null;
+
+        const debouncedApply = () => {
+            if (layoutTimer) {
+                clearTimeout(layoutTimer);
+            }
+
+            layoutTimer = setTimeout(() => {
+                layoutTimer = null;
+                applyLayout();
+            }, 20);
+        };
+
+        applyLayout();
+
+        let observer;
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (doc && doc.body) {
+                observer = new MutationObserver(() => {
+                    debouncedApply();
+                });
+                observer.observe(doc.body, { childList: true, subtree: true });
+            }
+        } catch (err) {
+            observer = null;
+        }
+
+        let resizeHandler = null;
+        if (iframe.contentWindow && typeof iframe.contentWindow.addEventListener === 'function') {
+            resizeHandler = () => {
+                debouncedApply();
+            };
+            iframe.contentWindow.addEventListener('resize', resizeHandler);
+        }
+
+        instance.gridCleanup = () => {
+            if (observer) {
+                observer.disconnect();
+            }
+
+            if (resizeHandler && iframe.contentWindow) {
+                iframe.contentWindow.removeEventListener('resize', resizeHandler);
+            }
+
+            if (layoutTimer) {
+                clearTimeout(layoutTimer);
+                layoutTimer = null;
+            }
+        };
     }
 }
 
