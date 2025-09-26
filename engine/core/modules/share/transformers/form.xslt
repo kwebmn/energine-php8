@@ -11,11 +11,12 @@
      or descendant::field[@type='prfile']-->
     <xsl:template match="component[@type='form']">
         <xsl:variable name="FORM_ID" select="concat('form-', generate-id())"/>
-        <section class="card" data-role="pane">
-            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+        <section class="card h-100 d-flex flex-column" data-role="pane">
+            <div class="card-header flex-shrink-0" data-pane-part="header" data-pane-toolbar="top">
                 <xsl:apply-templates select="toolbar[@position='top']"/>
             </div>
-            <div class="card-body" data-pane-part="body">
+            <div class="card-body d-flex flex-column flex-grow-1 overflow-auto" data-pane-part="body">
+                <xsl:attribute name="style">min-height: 0;</xsl:attribute>
                 <form method="post" action="{@action}" id="{$FORM_ID}">
                     <xsl:if test="descendant::field[@type='image'] or descendant::field[@type='file']">
                         <xsl:attribute name="enctype">multipart/form-data</xsl:attribute>
@@ -31,7 +32,7 @@
                     <xsl:apply-templates select="node()[not(self::toolbar)]"/>
                 </form>
             </div>
-            <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom">
+            <div class="card-footer flex-shrink-0" data-pane-part="footer" data-pane-toolbar="bottom">
                 <xsl:apply-templates select="toolbar[not(@position='top')]"/>
             </div>
         </section>
@@ -119,10 +120,10 @@
     <!-- форма как часть grid-а выводится в другом стиле -->
    <xsl:template match="recordset[parent::component[@type='form' and @exttype='grid']]">
     <xsl:variable name="FIELDS" select="record/field"/>
-    <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden"
+    <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100"
          template="{$BASE}{$LANG_ABBR}{../@template}"
          single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
-        <div class="card-header bg-body-tertiary border-bottom" data-pane-part="header" data-pane-toolbar="top">
+        <div class="card-header bg-body-tertiary border-bottom flex-shrink-0" data-pane-part="header" data-pane-toolbar="top">
             <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                     <xsl:variable name="TAB_NAME" select="."/>
@@ -160,7 +161,8 @@
             </ul>
         </div>
 
-        <div class="card-body p-4" data-pane-part="body">
+        <div class="card-body p-4 d-flex flex-column flex-grow-1 overflow-auto" data-pane-part="body">
+            <xsl:attribute name="style">min-height: 0;</xsl:attribute>
             <div class="tab-content" data-role="tab-content">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                     <xsl:variable name="TAB_NAME" select="."/>
@@ -186,7 +188,7 @@
         </div>
 
         <xsl:if test="../toolbar">
-            <div class="card-footer bg-body-tertiary border-top" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body-tertiary border-top flex-shrink-0" data-pane-part="footer" data-pane-toolbar="bottom"></div>
         </xsl:if>
     </div>
 </xsl:template>

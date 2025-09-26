@@ -927,10 +927,14 @@ class Grid {
 
         if (gridHeight > 0) {
             this.gridContainer.style.height = gridHeight + 'px';
+            this.gridContainer.style.minHeight = '0px';
             this.gridContainer.style.overflowY = 'auto';
             this.gridContainer.style.overflowX = 'hidden';
         } else {
             this.gridContainer.style.removeProperty('height');
+            this.gridContainer.style.removeProperty('min-height');
+            this.gridContainer.style.removeProperty('overflow-y');
+            this.gridContainer.style.removeProperty('overflow-x');
         }
     }
 
