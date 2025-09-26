@@ -279,6 +279,7 @@ class DBDataSet extends DataSet
 
         $filterCondition = $this->getFilter();
         
+        // if (!empty($filterCondition) and isset($filterCondition[0]) and is_string($filterCondition[0])) 
         if (!empty($filterCondition) and isset($filterCondition[0]) and is_string($filterCondition[0])) 
         {
         
@@ -289,6 +290,13 @@ class DBDataSet extends DataSet
         elseif ($this->getDataLanguage() && $this->getParam('onlyCurrentLang')) {            
             $filter = ' WHERE lang_id = ' . $this->getDataLanguage();
         }
+        else
+        {
+            $filter = $this->dbh->buildWhereCondition($filterCondition)
+                . ($this->getParam('onlyCurrentLang') ? ' AND lang_id = ' . $this->getDataLanguage() : '');
+        }
+
+    
         
         if ($this->getOrder()) {
             $order = $this->dbh->buildOrderCondition($this->getOrder());

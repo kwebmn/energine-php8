@@ -134,17 +134,36 @@ class Grid {
     }
 
     selectItem(item) {
-        this.deselectItem();
-        if (item) {
-            item.classList.add('table-active');
-            this.selectedItem = item;
-            this.fireEvent('select', item);
+        const current = this.selectedItem;
+
+        if (!item) {
+            this.deselectItem();
+            return;
         }
+
+        if (item === current) {
+            this.deselectItem();
+            return;
+        }
+
+        if (current) {
+            this.deselectItem({ silent: true });
+        }
+
+        item.classList.remove('table-active');
+        item.classList.add('table-primary');
+        this.selectedItem = item;
+        this.fireEvent('select', item);
+        this.fireEvent('selectionChange', item);
     }
-    deselectItem() {
+    deselectItem(options = {}) {
         if (this.selectedItem) {
             this.selectedItem.classList.remove('table-active');
-            this.selectedItem = null;
+            this.selectedItem.classList.remove('table-primary');
+        }
+        this.selectedItem = null;
+        if (!options.silent) {
+            this.fireEvent('selectionChange', null);
         }
     }
     getSelectedItem() { return this.selectedItem; }
@@ -277,11 +296,19 @@ class Grid {
                 row.classList.remove('highlighted');
             }
         });
-        row.addEventListener('click', () => {
-            if (row !== this.getSelectedItem()) this.selectItem(row);
+        row.addEventListener('click', event => {
+            if (event.detail > 1) {
+                return;
+            }
+            this.selectItem(row);
         });
         row.addEventListener('dblclick', () => {
-            this.fireEvent('doubleClick');
+            if (this.getSelectedItem() !== row) {
+                this.selectItem(row);
+            }
+            if (this.getSelectedItem() === row) {
+                this.fireEvent('doubleClick');
+            }
         });
     }
 
@@ -626,6 +653,10 @@ class GridManager {
             onSortChange: this.onSortChange.bind(this),
             onDoubleClick: this.onDoubleClick.bind(this),
         });
+        this.grid.on('selectionChange', this.handleSelectionChange.bind(this));
+
+        this.selectionControls = [];
+        this.hasSelection = false;
 
         // --- Tabs ---
         this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
@@ -680,7 +711,93 @@ class GridManager {
         }
         if (this.toolbar.disableControls) this.toolbar.disableControls();
         if (this.toolbar.bindTo) this.toolbar.bindTo(this);
+
+        if (Array.isArray(this.toolbar.controls)) {
+            this.toolbar.controls.forEach(control => {
+                const element = control && control.element;
+                if (element && element.classList && element.classList.contains('btn-sm')) {
+                    element.classList.remove('btn-sm');
+                }
+            });
+        }
+
+        this.setupSelectionControls();
         // this.reload(); // Можно сделать отложенную загрузку при необходимости
+    }
+
+    handleSelectionChange(item) {
+        this.hasSelection = !!item;
+        this.updateSelectionDependentControls(this.hasSelection);
+    }
+
+    setupSelectionControls() {
+        if (!this.toolbar || !Array.isArray(this.toolbar.controls)) {
+            this.selectionControls = [];
+            return;
+        }
+
+        const keywordsExact = ['view', 'edit', 'del', 'delete', 'use', 'up', 'down', 'open', 'preview'];
+        const keywordsPrefix = ['move', 'activate', 'deactivate', 'approve', 'decline', 'restore', 'publish', 'unpublish', 'archive', 'unarchive', 'assign', 'unassign', 'lock', 'unlock', 'block', 'unblock', 'ban', 'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject', 'disable', 'enable', 'suspend', 'resume'];
+
+        this.selectionControls = this.toolbar.controls.filter(control => this.isSelectionDependentControl(control, keywordsExact, keywordsPrefix));
+        this.selectionControls.forEach(control => {
+            if (control && control.element) {
+                control.element.dataset.requiresSelection = 'true';
+            }
+            control._disabledBySelection = false;
+        });
+
+        this.updateSelectionDependentControls(!!this.grid.getSelectedItem());
+    }
+
+    isSelectionDependentControl(control, keywordsExact, keywordsPrefix) {
+        if (!control || !control.properties) {
+            return false;
+        }
+        const action = (control.properties.action || '').toLowerCase();
+        const id = (control.properties.id || '').toLowerCase();
+
+        if (!action && !id) {
+            return false;
+        }
+
+        if (keywordsExact.includes(action) || keywordsExact.includes(id)) {
+            return true;
+        }
+
+        return keywordsPrefix.some(prefix => action.startsWith(prefix) || id.startsWith(prefix));
+    }
+
+    updateSelectionDependentControls(hasSelection) {
+        if (!Array.isArray(this.selectionControls) || !this.selectionControls.length) {
+            return;
+        }
+
+        this.selectionControls.forEach(control => {
+            if (!control) return;
+
+            const initiallyDisabled = typeof control.initially_disabled === 'function'
+                ? control.initially_disabled()
+                : false;
+
+            if (!hasSelection) {
+                if (initiallyDisabled) {
+                    return;
+                }
+
+                const alreadyDisabled = typeof control.disabled === 'function'
+                    ? control.disabled()
+                    : false;
+
+                if (!alreadyDisabled && typeof control.disable === 'function') {
+                    control.disable();
+                    control._disabledBySelection = true;
+                }
+            } else if (control._disabledBySelection && typeof control.enable === 'function') {
+                control.enable();
+                control._disabledBySelection = false;
+            }
+        });
     }
 
     // --- Tabs ---
