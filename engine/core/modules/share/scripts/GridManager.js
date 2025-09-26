@@ -425,13 +425,21 @@ class Grid {
         }
         const baseLabel = header.dataset.originalLabel || header.textContent.trim();
         header.dataset.originalLabel = baseLabel;
-        let suffix = '';
+        header.textContent = baseLabel;
+
+        let indicator = '';
         if (header.classList.contains('asc')) {
-            suffix = ' ▲';
+            indicator = '▲';
         } else if (header.classList.contains('desc')) {
-            suffix = ' ▼';
+            indicator = '▼';
         }
-        header.textContent = suffix ? `${baseLabel}${suffix}` : baseLabel;
+
+        if (indicator) {
+            const indicatorEl = document.createElement('span');
+            indicatorEl.className = 'grid-sort-indicator text-primary ms-2 fw-semibold';
+            indicatorEl.textContent = indicator;
+            header.appendChild(indicatorEl);
+        }
     }
 
     adjustColumns() {
@@ -608,6 +616,14 @@ class Grid {
         if (this.metadata[sortFieldName] && this.metadata[sortFieldName].sort === 1) {
             this.sort.field = sortFieldName;
             this.sort.order = getNextDirectionOrderItem(sortDirection);
+
+            if (Array.isArray(this.headers)) {
+                this.headers.forEach(th => {
+                    if (th !== header) {
+                        th.classList.remove('asc', 'desc');
+                    }
+                });
+            }
 
             header.classList.remove('asc', 'desc');
             if (this.sort.order) {

@@ -233,8 +233,8 @@
                                             </xsl:otherwise>
                                         </xsl:choose>
                                     </colgroup>
-                                    <thead>
-                                        <tr>
+                                    <thead class="table-light text-primary">
+                                        <tr class="align-middle">
                                             <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
                                                 <th id="col_{position()}">
                                                     <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
@@ -245,7 +245,7 @@
                                                         <xsl:value-of select="normalize-space(concat(@class, ' text-center align-middle fw-semibold'))"/>
                                                     </xsl:attribute>
                                                     <xsl:attribute name="style">
-                                                        <xsl:value-of select="normalize-space(concat(@style, '; cursor: pointer; min-height: 48px; height: 48px;'))"/>
+                                                        <xsl:value-of select="normalize-space(concat(@style, '; cursor: pointer; min-height: 40px; height: 40px;'))"/>
                                                     </xsl:attribute>
                                                     <xsl:value-of select="@title"/>
                                                 </th>
@@ -261,8 +261,7 @@
                                                         <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
                                                             <xsl:variable name="FIELD_NAME" select="@name"/>
                                                             <xsl:variable name="FIELD_VALUE" select="$CURRENT_RECORD/field[@name=$FIELD_NAME]"/>
-                                                            <td class="align-middle text-break">
-                                                                <xsl:attribute name="style">min-height: 48px; height: 48px;</xsl:attribute>
+                                                            <td class="align-middle text-break py-2">
                                                                 <xsl:choose>
                                                                     <xsl:when test="$FIELD_VALUE">
                                                                         <xsl:apply-templates select="$FIELD_VALUE"/>
