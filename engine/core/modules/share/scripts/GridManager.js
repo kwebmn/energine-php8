@@ -920,6 +920,11 @@ class Grid {
             gridHeight = Math.min(gridHeight, viewportLimit);
         }
 
+        const paneLimit = this.getPaneContentLimit();
+        if (paneLimit !== null) {
+            gridHeight = Math.min(gridHeight, paneLimit);
+        }
+
         if (gridHeight > 0) {
             this.gridContainer.style.height = gridHeight + 'px';
             this.gridContainer.style.overflowY = 'auto';
@@ -977,6 +982,40 @@ class Grid {
                     available -= subtractPaneSpace(paneFooter);
                 }
             }
+
+            return Number.isFinite(available) ? Math.max(available, 0) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    getPaneContentLimit() {
+        if (!this.paneContent || !this.gridContainer) {
+            return null;
+        }
+
+        try {
+            const parsePixels = value => {
+                const numeric = Number.parseFloat(value);
+                return Number.isFinite(numeric) ? numeric : 0;
+            };
+
+            const paneRect = this.paneContent.getBoundingClientRect();
+            const containerRect = this.gridContainer.getBoundingClientRect();
+
+            if (!paneRect || !containerRect) {
+                return null;
+            }
+
+            if (!Number.isFinite(paneRect.bottom) || !Number.isFinite(containerRect.top)) {
+                return null;
+            }
+
+            const paneStyles = window.getComputedStyle(this.paneContent);
+            const paddingBottom = parsePixels(paneStyles.paddingBottom);
+            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
+
+            const available = paneRect.bottom - paddingBottom - borderBottom - containerRect.top;
 
             return Number.isFinite(available) ? Math.max(available, 0) : null;
         } catch (error) {
