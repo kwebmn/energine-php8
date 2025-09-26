@@ -88,6 +88,11 @@ class ModalBoxClass {
         setTimeout(() => {
             instance.modal.remove();
 
+            if (!this.boxes.length) {
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('paddingRight');
+            }
+
             if (typeof instance.options.onClose === 'function') {
                 instance.options.onClose(instance.returnValue);
             }
@@ -126,35 +131,75 @@ class ModalBoxClass {
 
         // Создаем модал
         const modal = document.createElement('div');
-        modal.className = 'modal top show';
+        modal.className = 'modal fade show';
         modal.style.display = 'block';
         modal.tabIndex = -1;
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-hidden', 'false');
         modal.style.zIndex = 1050 + this.boxes.length * 10;
-        modal.innerHTML = `
-          <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content" style="position:relative;height:100vh;">
-              <button type="button" class="btn-close position-absolute end-0 m-2" aria-label="Close" style="z-index:2"></button>
-                <div class="modal-body p-0" style="min-width:300px;">
-                </div>      
-            </div>
-          </div>
-        `;
 
-        const modalBody = modal.querySelector('.modal-body');
+        const dialog = document.createElement('div');
+        dialog.className = 'modal-dialog modal-dialog-centered modal-dialog-scrollable';
+        if (options.dialogClass) {
+            dialog.className += ` ${options.dialogClass}`;
+        }
+
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+
+        const header = document.createElement('div');
+        header.className = 'modal-header';
+
+        const shouldRenderTitle = Boolean(options.title);
+        let titleId = null;
+
+        if (shouldRenderTitle) {
+            const title = document.createElement('h5');
+            title.className = 'modal-title';
+            title.textContent = options.title;
+            titleId = `modalbox-title-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            title.id = titleId;
+            header.appendChild(title);
+            modal.setAttribute('aria-labelledby', titleId);
+        } else if (options.ariaLabel) {
+            modal.setAttribute('aria-label', options.ariaLabel);
+        } else {
+            header.classList.add('border-0', 'pb-0');
+            modal.setAttribute('aria-label', 'Modal dialog');
+        }
+
+        const btnClose = document.createElement('button');
+        btnClose.type = 'button';
+        btnClose.className = 'btn-close';
+        btnClose.setAttribute('aria-label', 'Close');
+        if (!shouldRenderTitle) {
+            btnClose.classList.add('ms-auto');
+        }
+        header.appendChild(btnClose);
+
+        const body = document.createElement('div');
+        body.className = 'modal-body p-0';
+
+        content.appendChild(header);
+        content.appendChild(body);
+        dialog.appendChild(content);
+        modal.appendChild(dialog);
+
+        const modalBody = body;
         showLoader(modalBody);
 
         const iframe = document.createElement('iframe');
         iframe.src = options.url;
         iframe.width = '100%';
-        iframe.height = options.height || '100%';
-        iframe.style.border = 'none';
+        const iframeHeight = options.height || '400px';
+        iframe.height = iframeHeight;
+        iframe.style.border = '0';
         iframe.style.display = 'block';
         iframe.style.width = '100%';
-        iframe.style.height = '100vh';
-        iframe.style.position = 'relative';
+        iframe.style.height = iframeHeight;
+        iframe.style.minHeight = iframeHeight;
+        iframe.loading = 'lazy';
         iframe.tabIndex = 0;
         modalBody.appendChild(iframe);
 
@@ -163,6 +208,10 @@ class ModalBoxClass {
         };
 
         document.body.appendChild(modal);
+
+        if (!this.boxes.length) {
+            document.body.classList.add('modal-open');
+        }
 
         const instance = {
             modal,
@@ -180,7 +229,6 @@ class ModalBoxClass {
 
         // Закрытие
         // Кнопка закрытия (крестик)
-        const btnClose = modal.querySelector('.btn-close');
         btnClose.addEventListener('click', () => closeModal());
 
         const backdropHandler = () => {
