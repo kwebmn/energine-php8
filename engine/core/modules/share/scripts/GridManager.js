@@ -876,7 +876,9 @@ class Grid {
 
         if (this.paneContent) {
             const margin = parseInt(this.element.style.marginTop, 10) || 0;
-            const externalToolbar = document.body.querySelector('[data-pane-part="footer"]');
+            const externalToolbar = this.pane
+                ? this.pane.querySelector('[data-pane-part="footer"]')
+                : null;
             const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
             const headHeight = headElement ? headElement.offsetHeight : 0;
             const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
@@ -955,7 +957,27 @@ class Grid {
             const borderBottom = parsePixels(styles.borderBottomWidth);
 
             const distanceFromViewportTop = rect.top - offsetTop;
-            const available = viewportHeight - distanceFromViewportTop - marginBottom - paddingBottom - borderBottom;
+            let available = viewportHeight - distanceFromViewportTop - marginBottom - paddingBottom - borderBottom;
+
+            if (this.pane) {
+                const subtractPaneSpace = element => {
+                    if (!element || !element.offsetParent) {
+                        return 0;
+                    }
+
+                    const elementStyles = window.getComputedStyle(element);
+                    const elementMarginTop = parsePixels(elementStyles.marginTop);
+                    const elementMarginBottom = parsePixels(elementStyles.marginBottom);
+
+                    return element.offsetHeight + elementMarginTop + elementMarginBottom;
+                };
+
+                const paneFooter = this.pane.querySelector('[data-pane-part="footer"]');
+                if (paneFooter && paneFooter.compareDocumentPosition(this.gridContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    available -= subtractPaneSpace(paneFooter);
+                }
+            }
+
             return Number.isFinite(available) ? Math.max(available, 0) : null;
         } catch (error) {
             return null;
