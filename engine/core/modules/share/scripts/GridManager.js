@@ -939,8 +939,13 @@ class Grid {
             };
 
             const rect = this.gridContainer.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-            if (!viewportHeight || rect.top === undefined) {
+            const { height: viewportHeight, offsetTop } = this.getViewportBox();
+
+            if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
+                return null;
+            }
+
+            if (!rect || !Number.isFinite(rect.top)) {
                 return null;
             }
 
@@ -949,11 +954,37 @@ class Grid {
             const paddingBottom = parsePixels(styles.paddingBottom);
             const borderBottom = parsePixels(styles.borderBottomWidth);
 
-            const available = viewportHeight - rect.top - marginBottom - paddingBottom - borderBottom;
+            const distanceFromViewportTop = rect.top - offsetTop;
+            const available = viewportHeight - distanceFromViewportTop - marginBottom - paddingBottom - borderBottom;
             return Number.isFinite(available) ? Math.max(available, 0) : null;
         } catch (error) {
             return null;
         }
+    }
+
+    getViewportBox() {
+        try {
+            const viewport = window.visualViewport;
+            if (viewport && typeof viewport.height === 'number') {
+                return {
+                    height: viewport.height,
+                    width: typeof viewport.width === 'number'
+                        ? viewport.width
+                        : (window.innerWidth || document.documentElement.clientWidth || 0),
+                    offsetTop: viewport.offsetTop || 0,
+                    offsetLeft: viewport.offsetLeft || 0,
+                };
+            }
+        } catch (error) {
+            // visualViewport might not be accessible (e.g., cross-origin iframes)
+        }
+
+        return {
+            height: window.innerHeight || document.documentElement.clientHeight || 0,
+            width: window.innerWidth || document.documentElement.clientWidth || 0,
+            offsetTop: 0,
+            offsetLeft: 0,
+        };
     }
 
     fitGridFormSize() {
@@ -994,15 +1025,56 @@ class Grid {
             + paneToolbarBottomHeight
             + margin
             + 3;
-        const viewportHeight = window.innerHeight;
-        let freeSpace = viewportHeight;
 
-        if ((document.body.scrollHeight - 16 - 81) < viewportHeight) {
-            freeSpace -= (this.pane.offsetTop + 16 + 81);
-        }
+        const parsePixels = value => {
+            const numeric = Number.parseFloat(value);
+            return Number.isFinite(numeric) ? numeric : 0;
+        };
 
-        if (totalHeight > paneHeight) {
-            this.pane.style.height = ((totalHeight > freeSpace) ? freeSpace : totalHeight) + 'px';
+        const { height: viewportHeight, offsetTop } = this.getViewportBox();
+
+        if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
+            const paneRect = this.pane.getBoundingClientRect();
+            const paneStyles = window.getComputedStyle(this.pane);
+            const marginBottom = parsePixels(paneStyles.marginBottom);
+            const paddingBottom = parsePixels(paneStyles.paddingBottom);
+            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
+
+            const paneTop = paneRect && Number.isFinite(paneRect.top)
+                ? paneRect.top - offsetTop
+                : 0;
+
+            let availablePaneHeight = viewportHeight - paneTop - marginBottom - paddingBottom - borderBottom;
+            if (!Number.isFinite(availablePaneHeight)) {
+                availablePaneHeight = viewportHeight;
+            }
+
+            if (availablePaneHeight < 0) {
+                availablePaneHeight = 0;
+            }
+
+            if (availablePaneHeight > 0) {
+                this.pane.style.maxHeight = availablePaneHeight + 'px';
+
+                const needsResize = (totalHeight > paneHeight) || (paneHeight > availablePaneHeight);
+                if (needsResize) {
+                    const targetPaneHeight = Math.min(Math.max(totalHeight, 0), availablePaneHeight);
+
+                    if (targetPaneHeight > 0) {
+                        this.pane.style.height = targetPaneHeight + 'px';
+                    } else {
+                        this.pane.style.removeProperty('height');
+                    }
+                } else {
+                    this.pane.style.removeProperty('height');
+                }
+            } else {
+                this.pane.style.removeProperty('height');
+                this.pane.style.removeProperty('max-height');
+            }
+        } else {
+            this.pane.style.removeProperty('height');
+            this.pane.style.removeProperty('max-height');
         }
 
         this.fitGridSize();
