@@ -140,13 +140,13 @@ class ModalBoxClass {
         modal.style.zIndex = 1050 + this.boxes.length * 10;
 
         const dialog = document.createElement('div');
-        dialog.className = 'modal-dialog modal-dialog-centered modal-dialog-scrollable';
+        dialog.className = 'modal-dialog modal-fullscreen';
         if (options.dialogClass) {
             dialog.className += ` ${options.dialogClass}`;
         }
 
         const content = document.createElement('div');
-        content.className = 'modal-content';
+        content.className = 'modal-content h-100 border-0 rounded-0 d-flex flex-column';
 
         const header = document.createElement('div');
         header.className = 'modal-header';
@@ -179,7 +179,7 @@ class ModalBoxClass {
         header.appendChild(btnClose);
 
         const body = document.createElement('div');
-        body.className = 'modal-body p-0';
+        body.className = 'modal-body p-0 flex-grow-1 d-flex';
 
         content.appendChild(header);
         content.appendChild(body);
@@ -192,13 +192,14 @@ class ModalBoxClass {
         const iframe = document.createElement('iframe');
         iframe.src = options.url;
         iframe.width = '100%';
-        const iframeHeight = options.height || '400px';
+        const iframeHeight = options.height || '100%';
         iframe.height = iframeHeight;
         iframe.style.border = '0';
         iframe.style.display = 'block';
         iframe.style.width = '100%';
         iframe.style.height = iframeHeight;
         iframe.style.minHeight = iframeHeight;
+        iframe.style.flex = '1 1 auto';
         iframe.loading = 'lazy';
         iframe.tabIndex = 0;
         modalBody.appendChild(iframe);
