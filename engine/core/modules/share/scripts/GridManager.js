@@ -661,6 +661,13 @@ class GridManager {
         // --- Tabs ---
         this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
 
+        if (this.tabPane && typeof this.tabPane.getCurrentTab === 'function') {
+            const activeTab = this.tabPane.getCurrentTab();
+            if (activeTab && activeTab.data && activeTab.data.lang) {
+                this.langId = activeTab.data.lang;
+            }
+        }
+
         // --- Toolbar placement ---
         let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
         if (toolbarContainer) {

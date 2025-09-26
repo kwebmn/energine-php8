@@ -86,15 +86,24 @@
             <ul class="nav nav-tabs card-header-tabs mb-0" data-role="tabs" role="tablist">
                 <xsl:choose>
                     <xsl:when test="$FIELDS[@language]">
+                        <xsl:variable name="CURRENT_LANG_ID" select="$LANG_ID"/>
+                        <xsl:variable name="HAS_ACTIVE_LANG" select="count($FIELDS[@language = $CURRENT_LANG_ID]) &gt; 0"/>
                         <xsl:for-each select="$FIELDS[@language and string-length(@tabName) &gt; 0 and not(@tabName = preceding-sibling::field[@language]/@tabName)]">
                             <xsl:sort select="@languageOrder" data-type="number"/>
                             <xsl:variable name="TAB_NAME" select="@tabName"/>
-                            <li class="nav-item" data-role="tab" role="presentation">
+                            <xsl:variable name="IS_ACTIVE" select="($HAS_ACTIVE_LANG and (@language = $CURRENT_LANG_ID)) or ((not($HAS_ACTIVE_LANG)) and position() = 1)"/>
+                            <li data-role="tab" role="presentation">
+                                <xsl:attribute name="class">
+                                    <xsl:text>nav-item</xsl:text>
+                                    <xsl:if test="$IS_ACTIVE">
+                                        <xsl:text> active</xsl:text>
+                                    </xsl:if>
+                                </xsl:attribute>
                                 <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
                                 <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
                                     <xsl:attribute name="class">
                                         <xsl:text>nav-link</xsl:text>
-                                        <xsl:if test="position()=1">
+                                        <xsl:if test="$IS_ACTIVE">
                                             <xsl:text> active</xsl:text>
                                         </xsl:if>
                                     </xsl:attribute>
@@ -104,7 +113,7 @@
                                     <xsl:attribute name="aria-controls"><xsl:value-of select="$TAB_ID"/></xsl:attribute>
                                     <xsl:attribute name="aria-selected">
                                         <xsl:choose>
-                                            <xsl:when test="position()=1">true</xsl:when>
+                                            <xsl:when test="$IS_ACTIVE">true</xsl:when>
                                             <xsl:otherwise>false</xsl:otherwise>
                                         </xsl:choose>
                                     </xsl:attribute>
