@@ -150,16 +150,21 @@ class Grid {
             this.deselectItem({ silent: true });
         }
 
-        item.classList.remove('table-active');
-        item.classList.add('table-primary');
+        item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white');
+        item.classList.add('bg-primary', 'text-white');
+        item.querySelectorAll('td, th').forEach(cell => {
+            cell.classList.add('bg-primary', 'text-white');
+        });
         this.selectedItem = item;
         this.fireEvent('select', item);
         this.fireEvent('selectionChange', item);
     }
     deselectItem(options = {}) {
         if (this.selectedItem) {
-            this.selectedItem.classList.remove('table-active');
-            this.selectedItem.classList.remove('table-primary');
+            this.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white');
+            this.selectedItem.querySelectorAll('td, th').forEach(cell => {
+                cell.classList.remove('bg-primary', 'text-white');
+            });
         }
         this.selectedItem = null;
         if (!options.silent) {

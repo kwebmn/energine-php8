@@ -31,7 +31,7 @@
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
         <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card border-0 rounded-3 overflow-hidden" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <div id="{generate-id(.)}" data-role="pane" class="card border-0 shadow-sm overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
             <xsl:if test="../@quickUploadPath">
                 <xsl:attribute name="quick_upload_path">
                     <xsl:value-of select="../@quickUploadPath"/>
@@ -82,8 +82,8 @@
         <xsl:variable name="FIELDS" select="record/field"/>
         <xsl:variable name="TAB_ID" select="generate-id(record)"/>
 
-        <div class="card-header bg-body-tertiary border-bottom" data-pane-part="header" data-pane-toolbar="top">
-            <ul class="nav nav-tabs card-header-tabs mb-0" data-role="tabs" role="tablist">
+        <div class="card-header bg-body border-bottom px-3 pt-3 pb-0" data-pane-part="header" data-pane-toolbar="top">
+            <ul class="nav nav-tabs card-header-tabs mb-0 gap-2" data-role="tabs" role="tablist">
                 <xsl:choose>
                     <xsl:when test="$FIELDS[@language]">
                         <xsl:variable name="CURRENT_LANG_ID" select="$LANG_ID"/>
@@ -102,7 +102,7 @@
                                 <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
                                 <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
                                     <xsl:attribute name="class">
-                                        <xsl:text>nav-link</xsl:text>
+                                        <xsl:text>nav-link py-2 px-3</xsl:text>
                                         <xsl:if test="$IS_ACTIVE">
                                             <xsl:text> active</xsl:text>
                                         </xsl:if>
@@ -130,7 +130,7 @@
                                 <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
                                 <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
                                     <xsl:attribute name="class">
-                                        <xsl:text>nav-link</xsl:text>
+                                        <xsl:text>nav-link py-2 px-3</xsl:text>
                                         <xsl:if test="position()=1">
                                             <xsl:text> active</xsl:text>
                                         </xsl:if>
@@ -153,12 +153,12 @@
                 </xsl:choose>
             </ul>
         </div>
-        <div class="card-body p-0" data-pane-part="body">
+        <div class="card-body p-0 flex-grow-1 d-flex flex-column bg-body" data-pane-part="body">
             <div class="tab-content" data-role="tab-content">
                 <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1">
-                    <div class="grid p-0" data-role="grid">
+                    <div class="grid p-0 d-flex flex-column gap-2 flex-grow-1" data-role="grid">
                         <xsl:if test="ancestor::component/filter">
-                            <div class="grid-toolbar bg-body-tertiary p-0 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-0" data-role="grid-toolbar">
+                            <div class="grid-toolbar bg-body p-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 shadow-sm mb-0" data-role="grid-toolbar">
                                 <div class="grid-filter row row-cols-lg-auto g-3 align-items-center w-100 border border-light-subtle bg-body px-3 py-3 mb-0" data-role="grid-filter">
                                     <div class="col-auto d-flex align-items-center gap-2">
                                         <span class="fw-semibold small text-secondary">
@@ -212,9 +212,9 @@
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head grid-body grid-table-wrapper  overflow-hidden" data-grid-section="head">
+                        <div class="grid-head grid-body grid-table-wrapper overflow-hidden border border-light-subtle shadow-sm bg-body" data-grid-section="head">
                             <div class="table-responsive" data-grid-section="body-inner">
-                                <table class="table table-bordered table-hover table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="table">
+                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="table">
                                     <xsl:if test="ancestor::component[@sample='FileRepository']">
                                         <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
                                     </xsl:if>

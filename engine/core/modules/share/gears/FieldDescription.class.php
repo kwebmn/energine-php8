@@ -408,7 +408,14 @@ class FieldDescription extends DBWorker implements \Iterator
      */
     public function setProperty(string $name, mixed $value): self
     {
-        if (in_array($name, ['title', 'message', 'tabName'], true)) {
+        if ($name === 'tabName') {
+            $stringValue = (string)$value;
+            if ($stringValue !== '' && preg_match('/^(?:[A-Z0-9_]+)$/', $stringValue)) {
+                $value = $this->translate($stringValue);
+            } else {
+                $value = $stringValue;
+            }
+        } elseif (in_array($name, ['title', 'message'], true)) {
             $value = $this->translate((string)$value);
         } elseif (is_scalar($value) && str_contains((string)$value, 'trans(')) {
             $value = $this->translate(str_replace(['trans', '(', ')'], '', (string)$value));
