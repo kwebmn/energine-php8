@@ -198,7 +198,7 @@ class PageToolbar extends Toolbar {
             button.classList.add('btn-sm');
             if (!button.classList.contains('btn-primary')) {
                 button.classList.remove('btn-secondary', 'btn-outline-secondary');
-                button.classList.add('btn-light', 'border', 'border-secondary-subtle', 'fw-semibold', 'text-secondary');
+                button.classList.add('btn-light', 'border', 'border-secondary-subtle',  'text-secondary');
             }
             const label = button.textContent ? button.textContent.trim() : '';
             if (label && !button.getAttribute('title')) {

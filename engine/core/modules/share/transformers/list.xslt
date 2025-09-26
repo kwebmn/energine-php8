@@ -31,7 +31,7 @@
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
         <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card border-0 shadow-sm overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <div id="{generate-id(.)}" data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
             <xsl:if test="../@quickUploadPath">
                 <xsl:attribute name="quick_upload_path">
                     <xsl:value-of select="../@quickUploadPath"/>
@@ -158,8 +158,8 @@
                 <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1">
                     <div class="grid p-0 d-flex flex-column gap-2 flex-grow-1" data-role="grid">
                         <xsl:if test="ancestor::component/filter">
-                            <div class="grid-toolbar bg-body p-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 shadow-sm mb-0" data-role="grid-toolbar">
-                                <div class="grid-filter row row-cols-lg-auto g-3 align-items-center w-100 border border-light-subtle bg-body px-3 py-3 mb-0" data-role="grid-filter">
+                            <div class="grid-toolbar border border-light-subtle border-bottom bg-body px-3 py-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-0" data-role="grid-toolbar">
+                                <div class="grid-filter row row-cols-lg-auto g-3 align-items-center w-100 mb-0" data-role="grid-filter">
                                     <div class="col-auto d-flex align-items-center gap-2">
                                         <span class="fw-semibold small text-secondary">
                                             <xsl:value-of select="ancestor::component/filter/@title"/>
@@ -167,14 +167,14 @@
                                         </span>
                                     </div>
                                     <div class="col">
-                                        <select name="fieldName" class="form-select form-select-sm" data-role="filter-field">
+                                        <select name="fieldName" class="form-select" data-role="filter-field">
                                             <xsl:for-each select="ancestor::component/filter/field">
                                                 <option value="[{@tableName}][{@name}]" type="{@type}"><xsl:value-of select="@title"/></option>
                                             </xsl:for-each>
                                         </select>
                                     </div>
                                     <div class="col">
-                                        <select name="condition" class="form-select form-select-sm" data-role="filter-condition">
+                                        <select name="condition" class="form-select" data-role="filter-condition">
                                             <xsl:for-each select="ancestor::component/filter/operators/operator">
                                                 <option value="{@name}">
                                                     <xsl:attribute name="data-types">
@@ -190,19 +190,19 @@
                                     </div>
                                     <div class="col flex-grow-1">
                                         <div class="filter-query d-flex flex-nowrap align-items-center gap-2" data-role="filter-query">
-                                            <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
+                                            <input type="text" class="form-control" data-role="filter-query-input"/>
                                         </div>
                                     </div>
                                     <div class="col flex-grow-1">
                                         <div class="filter-query d-flex flex-nowrap align-items-center gap-2" data-role="filter-query">
-                                            <input type="text" class="form-control form-control-sm" data-role="filter-query-input"/>
+                                            <input type="text" class="form-control" data-role="filter-query-input"/>
                                         </div>
                                     </div>
                                     <div class="col-auto ms-lg-auto d-flex gap-2">
-                                        <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2" data-action="apply-filter">
+                                        <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" data-action="apply-filter">
                                             <xsl:value-of select="ancestor::component/filter/@apply"/>
                                         </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2" data-action="reset-filter">
+                                        <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" data-action="reset-filter">
                                             <xsl:value-of select="ancestor::component/filter/@reset"/>
                                         </button>
                                     </div>
@@ -212,7 +212,7 @@
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head grid-body grid-table-wrapper overflow-hidden border border-light-subtle shadow-sm bg-body" data-grid-section="head">
+                        <div class="grid-head grid-body grid-table-wrapper overflow-hidden border border-light-subtle bg-body" data-grid-section="head">
                             <div class="table-responsive" data-grid-section="body-inner">
                                 <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="table">
                                     <xsl:if test="ancestor::component[@sample='FileRepository']">
@@ -233,8 +233,8 @@
                                             </xsl:otherwise>
                                         </xsl:choose>
                                     </colgroup>
-                                    <thead class="table-light text-primary">
-                                        <tr class="align-middle">
+                                    <thead>
+                                        <tr>
                                             <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
                                                 <th id="col_{position()}">
                                                     <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
@@ -245,7 +245,7 @@
                                                         <xsl:value-of select="normalize-space(concat(@class, ' text-center align-middle fw-semibold'))"/>
                                                     </xsl:attribute>
                                                     <xsl:attribute name="style">
-                                                        <xsl:value-of select="normalize-space(concat(@style, '; cursor: pointer; min-height: 40px; height: 40px;'))"/>
+                                                        <xsl:value-of select="normalize-space(concat(@style, '; cursor: pointer; min-height: 48px; height: 48px;'))"/>
                                                     </xsl:attribute>
                                                     <xsl:value-of select="@title"/>
                                                 </th>
@@ -294,12 +294,26 @@
     </xsl:template>
 
     <xsl:template match="component[@type='list']/recordset/record/field">
-        <span>
-            <xsl:if test=". = ''">
-                <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
-            </xsl:if>
-            <xsl:value-of select="." disable-output-escaping="yes"/>
-        </span>
+        <xsl:variable name="TEXT" select="normalize-space(string(.))"/>
+        <xsl:variable name="LIMIT" select="200"/>
+        <xsl:choose>
+            <xsl:when test="$TEXT = ''">
+                <span>
+                    <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
+                </span>
+            </xsl:when>
+            <xsl:when test="string-length($TEXT) &gt; $LIMIT">
+                <span class="d-inline-block w-100" style="max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; text-overflow: ellipsis; white-space: normal;" title="{$TEXT}">
+                    <xsl:value-of select="substring($TEXT, 1, $LIMIT)"/>
+                    <xsl:text>…</xsl:text>
+                </span>
+            </xsl:when>
+            <xsl:otherwise>
+                <span class="d-inline-block w-100" style="max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; text-overflow: ellipsis; white-space: normal;" title="{$TEXT}">
+                    <xsl:value-of select="$TEXT"/>
+                </span>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
 
 <!--    <xsl:template match="component[@type='list']/recordset/record/field[@type='image']">
@@ -309,12 +323,26 @@
     </xsl:template>
 -->
     <xsl:template match="component[@type='list']/recordset/record/field[@type='select']">
-        <span>
-            <xsl:if test=". = ''">
-                <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
-            </xsl:if>
-            <xsl:value-of select="options/option[@selected='selected']"/>
-        </span>
+        <xsl:variable name="TEXT" select="normalize-space(string(options/option[@selected='selected']))"/>
+        <xsl:variable name="LIMIT" select="200"/>
+        <xsl:choose>
+            <xsl:when test="$TEXT = ''">
+                <span>
+                    <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
+                </span>
+            </xsl:when>
+            <xsl:when test="string-length($TEXT) &gt; $LIMIT">
+                <span class="d-inline-block w-100" style="max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; text-overflow: ellipsis;" title="{$TEXT}">
+                    <xsl:value-of select="substring($TEXT, 1, $LIMIT)"/>
+                    <xsl:text>…</xsl:text>
+                </span>
+            </xsl:when>
+            <xsl:otherwise>
+                <span class="d-inline-block w-100" style="max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; text-overflow: ellipsis;" title="{$TEXT}">
+                    <xsl:value-of select="$TEXT"/>
+                </span>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
 
     <xsl:template match="component[@type='list']/recordset/record/field[@type='boolean']">

@@ -20,6 +20,12 @@ class Grid {
         this.options = options;
         this.events = {};
         this.pendingSelectionKey = null;
+        this.activeSortColumnIndex = null;
+        this.columnResizeState = null;
+        this.isColumnResizing = false;
+        this.columnResizeSuppressSort = false;
+        this.handleColumnResizeMove = this.handleColumnResizeMove.bind(this);
+        this.stopColumnResize = this.stopColumnResize.bind(this);
 
         // --- DOM привязка ---
         this.useCombinedTable = false;
@@ -66,7 +72,7 @@ class Grid {
         this.headers = this.headers || [];
         this.headers.forEach(header => {
             header.addEventListener('click', this.onChangeSort.bind(this));
-            header.classList.add('text-center', 'align-middle', 'fw-semibold');
+            header.classList.add('text-center', 'align-middle', 'fw-semibold', 'position-relative');
             header.style.cursor = 'pointer';
         });
 
@@ -75,6 +81,7 @@ class Grid {
                 header.dataset.originalLabel = header.textContent.trim();
             }
         });
+        this.enableColumnResize();
         this.refreshSortIndicators();
 
         this.handleWindowResize = () => {
@@ -151,25 +158,21 @@ class Grid {
         }
 
         item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white');
-        item.classList.add('bg-primary', 'text-white');
-        item.querySelectorAll('td, th').forEach(cell => {
-            cell.classList.add('bg-primary', 'text-white');
-        });
+        item.classList.add('table-primary');
         this.selectedItem = item;
         this.fireEvent('select', item);
         this.fireEvent('selectionChange', item);
+        this.updateSortHighlight();
     }
     deselectItem(options = {}) {
         if (this.selectedItem) {
             this.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white');
-            this.selectedItem.querySelectorAll('td, th').forEach(cell => {
-                cell.classList.remove('bg-primary', 'text-white');
-            });
         }
         this.selectedItem = null;
         if (!options.silent) {
             this.fireEvent('selectionChange', null);
         }
+        this.updateSortHighlight();
     }
     getSelectedItem() { return this.selectedItem; }
     isEmpty() { return !this.data || !this.data.length; }
@@ -194,6 +197,7 @@ class Grid {
         while (this.tbody.firstChild) {
             this.tbody.removeChild(this.tbody.firstChild);
         }
+        this.clearSortHighlight();
     }
 
     build() {
@@ -225,7 +229,7 @@ class Grid {
         this.paneContent = this.element.closest('[data-role="pane-item"]');
         this.gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
         if (this.gridToolbar) {
-            this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2', 'mb-3');
+            this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center');
         }
         this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
         if (!this.gridHeadContainer && this.useCombinedTable) {
@@ -252,6 +256,7 @@ class Grid {
         this.adjustColumns();
         this.fitGridFormSize();
         this.refreshSortIndicators();
+        this.enableColumnResize();
 
         if (!this.minGridHeight && this.gridContainer) {
             let h = this.gridContainer.style.height;
@@ -326,9 +331,7 @@ class Grid {
 
         const fieldMeta = this.metadata[fieldName];
         const fieldType = fieldMeta.type;
-        cell.classList.add('align-middle', 'text-break');
-        cell.style.minHeight = '48px';
-        cell.style.height = '48px';
+        cell.classList.add('align-middle', 'text-break', 'py-1');
 
         switch (fieldType) {
             case 'boolean': {
@@ -417,6 +420,7 @@ class Grid {
             return;
         }
         this.headers.forEach(header => this.updateSortIndicator(header));
+        this.updateSortHighlight();
     }
 
     updateSortIndicator(header) {
@@ -425,7 +429,25 @@ class Grid {
         }
         const baseLabel = header.dataset.originalLabel || header.textContent.trim();
         header.dataset.originalLabel = baseLabel;
-        header.textContent = baseLabel;
+
+        const existingResizer = header.querySelector('.grid-column-resizer');
+        const existingIndicator = header.querySelector('.grid-sort-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+
+        let label = header.querySelector('.grid-header-label');
+        if (!label) {
+            label = document.createElement('span');
+            label.className = 'grid-header-label';
+        }
+        label.textContent = baseLabel;
+
+        header.textContent = '';
+        header.appendChild(label);
+        if (existingResizer) {
+            existingResizer.remove();
+        }
 
         let indicator = '';
         if (header.classList.contains('asc')) {
@@ -435,10 +457,243 @@ class Grid {
         }
 
         if (indicator) {
-            const indicatorEl = document.createElement('span');
-            indicatorEl.className = 'grid-sort-indicator text-primary ms-2 fw-semibold';
+        const indicatorEl = document.createElement('span');
+            indicatorEl.className = 'grid-sort-indicator text-secondary ms-2 fw-semibold';
             indicatorEl.textContent = indicator;
             header.appendChild(indicatorEl);
+        }
+
+        if (existingResizer) {
+            header.appendChild(existingResizer);
+        } else if (header.classList.contains('position-relative')) {
+            // Ensure resizer restored when missing
+            this.enableColumnResize();
+        }
+    }
+
+    enableColumnResize() {
+        if (!Array.isArray(this.headers) || !this.headers.length) {
+            return;
+        }
+
+        this.headers.forEach((header, index) => {
+            if (!header) {
+                return;
+            }
+
+            header.classList.add('position-relative');
+
+            if (!header.querySelector('.grid-column-resizer')) {
+                const resizer = document.createElement('span');
+                resizer.className = 'grid-column-resizer position-absolute top-0 end-0 h-100';
+                resizer.style.width = '10px';
+                resizer.style.cursor = 'col-resize';
+                resizer.style.userSelect = 'none';
+                resizer.style.transform = 'translateX(50%)';
+                resizer.style.display = 'flex';
+                resizer.style.alignItems = 'center';
+                resizer.style.justifyContent = 'center';
+
+                const handle = document.createElement('span');
+                handle.style.width = '2px';
+                handle.style.height = '50%';
+                handle.style.backgroundColor = 'var(--bs-border-color)';
+                handle.style.opacity = '0.3';
+                resizer.appendChild(handle);
+
+                resizer.addEventListener('mousedown', event => this.startColumnResize(event, index));
+                header.appendChild(resizer);
+            }
+        });
+    }
+
+    updateSortHighlight() {
+        if (!Array.isArray(this.headers)) {
+            return;
+        }
+
+        let activeIndex = -1;
+        this.headers.forEach((header, index) => {
+            if (header.classList.contains('asc') || header.classList.contains('desc')) {
+                activeIndex = index;
+            }
+        });
+
+        if (activeIndex !== -1 && this.sort.order) {
+            this.applySortHighlight(activeIndex);
+        } else {
+            this.clearSortHighlight();
+        }
+    }
+
+    applySortHighlight(index) {
+        if (typeof index !== 'number' || index < 0) {
+            this.clearSortHighlight();
+            return;
+        }
+
+        if (this.activeSortColumnIndex === index) {
+            return;
+        }
+
+        this.clearSortHighlight();
+
+        const header = this.headers[index];
+        if (header) {
+            header.classList.add('bg-light');
+        }
+
+        this.getColumnCells(index).forEach(cell => {
+            cell.classList.add('bg-light');
+        });
+
+        const selectedRow = this.getSelectedItem();
+        if (selectedRow) {
+            const selectedCells = selectedRow.querySelectorAll(`td:nth-child(${index + 1})`);
+            selectedCells.forEach(cell => cell.classList.remove('table-active'));
+        }
+
+        this.activeSortColumnIndex = index;
+    }
+
+    clearSortHighlight() {
+        if (typeof this.activeSortColumnIndex === 'number' && this.activeSortColumnIndex >= 0) {
+            const header = this.headers[this.activeSortColumnIndex];
+            if (header) {
+                header.classList.remove('bg-light');
+            }
+
+            this.getColumnCells(this.activeSortColumnIndex).forEach(cell => {
+                cell.classList.remove('bg-light');
+            });
+        }
+
+        this.activeSortColumnIndex = null;
+    }
+
+    getColumnCells(index) {
+        if (!this.table || index < 0) {
+            return [];
+        }
+        return Array.from(this.table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`));
+    }
+
+    getHeadTableElement() {
+        if (!this.gridHeadContainer || this.gridHeadContainer === this.table) {
+            return this.table;
+        }
+        if (this.gridHeadContainer.tagName === 'TABLE') {
+            return this.gridHeadContainer;
+        }
+        return this.gridHeadContainer.querySelector('table');
+    }
+
+    getColumnElements(index) {
+        const result = [];
+        const collect = tableEl => {
+            if (!tableEl) {
+                return;
+            }
+            const colgroup = tableEl.querySelector('colgroup');
+            if (!colgroup) {
+                return;
+            }
+            const col = colgroup.children[index];
+            if (col && !result.includes(col)) {
+                result.push(col);
+            }
+        };
+
+        collect(this.table);
+        const headTable = this.getHeadTableElement();
+        if (headTable && headTable !== this.table) {
+            collect(headTable);
+        }
+
+        return result;
+    }
+
+    startColumnResize(event, index) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const header = this.headers ? this.headers[index] : null;
+        if (!header) {
+            return;
+        }
+
+        const colElements = this.getColumnElements(index);
+        if (!colElements.length) {
+            return;
+        }
+
+        const initialWidth = header.offsetWidth;
+
+        if (this.table) {
+            this.table.style.tableLayout = 'fixed';
+        }
+        const headTable = this.getHeadTableElement();
+        if (headTable) {
+            headTable.style.tableLayout = 'fixed';
+        }
+
+        this.columnResizeState = {
+            index,
+            startX: event.clientX,
+            startWidth: initialWidth,
+            header,
+            colElements
+        };
+
+        this.isColumnResizing = true;
+        document.body.classList.add('user-select-none');
+        document.addEventListener('mousemove', this.handleColumnResizeMove);
+        document.addEventListener('mouseup', this.stopColumnResize);
+    }
+
+    handleColumnResizeMove(event) {
+        if (!this.columnResizeState) {
+            return;
+        }
+
+        const { startX, startWidth, header, colElements, index } = this.columnResizeState;
+        let newWidth = startWidth + (event.clientX - startX);
+        const MIN_WIDTH = 80;
+        newWidth = Math.max(MIN_WIDTH, newWidth);
+
+        if (header) {
+            header.style.width = `${newWidth}px`;
+            header.style.minWidth = `${newWidth}px`;
+        }
+
+        colElements.forEach(col => {
+            col.style.width = `${newWidth}px`;
+            col.style.minWidth = `${newWidth}px`;
+        });
+
+        this.getColumnCells(index).forEach(cell => {
+            cell.style.width = `${newWidth}px`;
+            cell.style.minWidth = `${newWidth}px`;
+        });
+    }
+
+    stopColumnResize() {
+        this.columnResizeState = null;
+        this.isColumnResizing = false;
+        this.columnResizeSuppressSort = true;
+        setTimeout(() => {
+            this.columnResizeSuppressSort = false;
+        }, 0);
+        document.body.classList.remove('user-select-none');
+        document.removeEventListener('mousemove', this.handleColumnResizeMove);
+        document.removeEventListener('mouseup', this.stopColumnResize);
+
+        if (this.table) {
+            this.table.style.tableLayout = '';
+        }
+        const headTable = this.getHeadTableElement();
+        if (headTable && headTable !== this.table) {
+            headTable.style.tableLayout = '';
         }
     }
 
@@ -612,6 +867,9 @@ class Grid {
         const hasDesc = header.classList.contains('desc');
         const sortDirection = hasAsc ? 'asc' : hasDesc ? 'desc' : '';
 
+        if (this.isColumnResizing || this.columnResizeSuppressSort) {
+            return;
+        }
 
         if (this.metadata[sortFieldName] && this.metadata[sortFieldName].sort === 1) {
             this.sort.field = sortFieldName;
@@ -633,6 +891,7 @@ class Grid {
             this.fireEvent('sortChange');
             this.options.onSortChange();
             this.refreshSortIndicators();
+            this.updateSortHighlight();
         }
     }
 }
