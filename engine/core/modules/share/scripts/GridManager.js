@@ -904,42 +904,118 @@ class Grid {
  */
 class GridManager {
     /**
-     * @param {HTMLElement|string} element Main holder element for the GridManager
+     * GridManager orchestrates data grid interactions, paging, filtering and toolbar wiring.
+     * It preserves the legacy API so existing integrations keep working while the internals
+     * remain easier to follow.
+     *
+     * @param {HTMLElement|string} element Root element that hosts the grid UI.
      */
     constructor(element) {
-        // --- Properties ---
+        this.element = this._resolveElement(element);
+        this._initializeState();
+
+        this._initializeFilter();
+        this._initializePageList();
+        this._initializeGrid();
+        this._initializeTabPane();
+        this._placePaginationControls();
+        this._setupModalCloseHandler();
+        this._initializeMoveState();
+
+        this.reload();
+    }
+
+    /**
+     * Resolve DOM element reference from selector or HTMLElement.
+     *
+     * @private
+     * @param {HTMLElement|string} element
+     * @returns {HTMLElement}
+     */
+    _resolveElement(element) {
+        if (element instanceof HTMLElement) {
+            return element;
+        }
+        if (typeof element === 'string') {
+            const target = document.querySelector(element);
+            if (!target) {
+                throw new Error(`GridManager: element "${element}" was not found.`);
+            }
+            return target;
+        }
+        throw new Error('GridManager: unexpected element reference.');
+    }
+
+    /**
+     * Prepare baseline state holders used across the manager lifecycle.
+     *
+     * @private
+     */
+    _initializeState() {
         this.mvElementId = null;
         this.langId = 0;
         this.initialized = false;
+        this.toolbar = null;
+        this.gridPendingSelection = null;
+        this.selectionControls = [];
+        this.hasSelection = false;
+        this.singlePath = this.element.getAttribute('single_template') || '';
+    }
 
-        // --- Element reference ---
-        this.element = (typeof element === 'string') ?
-            document.querySelector(element) : element;
-
-        // --- Filter tool ---
+    /**
+     * Try to instantiate filter helper if markup is available.
+     *
+     * @private
+     */
+    _initializeFilter() {
         try {
             this.filter = new GridManager.Filter(this);
         } catch (err) {
-            // console.warn(err);
-            // console.warn('Filter is not created.');
+            this.filter = null;
+        }
+    }
+
+    /**
+     * Configure paging component that controls grid pages.
+     *
+     * @private
+     */
+    _initializePageList() {
+        this.pageList = new PageList({ onPageSelect: this.loadPage.bind(this) });
+    }
+
+    /**
+     * Initialize the grid view and wire core callbacks.
+     *
+     * @private
+     */
+    _initializeGrid() {
+        const gridElement = this.element.querySelector('[data-role="grid"]');
+        if (!gridElement) {
+            throw new Error('GridManager: [data-role="grid"] element is required.');
         }
 
-        // --- Pages ---
-        this.pageList = new PageList({ onPageSelect: this.loadPage.bind(this) });
-
-        // --- Grid ---
-        this.grid = new Grid(this.element.querySelector('[data-role="grid"]'), {
+        this.grid = new Grid(gridElement, {
             onSelect: this.onSelect.bind(this),
             onSortChange: this.onSortChange.bind(this),
             onDoubleClick: this.onDoubleClick.bind(this),
         });
+
         this.grid.on('selectionChange', this.handleSelectionChange.bind(this));
+    }
 
-        this.selectionControls = [];
-        this.hasSelection = false;
-
-        // --- Tabs ---
-        this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
+    /**
+     * Setup tabs wrapper and detect current language context.
+     *
+     * @private
+     */
+    _initializeTabPane() {
+        try {
+            this.tabPane = new TabPane(this.element, { onTabChange: this.onTabChange.bind(this) });
+        } catch (err) {
+            this.tabPane = null;
+            return;
+        }
 
         if (this.tabPane && typeof this.tabPane.getCurrentTab === 'function') {
             const activeTab = this.tabPane.getCurrentTab();
@@ -947,39 +1023,118 @@ class GridManager {
                 this.langId = activeTab.data.lang;
             }
         }
+    }
 
-        // --- Toolbar placement ---
-        let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
-        if (toolbarContainer) {
-            toolbarContainer.appendChild(this.pageList.getElement());
-        } else {
-            this.tabPane.element.appendChild(this.pageList.getElement());
+    /**
+     * Insert paging controls into pane footer or fallback container.
+     *
+     * @private
+     */
+    _placePaginationControls() {
+        if (!this.pageList) {
+            return;
         }
 
-        // --- Overlay (Visual imitation of waiting) ---
-        // this.overlay = new Overlay(this.element);
+        const hostElement = this.tabPane ? this.tabPane.element : this.element;
+        const pagerElement = this.pageList.getElement();
+        const toolbarContainer = hostElement.querySelector('[data-pane-part="footer"]');
 
-        // --- Property 'single_template' of main holder element ---
-        this.singlePath = this.element.getAttribute('single_template') || '';
+        if (toolbarContainer) {
+            toolbarContainer.appendChild(pagerElement);
+        } else {
+            hostElement.appendChild(pagerElement);
+        }
+    }
 
-        // ModalBox escape-close handling
+    /**
+     * Allow closing modal container with Escape key when hosted inside ModalBox.
+     *
+     * @private
+     */
+    _setupModalCloseHandler() {
         try {
-            let mb = window.parent && window.parent.ModalBox;
-            if (mb && mb.initialized && mb.getCurrent()) {
+            const modalBox = window.parent && window.parent.ModalBox;
+            if (modalBox && modalBox.initialized && modalBox.getCurrent()) {
                 document.body.addEventListener('keydown', evt => {
-                    if (evt.key === 'Escape') mb.close();
+                    if (evt.key === 'Escape') modalBox.close();
                 });
             }
-        } catch (e) {}
+        } catch (err) {
+            // Intentionally ignore cross-origin access errors.
+        }
+    }
 
-        // Инициализация id записи для move state
-        let move_from_id = this.element.getAttribute('move_from_id');
-        if (move_from_id) {
-            this.setMvElementId(move_from_id);
+    /**
+     * Restore move state if manager was opened in move mode.
+     *
+     * @private
+     */
+    _initializeMoveState() {
+        const moveFromId = this.element.getAttribute('move_from_id');
+        if (moveFromId) {
+            this.setMvElementId(moveFromId);
+        }
+    }
+
+    /**
+     * Memorise selection before issuing data request.
+     *
+     * @private
+     */
+    _rememberSelectionBeforeLoad() {
+        if (!this.grid) {
+            this.gridPendingSelection = null;
+            return;
         }
 
-        // --- Start! ---
-        this.reload();
+        const key = this.grid.getSelectedRecordKey();
+        if (key !== false && key !== undefined && key !== null) {
+            this.gridPendingSelection = String(key);
+        } else {
+            this.gridPendingSelection = null;
+        }
+    }
+
+    /**
+     * Construct URL safe JSON out of tab metadata payloads.
+     *
+     * @private
+     * @param {Element|string|Object} payload
+     * @returns {Object}
+     */
+    _normalizeTabPayload(payload) {
+        if (!payload) {
+            return {};
+        }
+        if (payload instanceof Element) {
+            const span = payload.querySelector('[data-role="tab-meta"]');
+            if (!span) {
+                throw new Error('GridManager: tab meta data element is missing.');
+            }
+            return this._parsePayloadString(span.textContent);
+        }
+        if (typeof payload === 'string') {
+            return this._parsePayloadString(payload);
+        }
+        if (typeof payload === 'object') {
+            return payload;
+        }
+        return {};
+    }
+
+    /**
+     * Convert loosely formatted strings to JSON objects.
+     *
+     * @private
+     * @param {string} value
+     * @returns {Object}
+     */
+    _parsePayloadString(value) {
+        if (!value) {
+            return {};
+        }
+        const normalized = value.replace(/(\w+)\s*:/g, '"$1":');
+        return JSON.parse(normalized);
     }
 
     // --- Move Element ID API ---
@@ -987,17 +1142,34 @@ class GridManager {
     getMvElementId() { return this.mvElementId; }
     clearMvElementId() { this.mvElementId = null; }
 
-    // --- Toolbar ---
+    /**
+     * Attach toolbar controls to the pane and align sizing.
+     *
+     * @param {Toolbar} toolbar
+     */
     attachToolbar(toolbar) {
         this.toolbar = toolbar;
-        let toolbarContainer = this.tabPane.element.querySelector('[data-pane-part="footer"]');
-        if (toolbarContainer) {
-            toolbarContainer.appendChild(this.toolbar.getElement());
-        } else {
-            this.tabPane.element.appendChild(this.toolbar.getElement());
+
+        if (!this.toolbar) {
+            return;
         }
-        if (this.toolbar.disableControls) this.toolbar.disableControls();
-        if (this.toolbar.bindTo) this.toolbar.bindTo(this);
+
+        const hostElement = this.tabPane ? this.tabPane.element : this.element;
+        const toolbarContainer = hostElement.querySelector('[data-pane-part="footer"]');
+        const toolbarElement = this.toolbar.getElement();
+
+        if (toolbarContainer) {
+            toolbarContainer.appendChild(toolbarElement);
+        } else {
+            hostElement.appendChild(toolbarElement);
+        }
+
+        if (typeof this.toolbar.disableControls === 'function') {
+            this.toolbar.disableControls();
+        }
+        if (typeof this.toolbar.bindTo === 'function') {
+            this.toolbar.bindTo(this);
+        }
 
         if (Array.isArray(this.toolbar.controls)) {
             this.toolbar.controls.forEach(control => {
@@ -1009,14 +1181,21 @@ class GridManager {
         }
 
         this.setupSelectionControls();
-        // this.reload(); // Можно сделать отложенную загрузку при необходимости
     }
 
+    /**
+     * Track selection state changes coming from grid component.
+     *
+     * @param {HTMLElement|null} item
+     */
     handleSelectionChange(item) {
         this.hasSelection = !!item;
         this.updateSelectionDependentControls(this.hasSelection);
     }
 
+    /**
+     * Scan toolbar controls and store ones that depend on row selection.
+     */
     setupSelectionControls() {
         if (!this.toolbar || !Array.isArray(this.toolbar.controls)) {
             this.selectionControls = [];
@@ -1024,9 +1203,17 @@ class GridManager {
         }
 
         const keywordsExact = ['view', 'edit', 'del', 'delete', 'use', 'up', 'down', 'open', 'preview'];
-        const keywordsPrefix = ['move', 'activate', 'deactivate', 'approve', 'decline', 'restore', 'publish', 'unpublish', 'archive', 'unarchive', 'assign', 'unassign', 'lock', 'unlock', 'block', 'unblock', 'ban', 'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject', 'disable', 'enable', 'suspend', 'resume'];
+        const keywordsPrefix = [
+            'move', 'activate', 'deactivate', 'approve', 'decline', 'restore', 'publish', 'unpublish',
+            'archive', 'unarchive', 'assign', 'unassign', 'lock', 'unlock', 'block', 'unblock', 'ban',
+            'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject',
+            'disable', 'enable', 'suspend', 'resume'
+        ];
 
-        this.selectionControls = this.toolbar.controls.filter(control => this.isSelectionDependentControl(control, keywordsExact, keywordsPrefix));
+        this.selectionControls = this.toolbar.controls.filter(control =>
+            this.isSelectionDependentControl(control, keywordsExact, keywordsPrefix)
+        );
+
         this.selectionControls.forEach(control => {
             if (control && control.element) {
                 control.element.dataset.requiresSelection = 'true';
@@ -1034,13 +1221,22 @@ class GridManager {
             control._disabledBySelection = false;
         });
 
-        this.updateSelectionDependentControls(!!this.grid.getSelectedItem());
+        this.updateSelectionDependentControls(!!(this.grid && this.grid.getSelectedItem()));
     }
 
+    /**
+     * Determine whether control should be enabled only when row is selected.
+     *
+     * @param {Object} control
+     * @param {string[]} keywordsExact
+     * @param {string[]} keywordsPrefix
+     * @returns {boolean}
+     */
     isSelectionDependentControl(control, keywordsExact, keywordsPrefix) {
         if (!control || !control.properties) {
             return false;
         }
+
         const action = (control.properties.action || '').toLowerCase();
         const id = (control.properties.id || '').toLowerCase();
 
@@ -1055,13 +1251,20 @@ class GridManager {
         return keywordsPrefix.some(prefix => action.startsWith(prefix) || id.startsWith(prefix));
     }
 
+    /**
+     * Enable or disable controls based on grid selection.
+     *
+     * @param {boolean} hasSelection
+     */
     updateSelectionDependentControls(hasSelection) {
         if (!Array.isArray(this.selectionControls) || !this.selectionControls.length) {
             return;
         }
 
         this.selectionControls.forEach(control => {
-            if (!control) return;
+            if (!control) {
+                return;
+            }
 
             const initiallyDisabled = typeof control.initially_disabled === 'function'
                 ? control.initially_disabled()
@@ -1088,61 +1291,68 @@ class GridManager {
     }
 
     // --- Tabs ---
+    /**
+     * Handle tab switch events and reload grid data.
+     *
+     * @param {Element|string|Object} data
+     */
     onTabChange(data) {
-        if (data instanceof Element) {
-            // Ищем внутри .data
-            const span = data.querySelector('[data-role="tab-meta"]');
-            if (span) {
-                // Преобразуем строку к валидному JSON
-                const jsonString = span.textContent.replace(/(\w+)\s*:/g, '"$1":');
-                data = JSON.parse(jsonString);
-            } else {
-                throw new Error('Нет .data внутри элемента!');
-            }
-        } else if (typeof data === 'string') {
-            // Если пришла строка
-            const jsonString = data.replace(/(\w+)\s*:/g, '"$1":');
-            data = JSON.parse(jsonString);
+        const normalized = this._normalizeTabPayload(data);
+        if (normalized.lang !== undefined) {
+            this.langId = normalized.lang;
         }
-        this.langId = data.lang;
-        if (this.filter) this.filter.remove();
+
+        if (this.filter && typeof this.filter.remove === 'function') {
+            this.filter.remove();
+        }
+
         this.reload();
     }
 
     // --- Grid events ---
     onSelect() { /* no-op, override as needed */ }
+
     onDoubleClick() {
-        if (this.toolbar && this.toolbar.getControlById && this.toolbar.getControlById('edit')) {
+        if (this.toolbar && typeof this.toolbar.getControlById === 'function' && this.toolbar.getControlById('edit')) {
             this.edit();
-        } else if (this.toolbar && this.toolbar.controls && this.toolbar.controls.length) {
-            let action = this.toolbar.controls[0].properties.action;
+        } else if (this.toolbar && Array.isArray(this.toolbar.controls) && this.toolbar.controls.length) {
+            const action = this.toolbar.controls[0].properties.action;
             if (typeof this[action] === 'function') this[action]();
         }
     }
+
     onSortChange() { this.loadPage(1); }
     sortChange() { this.loadPage(1); }
 
     // --- Paging ---
     reload() { this.loadPage(1); }
 
+    /**
+     * Request grid data for specific page.
+     *
+     * @param {number} pageNum
+     */
     loadPage(pageNum) {
-        const currentSelectionKey = this.grid.getSelectedRecordKey();
-        if (currentSelectionKey !== false && currentSelectionKey !== undefined && currentSelectionKey !== null) {
-            this.gridPendingSelection = String(currentSelectionKey);
-        } else {
-            this.gridPendingSelection = null;
+        if (!this.grid) {
+            return;
         }
 
-        this.pageList.disable();
-        if (this.toolbar) this.toolbar.disableControls();
-        //this.overlay.show();
+        this._rememberSelectionBeforeLoad();
+
+        if (this.pageList && typeof this.pageList.disable === 'function') {
+            this.pageList.disable();
+        }
+        if (this.toolbar && typeof this.toolbar.disableControls === 'function') {
+            this.toolbar.disableControls();
+        }
+
         showLoader();
         this.grid.clear();
-        if(this.pageList.currentPage)
-        {
+
+        if (this.pageList && this.pageList.currentPage) {
             pageNum = this.pageList.currentPage;
         }
-        // "Delay" replacement for browser layout quirks (setTimeout = 0)
+
         setTimeout(() => {
             Energine.request(
                 this.buildRequestURL(pageNum),
@@ -1154,76 +1364,111 @@ class GridManager {
         }, 0);
     }
 
+    /**
+     * Build request URL reflecting current sort and page.
+     *
+     * @param {number} pageNum
+     * @returns {string}
+     */
     buildRequestURL(pageNum) {
-        let url = '';
         if (this.grid.sort && this.grid.sort.order) {
-            url = `${this.singlePath}get-data/${this.grid.sort.field}-${this.grid.sort.order}/page-${pageNum}`;
-        } else {
-            url = `${this.singlePath}get-data/page-${pageNum}`;
+            return `${this.singlePath}get-data/${this.grid.sort.field}-${this.grid.sort.order}/page-${pageNum}`;
         }
-        return url;
+        return `${this.singlePath}get-data/page-${pageNum}`;
     }
 
+    /**
+     * Prepare POST body for data request.
+     *
+     * @returns {string}
+     */
     buildRequestPostBody() {
         const parts = [];
+
         if (this.langId) {
             parts.push(`languageID=${encodeURIComponent(this.langId)}`);
         }
+
         if (this.filter && typeof this.filter.getValue === 'function') {
             const filterQuery = this.filter.getValue();
             if (filterQuery) {
                 parts.push(filterQuery);
             }
         }
+
         return parts.join('&');
     }
 
+    /**
+     * Handle successful server response and render grid.
+     *
+     * @param {Object} result
+     */
     processServerResponse(result) {
-        let control = false;
-        if (this.toolbar && this.toolbar.getControlById) {
-            control = this.toolbar.getControlById('add');
-        }
+        const addControl = (this.toolbar && typeof this.toolbar.getControlById === 'function')
+            ? this.toolbar.getControlById('add')
+            : null;
 
-        const pendingSelection = this.gridPendingSelection || null;
+        const pendingSelection = this.gridPendingSelection;
         this.gridPendingSelection = null;
 
         if (!this.initialized) {
             this.grid.setMetadata(result.meta);
             this.initialized = true;
         }
+
         this.grid.setData(result.data || []);
         if (pendingSelection !== null) {
             this.grid.pendingSelectionKey = pendingSelection;
         }
 
-        if (result.pager) {
+        if (result.pager && this.pageList) {
             this.pageList.build(result.pager.count, result.pager.current, result.pager.records);
         }
+
         if (!this.grid.isEmpty()) {
-            if (this.toolbar) this.toolbar.enableControls();
-            this.pageList.enable();
+            if (this.toolbar && typeof this.toolbar.enableControls === 'function') {
+                this.toolbar.enableControls();
+            }
+            if (this.pageList && typeof this.pageList.enable === 'function') {
+                this.pageList.enable();
+            }
         }
-        if (control) control.enable();
+
+        if (addControl && typeof addControl.enable === 'function') {
+            addControl.enable();
+        }
+
         this.grid.build();
-        // this.overlay.hide();
         hideLoader();
     }
 
+    /**
+     * Handle data loading errors.
+     *
+     * @param {string} responseText
+     */
     processServerError(responseText) {
         alert(responseText);
-        // this.overlay.hide();
         hideLoader();
     }
 
+    /**
+     * React on modal close callbacks.
+     *
+     * @param {Object} returnValue
+     */
     processAfterCloseAction(returnValue) {
-        if (returnValue) {
-            if (returnValue.afterClose && typeof this[returnValue.afterClose] === 'function') {
-                this[returnValue.afterClose](null);
-            } else {
-                this.loadPage(this.pageList.currentPage);
-            }
-            this.grid.fireEvent('dirty');
+        if (!returnValue) {
+            return;
         }
+
+        if (returnValue.afterClose && typeof this[returnValue.afterClose] === 'function') {
+            this[returnValue.afterClose](null);
+        } else {
+            this.loadPage(this.pageList ? this.pageList.currentPage : 1);
+        }
+        this.grid.fireEvent('dirty');
     }
 
     // --- Actions ---
@@ -1237,14 +1482,14 @@ class GridManager {
         });
     }
     edit(id) {
-        if (!parseInt(id)) id = this.grid.getSelectedRecordKey();
+        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         ModalBox.open({
             url: `${this.singlePath}${id}/edit`,
             onClose: this.processAfterCloseAction.bind(this)
         });
     }
     move(id) {
-        if (!parseInt(id)) id = this.grid.getSelectedRecordKey();
+        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         this.setMvElementId(id);
         ModalBox.open({
             url: `${this.singlePath}move/${id}`,
@@ -1254,37 +1499,34 @@ class GridManager {
     moveFirst() { this.moveTo('first', this.getMvElementId()); }
     moveLast() { this.moveTo('last', this.getMvElementId()); }
     moveAbove(id) {
-        if (!parseInt(id)) id = this.grid.getSelectedRecordKey();
+        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         this.moveTo('above', this.getMvElementId(), id);
     }
     moveBelow(id) {
-        if (!parseInt(id)) id = this.grid.getSelectedRecordKey();
+        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         this.moveTo('below', this.getMvElementId(), id);
     }
     moveTo(dir, fromId, toId) {
         toId = toId || '';
-        // this.overlay.show();
         showLoader();
         Energine.request(
             `${this.singlePath}move/${fromId}/${dir}/${toId}/`,
             null,
             () => {
-                // this.overlay.hide();
                 hideLoader();
                 ModalBox.setReturnValue(true);
                 this.close();
             },
-            () => hideLoader(),//{ this.overlay.hide(); },
+            () => hideLoader(),
             (responseText) => {
                 alert(responseText);
-                // this.overlay.hide();
                 hideLoader();
             }
         );
     }
     editPrev() {
         let prevRow;
-        let curr = this.grid.getSelectedItem();
+        const curr = this.grid.getSelectedItem();
         if (curr && (prevRow = curr.previousElementSibling)) {
             this.grid.selectItem(prevRow);
             this.edit();
@@ -1292,31 +1534,28 @@ class GridManager {
     }
     editNext() {
         let nextRow;
-        let curr = this.grid.getSelectedItem();
+        const curr = this.grid.getSelectedItem();
         if (curr && (nextRow = curr.nextElementSibling)) {
             this.grid.selectItem(nextRow);
             this.edit();
         }
     }
     del() {
-        let MSG_CONFIRM_DELETE = (Energine.translations && Energine.translations.get('MSG_CONFIRM_DELETE')) ||
+        const MSG_CONFIRM_DELETE = (Energine.translations && Energine.translations.get('MSG_CONFIRM_DELETE')) ||
             'Do you really want to delete the chosen record?';
         if (confirm(MSG_CONFIRM_DELETE)) {
-            // this.overlay.show();
             showLoader();
             Energine.request(
                 `${this.singlePath}${this.grid.getSelectedRecordKey()}/delete/`,
                 null,
                 () => {
-                    // this.overlay.hide();
                     hideLoader();
                     this.grid.fireEvent('dirty');
-                    this.loadPage(this.pageList.currentPage);
+                    this.loadPage(this.pageList ? this.pageList.currentPage : 1);
                 },
-                () => hideLoader(),//{ this.overlay.hide(); },
+                () => hideLoader(),
                 (responseText) => {
                     alert(responseText);
-                    // this.overlay.hide();
                     hideLoader();
                 }
             );
@@ -1334,7 +1573,7 @@ class GridManager {
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/up/`,
             payload || undefined,
-            this.loadPage.bind(this, this.pageList.currentPage)
+            this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)
         );
     }
     down() {
@@ -1342,7 +1581,7 @@ class GridManager {
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/down/`,
             payload || undefined,
-            this.loadPage.bind(this, this.pageList.currentPage)
+            this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)
         );
     }
     print() {
@@ -1359,6 +1598,7 @@ class GridManager {
         remove() {}
     };
 }
+
 
 // Для совместимости (глобально)
 // window.GridManager = GridManager;
