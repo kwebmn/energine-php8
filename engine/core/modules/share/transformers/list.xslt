@@ -154,9 +154,9 @@
             </ul>
         </div>
         <div class="card-body p-0 flex-grow-1 d-flex flex-column bg-body" data-pane-part="body">
-            <div class="tab-content" data-role="tab-content">
-                <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1">
-                    <div class="grid p-0 d-flex flex-column gap-2 flex-grow-1" data-role="grid">
+            <div class="tab-content flex-grow-1 d-flex flex-column overflow-hidden" data-role="tab-content">
+                <div id="{$TAB_ID}" class="tab-pane fade show active h-100" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1" style="min-height: 0;">
+                    <div class="grid p-0 d-flex flex-column gap-2 flex-grow-1" data-role="grid" style="min-height: 0;">
                         <xsl:if test="ancestor::component/filter">
                             <div class="grid-toolbar border border-light-subtle border-bottom bg-body px-3 py-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-0" data-role="grid-toolbar">
                                 <div class="grid-filter row row-cols-lg-auto g-3 align-items-center w-100 mb-0" data-role="grid-filter">

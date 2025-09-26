@@ -102,6 +102,7 @@ class Grid {
         this.minGridHeight = null;
         this.pane = null;
         this.gridBodyContainer = null;
+        this.tabShownHandler = null;
 
         this.on('doubleClick', this.options.onDoubleClick);
 
@@ -253,6 +254,9 @@ class Grid {
             this.gridBodyContainer = this.table.parentElement;
         }
 
+        this.prepareGridLayoutContainers();
+        this.bindTabActivationHandler();
+
         this.adjustColumns();
         this.fitGridFormSize();
         this.refreshSortIndicators();
@@ -320,6 +324,90 @@ class Grid {
                 this.fireEvent('doubleClick');
             }
         });
+    }
+
+    prepareGridLayoutContainers() {
+        if (this.element && (!this.element.style.minHeight || this.element.style.minHeight === '' || this.element.style.minHeight === 'auto')) {
+            this.element.style.minHeight = '0';
+        }
+
+        if (!this.paneContent) {
+            return;
+        }
+
+        const tabContent = (this.paneContent.parentElement && this.paneContent.parentElement.classList
+            && this.paneContent.parentElement.classList.contains('tab-content'))
+            ? this.paneContent.parentElement
+            : null;
+        const paneBody = this.paneContent.closest('[data-pane-part="body"]');
+        const paneRoot = this.paneContent.closest('[data-role="pane"]');
+
+        if (paneBody) {
+            paneBody.classList.add('d-flex', 'flex-column');
+        }
+
+        if (tabContent) {
+            tabContent.classList.add('flex-grow-1');
+            if (!tabContent.classList.contains('d-flex')) {
+                tabContent.classList.add('d-flex', 'flex-column');
+            }
+        }
+
+        this.paneContent.classList.add('flex-grow-1');
+        if (!this.paneContent.style.flexBasis) {
+            this.paneContent.style.flexBasis = 'auto';
+        }
+
+        const nodesToNormalize = [this.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
+
+        nodesToNormalize.forEach(node => {
+            if (!node) return;
+            if (!node.style.minHeight || node.style.minHeight === '' || node.style.minHeight === 'auto') {
+                node.style.minHeight = '0';
+            }
+            try {
+                const computed = window.getComputedStyle(node);
+                if (computed.display.includes('flex') && computed.overflow === 'visible') {
+                    node.style.overflow = 'hidden';
+                }
+            } catch (e) {
+                // Ignore layout read errors in environments without layout engine
+            }
+        });
+    }
+
+    bindTabActivationHandler() {
+        if (this.tabShownHandler || !this.paneContent || !this.paneContent.id) {
+            return;
+        }
+
+        this.tabShownHandler = event => {
+            if (!event || !event.target) {
+                return;
+            }
+
+            let targetId = event.target.getAttribute('data-bs-target')
+                || event.target.getAttribute('href')
+                || event.target.getAttribute('aria-controls');
+
+            if (!targetId) {
+                return;
+            }
+
+            if (targetId.indexOf('#') !== -1) {
+                targetId = targetId.substring(targetId.indexOf('#') + 1);
+            }
+
+            if (targetId !== this.paneContent.id) {
+                return;
+            }
+
+            window.requestAnimationFrame(() => {
+                this.fitGridFormSize();
+            });
+        };
+
+        document.addEventListener('shown.bs.tab', this.tabShownHandler);
     }
 
     iterateFields(fieldName, record, row) {
@@ -775,29 +863,96 @@ class Grid {
         if (!this.gridContainer) {
             return;
         }
+
+        if (this.paneContent && !this.paneContent.offsetParent) {
+            return;
+        }
+
+        const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
+            ? this.table.tHead
+            : this.gridHeadContainer;
+
+        let gridHeight = null;
+
         if (this.paneContent) {
-            let margin = parseInt(this.element.style.marginTop) || 0;
-            let eBToolbar = document.body.querySelector('[data-pane-part="footer"]');
-            const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
-                ? this.table.tHead
-                : this.gridHeadContainer;
-            let gridHeight = this.paneContent.offsetHeight
-                - (headElement ? headElement.offsetHeight : 0)
-                - (this.gridToolbar ? this.gridToolbar.offsetHeight : 0)
+            const margin = parseInt(this.element.style.marginTop, 10) || 0;
+            const externalToolbar = document.body.querySelector('[data-pane-part="footer"]');
+            const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
+            const headHeight = headElement ? headElement.offsetHeight : 0;
+            const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
+
+            gridHeight = this.paneContent.offsetHeight
+                - headHeight
+                - toolbarHeight
                 - margin
-                - (eBToolbar ? eBToolbar.offsetHeight : 0);
+                - externalToolbarHeight;
 
-            if (gridHeight > 0) {
-                if (gridHeight < 100) gridHeight = 300;
-
-                if (this.gridContainer && this.gridHeadContainer && this.gridContainer === this.gridHeadContainer && headElement) {
-                    gridHeight += headElement.offsetHeight;
-                }
-
-                this.gridContainer.style.height = gridHeight + 'px';
-                this.gridContainer.style.overflowY = 'auto';
-                this.gridContainer.style.overflowX = 'hidden';
+            if (gridHeight < 0) {
+                gridHeight = 0;
             }
+
+            if (this.gridContainer === this.gridHeadContainer && headElement) {
+                gridHeight += headHeight;
+            }
+        }
+
+        const viewportLimit = this.getGridViewportLimit();
+        const paneHeight = this.paneContent ? this.paneContent.offsetHeight : null;
+        const minHeightBaseline = this.minGridHeight || 300;
+
+        let effectiveMinHeight = minHeightBaseline;
+        if (paneHeight) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, paneHeight);
+        }
+        if (viewportLimit !== null) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, viewportLimit);
+        }
+
+        if (gridHeight === null) {
+            gridHeight = effectiveMinHeight;
+        } else {
+            gridHeight = Math.max(gridHeight, effectiveMinHeight);
+        }
+
+        if (viewportLimit !== null) {
+            gridHeight = Math.min(gridHeight, viewportLimit);
+        }
+
+        if (gridHeight > 0) {
+            this.gridContainer.style.height = gridHeight + 'px';
+            this.gridContainer.style.overflowY = 'auto';
+            this.gridContainer.style.overflowX = 'hidden';
+        } else {
+            this.gridContainer.style.removeProperty('height');
+        }
+    }
+
+    getGridViewportLimit() {
+        if (!this.gridContainer) {
+            return null;
+        }
+
+        try {
+            const parsePixels = value => {
+                const numeric = Number.parseFloat(value);
+                return Number.isFinite(numeric) ? numeric : 0;
+            };
+
+            const rect = this.gridContainer.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+            if (!viewportHeight || rect.top === undefined) {
+                return null;
+            }
+
+            const styles = window.getComputedStyle(this.gridContainer);
+            const marginBottom = parsePixels(styles.marginBottom);
+            const paddingBottom = parsePixels(styles.paddingBottom);
+            const borderBottom = parsePixels(styles.borderBottomWidth);
+
+            const available = viewportHeight - rect.top - marginBottom - paddingBottom - borderBottom;
+            return Number.isFinite(available) ? Math.max(available, 0) : null;
+        } catch (error) {
+            return null;
         }
     }
 
