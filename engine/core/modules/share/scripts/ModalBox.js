@@ -135,26 +135,32 @@ class ModalBoxClass {
         modal.style.zIndex = 1050 + this.boxes.length * 10;
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content" style="position:relative;height:100vh;">
-              <button type="button" class="btn-close position-absolute end-0 m-2" aria-label="Close" style="z-index:2"></button>
-                <div class="modal-body p-0" style="min-width:300px;">
-                </div>      
+            <div class="modal-content h-100 border-0 rounded-0 d-flex flex-column">
+              <div class="modal-header border-0 pb-0 pt-3 px-3">
+                <button type="button" class="btn-close ms-auto" aria-label="Close"></button>
+              </div>
+              <div class="modal-body p-0 flex-grow-1 d-flex" style="position: relative; min-width:300px;">
+              </div>
             </div>
           </div>
         `;
 
         const modalBody = modal.querySelector('.modal-body');
+        modalBody.style.minHeight = '0';
         showLoader(modalBody);
 
         const iframe = document.createElement('iframe');
         iframe.src = options.url;
         iframe.width = '100%';
         iframe.height = options.height || '100%';
+        iframe.dataset.modalboxIframe = 'true';
         iframe.style.border = 'none';
         iframe.style.display = 'block';
         iframe.style.width = '100%';
-        iframe.style.height = '100vh';
-        iframe.style.position = 'relative';
+        iframe.style.height = '100%';
+        iframe.style.minHeight = options.height || '100%';
+        iframe.style.flex = '1 1 auto';
+        iframe.style.minWidth = '0';
         iframe.tabIndex = 0;
         modalBody.appendChild(iframe);
 

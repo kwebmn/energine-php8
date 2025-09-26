@@ -922,6 +922,8 @@ class GridManager {
         this._setupModalCloseHandler();
         this._initializeMoveState();
 
+        this._applyModalLayoutIfNeeded();
+
         this.reload();
     }
 
@@ -1073,6 +1075,115 @@ class GridManager {
         const moveFromId = this.element.getAttribute('move_from_id');
         if (moveFromId) {
             this.setMvElementId(moveFromId);
+        }
+    }
+
+    /**
+     * Determine if GridManager is rendered inside ModalBox iframe.
+     *
+     * @returns {boolean}
+     */
+    _isInsideModalBox() {
+        if (window.self === window.top) {
+            return false;
+        }
+
+        try {
+            if (window.frameElement && window.frameElement.dataset && window.frameElement.dataset.modalboxIframe === 'true') {
+                return true;
+            }
+
+            const modalBox = window.parent && window.parent.ModalBox;
+            if (modalBox && typeof modalBox.getCurrent === 'function') {
+                const current = modalBox.getCurrent();
+                if (current && current.modal && window.frameElement) {
+                    return current.modal.contains(window.frameElement);
+                }
+            }
+        } catch (err) {
+            // Ignore cross-domain access errors.
+        }
+
+        return false;
+    }
+
+    /**
+     * Apply full-height flex layout when hosted inside ModalBox.
+     */
+    _applyModalLayoutIfNeeded() {
+        if (!this._isInsideModalBox()) {
+            return;
+        }
+
+        document.documentElement.classList.add('h-100');
+        document.body.classList.add('h-100', 'd-flex', 'flex-column', 'overflow-hidden');
+        document.body.style.minHeight = '0';
+
+        const rootPane = this.element.closest('[data-role="pane"]');
+        if (rootPane) {
+            rootPane.classList.add('flex-grow-1', 'd-flex', 'flex-column', 'h-100');
+            rootPane.style.minHeight = '0';
+        }
+
+        this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'overflow-hidden');
+        this.element.style.minHeight = '0';
+
+        const paneBody = rootPane ? rootPane.querySelector('[data-pane-part="body"]') : null;
+        if (paneBody) {
+            paneBody.classList.add('flex-grow-1', 'overflow-auto', 'd-flex', 'flex-column');
+            paneBody.style.minHeight = '0';
+        }
+
+        const paneHeader = rootPane ? rootPane.querySelector('[data-pane-part="header"]') : null;
+        if (paneHeader) {
+            paneHeader.classList.add('flex-shrink-0');
+        }
+
+        const paneFooter = rootPane ? rootPane.querySelector('[data-pane-part="footer"]') : null;
+        if (paneFooter) {
+            paneFooter.classList.add('flex-shrink-0', 'mt-0', 'pt-3', 'pb-3', 'px-3', 'border-top', 'bg-body', 'd-flex', 'flex-wrap', 'gap-3', 'align-items-center', 'justify-content-between');
+        }
+
+        if (this.tabPane && this.tabPane.element) {
+            this.tabPane.element.classList.add('flex-grow-1', 'overflow-hidden');
+            this.tabPane.element.style.minHeight = '0';
+        }
+
+        const tabContent = this.element.querySelector('[data-role="tab-content"]');
+        if (tabContent) {
+            tabContent.classList.add('flex-grow-1', 'd-flex', 'flex-column', 'overflow-hidden');
+            tabContent.style.minHeight = '0';
+        }
+
+        this.element.querySelectorAll('[data-role="pane-item"]').forEach(item => {
+            item.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'overflow-hidden');
+            item.style.minHeight = '0';
+        });
+
+        const filterElement = this.filter && this.filter.element;
+        if (filterElement) {
+            filterElement.classList.add('flex-shrink-0');
+        }
+
+        const gridWrapper = this.element.querySelector('[data-role="grid"]');
+        if (gridWrapper) {
+            gridWrapper.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'overflow-hidden');
+            gridWrapper.style.minHeight = '0';
+        }
+
+        const gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
+        if (gridToolbar) {
+            gridToolbar.classList.add('d-flex', 'flex-wrap', 'gap-2', 'align-items-center');
+        }
+
+        if (this.grid && this.grid.gridContainer) {
+            this.grid.gridContainer.classList.add('flex-grow-1', 'overflow-auto');
+            this.grid.gridContainer.style.minHeight = '0';
+        }
+
+        if (this.grid && this.grid.gridBodyContainer && this.grid.gridBodyContainer !== this.grid.gridContainer) {
+            this.grid.gridBodyContainer.classList.add('flex-grow-1', 'overflow-auto');
+            this.grid.gridBodyContainer.style.minHeight = '0';
         }
     }
 
