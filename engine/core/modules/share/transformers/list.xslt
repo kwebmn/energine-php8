@@ -83,11 +83,12 @@
         <xsl:variable name="TAB_ID" select="generate-id(record)"/>
 
         <div class="card-header bg-body-tertiary border-bottom" data-pane-part="header" data-pane-toolbar="top">
-            <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
+            <ul class="nav nav-tabs card-header-tabs mb-0" data-role="tabs" role="tablist">
                 <xsl:choose>
                     <xsl:when test="$FIELDS[@language]">
-                        <xsl:for-each select="set:distinct($FIELDS[@language]/@tabName)">
-                            <xsl:variable name="TAB_NAME" select="."/>
+                        <xsl:for-each select="$FIELDS[@language and string-length(@tabName) &gt; 0 and not(@tabName = preceding-sibling::field[@language]/@tabName)]">
+                            <xsl:sort select="@languageOrder" data-type="number"/>
+                            <xsl:variable name="TAB_NAME" select="@tabName"/>
                             <li class="nav-item" data-role="tab" role="presentation">
                                 <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
                                 <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
@@ -107,14 +108,15 @@
                                             <xsl:otherwise>false</xsl:otherwise>
                                         </xsl:choose>
                                     </xsl:attribute>
-                                    <xsl:value-of select="."/>
+                                    <xsl:value-of select="$TAB_NAME"/>
                                 </a>
-                                <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="$FIELDS[@tabName=$TAB_NAME]/@language"/> }</span>
+                                <span class="visually-hidden" data-role="tab-meta">{ lang: <xsl:value-of select="@language"/> }</span>
                             </li>
                         </xsl:for-each>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:for-each select="set:distinct($FIELDS/@tabName)">
+                        <xsl:for-each select="$FIELDS[string-length(@tabName) &gt; 0 and not(@tabName = preceding-sibling::field/@tabName)]">
+                            <xsl:variable name="TAB_NAME" select="@tabName"/>
                             <li class="nav-item" data-role="tab" role="presentation">
                                 <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
                                 <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
@@ -134,7 +136,7 @@
                                             <xsl:otherwise>false</xsl:otherwise>
                                         </xsl:choose>
                                     </xsl:attribute>
-                                    <xsl:value-of select="."/>
+                                    <xsl:value-of select="$TAB_NAME"/>
                                 </a>
                             </li>
                         </xsl:for-each>
