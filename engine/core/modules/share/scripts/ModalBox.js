@@ -148,46 +148,75 @@ class ModalBoxClass {
         modal.style.zIndex = 1050 + this.boxes.length * 10;
 
         const dialog = document.createElement('div');
-        dialog.className = 'modal-dialog modal-fullscreen';
+        dialog.className = 'modal-dialog modal-dialog-scrollable modal-fullscreen';
+        dialog.setAttribute('role', 'document');
         if (options.dialogClass) {
             dialog.className += ` ${options.dialogClass}`;
         }
 
         const content = document.createElement('div');
         content.className = 'modal-content h-100 border-0 rounded-0 d-flex flex-column';
+        if (options.contentClass) {
+            content.className += ` ${options.contentClass}`;
+        }
 
         const header = document.createElement('div');
         header.className = 'modal-header';
+        if (options.headerClass) {
+            header.className += ` ${options.headerClass}`;
+        }
 
-        const shouldRenderTitle = Boolean(options.title);
+        const shouldRenderTitle = Boolean(options.title || options.titleHtml);
         let titleId = null;
 
         if (shouldRenderTitle) {
-            const title = document.createElement('h5');
+            const titleTag = options.titleTag || 'h5';
+            const title = document.createElement(titleTag);
             title.className = 'modal-title';
-            title.textContent = options.title;
+            if (options.titleClass) {
+                title.className += ` ${options.titleClass}`;
+            }
+            if (options.titleHtml) {
+                title.innerHTML = options.titleHtml;
+            } else {
+                title.textContent = options.title;
+            }
             titleId = `modalbox-title-${Date.now()}-${Math.random().toString(16).slice(2)}`;
             title.id = titleId;
             header.appendChild(title);
             modal.setAttribute('aria-labelledby', titleId);
-        } else if (options.ariaLabel) {
-            modal.setAttribute('aria-label', options.ariaLabel);
+            if (options.ariaLabel) {
+                modal.setAttribute('aria-label', options.ariaLabel);
+            }
         } else {
-            header.classList.add('border-0', 'pb-0');
-            modal.setAttribute('aria-label', 'Modal dialog');
+            if (options.ariaLabel) {
+                modal.setAttribute('aria-label', options.ariaLabel);
+            } else {
+                modal.setAttribute('aria-label', 'Modal dialog');
+            }
+
+            const placeholderTitle = document.createElement('span');
+            placeholderTitle.className = 'modal-title invisible';
+            placeholderTitle.setAttribute('aria-hidden', 'true');
+            placeholderTitle.textContent = '\u00A0';
+            header.appendChild(placeholderTitle);
         }
 
         const btnClose = document.createElement('button');
         btnClose.type = 'button';
         btnClose.className = 'btn-close';
-        btnClose.setAttribute('aria-label', 'Close');
-        if (!shouldRenderTitle) {
-            btnClose.classList.add('ms-auto');
+        btnClose.setAttribute('aria-label', options.closeLabel || 'Close');
+        btnClose.setAttribute('data-bs-dismiss', 'modal');
+        if (options.closeButtonClass) {
+            btnClose.className += ` ${options.closeButtonClass}`;
         }
         header.appendChild(btnClose);
 
         const body = document.createElement('div');
-        body.className = 'modal-body p-0 flex-grow-1 d-flex';
+        body.className = 'modal-body p-0 flex-grow-1 d-flex overflow-hidden';
+        if (options.bodyClass) {
+            body.className += ` ${options.bodyClass}`;
+        }
 
         content.appendChild(header);
         content.appendChild(body);
