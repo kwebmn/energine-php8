@@ -962,6 +962,7 @@ class GridManager {
         this.selectionControls = [];
         this.hasSelection = false;
         this.singlePath = this.element.getAttribute('single_template') || '';
+        this._modalLayoutActive = false;
     }
 
     /**
@@ -1111,14 +1112,23 @@ class GridManager {
      * Apply full-height flex layout when hosted inside ModalBox.
      */
     _applyModalLayoutIfNeeded() {
-        if (!this._isInsideModalBox()) {
+        this._modalLayoutActive = this._isInsideModalBox();
+        if (!this._modalLayoutActive) {
             return;
         }
 
+        this._ensureModalDocumentLayout();
+        this._ensureModalPaneLayout();
+        this._ensureModalGridLayout();
+    }
+
+    _ensureModalDocumentLayout() {
         document.documentElement.classList.add('h-100');
         document.body.classList.add('h-100', 'd-flex', 'flex-column', 'overflow-hidden');
         document.body.style.minHeight = '0';
+    }
 
+    _ensureModalPaneLayout() {
         const rootPane = this.element.closest('[data-role="pane"]');
         if (rootPane) {
             rootPane.classList.add('flex-grow-1', 'd-flex', 'flex-column', 'h-100');
@@ -1130,7 +1140,7 @@ class GridManager {
 
         const paneBody = rootPane ? rootPane.querySelector('[data-pane-part="body"]') : null;
         if (paneBody) {
-            paneBody.classList.add('flex-grow-1', 'overflow-auto', 'd-flex', 'flex-column');
+            paneBody.classList.add('flex-grow-1', 'overflow-hidden', 'd-flex', 'flex-column');
             paneBody.style.minHeight = '0';
         }
 
@@ -1164,6 +1174,12 @@ class GridManager {
         if (filterElement) {
             filterElement.classList.add('flex-shrink-0');
         }
+    }
+
+    _ensureModalGridLayout() {
+        if (!this._modalLayoutActive) {
+            return;
+        }
 
         const gridWrapper = this.element.querySelector('[data-role="grid"]');
         if (gridWrapper) {
@@ -1173,17 +1189,25 @@ class GridManager {
 
         const gridToolbar = this.element.querySelector('[data-role="grid-toolbar"]');
         if (gridToolbar) {
-            gridToolbar.classList.add('d-flex', 'flex-wrap', 'gap-2', 'align-items-center');
+            gridToolbar.classList.add('d-flex', 'flex-wrap', 'gap-2', 'align-items-center', 'flex-shrink-0');
         }
+
+        this.element.querySelectorAll('.grid-body').forEach(body => {
+            body.classList.add('flex-grow-1', 'overflow-auto');
+            body.style.minHeight = '0';
+            body.style.flexBasis = '0';
+        });
 
         if (this.grid && this.grid.gridContainer) {
             this.grid.gridContainer.classList.add('flex-grow-1', 'overflow-auto');
             this.grid.gridContainer.style.minHeight = '0';
+            this.grid.gridContainer.style.flexBasis = '0';
         }
 
         if (this.grid && this.grid.gridBodyContainer && this.grid.gridBodyContainer !== this.grid.gridContainer) {
             this.grid.gridBodyContainer.classList.add('flex-grow-1', 'overflow-auto');
             this.grid.gridBodyContainer.style.minHeight = '0';
+            this.grid.gridBodyContainer.style.flexBasis = '0';
         }
     }
 
@@ -1551,6 +1575,7 @@ class GridManager {
         }
 
         this.grid.build();
+        this._ensureModalGridLayout();
         hideLoader();
     }
 
