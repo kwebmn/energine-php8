@@ -134,12 +134,12 @@ class ModalBoxClass {
         modal.setAttribute('aria-hidden', 'false');
         modal.style.zIndex = 1050 + this.boxes.length * 10;
         modal.innerHTML = `
-          <div class="modal-dialog modal-fullscreen">
+          <div class="modal-dialog modal-fullscreen h-100">
             <div class="modal-content h-100 border-0 rounded-0 d-flex flex-column">
               <div class="modal-header border-0 pb-0 pt-3 px-3">
                 <button type="button" class="btn-close ms-auto" aria-label="Close"></button>
               </div>
-              <div class="modal-body p-0 flex-grow-1 d-flex" style="position: relative; min-width:300px;">
+              <div class="modal-body p-0 flex-grow-1 d-flex flex-column overflow-hidden" style="position: relative; min-width:300px;">
               </div>
             </div>
           </div>
@@ -147,6 +147,7 @@ class ModalBoxClass {
 
         const modalBody = modal.querySelector('.modal-body');
         modalBody.style.minHeight = '0';
+        modalBody.style.minWidth = '300px';
         showLoader(modalBody);
 
         const iframe = document.createElement('iframe');

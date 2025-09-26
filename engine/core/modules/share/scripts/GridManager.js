@@ -24,6 +24,8 @@ class Grid {
         this.columnResizeState = null;
         this.isColumnResizing = false;
         this.columnResizeSuppressSort = false;
+        this.isModalLayout = false;
+        this._storedMinGridHeight = null;
         this.handleColumnResizeMove = this.handleColumnResizeMove.bind(this);
         this.stopColumnResize = this.stopColumnResize.bind(this);
 
@@ -775,6 +777,11 @@ class Grid {
         if (!this.gridContainer) {
             return;
         }
+
+        if (this.isModalLayout) {
+            this.gridContainer.style.height = '';
+            return;
+        }
         if (this.paneContent) {
             let margin = parseInt(this.element.style.marginTop) || 0;
             let eBToolbar = document.body.querySelector('[data-pane-part="footer"]');
@@ -800,6 +807,11 @@ class Grid {
 
     fitGridFormSize() {
         if (!this.gridContainer) {
+            return;
+        }
+
+        if (this.isModalLayout) {
+            this.gridContainer.style.height = '';
             return;
         }
 
@@ -848,6 +860,33 @@ class Grid {
         }
 
         this.fitGridSize();
+    }
+
+    setModalLayout(isModalLayout) {
+        this.isModalLayout = Boolean(isModalLayout);
+
+        if (this.isModalLayout) {
+            if (this._storedMinGridHeight === null) {
+                this._storedMinGridHeight = this.minGridHeight;
+            }
+            this.minGridHeight = null;
+
+            if (this.gridContainer) {
+                this.gridContainer.style.height = '';
+                this.gridContainer.style.minHeight = '0';
+            }
+
+            if (this.gridBodyContainer) {
+                this.gridBodyContainer.style.height = '';
+                this.gridBodyContainer.style.minHeight = '0';
+            }
+        } else {
+            if (this._storedMinGridHeight !== null) {
+                this.minGridHeight = this._storedMinGridHeight;
+                this._storedMinGridHeight = null;
+            }
+            this.fitGridFormSize();
+        }
     }
 
     // --- Sorting
@@ -1113,6 +1152,9 @@ class GridManager {
      */
     _applyModalLayoutIfNeeded() {
         this._modalLayoutActive = this._isInsideModalBox();
+        if (this.grid && typeof this.grid.setModalLayout === 'function') {
+            this.grid.setModalLayout(this._modalLayoutActive);
+        }
         if (!this._modalLayoutActive) {
             return;
         }
@@ -1124,8 +1166,10 @@ class GridManager {
 
     _ensureModalDocumentLayout() {
         document.documentElement.classList.add('h-100');
+        document.documentElement.style.height = '100%';
         document.body.classList.add('h-100', 'd-flex', 'flex-column', 'overflow-hidden');
         document.body.style.minHeight = '0';
+        document.body.style.height = '100%';
     }
 
     _ensureModalPaneLayout() {
@@ -1133,6 +1177,7 @@ class GridManager {
         if (rootPane) {
             rootPane.classList.add('flex-grow-1', 'd-flex', 'flex-column', 'h-100');
             rootPane.style.minHeight = '0';
+            rootPane.style.height = '100%';
         }
 
         this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'overflow-hidden');
@@ -1165,6 +1210,12 @@ class GridManager {
             tabContent.style.minHeight = '0';
         }
 
+        const tabNav = this.element.querySelector('[data-role="tab-nav"]')
+            || this.element.querySelector('.nav-tabs');
+        if (tabNav) {
+            tabNav.classList.add('flex-shrink-0');
+        }
+
         this.element.querySelectorAll('[data-role="pane-item"]').forEach(item => {
             item.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'overflow-hidden');
             item.style.minHeight = '0';
@@ -1192,23 +1243,48 @@ class GridManager {
             gridToolbar.classList.add('d-flex', 'flex-wrap', 'gap-2', 'align-items-center', 'flex-shrink-0');
         }
 
-        this.element.querySelectorAll('.grid-body').forEach(body => {
+        const gridHead = this.element.querySelector('[data-grid-section="head"]');
+        if (gridHead) {
+            gridHead.classList.add('flex-shrink-0');
+        }
+
+        const gridBodySection = this.element.querySelector('[data-grid-section="body"]');
+        const gridBodyInner = this.element.querySelector('[data-grid-section="body-inner"]');
+        if (gridBodySection) {
+            gridBodySection.classList.add('flex-grow-1', 'd-flex', 'flex-column');
+            gridBodySection.style.minHeight = '0';
+            if (gridBodyInner) {
+                gridBodySection.classList.add('overflow-hidden');
+            }
+        }
+
+        const scrollTargets = new Set();
+
+        if (gridBodyInner) {
+            scrollTargets.add(gridBodyInner);
+        }
+
+        if (this.grid && this.grid.gridBodyContainer) {
+            scrollTargets.add(this.grid.gridBodyContainer);
+        }
+
+        if (!gridBodyInner) {
+            if (this.grid && this.grid.gridContainer) {
+                scrollTargets.add(this.grid.gridContainer);
+            }
+            if (gridBodySection) {
+                scrollTargets.add(gridBodySection);
+            }
+        }
+
+        scrollTargets.forEach(body => {
+            if (!body) {
+                return;
+            }
             body.classList.add('flex-grow-1', 'overflow-auto');
             body.style.minHeight = '0';
             body.style.flexBasis = '0';
         });
-
-        if (this.grid && this.grid.gridContainer) {
-            this.grid.gridContainer.classList.add('flex-grow-1', 'overflow-auto');
-            this.grid.gridContainer.style.minHeight = '0';
-            this.grid.gridContainer.style.flexBasis = '0';
-        }
-
-        if (this.grid && this.grid.gridBodyContainer && this.grid.gridBodyContainer !== this.grid.gridContainer) {
-            this.grid.gridBodyContainer.classList.add('flex-grow-1', 'overflow-auto');
-            this.grid.gridBodyContainer.style.minHeight = '0';
-            this.grid.gridBodyContainer.style.flexBasis = '0';
-        }
     }
 
     /**
@@ -1575,6 +1651,9 @@ class GridManager {
         }
 
         this.grid.build();
+        if (typeof this.grid.setModalLayout === 'function') {
+            this.grid.setModalLayout(this._modalLayoutActive);
+        }
         this._ensureModalGridLayout();
         hideLoader();
     }
