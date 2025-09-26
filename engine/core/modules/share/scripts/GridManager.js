@@ -231,7 +231,7 @@ class Grid {
         if (this.gridToolbar) {
             this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center');
         }
-        this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
+        this.gridHeadContainer = this.element.querySelector('[data-grid-role="head"], [data-grid-section="head"]');
         if (!this.gridHeadContainer && this.useCombinedTable) {
             const fallbackHead = this.element.querySelector('.grid-table-wrapper');
             this.gridHeadContainer = fallbackHead || (this.table ? this.table.parentElement : null);
@@ -789,11 +789,14 @@ class Grid {
 
             if (gridHeight > 0) {
                 if (gridHeight < 100) gridHeight = 300;
-                this.gridContainer.style.height = gridHeight ;
-            }
-            else
-            {
 
+                if (this.gridContainer && this.gridHeadContainer && this.gridContainer === this.gridHeadContainer && headElement) {
+                    gridHeight += headElement.offsetHeight;
+                }
+
+                this.gridContainer.style.height = gridHeight + 'px';
+                this.gridContainer.style.overflowY = 'auto';
+                this.gridContainer.style.overflowX = 'hidden';
             }
         }
     }

@@ -212,7 +212,7 @@
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head grid-body grid-table-wrapper overflow-hidden border border-light-subtle bg-body" data-grid-section="head">
+                        <div class="grid-head grid-body grid-table-wrapper border border-light-subtle bg-body flex-grow-1 overflow-auto" data-grid-role="head" data-grid-section="body">
                             <div class="table-responsive" data-grid-section="body-inner">
                                 <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="table">
                                     <xsl:if test="ancestor::component[@sample='FileRepository']">
