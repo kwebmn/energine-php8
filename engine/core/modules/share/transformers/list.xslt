@@ -53,7 +53,7 @@
                 </xsl:attribute>
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
-            <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
                 <script type="text/javascript">
                     <!--<xsl:for-each select="$TRANSLATION[@component=$NAME]">
@@ -154,9 +154,9 @@
             </ul>
         </div>
         <div class="card-body p-0 flex-grow-1 d-flex flex-column bg-body" data-pane-part="body">
-            <div class="tab-content" data-role="tab-content">
-                <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1">
-                    <div class="grid p-0 d-flex flex-column gap-2 flex-grow-1" data-role="grid">
+            <div class="tab-content flex-grow-1 d-flex flex-column overflow-hidden" data-role="tab-content">
+                <div id="{$TAB_ID}" class="tab-pane fade show active h-100" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab-1" style="min-height: 0;">
+                    <div class="grid p-0 d-flex flex-column gap-2 flex-grow-1" data-role="grid" style="min-height: 0;">
                         <xsl:if test="ancestor::component/filter">
                             <div class="grid-toolbar border border-light-subtle border-bottom bg-body px-3 py-3 d-flex flex-column flex-lg-row align-items-lg-center gap-3 mb-0" data-role="grid-toolbar">
                                 <div class="grid-filter row row-cols-lg-auto g-3 align-items-center w-100 mb-0" data-role="grid-filter">
@@ -212,9 +212,9 @@
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head grid-body grid-table-wrapper overflow-hidden border border-light-subtle bg-body" data-grid-section="head">
-                            <div class="table-responsive" data-grid-section="body-inner">
-                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="table">
+                        <div class="grid-head border border-light-subtle border-bottom-0 bg-body flex-shrink-0" data-grid-role="head" data-grid-section="head">
+                            <div class="table-responsive" data-grid-section="head-inner">
+                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="head">
                                     <xsl:if test="ancestor::component[@sample='FileRepository']">
                                         <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
                                     </xsl:if>
@@ -252,6 +252,30 @@
                                             </xsl:for-each>
                                         </tr>
                                     </thead>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="grid-body grid-table-wrapper border border-light-subtle border-top-0 bg-body flex-grow-1 overflow-auto" data-grid-role="body" data-grid-section="body" style="min-height: 0;">
+                            <div class="table-responsive" data-grid-section="body-inner">
+                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="body">
+                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
+                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
+                                    </xsl:if>
+                                    <colgroup>
+                                        <xsl:choose>
+                                            <xsl:when test="ancestor::component[@sample='FileRepository']">
+                                                <col id="col_11" style="width:12%"/>
+                                                <col id="col_12" style="width:30%"/>
+                                                <col id="col_13" style="width:28%"/>
+                                                <col id="col_14" style="width:30%"/>
+                                            </xsl:when>
+                                            <xsl:otherwise>
+                                                <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
+                                                    <col id="col_{position()}"/>
+                                                </xsl:for-each>
+                                            </xsl:otherwise>
+                                        </xsl:choose>
+                                    </colgroup>
                                     <tbody>
                                         <xsl:choose>
                                             <xsl:when test="recordset/record">

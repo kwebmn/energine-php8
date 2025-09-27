@@ -26,6 +26,7 @@ class Grid {
         this.columnResizeSuppressSort = false;
         this.handleColumnResizeMove = this.handleColumnResizeMove.bind(this);
         this.stopColumnResize = this.stopColumnResize.bind(this);
+        this.handleGridBodyScroll = this.handleGridBodyScroll.bind(this);
 
         // --- DOM привязка ---
         this.useCombinedTable = false;
@@ -102,6 +103,10 @@ class Grid {
         this.minGridHeight = null;
         this.pane = null;
         this.gridBodyContainer = null;
+        this.gridHeadScrollContainer = null;
+        this.gridBodyScrollElement = null;
+        this.boundGridBodyScrollElement = null;
+        this.tabShownHandler = null;
 
         this.on('doubleClick', this.options.onDoubleClick);
 
@@ -231,27 +236,39 @@ class Grid {
         if (this.gridToolbar) {
             this.gridToolbar.classList.add('d-flex', 'flex-wrap', 'align-items-center');
         }
-        this.gridHeadContainer = this.element.querySelector('[data-grid-section="head"]');
+        this.gridHeadContainer = this.element.querySelector('[data-grid-role="head"], [data-grid-section="head"]');
         if (!this.gridHeadContainer && this.useCombinedTable) {
             const fallbackHead = this.element.querySelector('.grid-table-wrapper');
             this.gridHeadContainer = fallbackHead || (this.table ? this.table.parentElement : null);
         }
         if (this.gridHeadContainer && this.gridHeadContainer !== this.table) {
-            this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0');
+            if (!this.gridHeadContainer.classList.contains('grid-head')) {
+                this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0');
+            }
         }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
         if (!this.gridContainer && this.useCombinedTable) {
             this.gridContainer = this.gridHeadContainer;
         }
         if (this.gridContainer && this.gridContainer !== this.gridHeadContainer) {
-            const bodyClasses = ['table-responsive', 'bg-body', 'border', 'border-top-0'];
-            this.gridContainer.classList.add(...bodyClasses);
+            if (!this.gridContainer.classList.contains('grid-table-wrapper')) {
+                const bodyClasses = ['table-responsive', 'bg-body', 'border', 'border-top-0'];
+                this.gridContainer.classList.add(...bodyClasses);
+            }
+            if (!this.gridContainer.style.minHeight || this.gridContainer.style.minHeight === '' || this.gridContainer.style.minHeight === 'auto') {
+                this.gridContainer.style.minHeight = '0';
+            }
         }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
         if (!this.gridBodyContainer && this.useCombinedTable && this.table) {
             this.gridBodyContainer = this.table.parentElement;
         }
+
+        this.setupGridScrollSync();
+
+        this.prepareGridLayoutContainers();
+        this.bindTabActivationHandler();
 
         this.adjustColumns();
         this.fitGridFormSize();
@@ -320,6 +337,135 @@ class Grid {
                 this.fireEvent('doubleClick');
             }
         });
+    }
+
+    prepareGridLayoutContainers() {
+        if (this.element && (!this.element.style.minHeight || this.element.style.minHeight === '' || this.element.style.minHeight === 'auto')) {
+            this.element.style.minHeight = '0';
+        }
+
+        if (!this.paneContent) {
+            return;
+        }
+
+        const tabContent = (this.paneContent.parentElement && this.paneContent.parentElement.classList
+            && this.paneContent.parentElement.classList.contains('tab-content'))
+            ? this.paneContent.parentElement
+            : null;
+        const paneBody = this.paneContent.closest('[data-pane-part="body"]');
+        const paneRoot = this.paneContent.closest('[data-role="pane"]');
+
+        if (paneBody) {
+            paneBody.classList.add('d-flex', 'flex-column');
+        }
+
+        if (tabContent) {
+            tabContent.classList.add('flex-grow-1');
+            if (!tabContent.classList.contains('d-flex')) {
+                tabContent.classList.add('d-flex', 'flex-column');
+            }
+        }
+
+        this.paneContent.classList.add('flex-grow-1');
+        if (!this.paneContent.style.flexBasis) {
+            this.paneContent.style.flexBasis = 'auto';
+        }
+
+        const nodesToNormalize = [this.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
+
+        nodesToNormalize.forEach(node => {
+            if (!node) return;
+            if (!node.style.minHeight || node.style.minHeight === '' || node.style.minHeight === 'auto') {
+                node.style.minHeight = '0';
+            }
+            try {
+                const computed = window.getComputedStyle(node);
+                if (computed.display.includes('flex') && computed.overflow === 'visible') {
+                    node.style.overflow = 'hidden';
+                }
+            } catch (e) {
+                // Ignore layout read errors in environments without layout engine
+            }
+        });
+    }
+
+    bindTabActivationHandler() {
+        if (this.tabShownHandler || !this.paneContent || !this.paneContent.id) {
+            return;
+        }
+
+        this.tabShownHandler = event => {
+            if (!event || !event.target) {
+                return;
+            }
+
+            let targetId = event.target.getAttribute('data-bs-target')
+                || event.target.getAttribute('href')
+                || event.target.getAttribute('aria-controls');
+
+            if (!targetId) {
+                return;
+            }
+
+            if (targetId.indexOf('#') !== -1) {
+                targetId = targetId.substring(targetId.indexOf('#') + 1);
+            }
+
+            if (targetId !== this.paneContent.id) {
+                return;
+            }
+
+            window.requestAnimationFrame(() => {
+                this.fitGridFormSize();
+                this.syncGridHeadScroll();
+            });
+        };
+
+        document.addEventListener('shown.bs.tab', this.tabShownHandler);
+    }
+
+    setupGridScrollSync() {
+        if (this.boundGridBodyScrollElement) {
+            this.boundGridBodyScrollElement.removeEventListener('scroll', this.handleGridBodyScroll);
+        }
+
+        const headInner = this.gridHeadContainer
+            ? (this.gridHeadContainer.querySelector('[data-grid-section="head-inner"]') || this.gridHeadContainer)
+            : null;
+        const bodyInner = this.gridBodyContainer
+            || this.element.querySelector('[data-grid-section="body-inner"]')
+            || this.gridContainer;
+
+        if (!headInner || !bodyInner || headInner === bodyInner) {
+            this.gridHeadScrollContainer = null;
+            this.gridBodyScrollElement = null;
+            this.boundGridBodyScrollElement = null;
+            return;
+        }
+
+        this.gridHeadScrollContainer = headInner;
+        this.gridBodyScrollElement = bodyInner;
+        this.boundGridBodyScrollElement = bodyInner;
+
+        Grid.ensureHeadScrollSuppression(headInner);
+        this.syncGridHeadScroll();
+
+        bodyInner.addEventListener('scroll', this.handleGridBodyScroll, { passive: true });
+    }
+
+    handleGridBodyScroll() {
+        this.syncGridHeadScroll();
+    }
+
+    syncGridHeadScroll() {
+        if (!this.gridHeadScrollContainer || !this.gridBodyScrollElement) {
+            return;
+        }
+
+        const scrollLeft = this.gridBodyScrollElement.scrollLeft;
+        if (this.gridHeadScrollContainer.scrollLeft !== scrollLeft) {
+            this.gridHeadScrollContainer.scrollLeft = scrollLeft;
+        }
     }
 
     iterateFields(fieldName, record, row) {
@@ -775,27 +921,195 @@ class Grid {
         if (!this.gridContainer) {
             return;
         }
+
+        if (this.paneContent && !this.paneContent.offsetParent) {
+            return;
+        }
+
+        const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
+            ? this.table.tHead
+            : this.gridHeadContainer;
+
+        let gridHeight = null;
+
         if (this.paneContent) {
-            let margin = parseInt(this.element.style.marginTop) || 0;
-            let eBToolbar = document.body.querySelector('[data-pane-part="footer"]');
-            const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
-                ? this.table.tHead
-                : this.gridHeadContainer;
-            let gridHeight = this.paneContent.offsetHeight
-                - (headElement ? headElement.offsetHeight : 0)
-                - (this.gridToolbar ? this.gridToolbar.offsetHeight : 0)
+            const margin = parseInt(this.element.style.marginTop, 10) || 0;
+            const externalToolbar = this.pane
+                ? this.pane.querySelector('[data-pane-part="footer"]')
+                : null;
+            const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
+            const headHeight = headElement ? headElement.offsetHeight : 0;
+            const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
+
+            gridHeight = this.paneContent.offsetHeight
+                - headHeight
+                - toolbarHeight
                 - margin
-                - (eBToolbar ? eBToolbar.offsetHeight : 0);
+                - externalToolbarHeight;
 
-            if (gridHeight > 0) {
-                if (gridHeight < 100) gridHeight = 300;
-                this.gridContainer.style.height = gridHeight ;
+            if (gridHeight < 0) {
+                gridHeight = 0;
             }
-            else
-            {
 
+            if (this.gridContainer === this.gridHeadContainer && headElement) {
+                gridHeight += headHeight;
             }
         }
+
+        const viewportLimit = this.getGridViewportLimit();
+        const paneHeight = this.paneContent ? this.paneContent.offsetHeight : null;
+        const minHeightBaseline = this.minGridHeight || 300;
+
+        let effectiveMinHeight = minHeightBaseline;
+        if (paneHeight) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, paneHeight);
+        }
+        if (viewportLimit !== null) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, viewportLimit);
+        }
+
+        if (gridHeight === null) {
+            gridHeight = effectiveMinHeight;
+        } else {
+            gridHeight = Math.max(gridHeight, effectiveMinHeight);
+        }
+
+        if (viewportLimit !== null) {
+            gridHeight = Math.min(gridHeight, viewportLimit);
+        }
+
+        const paneLimit = this.getPaneContentLimit();
+        if (paneLimit !== null) {
+            gridHeight = Math.min(gridHeight, paneLimit);
+        }
+
+        if (gridHeight > 0) {
+            this.gridContainer.style.height = gridHeight + 'px';
+            this.gridContainer.style.minHeight = '0px';
+            this.gridContainer.style.overflowY = 'auto';
+            this.gridContainer.style.overflowX = 'hidden';
+        } else {
+            this.gridContainer.style.removeProperty('height');
+            this.gridContainer.style.removeProperty('min-height');
+            this.gridContainer.style.removeProperty('overflow-y');
+            this.gridContainer.style.removeProperty('overflow-x');
+        }
+
+        this.syncGridHeadScroll();
+    }
+
+    getGridViewportLimit() {
+        if (!this.gridContainer) {
+            return null;
+        }
+
+        try {
+            const parsePixels = value => {
+                const numeric = Number.parseFloat(value);
+                return Number.isFinite(numeric) ? numeric : 0;
+            };
+
+            const rect = this.gridContainer.getBoundingClientRect();
+            const { height: viewportHeight, offsetTop } = this.getViewportBox();
+
+            if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
+                return null;
+            }
+
+            if (!rect || !Number.isFinite(rect.top)) {
+                return null;
+            }
+
+            const styles = window.getComputedStyle(this.gridContainer);
+            const marginBottom = parsePixels(styles.marginBottom);
+            const paddingBottom = parsePixels(styles.paddingBottom);
+            const borderBottom = parsePixels(styles.borderBottomWidth);
+
+            const distanceFromViewportTop = rect.top - offsetTop;
+            let available = viewportHeight - distanceFromViewportTop - marginBottom - paddingBottom - borderBottom;
+
+            if (this.pane) {
+                const subtractPaneSpace = element => {
+                    if (!element || !element.offsetParent) {
+                        return 0;
+                    }
+
+                    const elementStyles = window.getComputedStyle(element);
+                    const elementMarginTop = parsePixels(elementStyles.marginTop);
+                    const elementMarginBottom = parsePixels(elementStyles.marginBottom);
+
+                    return element.offsetHeight + elementMarginTop + elementMarginBottom;
+                };
+
+                const paneFooter = this.pane.querySelector('[data-pane-part="footer"]');
+                if (paneFooter && paneFooter.compareDocumentPosition(this.gridContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    available -= subtractPaneSpace(paneFooter);
+                }
+            }
+
+            return Number.isFinite(available) ? Math.max(available, 0) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    getPaneContentLimit() {
+        if (!this.paneContent || !this.gridContainer) {
+            return null;
+        }
+
+        try {
+            const parsePixels = value => {
+                const numeric = Number.parseFloat(value);
+                return Number.isFinite(numeric) ? numeric : 0;
+            };
+
+            const paneRect = this.paneContent.getBoundingClientRect();
+            const containerRect = this.gridContainer.getBoundingClientRect();
+
+            if (!paneRect || !containerRect) {
+                return null;
+            }
+
+            if (!Number.isFinite(paneRect.bottom) || !Number.isFinite(containerRect.top)) {
+                return null;
+            }
+
+            const paneStyles = window.getComputedStyle(this.paneContent);
+            const paddingBottom = parsePixels(paneStyles.paddingBottom);
+            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
+
+            const available = paneRect.bottom - paddingBottom - borderBottom - containerRect.top;
+
+            return Number.isFinite(available) ? Math.max(available, 0) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    getViewportBox() {
+        try {
+            const viewport = window.visualViewport;
+            if (viewport && typeof viewport.height === 'number') {
+                return {
+                    height: viewport.height,
+                    width: typeof viewport.width === 'number'
+                        ? viewport.width
+                        : (window.innerWidth || document.documentElement.clientWidth || 0),
+                    offsetTop: viewport.offsetTop || 0,
+                    offsetLeft: viewport.offsetLeft || 0,
+                };
+            }
+        } catch (error) {
+            // visualViewport might not be accessible (e.g., cross-origin iframes)
+        }
+
+        return {
+            height: window.innerHeight || document.documentElement.clientHeight || 0,
+            width: window.innerWidth || document.documentElement.clientWidth || 0,
+            offsetTop: 0,
+            offsetLeft: 0,
+        };
     }
 
     fitGridFormSize() {
@@ -836,15 +1150,54 @@ class Grid {
             + paneToolbarBottomHeight
             + margin
             + 3;
-        const viewportHeight = window.innerHeight;
-        let freeSpace = viewportHeight;
 
-        if ((document.body.scrollHeight - 16 - 81) < viewportHeight) {
-            freeSpace -= (this.pane.offsetTop + 16 + 81);
-        }
+        const parsePixels = value => {
+            const numeric = Number.parseFloat(value);
+            return Number.isFinite(numeric) ? numeric : 0;
+        };
 
-        if (totalHeight > paneHeight) {
-            this.pane.style.height = ((totalHeight > freeSpace) ? freeSpace : totalHeight) + 'px';
+        const { height: viewportHeight, offsetTop } = this.getViewportBox();
+
+        if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
+            const paneRect = this.pane.getBoundingClientRect();
+            const paneStyles = window.getComputedStyle(this.pane);
+            const marginBottom = parsePixels(paneStyles.marginBottom);
+            const paddingBottom = parsePixels(paneStyles.paddingBottom);
+            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
+
+            const paneTop = paneRect && Number.isFinite(paneRect.top)
+                ? paneRect.top - offsetTop
+                : 0;
+
+            let availablePaneHeight = viewportHeight - paneTop - marginBottom - paddingBottom - borderBottom;
+            if (!Number.isFinite(availablePaneHeight)) {
+                availablePaneHeight = viewportHeight;
+            }
+
+            if (availablePaneHeight < 0) {
+                availablePaneHeight = 0;
+            }
+
+            if (availablePaneHeight > 0) {
+                this.pane.style.maxHeight = availablePaneHeight + 'px';
+
+                const targetPaneHeightCandidate = Math.max(totalHeight, availablePaneHeight);
+                const targetPaneHeight = Number.isFinite(targetPaneHeightCandidate)
+                    ? Math.min(targetPaneHeightCandidate, availablePaneHeight)
+                    : availablePaneHeight;
+
+                if (targetPaneHeight > 0) {
+                    this.pane.style.height = targetPaneHeight + 'px';
+                } else {
+                    this.pane.style.removeProperty('height');
+                }
+            } else {
+                this.pane.style.removeProperty('height');
+                this.pane.style.removeProperty('max-height');
+            }
+        } else {
+            this.pane.style.removeProperty('height');
+            this.pane.style.removeProperty('max-height');
         }
 
         this.fitGridSize();
@@ -893,6 +1246,41 @@ class Grid {
             this.refreshSortIndicators();
             this.updateSortHighlight();
         }
+    }
+
+    static ensureHeadScrollSuppression(element) {
+        if (!element) {
+            return;
+        }
+
+        const doc = element.ownerDocument || document;
+        Grid.ensureHeadScrollStyles(doc);
+
+        element.classList.add('grid-head-scroll-suppressed');
+        if (!element.style.overflowX) {
+            element.style.overflowX = 'auto';
+        }
+        element.style.overflowY = 'hidden';
+        element.style.scrollbarWidth = 'none';
+        element.style.msOverflowStyle = 'none';
+    }
+
+    static ensureHeadScrollStyles(doc) {
+        const targetDoc = doc || document;
+        if (!targetDoc || !targetDoc.head) {
+            return;
+        }
+
+        if (targetDoc.__gridHeadScrollStyleInjected) {
+            return;
+        }
+
+        const style = targetDoc.createElement('style');
+        style.type = 'text/css';
+        style.textContent = '.grid-head-scroll-suppressed::-webkit-scrollbar{display:none;}'
+            + '.grid-head-scroll-suppressed{scrollbar-width:none;-ms-overflow-style:none;}';
+        targetDoc.head.appendChild(style);
+        targetDoc.__gridHeadScrollStyleInjected = true;
     }
 }
 
