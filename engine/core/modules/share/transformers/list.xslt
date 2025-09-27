@@ -53,7 +53,7 @@
                 </xsl:attribute>
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
-            <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body border-top px-3 py-2 mt-auto" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
                 <script type="text/javascript">
                     <!--<xsl:for-each select="$TRANSLATION[@component=$NAME]">
@@ -212,9 +212,9 @@
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head grid-body grid-table-wrapper border border-light-subtle bg-body flex-grow-1 overflow-auto" data-grid-role="head" data-grid-section="head">
-                            <div class="table-responsive" data-grid-section="body-inner">
-                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="table">
+                        <div class="grid-head border border-light-subtle border-bottom-0 bg-body flex-shrink-0" data-grid-role="head" data-grid-section="head">
+                            <div class="table-responsive" data-grid-section="head-inner">
+                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="head">
                                     <xsl:if test="ancestor::component[@sample='FileRepository']">
                                         <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
                                     </xsl:if>
@@ -252,6 +252,30 @@
                                             </xsl:for-each>
                                         </tr>
                                     </thead>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="grid-body grid-table-wrapper border border-light-subtle border-top-0 bg-body flex-grow-1 overflow-auto" data-grid-role="body" data-grid-section="body" style="min-height: 0;">
+                            <div class="table-responsive" data-grid-section="body-inner">
+                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="body">
+                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
+                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
+                                    </xsl:if>
+                                    <colgroup>
+                                        <xsl:choose>
+                                            <xsl:when test="ancestor::component[@sample='FileRepository']">
+                                                <col id="col_11" style="width:12%"/>
+                                                <col id="col_12" style="width:30%"/>
+                                                <col id="col_13" style="width:28%"/>
+                                                <col id="col_14" style="width:30%"/>
+                                            </xsl:when>
+                                            <xsl:otherwise>
+                                                <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
+                                                    <col id="col_{position()}"/>
+                                                </xsl:for-each>
+                                            </xsl:otherwise>
+                                        </xsl:choose>
+                                    </colgroup>
                                     <tbody>
                                         <xsl:choose>
                                             <xsl:when test="recordset/record">

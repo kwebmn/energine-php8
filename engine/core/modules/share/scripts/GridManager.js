@@ -238,15 +238,22 @@ class Grid {
             this.gridHeadContainer = fallbackHead || (this.table ? this.table.parentElement : null);
         }
         if (this.gridHeadContainer && this.gridHeadContainer !== this.table) {
-            this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0');
+            if (!this.gridHeadContainer.classList.contains('grid-head')) {
+                this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0');
+            }
         }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
         if (!this.gridContainer && this.useCombinedTable) {
             this.gridContainer = this.gridHeadContainer;
         }
         if (this.gridContainer && this.gridContainer !== this.gridHeadContainer) {
-            const bodyClasses = ['table-responsive', 'bg-body', 'border', 'border-top-0'];
-            this.gridContainer.classList.add(...bodyClasses);
+            if (!this.gridContainer.classList.contains('grid-table-wrapper')) {
+                const bodyClasses = ['table-responsive', 'bg-body', 'border', 'border-top-0'];
+                this.gridContainer.classList.add(...bodyClasses);
+            }
+            if (!this.gridContainer.style.minHeight || this.gridContainer.style.minHeight === '' || this.gridContainer.style.minHeight === 'auto') {
+                this.gridContainer.style.minHeight = '0';
+            }
         }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');

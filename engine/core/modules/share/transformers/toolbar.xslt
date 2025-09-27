@@ -174,7 +174,7 @@
     <xsl:template match="toolbar[@name='pager']">
         <xsl:if test="count(control) &gt; 1">
             <xsl:variable name="PAGER_TITLE" select="properties/property[@name='title']"/>
-            <nav class="mt-3" aria-label="Pagination">
+            <nav class="grid-pager-nav w-100 mt-0 mb-0" aria-label="Pagination">
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <xsl:if test="$PAGER_TITLE">
                         <span class="text-muted small fw-semibold">
