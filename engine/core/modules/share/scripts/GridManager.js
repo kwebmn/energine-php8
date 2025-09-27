@@ -26,6 +26,7 @@ class Grid {
         this.columnResizeSuppressSort = false;
         this.handleColumnResizeMove = this.handleColumnResizeMove.bind(this);
         this.stopColumnResize = this.stopColumnResize.bind(this);
+        this.handleGridBodyScroll = this.handleGridBodyScroll.bind(this);
 
         // --- DOM привязка ---
         this.useCombinedTable = false;
@@ -102,6 +103,9 @@ class Grid {
         this.minGridHeight = null;
         this.pane = null;
         this.gridBodyContainer = null;
+        this.gridHeadScrollContainer = null;
+        this.gridBodyScrollElement = null;
+        this.boundGridBodyScrollElement = null;
         this.tabShownHandler = null;
 
         this.on('doubleClick', this.options.onDoubleClick);
@@ -261,6 +265,8 @@ class Grid {
             this.gridBodyContainer = this.table.parentElement;
         }
 
+        this.setupGridScrollSync();
+
         this.prepareGridLayoutContainers();
         this.bindTabActivationHandler();
 
@@ -411,10 +417,55 @@ class Grid {
 
             window.requestAnimationFrame(() => {
                 this.fitGridFormSize();
+                this.syncGridHeadScroll();
             });
         };
 
         document.addEventListener('shown.bs.tab', this.tabShownHandler);
+    }
+
+    setupGridScrollSync() {
+        if (this.boundGridBodyScrollElement) {
+            this.boundGridBodyScrollElement.removeEventListener('scroll', this.handleGridBodyScroll);
+        }
+
+        const headInner = this.gridHeadContainer
+            ? (this.gridHeadContainer.querySelector('[data-grid-section="head-inner"]') || this.gridHeadContainer)
+            : null;
+        const bodyInner = this.gridBodyContainer
+            || this.element.querySelector('[data-grid-section="body-inner"]')
+            || this.gridContainer;
+
+        if (!headInner || !bodyInner || headInner === bodyInner) {
+            this.gridHeadScrollContainer = null;
+            this.gridBodyScrollElement = null;
+            this.boundGridBodyScrollElement = null;
+            return;
+        }
+
+        this.gridHeadScrollContainer = headInner;
+        this.gridBodyScrollElement = bodyInner;
+        this.boundGridBodyScrollElement = bodyInner;
+
+        Grid.ensureHeadScrollSuppression(headInner);
+        this.syncGridHeadScroll();
+
+        bodyInner.addEventListener('scroll', this.handleGridBodyScroll, { passive: true });
+    }
+
+    handleGridBodyScroll() {
+        this.syncGridHeadScroll();
+    }
+
+    syncGridHeadScroll() {
+        if (!this.gridHeadScrollContainer || !this.gridBodyScrollElement) {
+            return;
+        }
+
+        const scrollLeft = this.gridBodyScrollElement.scrollLeft;
+        if (this.gridHeadScrollContainer.scrollLeft !== scrollLeft) {
+            this.gridHeadScrollContainer.scrollLeft = scrollLeft;
+        }
     }
 
     iterateFields(fieldName, record, row) {
@@ -943,6 +994,8 @@ class Grid {
             this.gridContainer.style.removeProperty('overflow-y');
             this.gridContainer.style.removeProperty('overflow-x');
         }
+
+        this.syncGridHeadScroll();
     }
 
     getGridViewportLimit() {
@@ -1128,15 +1181,13 @@ class Grid {
             if (availablePaneHeight > 0) {
                 this.pane.style.maxHeight = availablePaneHeight + 'px';
 
-                const needsResize = (totalHeight > paneHeight) || (paneHeight > availablePaneHeight);
-                if (needsResize) {
-                    const targetPaneHeight = Math.min(Math.max(totalHeight, 0), availablePaneHeight);
+                const targetPaneHeightCandidate = Math.max(totalHeight, availablePaneHeight);
+                const targetPaneHeight = Number.isFinite(targetPaneHeightCandidate)
+                    ? Math.min(targetPaneHeightCandidate, availablePaneHeight)
+                    : availablePaneHeight;
 
-                    if (targetPaneHeight > 0) {
-                        this.pane.style.height = targetPaneHeight + 'px';
-                    } else {
-                        this.pane.style.removeProperty('height');
-                    }
+                if (targetPaneHeight > 0) {
+                    this.pane.style.height = targetPaneHeight + 'px';
                 } else {
                     this.pane.style.removeProperty('height');
                 }
@@ -1195,6 +1246,41 @@ class Grid {
             this.refreshSortIndicators();
             this.updateSortHighlight();
         }
+    }
+
+    static ensureHeadScrollSuppression(element) {
+        if (!element) {
+            return;
+        }
+
+        const doc = element.ownerDocument || document;
+        Grid.ensureHeadScrollStyles(doc);
+
+        element.classList.add('grid-head-scroll-suppressed');
+        if (!element.style.overflowX) {
+            element.style.overflowX = 'auto';
+        }
+        element.style.overflowY = 'hidden';
+        element.style.scrollbarWidth = 'none';
+        element.style.msOverflowStyle = 'none';
+    }
+
+    static ensureHeadScrollStyles(doc) {
+        const targetDoc = doc || document;
+        if (!targetDoc || !targetDoc.head) {
+            return;
+        }
+
+        if (targetDoc.__gridHeadScrollStyleInjected) {
+            return;
+        }
+
+        const style = targetDoc.createElement('style');
+        style.type = 'text/css';
+        style.textContent = '.grid-head-scroll-suppressed::-webkit-scrollbar{display:none;}'
+            + '.grid-head-scroll-suppressed{scrollbar-width:none;-ms-overflow-style:none;}';
+        targetDoc.head.appendChild(style);
+        targetDoc.__gridHeadScrollStyleInjected = true;
     }
 }
 
