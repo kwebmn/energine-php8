@@ -53,7 +53,7 @@
                 </xsl:attribute>
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
-            <div class="card-footer bg-body border-top px-3 py-2 mt-auto" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
                 <script type="text/javascript">
                     <!--<xsl:for-each select="$TRANSLATION[@component=$NAME]">
