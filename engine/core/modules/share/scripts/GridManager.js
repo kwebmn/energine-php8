@@ -1428,7 +1428,18 @@ class GridManager {
         const toolbarContainer = hostElement.querySelector('[data-pane-part="footer"]');
 
         if (toolbarContainer) {
-            toolbarContainer.appendChild(pagerElement);
+            toolbarContainer.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2');
+            if (!toolbarContainer.classList.contains('justify-content-between')) {
+                toolbarContainer.classList.add('justify-content-between');
+            }
+
+            pagerElement.classList.add('order-0', 'me-auto');
+
+            if (!toolbarContainer.firstChild || toolbarContainer.firstChild === pagerElement) {
+                toolbarContainer.appendChild(pagerElement);
+            } else {
+                toolbarContainer.insertBefore(pagerElement, toolbarContainer.firstChild);
+            }
         } else {
             hostElement.appendChild(pagerElement);
         }
@@ -1547,10 +1558,17 @@ class GridManager {
         const toolbarElement = this.toolbar.getElement();
 
         if (toolbarContainer) {
+            toolbarContainer.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2');
+            if (!toolbarContainer.classList.contains('justify-content-between')) {
+                toolbarContainer.classList.add('justify-content-between');
+            }
+            toolbarElement.classList.add('order-1', 'ms-auto');
             toolbarContainer.appendChild(toolbarElement);
         } else {
             hostElement.appendChild(toolbarElement);
         }
+
+        toolbarElement.classList.add('d-flex', 'flex-wrap', 'gap-2', 'align-items-center');
 
         if (typeof this.toolbar.disableControls === 'function') {
             this.toolbar.disableControls();
