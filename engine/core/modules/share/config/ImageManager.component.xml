@@ -16,10 +16,10 @@
             <field name="alt" type="string" title="FIELD_IMG_ALTTEXT" length="100" nullable="true"/>
         </fields>
         <toolbar>
-            <control type="button" id="insert" title="BTN_INSERT" onclick="insertImage" tooltip="Insert image"/>
-            <control type="button" id="imagelib" title="BTN_IMAGELIB" onclick="openImageLib"
+            <control icon="fa fa-plus-circle" type="button" id="insert" title="BTN_INSERT" onclick="insertImage" tooltip="Insert image"/>
+            <control icon="fa fa-picture-o" type="button" id="imagelib" title="BTN_IMAGELIB" onclick="openImageLib"
                      tooltip="Open image library"/>
-            <control type="button" id="close" title="BTN_CLOSE" onclick="close" tooltip="Close this window"/>
+            <control icon="fa fa-times" type="button" id="close" title="BTN_CLOSE" onclick="close" tooltip="Close this window"/>
         </toolbar>
         <translations>
             <translation const="TXT_IMG_MANAGER"/>

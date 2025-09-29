@@ -9,19 +9,19 @@
             <field name="site_name"/>
         </fields>
         <toolbar>
-            <control id="add" title="BTN_ADD" type="button" onclick="add"/>
-            <control id="edit" title="BTN_EDIT" type="button" onclick="edit"/>
+            <control id="add" title="BTN_ADD" icon="fa fa-plus" type="button" onclick="add"/>
+            <control id="edit" title="BTN_EDIT" icon="fa fa-pencil" type="button" onclick="edit"/>
             <control id="sep01" type="separator"/>
-            <control id="go" title="BTN_GO" type="button" onclick="go"/>
+            <control id="go" title="BTN_GO" icon="fa fa-external-link" type="button" onclick="go"/>
             <control id="sep03" type="separator"/>
-            <control type="button" id="up" title="BTN_MOVE_UP" onclick="up"/>
-            <control type="button" id="down" title="BTN_MOVE_DOWN" onclick="down"/>
+            <control icon="fa fa-arrow-up" type="button" id="up" title="BTN_MOVE_UP" onclick="up"/>
+            <control icon="fa fa-arrow-down" type="button" id="down" title="BTN_MOVE_DOWN" onclick="down"/>
             <control id="sep02" type="separator"/>
-            <control id="delete" title="BTN_DELETE" type="button" onclick="del"/>
+            <control id="delete" title="BTN_DELETE" icon="fa fa-trash" type="button" onclick="del"/>
             <control id="sep04" type="separator"/>
-            <control id="reset" title="BTN_RESET_TEMPLATES" type="button" onclick="reset"/>
+            <control id="reset" title="BTN_RESET_TEMPLATES" icon="fa fa-undo" type="button" onclick="reset"/>
             <control id="sep04" type="separator"/>
-            <control id="properties" title="BTN_PROPERTIES" type="button" onclick="siteProps"/>
+            <control id="properties" title="BTN_PROPERTIES" icon="fa fa-sliders" type="button" onclick="siteProps"/>
         </toolbar>
         <translations>
             <translation const="MSG_CONFIRM_TEMPLATES_RESET"/>
@@ -36,7 +36,7 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
             <control id="after_save_action" title="TXT_AFTER_SAVE_ACTION"
                      type="select"
                     >
@@ -46,7 +46,7 @@
                 </options>
             </control>
             <control id="sep1" type="separator"/>
-            <control id="close" title="BTN_CANCEL" type="button"
+            <control id="close" title="BTN_CANCEL" icon="fa fa-times" type="button"
                      onclick="close"/>
         </toolbar>
     </state>
@@ -58,8 +58,8 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-            <control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+            <control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="save" rights="3">

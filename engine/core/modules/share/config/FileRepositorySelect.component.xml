@@ -46,15 +46,15 @@
             <field name="upl_is_flv" type="hidden"/>
         </fields>
         <toolbar>
-            <control id="open" title="BTN_OPEN" type="button" onclick="open"/>
+            <control id="open" title="BTN_OPEN" icon="fa fa-folder-open" type="button" onclick="open"/>
             <control id="sep01" type="separator"/>
-            <control id="add" title="BTN_UPLOAD" type="button" onclick="add"/>
-            <control id="addDir" title="BTN_ADD_DIR" type="button" onclick="addDir"/>
-            <control id="edit" title="BTN_EDIT" type="button" onclick="edit"/>
+            <control id="add" title="BTN_UPLOAD" icon="fa fa-plus" type="button" onclick="add"/>
+            <control id="addDir" title="BTN_ADD_DIR" icon="fa fa-folder" type="button" onclick="addDir"/>
+            <control id="edit" title="BTN_EDIT" icon="fa fa-pencil" type="button" onclick="edit"/>
             <control id="sep02" type="separator"/>
-            <control id="delete" title="BTN_DELETE" type="button" onclick="del"/>
+            <control id="delete" title="BTN_DELETE" icon="fa fa-trash" type="button" onclick="del"/>
             <control id="sep03" type="separator"/>
-            <control id="close" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="close" title="BTN_CLOSE" icon="fa fa-times" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="addDir">
@@ -71,8 +71,8 @@
             <behavior name="FileRepoForm"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-            <control id="close" title="BTN_CANCEL" type="button"
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+            <control id="close" title="BTN_CANCEL" icon="fa fa-times" type="button"
                      onclick="close"/>
         </toolbar>
     </state>
@@ -93,7 +93,7 @@
             <field name="upl_filename" type="hidden"/>
         </fields>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
             <control id="after_save_action" title="TXT_AFTER_SAVE_ACTION"
                      type="select"
                     >
@@ -103,7 +103,7 @@
                 </options>
             </control>
             <control id="sep1" type="separator"/>
-            <control id="close" title="BTN_CANCEL" type="button"
+            <control id="close" title="BTN_CANCEL" icon="fa fa-times" type="button"
                      onclick="close"/>
         </toolbar>
     </state>
@@ -123,8 +123,8 @@
             <field name="upl_filename" type="hidden"/>
         </fields>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-            <control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+            <control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="putVideo">
@@ -141,7 +141,7 @@
             <field name="height" title="TXT_HEIGHT"/>
         </fields>
         <toolbar>
-            <control type="button" id="insert" title="BTN_INSERT_VIDEO" onclick="getPlayerParams"/>
+            <control icon="fa fa-plus-circle" type="button" id="insert" title="BTN_INSERT_VIDEO" onclick="getPlayerParams"/>
         </toolbar>
     </state>
     <state name="saveDir" rights="3">
