@@ -55,8 +55,14 @@ class TabPane {
             tab.setAttribute('unselectable', 'on');
             tab.classList.add('nav-item');
             tab.setAttribute('role', 'presentation');
+
+            // ensure legacy markup with preset "active" state does not keep multiple active tabs
+            tab.classList.remove('current', 'active');
+
             const anchor = tab.querySelector('[data-role="tab-link"]') || tab.querySelector('a');
             if (!anchor) return;
+
+            anchor.classList.remove('active');
 
             const href = anchor.getAttribute('href');
             const paneId = href.slice(href.lastIndexOf('#'));
