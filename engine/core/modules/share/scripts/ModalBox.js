@@ -1,3 +1,65 @@
+function ensureComputedSize(targetWindow) {
+    if (!targetWindow || !targetWindow.Element) {
+        return;
+    }
+
+    const { Element } = targetWindow;
+
+    if (typeof Element.prototype.getComputedSize === 'function') {
+        return;
+    }
+
+    const toNumber = (value) => {
+        const parsed = parseFloat(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    };
+
+    Element.prototype.getComputedSize = function getComputedSize() {
+        const style = targetWindow.getComputedStyle(this);
+        const rect = this.getBoundingClientRect();
+
+        const paddingLeft = toNumber(style.paddingLeft);
+        const paddingRight = toNumber(style.paddingRight);
+        const paddingTop = toNumber(style.paddingTop);
+        const paddingBottom = toNumber(style.paddingBottom);
+
+        const borderLeft = toNumber(style.borderLeftWidth);
+        const borderRight = toNumber(style.borderRightWidth);
+        const borderTop = toNumber(style.borderTopWidth);
+        const borderBottom = toNumber(style.borderBottomWidth);
+
+        const marginLeft = toNumber(style.marginLeft);
+        const marginRight = toNumber(style.marginRight);
+        const marginTop = toNumber(style.marginTop);
+        const marginBottom = toNumber(style.marginBottom);
+
+        let width = rect.width - paddingLeft - paddingRight - borderLeft - borderRight;
+        let height = rect.height - paddingTop - paddingBottom - borderTop - borderBottom;
+
+        if (width < 0) {
+            width = 0;
+        }
+
+        if (height < 0) {
+            height = 0;
+        }
+
+        const computedWidth = toNumber(style.width);
+        const computedHeight = toNumber(style.height);
+
+        return {
+            width,
+            height,
+            computedWidth: computedWidth || rect.width,
+            computedHeight: computedHeight || rect.height,
+            totalWidth: rect.width + marginLeft + marginRight,
+            totalHeight: rect.height + marginTop + marginBottom,
+        };
+    };
+}
+
+ensureComputedSize(window);
+
 class ModalBoxClass {
     constructor() {
         this.boxes = [];
@@ -232,57 +294,7 @@ class ModalBoxClass {
 
                 doc.head.appendChild(style);
 
-                const hasComputedSize = doc.defaultView && doc.defaultView.Element && typeof doc.defaultView.Element.prototype.getComputedSize === 'function';
-                if (!hasComputedSize) {
-                    const script = doc.createElement('script');
-                    script.type = 'text/javascript';
-                    script.textContent = `
-                        (function() {
-                            if (!Element.prototype.getComputedSize) {
-                                var toNumber = function(value) {
-                                    var parsed = parseFloat(value);
-                                    return isNaN(parsed) ? 0 : parsed;
-                                };
-
-                                Element.prototype.getComputedSize = function() {
-                                    var style = window.getComputedStyle(this);
-                                    var rect = this.getBoundingClientRect();
-
-                                    var paddingLeft = toNumber(style.paddingLeft);
-                                    var paddingRight = toNumber(style.paddingRight);
-                                    var paddingTop = toNumber(style.paddingTop);
-                                    var paddingBottom = toNumber(style.paddingBottom);
-
-                                    var borderLeft = toNumber(style.borderLeftWidth);
-                                    var borderRight = toNumber(style.borderRightWidth);
-                                    var borderTop = toNumber(style.borderTopWidth);
-                                    var borderBottom = toNumber(style.borderBottomWidth);
-
-                                    var marginLeft = toNumber(style.marginLeft);
-                                    var marginRight = toNumber(style.marginRight);
-                                    var marginTop = toNumber(style.marginTop);
-                                    var marginBottom = toNumber(style.marginBottom);
-
-                                    var width = rect.width - paddingLeft - paddingRight - borderLeft - borderRight;
-                                    var height = rect.height - paddingTop - paddingBottom - borderTop - borderBottom;
-
-                                    if (width < 0) width = 0;
-                                    if (height < 0) height = 0;
-
-                                    return {
-                                        width: width,
-                                        height: height,
-                                        computedWidth: toNumber(style.width) || rect.width,
-                                        computedHeight: toNumber(style.height) || rect.height,
-                                        totalWidth: rect.width + marginLeft + marginRight,
-                                        totalHeight: rect.height + marginTop + marginBottom
-                                    };
-                                };
-                            }
-                        })();
-                    `;
-                    doc.head.appendChild(script);
-                }
+                ensureComputedSize(doc.defaultView || iframe.contentWindow);
             } catch (e) {
                 // ignore cross-origin errors
             }
