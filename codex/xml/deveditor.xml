@@ -133,8 +133,8 @@
       <field name="smap_name" tableName="share_sitemap_translation" title="Назва розділу" type="string"/>
     </filter>
   </component>
-  <translations json="{&quot;TXT_DIVISIONS&quot;:&quot;&lt;img src=\&quot;images\/loading.gif\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot;\/&gt;&quot;,&quot;MSG_CONFIRM_DELETE&quot;:&quot;Ви впевнені, що хочете видалити запис? Відновити дані потім буде неможливо.&quot;,&quot;BTN_ADD&quot;:&quot;Додати&quot;,&quot;BTN_EDIT&quot;:&quot;Редагувати&quot;,&quot;BTN_DELETE&quot;:&quot;Видалити&quot;,&quot;BTN_REFRESH&quot;:&quot;Оновити&quot;,&quot;BTN_UP&quot;:&quot;Підняти&quot;,&quot;BTN_DOWN&quot;:&quot;Опустити&quot;}">
-    <translation const="TXT_DIVISIONS" component="adminPanel">&lt;img src="images/loading.gif" width="32" height="32"/&gt;</translation>
+  <translations json="{&quot;TXT_DIVISIONS&quot;:&quot;&lt;i class=\&quot;fa-solid fa-spinner fa-spin fa-2x text-secondary\&quot; aria-hidden=\&quot;true\&quot;&gt;&lt;/i&gt;&quot;,&quot;MSG_CONFIRM_DELETE&quot;:&quot;Ви впевнені, що хочете видалити запис? Відновити дані потім буде неможливо.&quot;,&quot;BTN_ADD&quot;:&quot;Додати&quot;,&quot;BTN_EDIT&quot;:&quot;Редагувати&quot;,&quot;BTN_DELETE&quot;:&quot;Видалити&quot;,&quot;BTN_REFRESH&quot;:&quot;Оновити&quot;,&quot;BTN_UP&quot;:&quot;Підняти&quot;,&quot;BTN_DOWN&quot;:&quot;Опустити&quot;}">
+    <translation const="TXT_DIVISIONS" component="adminPanel">&lt;i class="fa-solid fa-spinner fa-spin fa-2x text-secondary" aria-hidden="true"&gt;&lt;/i&gt;</translation>
     <translation const="MSG_CONFIRM_DELETE" component="adminPanel">Ви впевнені, що хочете видалити запис? Відновити дані потім буде неможливо.</translation>
     <translation const="BTN_ADD" component="adminPanel">Додати</translation>
     <translation const="BTN_EDIT" component="adminPanel">Редагувати</translation>

@@ -53,9 +53,7 @@ class FileRepoForm extends Form {
                     const dataElement = dataSelector ? document.getElementById(dataSelector) : null;
 
                     if (previewElement) {
-                        previewElement.classList.remove('d-none', 'hidden');
-                        previewElement.removeAttribute('hidden');
-                        previewElement.src = Energine.base + 'resizer/w0-h0/' + response.tmp_name;
+                        Form.showImagePreview(previewElement, Energine.base + 'resizer/w0-h0/' + response.tmp_name);
                     }
                     if (dataElement) {
                         dataElement.value = response.tmp_name;
@@ -69,9 +67,10 @@ class FileRepoForm extends Form {
     generatePreviews(tmpFileName) {
         if (this.thumbs && this.thumbs.length) {
             this.thumbs.forEach(el => {
-                el.classList.remove('d-none', 'hidden');
-                el.removeAttribute('hidden');
-                el.src = `${Energine.base}resizer/w${el.getAttribute('width')}-h${el.getAttribute('height')}/${tmpFileName}`;
+                Form.showImagePreview(
+                    el,
+                    `${Energine.base}resizer/w${el.getAttribute('width')}-h${el.getAttribute('height')}/${tmpFileName}`
+                );
             });
         }
     }
@@ -110,16 +109,12 @@ class FileRepoForm extends Form {
     showPreview(evt) {
         const previewElement = document.getElementById('preview');
         if (previewElement) {
-            previewElement.removeAttribute('src');
-            previewElement.classList.remove('d-none', 'hidden');
-            previewElement.removeAttribute('hidden');
-            previewElement.src = Energine.base + 'images/loading.gif';
+            Form.showSpinner(previewElement);
         }
 
         if (this.thumbs && this.thumbs.length) {
             this.thumbs.forEach(thumb => {
-                thumb.removeAttribute('src');
-                thumb.classList.add('d-none');
+                Form.resetPreview(thumb);
             });
         }
 
@@ -141,18 +136,20 @@ class FileRepoForm extends Form {
 
                 if (/^(image|video)\//.test(response.type)) {
                     if (previewElement) {
-                        previewElement.removeAttribute('src');
-                        previewElement.classList.add('d-none');
-                        previewElement.src = Energine.base + 'resizer/w0-h0/' + response.tmp_name;
+                        Form.showImagePreview(
+                            previewElement,
+                            Energine.base + 'resizer/w0-h0/' + response.tmp_name,
+                            response.name || ''
+                        );
                     }
                     generatePreviews(response.tmp_name);
                     enableTab();
-                } else {
-                    if (previewElement) previewElement.src = Energine['static'] + 'images/icons/icon_undefined.gif';
-                }
-                if (previewElement) {
-                    previewElement.classList.remove('d-none', 'hidden');
-                    previewElement.removeAttribute('hidden');
+                } else if (previewElement) {
+                    let iconKey = 'file';
+                    if (/^audio\//.test(response.type)) iconKey = 'audio';
+                    else if (/zip/.test(response.type)) iconKey = 'zip';
+                    else if (/^text\//.test(response.type)) iconKey = 'text';
+                    Form.showIconPreview(previewElement, iconKey);
                 }
             });
         }

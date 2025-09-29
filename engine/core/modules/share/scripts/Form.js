@@ -30,6 +30,183 @@ class Form {
     // Класс Energine.request как статическое свойство
     static request = Energine.request;
 
+    static previewIconMap = {
+        default: 'fa-solid fa-file text-secondary',
+        file: 'fa-solid fa-file text-secondary',
+        image: 'fa-solid fa-file-image text-info',
+        video: 'fa-solid fa-file-video text-info',
+        audio: 'fa-solid fa-file-audio text-info',
+        zip: 'fa-solid fa-file-zipper text-warning',
+        text: 'fa-solid fa-file-lines text-secondary',
+        folder: 'fa-solid fa-folder text-warning',
+        folderup: 'fa-solid fa-arrow-up text-secondary',
+        repo: 'fa-solid fa-database text-primary',
+        unknown: 'fa-solid fa-file text-secondary',
+        error: 'fa-solid fa-triangle-exclamation text-danger',
+        spinner: 'fa-solid fa-spinner fa-spin text-secondary'
+    };
+
+    static getPreviewIconKey(type) {
+        switch (type) {
+            case 'image':
+            case 'video':
+            case 'audio':
+            case 'zip':
+            case 'text':
+            case 'folder':
+            case 'folderup':
+            case 'repo':
+            case 'unknown':
+                return type;
+            default:
+                return 'file';
+        }
+    }
+
+    static findPreviewWrapper(previewEl) {
+        if (!previewEl) return null;
+        if (previewEl.classList && previewEl.classList.contains('file-preview-wrapper')) {
+            return previewEl;
+        }
+        if (typeof previewEl.closest === 'function') {
+            return previewEl.closest('.file-preview-wrapper');
+        }
+        return null;
+    }
+
+    static ensurePreviewWrapper(previewEl) {
+        if (!previewEl) return null;
+        const existing = Form.findPreviewWrapper(previewEl);
+        if (existing) {
+            return existing;
+        }
+
+        const isImage = previewEl.tagName && previewEl.tagName.toLowerCase() === 'img';
+        const width = parseInt(previewEl.getAttribute?.('width') || previewEl.width || 64, 10) || 64;
+        const height = parseInt(previewEl.getAttribute?.('height') || previewEl.height || 64, 10) || 64;
+
+        if (!isImage) {
+            previewEl.classList?.add('file-preview-wrapper', 'd-inline-flex', 'align-items-center', 'justify-content-center', 'border', 'rounded', 'bg-body-tertiary', 'position-relative', 'overflow-hidden');
+            previewEl.style.minWidth = previewEl.style.minWidth || `${width}px`;
+            previewEl.style.minHeight = previewEl.style.minHeight || `${height}px`;
+            previewEl.style.maxWidth = previewEl.style.maxWidth || `${width}px`;
+            previewEl.style.maxHeight = previewEl.style.maxHeight || `${height}px`;
+            return previewEl;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'file-preview-wrapper d-inline-flex align-items-center justify-content-center border rounded bg-body-tertiary position-relative overflow-hidden';
+        wrapper.style.minWidth = `${width}px`;
+        wrapper.style.minHeight = `${height}px`;
+        wrapper.style.maxWidth = `${width}px`;
+        wrapper.style.maxHeight = `${height}px`;
+
+        if (previewEl.parentNode) {
+            previewEl.parentNode.insertBefore(wrapper, previewEl);
+        }
+
+        wrapper.appendChild(previewEl);
+        previewEl.classList?.add('img-fluid');
+        previewEl.style.objectFit = previewEl.style.objectFit || 'contain';
+        previewEl.style.maxWidth = '100%';
+        previewEl.style.maxHeight = '100%';
+
+        return wrapper;
+    }
+
+    static getPreviewImage(previewEl) {
+        if (!previewEl) return null;
+        if (previewEl.tagName && previewEl.tagName.toLowerCase() === 'img') {
+            return previewEl;
+        }
+        return previewEl.querySelector ? previewEl.querySelector('img') : null;
+    }
+
+    static showPreviewElement(element) {
+        if (!element) return;
+        element.classList?.remove('d-none', 'hidden');
+        element.removeAttribute?.('hidden');
+        element.setAttribute?.('aria-hidden', 'false');
+    }
+
+    static hidePreviewElement(element) {
+        if (!element) return;
+        element.classList?.add('d-none');
+        element.setAttribute?.('hidden', 'hidden');
+        element.setAttribute?.('aria-hidden', 'true');
+    }
+
+    static showIconPreview(previewEl, iconKey = 'file') {
+        if (!previewEl) return;
+        const wrapper = Form.ensurePreviewWrapper(previewEl) || previewEl;
+        const iconClass = Form.previewIconMap[iconKey] || Form.previewIconMap.file;
+        let icon = wrapper.querySelector?.('.file-preview-icon') || null;
+        if (!icon) {
+            icon = document.createElement('i');
+            icon.className = 'file-preview-icon fa-2x fa-fw';
+            wrapper.appendChild(icon);
+        }
+        icon.className = `file-preview-icon fa-2x fa-fw ${iconClass}`;
+        icon.setAttribute('aria-hidden', 'true');
+
+        const image = Form.getPreviewImage(previewEl);
+        if (image) {
+            image.removeAttribute('src');
+            Form.hidePreviewElement(image);
+        }
+
+        Form.showPreviewElement(wrapper);
+        if (previewEl !== wrapper) {
+            Form.showPreviewElement(previewEl);
+        }
+    }
+
+    static showSpinner(previewEl) {
+        Form.showIconPreview(previewEl, 'spinner');
+    }
+
+    static showImagePreview(previewEl, src, alt = '') {
+        if (!previewEl) return;
+        const wrapper = Form.ensurePreviewWrapper(previewEl) || previewEl;
+        const image = Form.getPreviewImage(previewEl);
+
+        if (image) {
+            image.src = src;
+            if (alt) {
+                image.alt = alt;
+            }
+            image.classList?.remove('d-none', 'hidden');
+            image.removeAttribute?.('hidden');
+            image.setAttribute?.('aria-hidden', 'false');
+        }
+
+        const icon = wrapper.querySelector?.('.file-preview-icon');
+        icon?.remove();
+
+        Form.showPreviewElement(wrapper);
+        if (previewEl !== wrapper) {
+            Form.showPreviewElement(previewEl);
+        }
+    }
+
+    static resetPreview(previewEl) {
+        if (!previewEl) return;
+        const wrapper = Form.findPreviewWrapper(previewEl) || previewEl;
+        const icon = wrapper.querySelector?.('.file-preview-icon');
+        icon?.remove();
+
+        const image = Form.getPreviewImage(previewEl);
+        if (image) {
+            image.removeAttribute('src');
+            Form.hidePreviewElement(image);
+        }
+
+        Form.hidePreviewElement(wrapper);
+        if (previewEl !== wrapper) {
+            Form.hidePreviewElement(previewEl);
+        }
+    }
+
     /**
      * Legacy helper. Initializes forms or re-triggers MDB input styling.
      * @param {Element|NodeList|string|Array<Element>} [target]
@@ -473,12 +650,7 @@ class Form {
             if (anchor) {
                 anchor.removeAttribute('href');
             }
-            const image = preview.querySelector('img');
-            if (image) {
-                image.removeAttribute('src');
-            }
-            preview.classList.add('d-none');
-            preview.setAttribute('aria-hidden', 'true');
+            Form.resetPreview(preview);
         }
         if (button) {
             button.classList.add('d-none');
@@ -512,32 +684,29 @@ class Form {
         const anchor = previewEl && previewEl.tagName.toLowerCase() === 'a'
             ? previewEl
             : previewEl?.querySelector('a');
-        let image = null;
         if (previewEl) {
-            image = previewEl.querySelector('img');
-            if (!image && previewEl.tagName.toLowerCase() === 'img') {
-                image = previewEl;
+            const type = result['upl_internal_type'];
+            const href = result['upl_path'] ? Energine.media + result['upl_path'] : '';
+
+            if (anchor) {
+                if (href) {
+                    anchor.setAttribute('href', href);
+                } else {
+                    anchor.removeAttribute('href');
+                }
             }
-        }
-        if (image) {
-            let src;
-            switch (result['upl_internal_type']) {
+
+            switch (type) {
                 case 'image':
-                    src = Energine.media + result['upl_path'];
+                    Form.showImagePreview(previewEl, Energine.media + result['upl_path'], result['upl_title'] || '');
                     break;
                 case 'video':
-                    src = Energine.resizer + 'w0-h0/' + result['upl_path'];
+                    Form.showImagePreview(previewEl, Energine.resizer + 'w0-h0/' + result['upl_path'], result['upl_title'] || '');
                     break;
                 default:
-                    src = Energine['static'] + 'images/icons/icon_undefined.gif';
+                    Form.showIconPreview(previewEl, Form.getPreviewIconKey(type));
+                    break;
             }
-            image.setAttribute('src', src);
-            if (anchor) {
-                anchor.setAttribute('href', Energine.media + result['upl_path']);
-            }
-            previewEl?.classList.remove('d-none', 'hidden');
-            previewEl?.removeAttribute('hidden');
-            previewEl?.setAttribute('aria-hidden', 'false');
         }
 
         const clearButton = linkId

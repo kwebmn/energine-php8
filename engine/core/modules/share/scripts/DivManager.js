@@ -1,5 +1,29 @@
 ScriptLoader.load('TabPane', 'Toolbar', 'ModalBox', 'jquery.min', 'jstree/jstree');
 
+const DIVISION_ICON_MAP = {
+    'divisions_list.icon.gif': 'fa-solid fa-diagram-project text-primary',
+    'form.icon.gif': 'fa-solid fa-list-check text-primary',
+    'login_form.icon.gif': 'fa-solid fa-right-to-bracket text-secondary',
+    'rss.icon.gif': 'fa-solid fa-square-rss text-warning',
+    'editor.icon.gif': 'fa-solid fa-pen-to-square text-info',
+    'gallery.icon.gif': 'fa-solid fa-images text-info',
+    'profile_form.icon.gif': 'fa-solid fa-id-card text-primary',
+    'sitemap.icon.gif': 'fa-solid fa-sitemap text-secondary',
+    'empty.icon.gif': 'fa-solid fa-file text-secondary',
+    'home_page.icon.gif': 'fa-solid fa-house text-primary',
+    'restore_password_form.icon.gif': 'fa-solid fa-unlock-keyhole text-warning',
+    'text_page.icon.gif': 'fa-solid fa-file-lines text-secondary'
+};
+
+const getDivisionIconClass = (path) => {
+    if (!path) {
+        return 'fa-solid fa-file text-secondary';
+    }
+    const fileName = path.split('/').pop();
+    const className = DIVISION_ICON_MAP[fileName] || 'fa-solid fa-file text-secondary';
+    return `${className} fa-fw`;
+};
+
 class DivManager {
 
     constructor(element) {
@@ -129,7 +153,7 @@ class DivManager {
             id: String(node.smap_id),
             parent: node.smap_pid && node.smap_pid !== "" ? String(node.smap_pid) : "#",
             text: node.smap_name,
-            icon: node.tmpl_icon ? Energine.base + node.tmpl_icon : Energine.base + 'templates/icons/empty.icon.gif',
+            icon: getDivisionIconClass(node.tmpl_icon),
             data: {
                 segment: node.smap_segment,
                 lang_id: node.lang_id,

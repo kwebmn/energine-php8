@@ -3,6 +3,28 @@ ScriptLoader.load('GridManager', 'Cookie', 'FileAPI/FileAPI');
 // Глобальное имя cookie для файла
 const FILE_COOKIE_NAME = 'NRGNFRPID';
 
+const FILE_REPO_ICON_MAP = {
+    folder: 'fa-solid fa-folder text-warning',
+    repo: 'fa-solid fa-database text-primary',
+    folderup: 'fa-solid fa-arrow-up text-secondary',
+    image: 'fa-solid fa-file-image text-info',
+    video: 'fa-solid fa-file-video text-info',
+    audio: 'fa-solid fa-file-audio text-info',
+    zip: 'fa-solid fa-file-zipper text-warning',
+    text: 'fa-solid fa-file-lines text-secondary',
+    unknown: 'fa-solid fa-file text-secondary',
+    file: 'fa-solid fa-file text-secondary',
+    error: 'fa-solid fa-triangle-exclamation text-danger'
+};
+
+const createIconElement = (type) => {
+    const icon = document.createElement('i');
+    const className = FILE_REPO_ICON_MAP[type] || FILE_REPO_ICON_MAP.file;
+    icon.className = `file-repo-icon fa-2x fa-fw ${className}`;
+    icon.setAttribute('aria-hidden', 'true');
+    return icon;
+};
+
 /**
  * Расширяем Grid: popImage (заглушка для всплывающего превью) и кастомная отрисовка полей (iterateFields)
  */
@@ -34,45 +56,71 @@ class GridWithPopImage extends Grid {
                 cell.style.textAlign = 'center';
                 cell.style.verticalAlign = 'middle';
 
-                let image = document.createElement('img');
-                let dimensions = { width: 40, height: 40 };
                 let container = document.createElement('div');
-                container.className = 'thumb_container';
+                container.className = 'thumb_container d-flex align-items-center justify-content-center';
+                container.style.width = '40px';
+                container.style.height = '40px';
+                container.style.overflow = 'hidden';
+                container.style.borderRadius = '0.35rem';
+                container.style.backgroundColor = 'var(--bs-tertiary-bg, #f8f9fa)';
                 cell.appendChild(container);
+
+                const appendIcon = (type) => {
+                    container.appendChild(createIconElement(type));
+                };
 
                 switch (record['upl_internal_type']) {
                     case 'folder':
-                        image.src = 'images/icons/icon_folder.gif';
+                        appendIcon('folder');
                         break;
                     case 'repo':
-                        image.src = 'images/icons/icon_repository.gif';
+                        appendIcon('repo');
                         break;
                     case 'folderup':
-                        image.src = 'images/icons/icon_folder_up.gif';
+                        appendIcon('folderup');
                         break;
                     case 'video':
-                    case 'image':
-                        // Только если есть полный путь!
+                    case 'image': {
+                        const image = document.createElement('img');
+                        const dimensions = { width: 40, height: 40 };
+                        Object.assign(image, dimensions);
+                        image.className = 'img-fluid rounded';
+                        image.style.objectFit = 'cover';
+                        image.style.border = '1px solid transparent';
+
                         if (record[fieldName]) {
                             image.src = (window.Energine.resizer || '') + 'w60-h45/' + record[fieldName];
                         } else {
-                            image.src = 'images/icons/icon_undefined.gif';
+                            appendIcon(record['upl_internal_type']);
+                            break;
                         }
-                        image.style.borderRadius = '5px';
-                        image.style.border = '1px solid transparent';
+
                         image.onerror = () => {
-                            image.src = 'images/icons/icon_error_image.gif';
+                            image.remove();
+                            appendIcon('error');
                             container.onmouseenter = null;
                             container.onmouseleave = null;
                         };
-                        // ... далее твой код ...
+
+                        container.appendChild(image);
+                        break;
+                    }
+                    case 'audio':
+                        appendIcon('audio');
+                        break;
+                    case 'zip':
+                        appendIcon('zip');
+                        break;
+                    case 'text':
+                        appendIcon('text');
+                        break;
+                    case 'unknown':
+                        appendIcon('unknown');
                         break;
                     default:
-                        image.src = 'images/icons/icon_undefined.gif';
+                        appendIcon('file');
                         break;
                 }
-                Object.assign(image, dimensions);
-                container.appendChild(image);
                 break;
             }
 
