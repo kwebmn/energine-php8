@@ -138,10 +138,10 @@ class ModalBoxClass {
         modal.style.zIndex = 1050 + this.boxes.length * 10;
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content" style="position:relative;height:100vh;">
+            <div class="modal-content h-100" style="position:relative;display:flex;flex-direction:column;">
               <button type="button" class="btn-close position-absolute end-0 m-2" aria-label="Close" style="z-index:2"></button>
-                <div class="modal-body p-0" style="min-width:300px;">
-                </div>      
+              <div class="modal-body p-0 d-flex flex-column" style="min-width:300px;flex:1 1 auto;min-height:0;">
+              </div>
             </div>
           </div>
         `;
@@ -156,13 +156,81 @@ class ModalBoxClass {
         iframe.style.border = 'none';
         iframe.style.display = 'block';
         iframe.style.width = '100%';
-        iframe.style.height = '100vh';
+        iframe.style.height = '100%';
         iframe.style.position = 'relative';
         iframe.tabIndex = 0;
         modalBody.appendChild(iframe);
 
         iframe.onload = () => {
             hideLoader(modalBody);
+
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (!doc) {
+                    return;
+                }
+
+                const styleId = 'modalbox-singlemode-style';
+                if (doc.getElementById(styleId)) {
+                    return;
+                }
+
+                const style = doc.createElement('style');
+                style.id = styleId;
+                style.textContent = `
+                    html, body {
+                        height: 100%;
+                    }
+
+                    body.e-singlemode-layout {
+                        display: flex;
+                        flex-direction: column;
+                        min-height: 100%;
+                    }
+
+                    body.e-singlemode-layout form.e-grid-form {
+                        flex: 1 1 auto;
+                        display: flex;
+                        flex-direction: column;
+                        min-height: 0;
+                    }
+
+                    body.e-singlemode-layout form.e-grid-form > [data-role="pane"] {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    body.e-singlemode-layout [data-pane-part="body"] {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    body.e-singlemode-layout [data-role="tab-content"] {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    body.e-singlemode-layout .tab-content > .tab-pane {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        overflow: auto;
+                    }
+
+                    body.e-singlemode-layout [data-pane-part="footer"] {
+                        flex-shrink: 0;
+                    }
+                `;
+
+                doc.head.appendChild(style);
+            } catch (e) {
+                // ignore cross-origin errors
+            }
         };
 
         document.body.appendChild(modal);
