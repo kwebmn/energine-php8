@@ -45,15 +45,15 @@
             <field name="smap_name"/>
         </fields>
         <toolbar name="division-editor-toolbar">
-            <control id="add" title="BTN_ADD" type="button" icon="+" onclick="add"/>
-            <control id="edit" title="BTN_EDIT" type="button" icon="&#9998;" onclick="edit"/>
-            <control id="delete" title="BTN_DELETE" type="button" icon="&#128473;" onclick="del"/>
-            <!-- <control id="go" title="BTN_GO" icon="fa fa-external-link" type="button" onclick="go"/>-->
+            <control id="add" title="BTN_ADD" type="button" icon="fa-solid fa-plus" onclick="add"/>
+            <control id="edit" title="BTN_EDIT" type="button" icon="fa-solid fa-pen-to-square" onclick="edit"/>
+            <control id="delete" title="BTN_DELETE" type="button" icon="fa-solid fa-trash-can" onclick="del"/>
+            <!-- <control id="go" title="BTN_GO" icon="fa-solid fa-arrow-up-right-from-square" type="button" onclick="go"/>-->
             <control id="sep1" type="separator"/>
-            <control id="up" title="BTN_MOVE_UP" type="button" icon="▲" onclick="up"/>
-            <control id="down" title="BTN_MOVE_DOWN" type="button" icon="▼" onclick="down"/>
+            <control id="up" title="BTN_MOVE_UP" type="button" icon="fa-solid fa-arrow-up" onclick="up" icon-only="true"/>
+            <control id="down" title="BTN_MOVE_DOWN" type="button" icon="fa-solid fa-arrow-down" onclick="down" icon-only="true"/>
             <!-- <control id="sep2" type="separator"/>
-                   <control id="close" title="BTN_ClOSE" icon="fa fa-times" type="button" onclick="close"/>-->
+                   <control id="close" title="BTN_CLOSE" icon="fa-solid fa-xmark" type="button" onclick="close" icon-only="true"/>-->
         </toolbar>
         <translations>
             <translation const="BTN_ADD"/>

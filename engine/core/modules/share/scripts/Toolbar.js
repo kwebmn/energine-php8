@@ -195,12 +195,16 @@ class Toolbar {
         load(controlDescr) {
             this.properties.id = controlDescr.getAttribute('id') || '';
             this.properties.icon = controlDescr.getAttribute('icon') || '';
-            this.properties.iconOnly = Toolbar.normalizeBoolean(controlDescr.getAttribute('icon-only'));
-            this.properties.title = controlDescr.getAttribute('title') || '';
-            this.properties.action = controlDescr.getAttribute('action') || '';
-            this.properties.tooltip = controlDescr.getAttribute('tooltip') || '';
+            this.properties.iconOnly = Toolbar.normalizeBoolean(
+                controlDescr.getAttribute('icon-only') || controlDescr.getAttribute('data-icon-only')
+            );
+            this.properties.title = controlDescr.getAttribute('title') || controlDescr.textContent?.trim() || '';
+            const actionAttr = controlDescr.getAttribute('action') || controlDescr.getAttribute('onclick') || '';
+            this.properties.action = actionAttr.replace(/^javascript:/i, '').trim();
+            const tooltipAttr = controlDescr.getAttribute('tooltip') || controlDescr.getAttribute('data-bs-original-title') || '';
+            this.properties.tooltip = tooltipAttr || '';
             this.properties.type = controlDescr.getAttribute('type') || '';
-            this.properties.isDisabled = !!controlDescr.getAttribute('disabled');
+            this.properties.isDisabled = controlDescr.hasAttribute('disabled');
             this.properties.isInitiallyDisabled = this.properties.isDisabled;
         }
         createElement() {
