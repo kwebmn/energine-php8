@@ -13,6 +13,22 @@
     
     <!-- Элемент панели управления -->
     <xsl:template match="toolbar/control">
+        <xsl:variable name="ICON_RAW" select="@icon"/>
+        <xsl:variable name="ICON_NORMALIZED" select="normalize-space($ICON_RAW)"/>
+        <xsl:variable name="TITLE" select="normalize-space(@title)"/>
+        <xsl:variable name="TOOLTIP" select="normalize-space(@tooltip)"/>
+        <xsl:variable name="HAS_ICON" select="string-length($ICON_NORMALIZED) &gt; 0"/>
+        <xsl:variable name="HAS_TITLE" select="string-length($TITLE) &gt; 0"/>
+        <xsl:variable name="ICON_ONLY_FLAG" select="translate(normalize-space(@icon-only), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="ICON_ONLY" select="$HAS_ICON and (($ICON_ONLY_FLAG='true') or ($ICON_ONLY_FLAG='1') or ($ICON_ONLY_FLAG='yes') or ($ICON_ONLY_FLAG='on') or not($HAS_TITLE))"/>
+        <xsl:variable name="ICON_IS_CLASS" select="$HAS_ICON and string-length(translate($ICON_NORMALIZED, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ', '')) = 0"/>
+        <xsl:variable name="ARIA_LABEL">
+            <xsl:choose>
+                <xsl:when test="$HAS_TITLE"><xsl:value-of select="$TITLE"/></xsl:when>
+                <xsl:when test="string-length($TOOLTIP) &gt; 0"><xsl:value-of select="$TOOLTIP"/></xsl:when>
+                <xsl:otherwise/>
+            </xsl:choose>
+        </xsl:variable>
         <xsl:variable name="CONTROL">
                 <xsl:choose>
                         <xsl:when test="@type = 'button'">button</xsl:when>
@@ -48,15 +64,59 @@
                 <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
+                <xsl:if test="$HAS_ICON">
+                    <xsl:text>d-inline-flex align-items-center </xsl:text>
+                    <xsl:choose>
+                        <xsl:when test="$ICON_ONLY">
+                            <xsl:text>justify-content-center px-2 </xsl:text>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:text>gap-2 </xsl:text>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:if>
                 <xsl:value-of select="$BUTTON_VARIANT"/>
             </xsl:attribute>
             <xsl:if test="@click!=''">
                 <xsl:attribute name="onclick"><xsl:value-of select="@click"/></xsl:attribute>
             </xsl:if>
-                <xsl:value-of select="@title"/>
+            <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
+                <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$HAS_ICON">
+                <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
+                    <xsl:choose>
+                        <xsl:when test="$ICON_IS_CLASS">
+                            <i class="{$ICON_NORMALIZED}" aria-hidden="true"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="$ICON_NORMALIZED"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </span>
+            </xsl:if>
+            <xsl:if test="not($ICON_ONLY)">
+                <span class="toolbar-control-label"><xsl:value-of select="@title"/></span>
+            </xsl:if>
         </xsl:element>
     </xsl:template>
     <xsl:template match="toolbar/control[(@type='link') and (@mode != 0) and not(@disabled)]">
+        <xsl:variable name="ICON_RAW" select="@icon"/>
+        <xsl:variable name="ICON_NORMALIZED" select="normalize-space($ICON_RAW)"/>
+        <xsl:variable name="TITLE" select="normalize-space(@title)"/>
+        <xsl:variable name="TOOLTIP" select="normalize-space(@tooltip)"/>
+        <xsl:variable name="HAS_ICON" select="string-length($ICON_NORMALIZED) &gt; 0"/>
+        <xsl:variable name="HAS_TITLE" select="string-length($TITLE) &gt; 0"/>
+        <xsl:variable name="ICON_ONLY_FLAG" select="translate(normalize-space(@icon-only), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="ICON_ONLY" select="$HAS_ICON and (($ICON_ONLY_FLAG='true') or ($ICON_ONLY_FLAG='1') or ($ICON_ONLY_FLAG='yes') or ($ICON_ONLY_FLAG='on') or not($HAS_TITLE))"/>
+        <xsl:variable name="ICON_IS_CLASS" select="$HAS_ICON and string-length(translate($ICON_NORMALIZED, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ', '')) = 0"/>
+        <xsl:variable name="ARIA_LABEL">
+            <xsl:choose>
+                <xsl:when test="$HAS_TITLE"><xsl:value-of select="$TITLE"/></xsl:when>
+                <xsl:when test="string-length($TOOLTIP) &gt; 0"><xsl:value-of select="$TOOLTIP"/></xsl:when>
+                <xsl:otherwise/>
+            </xsl:choose>
+        </xsl:variable>
         <xsl:variable name="LINK_KEY" select="translate(concat(@id, '|', @click, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
         <xsl:variable name="LINK_VARIANT">
             <xsl:choose>
@@ -72,9 +132,37 @@
             </xsl:if>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
+                <xsl:if test="$HAS_ICON">
+                    <xsl:text>d-inline-flex align-items-center </xsl:text>
+                    <xsl:choose>
+                        <xsl:when test="$ICON_ONLY">
+                            <xsl:text>justify-content-center px-2 </xsl:text>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:text>gap-2 </xsl:text>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:if>
                 <xsl:value-of select="$LINK_VARIANT"/>
             </xsl:attribute>
-            <xsl:value-of select="@title"/>
+            <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
+                <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$HAS_ICON">
+                <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
+                    <xsl:choose>
+                        <xsl:when test="$ICON_IS_CLASS">
+                            <i class="{$ICON_NORMALIZED}" aria-hidden="true"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="$ICON_NORMALIZED"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </span>
+            </xsl:if>
+            <xsl:if test="not($ICON_ONLY)">
+                <span class="toolbar-control-label"><xsl:value-of select="@title"/></span>
+            </xsl:if>
         </a>
     </xsl:template>
 
@@ -119,6 +207,7 @@
                     title: '<xsl:value-of select="@title"/>',
                     action: '<xsl:value-of select="@onclick"/>',
                     icon: '<xsl:value-of select="@icon"/>',
+                    iconOnly: '<xsl:value-of select="@icon-only"/>',
                     disabled: '<xsl:value-of select="@disabled"/>'
                 })
             );
@@ -131,20 +220,23 @@
         id: '<xsl:value-of select="@id"/>',
         title: '<xsl:value-of select="@title"/>',
         action: '<xsl:value-of select="@onclick"/>',
-        icon: '<xsl:value-of select="@icon"/>'
+        icon: '<xsl:value-of select="@icon"/>',
+        aicon: '<xsl:value-of select="@aicon"/>',
+        iconOnly: '<xsl:value-of select="@icon-only"/>'
         })
         );
     </xsl:template>
 
     <xsl:template match="component[@exttype='grid']/toolbar/control[@type='file']">
-    	componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
+        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
             new Toolbar.File({
                 id: '<xsl:value-of select="@id"/>',
                 title: '<xsl:value-of select="@title"/>',
                 action: '<xsl:value-of select="@onclick"/>',
-                icon: '<xsl:value-of select="@icon"/>'
+                icon: '<xsl:value-of select="@icon"/>',
+                iconOnly: '<xsl:value-of select="@icon-only"/>'
             })
-    	);
+        );
     </xsl:template>
 
     <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'select']">
