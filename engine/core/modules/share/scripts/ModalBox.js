@@ -231,6 +231,58 @@ class ModalBoxClass {
                 `;
 
                 doc.head.appendChild(style);
+
+                const hasComputedSize = doc.defaultView && doc.defaultView.Element && typeof doc.defaultView.Element.prototype.getComputedSize === 'function';
+                if (!hasComputedSize) {
+                    const script = doc.createElement('script');
+                    script.type = 'text/javascript';
+                    script.textContent = `
+                        (function() {
+                            if (!Element.prototype.getComputedSize) {
+                                var toNumber = function(value) {
+                                    var parsed = parseFloat(value);
+                                    return isNaN(parsed) ? 0 : parsed;
+                                };
+
+                                Element.prototype.getComputedSize = function() {
+                                    var style = window.getComputedStyle(this);
+                                    var rect = this.getBoundingClientRect();
+
+                                    var paddingLeft = toNumber(style.paddingLeft);
+                                    var paddingRight = toNumber(style.paddingRight);
+                                    var paddingTop = toNumber(style.paddingTop);
+                                    var paddingBottom = toNumber(style.paddingBottom);
+
+                                    var borderLeft = toNumber(style.borderLeftWidth);
+                                    var borderRight = toNumber(style.borderRightWidth);
+                                    var borderTop = toNumber(style.borderTopWidth);
+                                    var borderBottom = toNumber(style.borderBottomWidth);
+
+                                    var marginLeft = toNumber(style.marginLeft);
+                                    var marginRight = toNumber(style.marginRight);
+                                    var marginTop = toNumber(style.marginTop);
+                                    var marginBottom = toNumber(style.marginBottom);
+
+                                    var width = rect.width - paddingLeft - paddingRight - borderLeft - borderRight;
+                                    var height = rect.height - paddingTop - paddingBottom - borderTop - borderBottom;
+
+                                    if (width < 0) width = 0;
+                                    if (height < 0) height = 0;
+
+                                    return {
+                                        width: width,
+                                        height: height,
+                                        computedWidth: toNumber(style.width) || rect.width,
+                                        computedHeight: toNumber(style.height) || rect.height,
+                                        totalWidth: rect.width + marginLeft + marginRight,
+                                        totalHeight: rect.height + marginTop + marginBottom
+                                    };
+                                };
+                            }
+                        })();
+                    `;
+                    doc.head.appendChild(script);
+                }
             } catch (e) {
                 // ignore cross-origin errors
             }
