@@ -188,14 +188,16 @@ class ModalBoxClass {
                         min-height: 100%;
                     }
 
-                    body.e-singlemode-layout form.e-grid-form {
+                    body.e-singlemode-layout form.e-grid-form,
+                    body.e-singlemode-layout form[data-role="grid-form"] {
                         flex: 1 1 auto;
                         display: flex;
                         flex-direction: column;
                         min-height: 0;
                     }
 
-                    body.e-singlemode-layout form.e-grid-form > [data-role="pane"] {
+                    body.e-singlemode-layout form.e-grid-form > [data-role="pane"],
+                    body.e-singlemode-layout form[data-role="grid-form"] > [data-role="pane"] {
                         flex: 1 1 auto;
                         min-height: 0;
                         display: flex;
@@ -224,6 +226,7 @@ class ModalBoxClass {
 
                     body.e-singlemode-layout [data-pane-part="footer"] {
                         flex-shrink: 0;
+                        margin-top: auto;
                     }
                 `;
 
