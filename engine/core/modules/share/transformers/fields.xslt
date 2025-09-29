@@ -528,7 +528,7 @@
     </xsl:template>
 
     <xsl:template match="field[@mode='1'][ancestor::component[@type='form']]" mode="field_name_readonly">
-        <xsl:if test="@title">
+        <xsl:if test="@title and @type!='boolean'">
             <label for="{@name}" class="form-label">
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
             </label>
@@ -546,13 +546,22 @@
     <xsl:template match="field[@type='boolean'][@mode='1'][ancestor::component[@type='form']]" mode="field_input_readonly">
         <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
         <xsl:variable name="FIELD_NAME"><xsl:choose><xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when><xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise></xsl:choose></xsl:variable>
+        <xsl:variable name="FIELD_ID">
+            <xsl:value-of select="@name"/>
+            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+        </xsl:variable>
         <input type="hidden" name="{$FIELD_NAME}" value="{.}"/>
         <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="{@name}" name="{$FIELD_NAME}" disabled="disabled" value="1">
+            <input class="form-check-input" type="checkbox" id="{$FIELD_ID}" name="{$FIELD_NAME}" disabled="disabled" value="1">
                 <xsl:if test=".=1">
                     <xsl:attribute name="checked">checked</xsl:attribute>
                 </xsl:if>
             </input>
+            <xsl:if test="@title">
+                <label class="form-check-label" for="{$FIELD_ID}">
+                    <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                </label>
+            </xsl:if>
         </div>
     </xsl:template>
 
