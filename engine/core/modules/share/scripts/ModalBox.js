@@ -1,3 +1,65 @@
+function ensureComputedSize(targetWindow) {
+    if (!targetWindow || !targetWindow.Element) {
+        return;
+    }
+
+    const { Element } = targetWindow;
+
+    if (typeof Element.prototype.getComputedSize === 'function') {
+        return;
+    }
+
+    const toNumber = (value) => {
+        const parsed = parseFloat(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    };
+
+    Element.prototype.getComputedSize = function getComputedSize() {
+        const style = targetWindow.getComputedStyle(this);
+        const rect = this.getBoundingClientRect();
+
+        const paddingLeft = toNumber(style.paddingLeft);
+        const paddingRight = toNumber(style.paddingRight);
+        const paddingTop = toNumber(style.paddingTop);
+        const paddingBottom = toNumber(style.paddingBottom);
+
+        const borderLeft = toNumber(style.borderLeftWidth);
+        const borderRight = toNumber(style.borderRightWidth);
+        const borderTop = toNumber(style.borderTopWidth);
+        const borderBottom = toNumber(style.borderBottomWidth);
+
+        const marginLeft = toNumber(style.marginLeft);
+        const marginRight = toNumber(style.marginRight);
+        const marginTop = toNumber(style.marginTop);
+        const marginBottom = toNumber(style.marginBottom);
+
+        let width = rect.width - paddingLeft - paddingRight - borderLeft - borderRight;
+        let height = rect.height - paddingTop - paddingBottom - borderTop - borderBottom;
+
+        if (width < 0) {
+            width = 0;
+        }
+
+        if (height < 0) {
+            height = 0;
+        }
+
+        const computedWidth = toNumber(style.width);
+        const computedHeight = toNumber(style.height);
+
+        return {
+            width,
+            height,
+            computedWidth: computedWidth || rect.width,
+            computedHeight: computedHeight || rect.height,
+            totalWidth: rect.width + marginLeft + marginRight,
+            totalHeight: rect.height + marginTop + marginBottom,
+        };
+    };
+}
+
+ensureComputedSize(window);
+
 class ModalBoxClass {
     constructor() {
         this.boxes = [];
@@ -138,10 +200,10 @@ class ModalBoxClass {
         modal.style.zIndex = 1050 + this.boxes.length * 10;
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content" style="position:relative;height:100vh;">
+            <div class="modal-content h-100" style="position:relative;display:flex;flex-direction:column;">
               <button type="button" class="btn-close position-absolute end-0 m-2" aria-label="Close" style="z-index:2"></button>
-                <div class="modal-body p-0" style="min-width:300px;">
-                </div>      
+              <div class="modal-body p-0 d-flex flex-column" style="min-width:300px;flex:1 1 auto;min-height:0;">
+              </div>
             </div>
           </div>
         `;
@@ -156,13 +218,86 @@ class ModalBoxClass {
         iframe.style.border = 'none';
         iframe.style.display = 'block';
         iframe.style.width = '100%';
-        iframe.style.height = '100vh';
+        iframe.style.height = '100%';
         iframe.style.position = 'relative';
         iframe.tabIndex = 0;
         modalBody.appendChild(iframe);
 
         iframe.onload = () => {
             hideLoader(modalBody);
+
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (!doc) {
+                    return;
+                }
+
+                const styleId = 'modalbox-singlemode-style';
+                if (doc.getElementById(styleId)) {
+                    return;
+                }
+
+                const style = doc.createElement('style');
+                style.id = styleId;
+                style.textContent = `
+                    html, body {
+                        height: 100%;
+                    }
+
+                    body.e-singlemode-layout {
+                        display: flex;
+                        flex-direction: column;
+                        min-height: 100%;
+                    }
+
+                    body.e-singlemode-layout form.e-grid-form,
+                    body.e-singlemode-layout form[data-role="grid-form"] {
+                        flex: 1 1 auto;
+                        display: flex;
+                        flex-direction: column;
+                        min-height: 0;
+                    }
+
+                    body.e-singlemode-layout form.e-grid-form > [data-role="pane"],
+                    body.e-singlemode-layout form[data-role="grid-form"] > [data-role="pane"] {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    body.e-singlemode-layout [data-pane-part="body"] {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    body.e-singlemode-layout [data-role="tab-content"] {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    body.e-singlemode-layout .tab-content > .tab-pane {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        overflow: auto;
+                    }
+
+                    body.e-singlemode-layout [data-pane-part="footer"] {
+                        flex-shrink: 0;
+                        margin-top: auto;
+                    }
+                `;
+
+                doc.head.appendChild(style);
+
+                ensureComputedSize(doc.defaultView || iframe.contentWindow);
+            } catch (e) {
+                // ignore cross-origin errors
+            }
         };
 
         document.body.appendChild(modal);
