@@ -85,6 +85,8 @@ class ModalBoxClass {
         instance.modal.setAttribute('aria-hidden', 'true');
         instance.backdrop.remove();
 
+        document.body.style.overflow = 'auto';
+
         setTimeout(() => {
             instance.modal.remove();
 
@@ -132,6 +134,7 @@ class ModalBoxClass {
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
         modal.style.zIndex = 1050 + this.boxes.length * 10;
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
