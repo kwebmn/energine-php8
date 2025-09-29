@@ -158,6 +158,28 @@ ul.nostyle div.checkbox
     font-size: 14px !important;
 }
 
+/* Role editor table */
+.table_data table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table_data td {
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 0.5rem;
+    vertical-align: middle;
+}
+
+.table_data thead td {
+    font-weight: 600;
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+}
+
+.table_data tr.section_name td {
+    font-weight: 600;
+    background-color: var(--bs-secondary-bg, #e9ecef);
+}
+
 
 
 
