@@ -123,7 +123,7 @@
     <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100"
          template="{$BASE}{$LANG_ABBR}{../@template}"
          single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
-        <div class="card-header bg-body-tertiary border-bottom flex-shrink-0" data-pane-part="header" data-pane-toolbar="top">
+        <div class="card-header bg-body-tertiary border-bottom flex-shrink-0 pb-0" data-pane-part="header" data-pane-toolbar="top">
             <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                     <xsl:variable name="TAB_NAME" select="."/>
