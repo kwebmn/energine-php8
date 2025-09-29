@@ -158,6 +158,55 @@ ul.nostyle div.checkbox
     font-size: 14px !important;
 }
 
+/*
+ * Ensure single mode admin layouts that are rendered inside fullscreen
+ * modal iframes stretch to the full viewport height so the footer
+ * toolbars stay visible.
+ */
+html.e-singlemode-layout,
+body.e-singlemode-layout {
+    min-height: 100%;
+    height: 100%;
+}
+
+body.e-singlemode-layout {
+    display: flex;
+    flex-direction: column;
+}
+
+body.e-singlemode-layout > form {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+body.e-singlemode-layout .card[data-role="pane"] {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+body.e-singlemode-layout .card[data-role="pane"] [data-pane-part="body"] {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body.e-singlemode-layout .card[data-role="pane"] [data-pane-part="body"] > .tab-content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+body.e-singlemode-layout .card[data-role="pane"] [data-pane-part="body"] iframe {
+    flex: 1;
+    width: 100%;
+    border: 0;
+}
+
 
 
 
