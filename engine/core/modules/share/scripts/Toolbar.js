@@ -266,7 +266,10 @@ class Toolbar {
         render() {
             if (!this.element) return;
             const hasIcon = !!this.properties.icon;
-            const hasTitle = !!(this.properties.title && this.properties.title.trim().length);
+            const titleText = (this.properties.title || '').trim();
+            const hasTitle = !!titleText.length;
+            const fallbackLabel = this.properties.tooltip || '';
+            const accessibleLabel = titleText || fallbackLabel || '';
             const iconOnly = hasIcon && (this.properties.iconOnly || !hasTitle);
             this.element.innerHTML = '';
 
@@ -277,26 +280,27 @@ class Toolbar {
                 if (iconOnly) {
                     this.element.classList.remove('gap-2');
                     this.element.classList.add('justify-content-center', 'px-2');
-                    const label = this.properties.title || this.properties.tooltip || '';
-                    if (label) {
-                        this.element.setAttribute('aria-label', label);
-                    }
                 } else {
                     this.element.classList.add('gap-2');
                     this.element.classList.remove('justify-content-center');
                     this.element.classList.remove('px-2');
-                    this.element.removeAttribute('aria-label');
                     const textSpan = document.createElement('span');
-                    textSpan.classList.add('toolbar-control-label');
-                    textSpan.textContent = this.properties.title || '';
+                    textSpan.classList.add('toolbar-control-label', 'd-none', 'd-sm-inline');
+                    textSpan.textContent = titleText || accessibleLabel;
                     this.element.appendChild(textSpan);
+                }
+                if (accessibleLabel) {
+                    this.element.setAttribute('aria-label', accessibleLabel);
+                } else {
+                    this.element.removeAttribute('aria-label');
                 }
             } else {
                 this.element.classList.remove('gap-2');
                 this.element.classList.remove('justify-content-center', 'px-2');
-                this.element.textContent = this.properties.title || '';
-                if (this.properties.title || this.properties.tooltip) {
-                    this.element.setAttribute('aria-label', this.properties.title || this.properties.tooltip);
+                const label = titleText || fallbackLabel;
+                this.element.textContent = label;
+                if (label) {
+                    this.element.setAttribute('aria-label', label);
                 } else {
                     this.element.removeAttribute('aria-label');
                 }
