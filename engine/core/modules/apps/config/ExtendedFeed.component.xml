@@ -55,7 +55,7 @@
             <pattern>/[year]/[month]/[day]/page-[pageNumber]/</pattern>
         </uri_patterns>
         <toolbar>
-            <control id="view" title="TXT_READ_MORE" type="link"/>
+            <control id="view" title="TXT_READ_MORE" icon="fa fa-eye" type="link"/>
         </toolbar>
         <translations>
             <translation const="TXT_ALL_NEWS"/>

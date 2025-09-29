@@ -16,8 +16,8 @@
             <field name="site"/>
         </fields>
         <toolbar>
-            <control id="select" title="BTN_SELECT" type="button" onclick="select"/>
-            <control id="close" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="select" title="BTN_SELECT" icon="fa fa-check-square-o" type="button" onclick="select"/>
+            <control id="close" title="BTN_CLOSE" icon="fa fa-times" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="getRawData" rights="3">

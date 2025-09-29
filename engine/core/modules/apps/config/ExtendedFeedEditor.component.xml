@@ -5,9 +5,9 @@
             <behavior name="FeedToolbar"/>
         </javascript>
         <toolbar>
-            <control id="add" title="BTN_ADD_ARTICLE" type="button" onclick="add"/>
-            <control id="edit" title="BTN_EDIT_ARTICLE" type="button" onclick="edit"/>
-            <control id="delete" title="BTN_DELETE_ARTICLE" type="button" onclick="del"/>
+            <control id="add" title="BTN_ADD_ARTICLE" icon="fa fa-plus" type="button" onclick="add"/>
+            <control id="edit" title="BTN_EDIT_ARTICLE" icon="fa fa-pencil" type="button" onclick="edit"/>
+            <control id="delete" title="BTN_DELETE_ARTICLE" icon="fa fa-trash" type="button" onclick="del"/>
         </toolbar>
     </state>
     <state name="add">
@@ -18,7 +18,7 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
             <control id="after_save_action" title="TXT_AFTER_SAVE_ACTION" type="select">
                 <options>
                     <option id="reload">BTN_CLOSE</option>
@@ -26,7 +26,7 @@
                 </options>
             </control>
             <control id="sep1" type="separator"/>
-            <control id="list" title="BTN_CANCEL" type="button" onclick="close"/>
+            <control id="list" title="BTN_CANCEL" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="edit">
@@ -37,8 +37,8 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-            <control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+            <control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="save" rights="3">

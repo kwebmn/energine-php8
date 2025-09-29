@@ -161,22 +161,24 @@ class Toolbar {
 
     // ---- Controls ----
 
+    static normalizeBoolean(value) {
+        if (value === true || value === 1) return true;
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            return normalized === 'true' || normalized === '1' || normalized === 'disabled' || normalized === 'yes' || normalized === 'on';
+        }
+        return false;
+    }
+
     static Control = class {
         constructor(properties = {}) {
             this.toolbar = null;
             this.element = null;
             this.bootstrapTooltip = null;
-            const normalizeBool = value => {
-                if (value === true || value === 1) return true;
-                if (typeof value === 'string') {
-                    const normalized = value.toLowerCase();
-                    return normalized === 'true' || normalized === '1' || normalized === 'disabled';
-                }
-                return false;
-            };
             this.properties = Object.assign({
                 id: '',
                 icon: '',
+                iconOnly: false,
                 title: '',
                 tooltip: '',
                 action: '',
@@ -184,19 +186,25 @@ class Toolbar {
                 initially_disabled: false,
                 type: ''
             }, properties);
-            this.properties.disabled = normalizeBool(this.properties.disabled);
-            this.properties.initially_disabled = normalizeBool(this.properties.initially_disabled);
+            this.properties.iconOnly = Toolbar.normalizeBoolean(this.properties.iconOnly);
+            this.properties.disabled = Toolbar.normalizeBoolean(this.properties.disabled);
+            this.properties.initially_disabled = Toolbar.normalizeBoolean(this.properties.initially_disabled);
             this.properties.isDisabled = this.properties.disabled;
             this.properties.isInitiallyDisabled = this.properties.initially_disabled || this.properties.isDisabled;
         }
         load(controlDescr) {
             this.properties.id = controlDescr.getAttribute('id') || '';
             this.properties.icon = controlDescr.getAttribute('icon') || '';
-            this.properties.title = controlDescr.getAttribute('title') || '';
-            this.properties.action = controlDescr.getAttribute('action') || '';
-            this.properties.tooltip = controlDescr.getAttribute('tooltip') || '';
+            this.properties.iconOnly = Toolbar.normalizeBoolean(
+                controlDescr.getAttribute('icon-only') || controlDescr.getAttribute('data-icon-only')
+            );
+            this.properties.title = controlDescr.getAttribute('title') || controlDescr.textContent?.trim() || '';
+            const actionAttr = controlDescr.getAttribute('action') || controlDescr.getAttribute('onclick') || '';
+            this.properties.action = actionAttr.replace(/^javascript:/i, '').trim();
+            const tooltipAttr = controlDescr.getAttribute('tooltip') || controlDescr.getAttribute('data-bs-original-title') || '';
+            this.properties.tooltip = tooltipAttr || '';
             this.properties.type = controlDescr.getAttribute('type') || '';
-            this.properties.isDisabled = !!controlDescr.getAttribute('disabled');
+            this.properties.isDisabled = controlDescr.hasAttribute('disabled');
             this.properties.isInitiallyDisabled = this.properties.isDisabled;
         }
         createElement() {
@@ -227,20 +235,75 @@ class Toolbar {
                 this.disposeBootstrapBehaviors();
             }
         }
-        buildAsIcon(icon) {
-            this.element.classList.add('d-inline-flex', 'align-items-center', 'justify-content-center');
-            this.element.textContent = icon;
-            if (this.properties.title || this.properties.tooltip) {
-                this.element.setAttribute('aria-label', this.properties.title || this.properties.tooltip);
+        createIconElement(icon) {
+            const wrapper = document.createElement('span');
+            wrapper.classList.add('toolbar-icon', 'd-inline-flex', 'align-items-center', 'justify-content-center');
+            if (!icon) {
+                wrapper.textContent = '';
+                return wrapper;
             }
+            const trimmed = icon.trim();
+            if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+                wrapper.innerHTML = trimmed;
+            } else if (/^[\w\s-]+$/.test(trimmed)) {
+                const iconElement = document.createElement('i');
+                trimmed.split(/\s+/).filter(Boolean).forEach(cls => iconElement.classList.add(cls));
+                iconElement.setAttribute('aria-hidden', 'true');
+                wrapper.appendChild(iconElement);
+            } else {
+                wrapper.textContent = trimmed;
+                wrapper.setAttribute('aria-hidden', 'true');
+            }
+            return wrapper;
+        }
+        setIcon(icon, iconOnly = null) {
+            this.properties.icon = icon || '';
+            if (iconOnly !== null) {
+                this.properties.iconOnly = Toolbar.normalizeBoolean(iconOnly);
+            }
+            this.render();
         }
         render() {
-            if (this.properties.icon) {
-                this.buildAsIcon(this.properties.icon);
+            if (!this.element) return;
+            const hasIcon = !!this.properties.icon;
+            const titleText = (this.properties.title || '').trim();
+            const hasTitle = !!titleText.length;
+            const fallbackLabel = this.properties.tooltip || '';
+            const accessibleLabel = titleText || fallbackLabel || '';
+            const iconOnly = hasIcon && (this.properties.iconOnly || !hasTitle);
+            this.element.innerHTML = '';
+
+            if (hasIcon) {
+                this.element.classList.add('d-inline-flex', 'align-items-center');
+                const iconElement = this.createIconElement(this.properties.icon);
+                this.element.appendChild(iconElement);
+                if (iconOnly) {
+                    this.element.classList.remove('gap-2');
+                    this.element.classList.add('justify-content-center', 'px-2');
+                } else {
+                    this.element.classList.add('gap-2');
+                    this.element.classList.remove('justify-content-center');
+                    this.element.classList.remove('px-2');
+                    const textSpan = document.createElement('span');
+                    textSpan.classList.add('toolbar-control-label', 'd-none', 'd-sm-inline');
+                    textSpan.textContent = titleText || accessibleLabel;
+                    this.element.appendChild(textSpan);
+                }
+                if (accessibleLabel) {
+                    this.element.setAttribute('aria-label', accessibleLabel);
+                } else {
+                    this.element.removeAttribute('aria-label');
+                }
             } else {
-                this.element.classList.remove('d-inline-flex', 'align-items-center', 'justify-content-center', 'px-2');
-                this.element.removeAttribute('aria-label');
-                this.element.textContent = this.properties.title || '';
+                this.element.classList.remove('gap-2');
+                this.element.classList.remove('justify-content-center', 'px-2');
+                const label = titleText || fallbackLabel;
+                this.element.textContent = label;
+                if (label) {
+                    this.element.setAttribute('aria-label', label);
+                } else {
+                    this.element.removeAttribute('aria-label');
+                }
             }
         }
         build() {
@@ -309,8 +372,16 @@ class Toolbar {
         build() {
             super.build();
             if (!this.element) return;
+            const hasIcon = !!this.properties.icon;
+            const hasTitle = !!(this.properties.title && this.properties.title.trim().length);
+            const iconOnly = hasIcon && (this.properties.iconOnly || !hasTitle);
             this.element.type = this.properties.type || 'button';
-            this.element.classList.add('btn', 'btn-sm', this.getVariantClass(), 'd-inline-flex', 'align-items-center', 'gap-2');
+            this.element.classList.add('btn', 'btn-sm', this.getVariantClass(), 'd-inline-flex', 'align-items-center');
+            if (!iconOnly) {
+                this.element.classList.add('gap-2');
+            } else {
+                this.element.classList.remove('gap-2');
+            }
             if (this.properties.id) this.element.classList.add(`${this.properties.id}_btn`);
             this.handleMouseOver = () => {
                 if (!this.properties.isDisabled) this.element.classList.add('highlighted');
@@ -327,10 +398,6 @@ class Toolbar {
             this.element.addEventListener('mouseout', this.handleMouseOut);
             this.element.addEventListener('click', this.handleClick);
             this.element.addEventListener('mousedown', this.handleMouseDown);
-        }
-        buildAsIcon(icon) {
-            super.buildAsIcon(icon);
-            this.element.classList.add('px-2');
         }
         getVariantClass() {
             const source = [this.properties.id, this.properties.action, this.properties.title]
@@ -410,6 +477,11 @@ class Toolbar {
     static Switcher = class extends Toolbar.Button {
         constructor(props) {
             super(props);
+            if (props && typeof props.aicon !== 'undefined') {
+                this.properties.aicon = props.aicon || '';
+            } else if (typeof this.properties.aicon === 'undefined') {
+                this.properties.aicon = '';
+            }
             this.properties.state = this.properties.state ? !!parseInt(this.properties.state, 10) : false;
             this.handleSwitch = null;
         }
@@ -418,11 +490,17 @@ class Toolbar {
             this.element.setAttribute('data-bs-toggle', 'button');
             const toggle = () => {
                 if (this.properties.state) {
-                    if (this.properties.aicon) this.buildAsIcon(this.properties.aicon);
-                    else this.element.classList.add('active', 'pressed');
+                    if (this.properties.aicon) {
+                        this.setIcon(this.properties.aicon);
+                    }
+                    this.element.classList.add('active', 'pressed');
                 } else {
-                    if (this.properties.icon) this.buildAsIcon(this.properties.icon);
-                    else this.element.classList.remove('active', 'pressed');
+                    if (this.properties.icon) {
+                        this.setIcon(this.properties.icon);
+                    } else if (this.properties.aicon) {
+                        this.setIcon('');
+                    }
+                    this.element.classList.remove('active', 'pressed');
                 }
                 this.element.setAttribute('aria-pressed', this.properties.state ? 'true' : 'false');
             };
@@ -438,7 +516,12 @@ class Toolbar {
         load(controlDescr) {
             super.load(controlDescr);
             this.properties.aicon = controlDescr.getAttribute('aicon') || '';
-            this.properties.state = controlDescr.getAttribute('state') || 0;
+            const stateAttr = controlDescr.getAttribute('state');
+            if (stateAttr !== null) {
+                this.properties.state = Toolbar.normalizeBoolean(stateAttr) ? 1 : 0;
+            } else {
+                this.properties.state = 0;
+            }
         }
         getState() { return this.properties.state; }
         destroy() {

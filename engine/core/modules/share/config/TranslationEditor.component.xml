@@ -10,10 +10,10 @@
 				<field name="ltag_value_rtf"/>
 			</fields>
 			<toolbar>
-				<control id="add" title="BTN_ADD" type="button" onclick="add"/>
-				<control id="edit" title="BTN_EDIT" type="button" onclick="edit"/>
-				<control id="delete" title="BTN_DELETE" type="button" onclick="del"/>
-				<control id="close" title="BTN_CLOSE" type="button" onclick="close"/>
+				<control id="add" title="BTN_ADD" icon="fa fa-plus" type="button" onclick="add"/>
+				<control id="edit" title="BTN_EDIT" icon="fa fa-pencil" type="button" onclick="edit"/>
+				<control id="delete" title="BTN_DELETE" icon="fa fa-trash" type="button" onclick="del"/>
+				<control id="close" title="BTN_CLOSE" icon="fa fa-times" type="button" onclick="close"/>
 			</toolbar>
 		</state>
 		<state name="add">
@@ -24,7 +24,7 @@
 				<behavior name="Form"/>
 			</javascript>
 			<toolbar>
-				<control id="save" title="BTN_SAVE" type="button" onclick="save"/>
+				<control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
                 <control id="after_save_action" title="TXT_AFTER_SAVE_ACTION" type="select">
                     <options>
                         <option id="reload">BTN_CLOSE</option>
@@ -32,7 +32,7 @@
                     </options>
                 </control>
                 <control id="sep1" type="separator" />
-				<control id="list" title="BTN_CANCEL" type="button" onclick="close"/>
+				<control id="list" title="BTN_CANCEL" icon="fa fa-arrow-left" type="button" onclick="close"/>
 			</toolbar>
 		</state>
 		<state name="edit">
@@ -43,7 +43,7 @@
 				<behavior name="Form"/>
 			</javascript>
 			<toolbar>
-				<control id="save" title="BTN_SAVE" type="button" onclick="save"/>
+				<control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
                 <control id="after_save_action" title="TXT_AFTER_SAVE_ACTION" type="select">
                     <options>
                         <option id="reload">BTN_CLOSE</option>
@@ -52,7 +52,7 @@
                     </options>
                 </control>
                 <control id="sep1" type="separator" />
-				<control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+				<control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
 			</toolbar>
 		</state>
 		<state name="save" rights="3">
