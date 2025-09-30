@@ -15,7 +15,7 @@
             <xsl:attribute name="class">
                 <xsl:text>mb-3</xsl:text>
                 <xsl:if test="$SHOW_REQUIRED_MARK">
-                    <xsl:text> pl-3 border-left border-danger rounded</xsl:text>
+                    <xsl:text> ps-3 border-start border-success-subtle rounded</xsl:text>
                 </xsl:if>
             </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
@@ -49,7 +49,7 @@
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 <xsl:if test="$IS_REQUIRED_LABEL">
-                    <span class="text-danger ml-1" aria-hidden="true">*</span>
+                    <span class="text-success ms-1" aria-hidden="true">*</span>
                     <xsl:if test="/document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
                         <span class="sr-only">
                             <xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/>
@@ -76,7 +76,7 @@
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 <xsl:if test="$IS_REQUIRED_LABEL">
-                    <span class="text-danger ml-1" aria-hidden="true">*</span>
+                    <span class="text-success ms-1" aria-hidden="true">*</span>
                     <xsl:if test="/document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
                         <span class="sr-only">
                             <xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/>
