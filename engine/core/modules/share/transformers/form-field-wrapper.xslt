@@ -15,7 +15,7 @@
             <xsl:attribute name="class">
                 <xsl:text>mb-3</xsl:text>
                 <xsl:if test="$SHOW_REQUIRED_MARK">
-                    <xsl:text> form-field--required</xsl:text>
+                    <xsl:text> pl-3 border-left border-danger rounded</xsl:text>
                 </xsl:if>
             </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
@@ -26,9 +26,6 @@
                 </xsl:choose>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
-            <xsl:if test="$SHOW_REQUIRED_MARK">
-                <xsl:attribute name="style">padding-left: 0.75rem; border-left: 0.25rem solid rgba(220,53,69,0.35); border-radius: 0.375rem;</xsl:attribute>
-            </xsl:if>
             <xsl:apply-templates select="." mode="field_content"/>
         </div>
     </xsl:template>
@@ -40,7 +37,7 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-label</xsl:text>
                     <xsl:if test="$IS_REQUIRED_LABEL">
-                        <xsl:text> form-label--required</xsl:text>
+                        <xsl:text> d-inline-flex align-items-center</xsl:text>
                     </xsl:if>
                 </xsl:attribute>
                 <xsl:attribute name="for">
@@ -51,6 +48,14 @@
                     <xsl:attribute name="title"><xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                <xsl:if test="$IS_REQUIRED_LABEL">
+                    <span class="text-danger ml-1" aria-hidden="true">*</span>
+                    <xsl:if test="/document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
+                        <span class="sr-only">
+                            <xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/>
+                        </span>
+                    </xsl:if>
+                </xsl:if>
             </label>
         </xsl:if>
     </xsl:template>
@@ -62,7 +67,7 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-label</xsl:text>
                     <xsl:if test="$IS_REQUIRED_LABEL">
-                        <xsl:text> form-label--required</xsl:text>
+                        <xsl:text> d-inline-flex align-items-center</xsl:text>
                     </xsl:if>
                 </xsl:attribute>
                 <xsl:attribute name="for"><xsl:value-of select="concat(generate-id(.), '_path')"/></xsl:attribute>
@@ -70,6 +75,14 @@
                     <xsl:attribute name="title"><xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
+                <xsl:if test="$IS_REQUIRED_LABEL">
+                    <span class="text-danger ml-1" aria-hidden="true">*</span>
+                    <xsl:if test="/document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
+                        <span class="sr-only">
+                            <xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/>
+                        </span>
+                    </xsl:if>
+                </xsl:if>
             </label>
         </xsl:if>
     </xsl:template>
