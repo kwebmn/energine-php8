@@ -10,12 +10,7 @@
         <form method="post" action="{@action}">
             <xsl:if test="@exttype='grid'">
                 <xsl:attribute name="data-role">grid-form</xsl:attribute>
-                <xsl:attribute name="class">
-                    <xsl:text>e-grid-form</xsl:text>
-                    <xsl:if test="@sample='DivisionEditor'">
-                        <xsl:text> bg-body-tertiary min-vh-100 w-100 d-flex align-items-stretch justify-content-center py-4 py-lg-5 px-3 px-lg-4</xsl:text>
-                    </xsl:if>
-                </xsl:attribute>
+                <xsl:attribute name="class">e-grid-form</xsl:attribute>
             </xsl:if>
             <input type="hidden" name="componentAction" value="{@componentAction}"/>
             <xsl:apply-templates/>

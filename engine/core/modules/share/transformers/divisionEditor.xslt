@@ -15,14 +15,13 @@
     <!-- вывод дерева разделов -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card border-0 shadow-lg rounded-4 overflow-hidden w-100 mx-auto" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
-            <xsl:attribute name="style">max-width: 960px;</xsl:attribute>
-            <div class="card-header bg-transparent border-0 pt-4 pb-0 px-4" data-pane-part="header" data-pane-toolbar="top">
-                <ul class="nav nav-tabs card-header-tabs mb-0 gap-2 border-0 flex-wrap" data-role="tabs" role="tablist">
-                    <li class="nav-item" data-role="tab" role="presentation">
+        <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+            <div class="card-header bg-body-tertiary border-bottom flex-shrink-0 pb-0" data-pane-part="header" data-pane-toolbar="top">
+                <ul class="nav nav-tabs card-header-tabs mb-0" data-role="tabs" role="tablist">
+                    <li class="nav-item current active" data-role="tab" role="presentation" unselectable="on">
                         <a href="#{$TAB_ID}" data-role="tab-link">
                             <xsl:attribute name="id"><xsl:value-of select="concat($TAB_ID, '-tab')"/></xsl:attribute>
-                            <xsl:attribute name="class">nav-link rounded-pill px-3 py-2 fw-semibold active</xsl:attribute>
+                            <xsl:attribute name="class">nav-link active</xsl:attribute>
                             <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
                             <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
                             <xsl:attribute name="role">tab</xsl:attribute>
@@ -33,17 +32,17 @@
                     </li>
                 </ul>
             </div>
-            <div class="card-body bg-body px-4 pb-4 pt-3 d-flex flex-column" data-pane-part="body">
-                <div class="tab-content flex-grow-1 d-flex flex-column w-100" data-role="tab-content">
-                    <div id="{$TAB_ID}" class="tab-pane fade show active d-flex flex-column flex-lg-row gap-4 align-items-stretch w-100 flex-grow-1" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab">
-                        <div id="treeContainer" data-role="tree-panel" class="position-relative flex-shrink-0 w-100 w-lg-auto bg-body-tertiary border rounded-4 p-4 shadow-sm mb-4 mb-lg-0" style="max-width: 28rem;">
+            <div class="card-body p-4 d-flex flex-column flex-grow-1 overflow-auto" data-pane-part="body" style="min-height: 0;">
+                <div class="tab-content" data-role="tab-content">
+                    <div id="{$TAB_ID}" class="tab-pane fade p-3 show active h-100 d-flex flex-column flex-lg-row gap-4 align-items-start" data-role="pane-item" role="tabpanel" aria-labelledby="{$TAB_ID}-tab" aria-hidden="false">
+                        <div id="treeContainer" data-role="tree-panel" class="position-relative flex-shrink-0 w-100 w-lg-auto bg-body-tertiary border rounded-3 p-3 shadow-sm" style="max-width: 340px; max-height: calc(100vh - 12rem); overflow-y: auto;">
                             <xsl:apply-templates select="$COMPONENTS[@class='SiteList']" mode="insideEditor"/>
                         </div>
                     </div>
                 </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4 d-flex justify-content-end" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+                <div class="card-footer bg-body-tertiary border-top flex-shrink-0" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             </xsl:if>
         </div>
     </xsl:template>
