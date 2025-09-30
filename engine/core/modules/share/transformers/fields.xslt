@@ -8,15 +8,19 @@
         Секция 1. Инпуты.
         В этой секции собраны правила вывода полей формы, которые создают сам html-элемент (input, select, etc.).
     -->
+    <xsl:template name="append-required-control-classes">
+        <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
+            <xsl:text> text-success-emphasis bg-success-subtle border-success-subtle focus-ring focus-ring-success</xsl:text>
+        </xsl:if>
+    </xsl:template>
+
     <!-- строковое поле (string), или поле, к которому не нашлось шаблона -->
     <xsl:template match="field[ancestor::component[@type='form']]" mode="field_input">
         <input>
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -28,9 +32,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">email</xsl:attribute>
@@ -43,9 +45,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">tel</xsl:attribute>
@@ -60,9 +60,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="nrgn:url" xmlns:nrgn="http://energine.org">
@@ -94,9 +92,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">number</xsl:attribute>
@@ -110,9 +106,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">number</xsl:attribute>
@@ -126,9 +120,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">password</xsl:attribute>
@@ -148,7 +140,13 @@
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
         </xsl:variable>
-        <div class="form-check">
+        <div>
+            <xsl:attribute name="class">
+                <xsl:text>form-check</xsl:text>
+                <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
+                    <xsl:text> text-success-emphasis bg-success-subtle border border-success-subtle rounded px-3 py-2</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <input type="hidden" name="{$FIELD_NAME}" value="0"/>
             <input type="checkbox" id="{$FIELD_ID}" name="{$FIELD_NAME}" value="1">
                 <xsl:attribute name="class">
@@ -217,9 +215,7 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-control</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                    <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                        <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                    </xsl:if>
+                    <xsl:call-template name="append-required-control-classes"/>
                 </xsl:attribute>
                 <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
                 <xsl:attribute name="name"><xsl:choose>
@@ -299,9 +295,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
             <xsl:attribute name="name"><xsl:choose>
@@ -327,9 +321,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
             <xsl:attribute name="name"><xsl:choose>
@@ -387,9 +379,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
@@ -402,9 +392,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
@@ -417,9 +405,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
@@ -432,9 +418,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -452,9 +436,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -505,9 +487,7 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-control</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                    <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                        <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                    </xsl:if>
+                    <xsl:call-template name="append-required-control-classes"/>
                 </xsl:attribute>
             </input>
             <button class="btn btn-outline-secondary" type="button" data-action="open-smap">
@@ -830,9 +810,7 @@
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                </xsl:if>
+                <xsl:call-template name="append-required-control-classes"/>
             </xsl:attribute>
             <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
             <xsl:if test="not(@nullable) or @nullable='0'">
@@ -880,9 +858,7 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-control</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-                    <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                        <xsl:text> border-success-subtle bg-success-subtle</xsl:text>
-                    </xsl:if>
+                    <xsl:call-template name="append-required-control-classes"/>
                 </xsl:attribute>
             </input>
             <button type="button" class="btn btn-outline-secondary" data-action="open-attachment">

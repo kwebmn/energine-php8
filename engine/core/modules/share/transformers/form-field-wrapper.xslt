@@ -15,7 +15,7 @@
             <xsl:attribute name="class">
                 <xsl:text>mb-3</xsl:text>
                 <xsl:if test="$SHOW_REQUIRED_MARK">
-                    <xsl:text> ps-3 border-start border-success-subtle rounded</xsl:text>
+                    <xsl:text> ps-3 border-start border-success-subtle bg-success-subtle rounded</xsl:text>
                 </xsl:if>
             </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
@@ -25,7 +25,9 @@
                     <xsl:otherwise>string</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
-            <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+            <xsl:if test="$IS_REQUIRED">
+                <xsl:attribute name="data-required">true</xsl:attribute>
+            </xsl:if>
             <xsl:apply-templates select="." mode="field_content"/>
         </div>
     </xsl:template>
@@ -49,9 +51,11 @@
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 <xsl:if test="$IS_REQUIRED_LABEL">
-                    <span class="text-success ms-1" aria-hidden="true">*</span>
+                    <span aria-hidden="true">*
+                        <xsl:attribute name="class">badge text-bg-success-subtle text-success-emphasis border border-success-subtle fw-semibold ms-2</xsl:attribute>
+                    </span>
                     <xsl:if test="/document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
-                        <span class="sr-only">
+                        <span class="visually-hidden">
                             <xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/>
                         </span>
                     </xsl:if>
@@ -76,9 +80,11 @@
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 <xsl:if test="$IS_REQUIRED_LABEL">
-                    <span class="text-success ms-1" aria-hidden="true">*</span>
+                    <span aria-hidden="true">*
+                        <xsl:attribute name="class">badge text-bg-success-subtle text-success-emphasis border border-success-subtle fw-semibold ms-2</xsl:attribute>
+                    </span>
                     <xsl:if test="/document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
-                        <span class="sr-only">
+                        <span class="visually-hidden">
                             <xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/>
                         </span>
                     </xsl:if>
