@@ -8,8 +8,6 @@
         Обёртка для полей формы на базе стандартной сетки Bootstrap.
         Вынесена в отдельный файл для переиспользования и упрощения fields.xslt.
     -->
-    <xsl:variable name="TRANSLATION" select="/document/translations/translation"/>
-
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
         <xsl:variable name="SHOW_REQUIRED_MARK" select="$IS_REQUIRED and not(ancestor::component/@exttype='grid')"/>
@@ -49,8 +47,8 @@
                     <xsl:value-of select="@name"/>
                     <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
                 </xsl:attribute>
-                <xsl:if test="$IS_REQUIRED_LABEL and $TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
-                    <xsl:attribute name="title"><xsl:value-of select="normalize-space($TRANSLATION[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
+                <xsl:if test="$IS_REQUIRED_LABEL and /document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
+                    <xsl:attribute name="title"><xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
             </label>
@@ -68,8 +66,8 @@
                     </xsl:if>
                 </xsl:attribute>
                 <xsl:attribute name="for"><xsl:value-of select="concat(generate-id(.), '_path')"/></xsl:attribute>
-                <xsl:if test="$IS_REQUIRED_LABEL and $TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
-                    <xsl:attribute name="title"><xsl:value-of select="normalize-space($TRANSLATION[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
+                <xsl:if test="$IS_REQUIRED_LABEL and /document/translations/translation[@const='TXT_REQUIRED_FIELDS']">
+                    <xsl:attribute name="title"><xsl:value-of select="normalize-space(/document/translations/translation[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
                 </xsl:if>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
             </label>
