@@ -92,7 +92,13 @@
         <xsl:variable name="FIELD_UID" select="generate-id(.)"/>
         <xsl:variable name="DISPLAY_ID" select="concat($FIELD_UID, '_display')"/>
         <xsl:variable name="HIDDEN_ID" select="concat($FIELD_UID, '_value')"/>
-        <div class="mb-3" data-role="form-field">
+        <div data-role="form-field">
+            <xsl:attribute name="class">
+                <xsl:text>mb-3</xsl:text>
+                <xsl:if test="$IS_REQUIRED">
+                    <xsl:text> required-field</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
@@ -173,7 +179,13 @@
                 <xsl:otherwise>string</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <div class="mb-3" data-role="form-field">
+        <div data-role="form-field">
+            <xsl:attribute name="class">
+                <xsl:text>mb-3</xsl:text>
+                <xsl:if test="$IS_REQUIRED">
+                    <xsl:text> required-field</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type"><xsl:value-of select="$DATA_TYPE"/></xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>

@@ -705,8 +705,15 @@
     <xsl:template match="field[@type='captcha'][ancestor::component[@type='list']]"/>
 
     <xsl:template match="field[@type='captcha'][ancestor::component[@type='form']]">
-        <div class="mb-3" data-role="form-field" data-type="captcha">
-            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
+        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <div data-role="form-field" data-type="captcha">
+            <xsl:attribute name="class">
+                <xsl:text>mb-3</xsl:text>
+                <xsl:if test="$IS_REQUIRED">
+                    <xsl:text> required-field</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
             <div id="control_{@language}_{@name}">
                 <xsl:value-of select="." disable-output-escaping="yes"/>
             </div>

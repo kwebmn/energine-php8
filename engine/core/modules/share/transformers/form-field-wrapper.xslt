@@ -11,7 +11,12 @@
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
         <div data-role="form-field">
-            <xsl:attribute name="class">mb-3</xsl:attribute>
+            <xsl:attribute name="class">
+                <xsl:text>mb-3</xsl:text>
+                <xsl:if test="$IS_REQUIRED">
+                    <xsl:text> required-field</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
