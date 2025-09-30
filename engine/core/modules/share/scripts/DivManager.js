@@ -45,7 +45,11 @@ class DivManager {
         this.tabPane = new TabPane(this.element);
         this.langId = this.element.getAttribute('lang_id');
 
-        this.element.classList.add('d-flex', 'flex-column', 'flex-lg-row', 'gap-4', 'align-items-start');
+        const isSingleMode = document.body?.classList?.contains('e-singlemode-layout');
+
+        this.element.classList.add('d-flex', 'flex-column', 'gap-4');
+        this.element.classList.toggle('flex-lg-row', !isSingleMode);
+        this.element.classList.toggle('align-items-start', !isSingleMode);
 
         // --- Создание структуры дерева (div для jsTree) ---
         this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
@@ -57,11 +61,19 @@ class DivManager {
             divTree.id = 'divTree';
             this.treeContainer.appendChild(divTree);
         }
-        this.treeContainer.classList.add('position-relative', 'flex-shrink-0', 'w-100', 'w-lg-auto', 'bg-body', 'border', 'rounded-3', 'p-3', 'shadow-sm');
-        this.treeContainer.style.maxWidth = '340px';
-        this.treeContainer.style.maxHeight = 'calc(100vh - 6rem)';
+        //this.treeContainer.classList.add('position-relative', 'w-100', 'bg-body', 'border', 'rounded-3', 'p-3', 'shadow-sm');
+        this.treeContainer.classList.toggle('flex-shrink-0', !isSingleMode);
+        this.treeContainer.classList.toggle('w-lg-auto', !isSingleMode);
+        if (isSingleMode) {
+            this.treeContainer.style.removeProperty('maxWidth');
+            this.treeContainer.style.removeProperty('maxHeight');
+        } else {
+            this.treeContainer.style.maxWidth = '340px';
+            this.treeContainer.style.maxHeight = 'calc(100vh - 6rem)';
+        }
         this.treeContainer.style.overflowY = 'auto';
-        this.treeContainer.classList.add('mb-3', 'mb-lg-0');
+        this.treeContainer.classList.add('mb-3');
+        this.treeContainer.classList.toggle('mb-lg-0', !isSingleMode);
 
         this.singlePath = this.element.getAttribute('single_template');
         this.site = this.element.getAttribute('site');

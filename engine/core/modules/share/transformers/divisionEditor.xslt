@@ -16,7 +16,7 @@
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
         <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
-            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+            <div class="card-header pb-0" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
                         <a href="#{$TAB_ID}" data-role="tab-link">
