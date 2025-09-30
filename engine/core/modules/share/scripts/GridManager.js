@@ -1847,15 +1847,22 @@ class GridManager {
      * @param {Object} returnValue
      */
     processAfterCloseAction(returnValue) {
-        if (!returnValue) {
+        if (!returnValue || returnValue.result !== true) {
             return;
         }
 
-        if (returnValue.afterClose && typeof this[returnValue.afterClose] === 'function') {
-            this[returnValue.afterClose](null);
-        } else {
-            this.loadPage(this.pageList ? this.pageList.currentPage : 1);
+        if (returnValue.data !== undefined && returnValue.data !== null) {
+            this.gridPendingSelection = String(returnValue.data);
         }
+
+        const targetPage = this.pageList ? this.pageList.currentPage : 1;
+        this.loadPage(targetPage);
+
+        if (returnValue.afterClose && returnValue.afterClose !== 'reload'
+            && typeof this[returnValue.afterClose] === 'function') {
+            this[returnValue.afterClose](null);
+        }
+
         this.grid.fireEvent('dirty');
     }
 
