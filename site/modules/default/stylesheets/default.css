@@ -199,40 +199,6 @@ ul.nostyle div.checkbox
 
 }
 
-/* -------------------------------------------------------------------------- */
-/* Required fields highlighting */
-/* -------------------------------------------------------------------------- */
-
-.form-field--required {
-    position: relative;
-}
-
-.form-field--required::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.5rem;
-    bottom: 0.5rem;
-    width: 0.25rem;
-    border-radius: 0.25rem;
-    background-color: var(--bs-danger, #dc3545);
-    opacity: 0.3;
-}
-
-.form-field--required .form-label--required {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.form-field--required .form-label--required::after {
-    content: '*';
-    color: var(--bs-danger, #dc3545);
-    font-size: 0.875em;
-    line-height: 1;
-    font-weight: 600;
-    opacity: 0.75;
-}
 #product_list .card
 {
     -webkit-transition: top 1s ease-out 0.5s;
