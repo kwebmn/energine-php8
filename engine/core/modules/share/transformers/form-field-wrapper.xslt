@@ -8,10 +8,18 @@
         Обёртка для полей формы на базе стандартной сетки Bootstrap.
         Вынесена в отдельный файл для переиспользования и упрощения fields.xslt.
     -->
+    <xsl:variable name="TRANSLATION" select="/document/translations/translation"/>
+
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
         <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="SHOW_REQUIRED_MARK" select="$IS_REQUIRED and not(ancestor::component/@exttype='grid')"/>
         <div data-role="form-field">
-            <xsl:attribute name="class">mb-3</xsl:attribute>
+            <xsl:attribute name="class">
+                <xsl:text>mb-3</xsl:text>
+                <xsl:if test="$SHOW_REQUIRED_MARK">
+                    <xsl:text> form-field--required</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
@@ -20,33 +28,50 @@
                 </xsl:choose>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
+            <xsl:if test="$SHOW_REQUIRED_MARK">
+                <xsl:attribute name="style">padding-left: 0.75rem; border-left: 0.25rem solid rgba(220,53,69,0.35); border-radius: 0.375rem;</xsl:attribute>
+            </xsl:if>
             <xsl:apply-templates select="." mode="field_content"/>
         </div>
     </xsl:template>
 
     <xsl:template match="field[ancestor::component[@type='form']]" mode="field_name">
         <xsl:if test="@title and @type!='boolean'">
-            <label class="form-label">
+            <xsl:variable name="IS_REQUIRED_LABEL" select="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')"/>
+            <label>
+                <xsl:attribute name="class">
+                    <xsl:text>form-label</xsl:text>
+                    <xsl:if test="$IS_REQUIRED_LABEL">
+                        <xsl:text> form-label--required</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
                 <xsl:attribute name="for">
                     <xsl:value-of select="@name"/>
                     <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
                 </xsl:attribute>
-                <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <span class="text-danger">*</span>
+                <xsl:if test="$IS_REQUIRED_LABEL and $TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
+                    <xsl:attribute name="title"><xsl:value-of select="normalize-space($TRANSLATION[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
                 </xsl:if>
+                <xsl:value-of select="@title" disable-output-escaping="yes"/>
             </label>
         </xsl:if>
     </xsl:template>
 
     <xsl:template match="field[@type='file'][ancestor::component[@type='form']]" mode="field_name">
         <xsl:if test="@title">
-            <label class="form-label">
+            <xsl:variable name="IS_REQUIRED_LABEL" select="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')"/>
+            <label>
+                <xsl:attribute name="class">
+                    <xsl:text>form-label</xsl:text>
+                    <xsl:if test="$IS_REQUIRED_LABEL">
+                        <xsl:text> form-label--required</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
                 <xsl:attribute name="for"><xsl:value-of select="concat(generate-id(.), '_path')"/></xsl:attribute>
-                <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
-                    <span class="text-danger">*</span>
+                <xsl:if test="$IS_REQUIRED_LABEL and $TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
+                    <xsl:attribute name="title"><xsl:value-of select="normalize-space($TRANSLATION[@const='TXT_REQUIRED_FIELDS'])"/></xsl:attribute>
                 </xsl:if>
+                <xsl:value-of select="@title" disable-output-escaping="yes"/>
             </label>
         </xsl:if>
     </xsl:template>
