@@ -208,7 +208,7 @@
                                     </div>
                                 </div>
                                 <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                    <div class="grid-breadcrumbs flex-grow-1 alert alert-secondary mb-0 py-2 px-3" id="breadcrumbs"/>
+                                    <div class="grid-breadcrumbs flex-grow-1 alert alert-light mb-0 py-2 px-3" id="breadcrumbs"/>
                                 </xsl:if>
                             </div>
                         </xsl:if>

@@ -2011,7 +2011,7 @@ class Filter {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
-        this.element.classList.add('row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'border', 'border-light-subtle', 'bg-body', 'px-3', 'py-3');
+        this.element.classList.add('row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'bg-body');
         this.element.classList.remove('mb-3');
 
         // Привязки к основным элементам управления
