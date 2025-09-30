@@ -4,6 +4,13 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
 
+    <xsl:template name="append-required-control-classes">
+        <xsl:param name="IS_REQUIRED"/>
+        <xsl:if test="$IS_REQUIRED">
+            <xsl:text> bg-warning-subtle border border-warning-subtle</xsl:text>
+        </xsl:if>
+    </xsl:template>
+
     <!--
         Секция 1. Инпуты.
         В этой секции собраны правила вывода полей формы, которые создают сам html-элемент (input, select, etc.).
@@ -14,6 +21,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -25,6 +35,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">email</xsl:attribute>
@@ -37,6 +50,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">tel</xsl:attribute>
@@ -51,6 +67,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="nrgn:url" xmlns:nrgn="http://energine.org">
@@ -82,6 +101,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">number</xsl:attribute>
@@ -95,6 +117,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">number</xsl:attribute>
@@ -108,6 +133,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:attribute name="type">password</xsl:attribute>
@@ -142,7 +170,14 @@
                 </xsl:if>
             </input>
             <xsl:if test="@title">
-                <label class="form-check-label" for="{$FIELD_ID}">
+                <label>
+                    <xsl:attribute name="class">
+                        <xsl:text>form-check-label</xsl:text>
+                        <xsl:if test="$IS_REQUIRED">
+                            <xsl:text> text-warning-emphasis</xsl:text>
+                        </xsl:if>
+                    </xsl:attribute>
+                    <xsl:attribute name="for"><xsl:value-of select="$FIELD_ID"/></xsl:attribute>
                     <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 </label>
             </xsl:if>
@@ -196,6 +231,9 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-control</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                    <xsl:call-template name="append-required-control-classes">
+                        <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                    </xsl:call-template>
                 </xsl:attribute>
                 <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
                 <xsl:attribute name="name"><xsl:choose>
@@ -275,6 +313,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
             <xsl:attribute name="name"><xsl:choose>
@@ -300,6 +341,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
             <xsl:attribute name="name"><xsl:choose>
@@ -357,6 +401,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
@@ -369,6 +416,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
@@ -381,6 +431,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
             <xsl:value-of select="."/>
@@ -393,6 +446,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -410,6 +466,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -431,6 +490,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -442,6 +504,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
         </input>
@@ -460,6 +525,9 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-control</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                    <xsl:call-template name="append-required-control-classes">
+                        <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                    </xsl:call-template>
                 </xsl:attribute>
             </input>
             <button class="btn btn-outline-secondary" type="button" data-action="open-smap">
@@ -710,7 +778,7 @@
             <xsl:attribute name="class">
                 <xsl:text>mb-3</xsl:text>
                 <xsl:if test="$IS_REQUIRED">
-                    <xsl:text> required-field</xsl:text>
+                    <xsl:text> border border-warning-subtle bg-warning-subtle rounded-3 p-3</xsl:text>
                 </xsl:if>
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
@@ -789,6 +857,9 @@
             <xsl:attribute name="class">
                 <xsl:text>form-select</xsl:text>
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                <xsl:call-template name="append-required-control-classes">
+                    <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                </xsl:call-template>
             </xsl:attribute>
             <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
             <xsl:if test="not(@nullable) or @nullable='0'">
@@ -836,6 +907,9 @@
                 <xsl:attribute name="class">
                     <xsl:text>form-control</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                    <xsl:call-template name="append-required-control-classes">
+                        <xsl:with-param name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+                    </xsl:call-template>
                 </xsl:attribute>
             </input>
             <button type="button" class="btn btn-outline-secondary" data-action="open-attachment">

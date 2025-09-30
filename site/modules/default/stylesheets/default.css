@@ -425,33 +425,3 @@ ul.nostyle div.checkbox
     margin-top: 20px;
     margin-bottom: 50px;
 }
-
-/* Highlight required form controls */
-[data-role="form-field"].required-field {
-    --required-field-bg: var(--bs-warning-bg-subtle, #fff3cd);
-    --required-field-border: var(--bs-warning-border-subtle, #ffe69c);
-}
-
-[data-role="form-field"].required-field .form-label {
-    font-weight: 600;
-}
-
-[data-role="form-field"].required-field .form-control:not(.form-control-plaintext),
-[data-role="form-field"].required-field .form-select,
-[data-role="form-field"].required-field .form-check-input,
-[data-role="form-field"].required-field .input-group-text {
-    background-color: var(--required-field-bg);
-    border-color: var(--required-field-border);
-}
-
-[data-role="form-field"].required-field .form-control:not(.form-control-plaintext):focus,
-[data-role="form-field"].required-field .form-select:focus {
-    background-color: var(--required-field-bg);
-    border-color: var(--required-field-border);
-    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
-}
-
-[data-role="form-field"].required-field .form-check-input:focus {
-    border-color: var(--required-field-border);
-    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.35);
-}

@@ -14,7 +14,7 @@
             <xsl:attribute name="class">
                 <xsl:text>mb-3</xsl:text>
                 <xsl:if test="$IS_REQUIRED">
-                    <xsl:text> required-field</xsl:text>
+                    <xsl:text> border border-warning-subtle bg-warning-subtle rounded-3 p-3</xsl:text>
                 </xsl:if>
             </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
@@ -30,14 +30,21 @@
     </xsl:template>
 
     <xsl:template match="field[ancestor::component[@type='form']]" mode="field_name">
+        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
         <xsl:if test="@title and @type!='boolean'">
-            <label class="form-label">
+            <label>
+                <xsl:attribute name="class">
+                    <xsl:text>form-label</xsl:text>
+                    <xsl:if test="$IS_REQUIRED">
+                        <xsl:text> text-warning-emphasis</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
                 <xsl:attribute name="for">
                     <xsl:value-of select="@name"/>
                     <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
                 </xsl:attribute>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
+                <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
                     <span class="text-danger">*</span>
                 </xsl:if>
             </label>
@@ -46,10 +53,17 @@
 
     <xsl:template match="field[@type='file'][ancestor::component[@type='form']]" mode="field_name">
         <xsl:if test="@title">
-            <label class="form-label">
+            <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+            <label>
+                <xsl:attribute name="class">
+                    <xsl:text>form-label</xsl:text>
+                    <xsl:if test="$IS_REQUIRED">
+                        <xsl:text> text-warning-emphasis</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
                 <xsl:attribute name="for"><xsl:value-of select="concat(generate-id(.), '_path')"/></xsl:attribute>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
+                <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
                     <span class="text-danger">*</span>
                 </xsl:if>
             </label>

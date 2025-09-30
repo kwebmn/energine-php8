@@ -96,7 +96,7 @@
             <xsl:attribute name="class">
                 <xsl:text>mb-3</xsl:text>
                 <xsl:if test="$IS_REQUIRED">
-                    <xsl:text> required-field</xsl:text>
+                    <xsl:text> border border-warning-subtle bg-warning-subtle rounded-3 p-3</xsl:text>
                 </xsl:if>
             </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
@@ -108,7 +108,14 @@
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
             <xsl:if test="@title">
-                <label class="form-label" for="{$DISPLAY_ID}">
+                <label>
+                    <xsl:attribute name="class">
+                        <xsl:text>form-label</xsl:text>
+                        <xsl:if test="$IS_REQUIRED">
+                            <xsl:text> text-warning-emphasis</xsl:text>
+                        </xsl:if>
+                    </xsl:attribute>
+                    <xsl:attribute name="for"><xsl:value-of select="$DISPLAY_ID"/></xsl:attribute>
                     <xsl:value-of select="@title" disable-output-escaping="yes"/>
                     <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
                         <span class="text-danger">*</span>
@@ -120,6 +127,9 @@
                     <xsl:attribute name="class">
                         <xsl:text>form-control</xsl:text>
                         <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                        <xsl:if test="$IS_REQUIRED">
+                            <xsl:text> bg-warning-subtle border border-warning-subtle</xsl:text>
+                        </xsl:if>
                     </xsl:attribute>
                     <xsl:attribute name="value"><xsl:value-of select="@data_name"/></xsl:attribute>
                 </input>
@@ -150,7 +160,14 @@
             </xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
             <xsl:if test="@title">
-                <label class="form-label" for="{@name}">
+                <label>
+                    <xsl:attribute name="class">
+                        <xsl:text>form-label</xsl:text>
+                        <xsl:if test="$IS_REQUIRED">
+                            <xsl:text> text-warning-emphasis</xsl:text>
+                        </xsl:if>
+                    </xsl:attribute>
+                    <xsl:attribute name="for"><xsl:value-of select="@name"/></xsl:attribute>
                     <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 </label>
             </xsl:if>
@@ -183,14 +200,20 @@
             <xsl:attribute name="class">
                 <xsl:text>mb-3</xsl:text>
                 <xsl:if test="$IS_REQUIRED">
-                    <xsl:text> required-field</xsl:text>
+                    <xsl:text> border border-warning-subtle bg-warning-subtle rounded-3 p-3</xsl:text>
                 </xsl:if>
             </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type"><xsl:value-of select="$DATA_TYPE"/></xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
             <xsl:if test="@title">
-                <label class="form-label">
+                <label>
+                    <xsl:attribute name="class">
+                        <xsl:text>form-label</xsl:text>
+                        <xsl:if test="$IS_REQUIRED">
+                            <xsl:text> text-warning-emphasis</xsl:text>
+                        </xsl:if>
+                    </xsl:attribute>
                     <xsl:attribute name="for">
                         <xsl:choose>
                             <xsl:when test="@mode='1'"><xsl:value-of select="@name"/></xsl:when>
@@ -218,6 +241,9 @@
                             <xsl:attribute name="class">
                                 <xsl:text>form-control</xsl:text>
                                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                                <xsl:if test="$IS_REQUIRED">
+                                    <xsl:text> bg-warning-subtle border border-warning-subtle</xsl:text>
+                                </xsl:if>
                             </xsl:attribute>
                             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES"/>
                         </input>
