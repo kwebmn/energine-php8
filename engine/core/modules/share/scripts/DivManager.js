@@ -61,7 +61,7 @@ class DivManager {
             divTree.id = 'divTree';
             this.treeContainer.appendChild(divTree);
         }
-        this.treeContainer.classList.add('position-relative', 'w-100', 'bg-body', 'border', 'rounded-3', 'p-3', 'shadow-sm');
+        //this.treeContainer.classList.add('position-relative', 'w-100', 'bg-body', 'border', 'rounded-3', 'p-3', 'shadow-sm');
         this.treeContainer.classList.toggle('flex-shrink-0', !isSingleMode);
         this.treeContainer.classList.toggle('w-lg-auto', !isSingleMode);
         if (isSingleMode) {
