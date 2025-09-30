@@ -145,6 +145,12 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
         foreach ($fieldInfo as $propName => $propValue) {
             if (in_array($propName, $skipPropsInRead, true)) { continue; }
             if (is_array($propValue)) { continue; }
+
+            if (is_bool($propValue)) {
+                $el->setAttribute($propName, $propValue ? '1' : '0');
+                continue;
+            }
+
             // Не отбрасываем "0"
             if ($propValue !== null && $propValue !== '') {
                 $el->setAttribute($propName, (string)$propValue);
@@ -155,7 +161,11 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
         if (is_array($fieldProps)) {
             foreach ($fieldProps as $propName => $propValue) {
                 if (!is_array($propValue)) {
-                    $el->setAttribute($propName, ($propValue === null) ? '' : (string)$propValue);
+                    if (is_bool($propValue)) {
+                        $el->setAttribute($propName, $propValue ? '1' : '0');
+                    } else {
+                        $el->setAttribute($propName, ($propValue === null) ? '' : (string)$propValue);
+                    }
                 }
             }
         }
