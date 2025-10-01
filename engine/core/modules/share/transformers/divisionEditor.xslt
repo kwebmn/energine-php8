@@ -195,7 +195,7 @@
                 <span class="input-group-text">
                     <span><xsl:value-of select="../field[@name='smap_pid']/@base"/><xsl:value-of select="$LANG_ABBR"/></span>
                     <span id="smap_pid_segment"><xsl:value-of select="../field[@name='smap_pid']/@segment"/></span>
-                    <xsl:text>/</xsl:text>
+                    <!-- <xsl:text>/</xsl:text> -->
                 </span>
                 <xsl:choose>
                     <xsl:when test="@mode='1'">
