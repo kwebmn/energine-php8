@@ -9,6 +9,9 @@ class Grid {
         // This helps grids inside iframes stretch to full available height.
         Grid.ensureEnhancedLayoutStyles(document);
 
+        // Load grid-specific CSS (selection color etc.)
+        try { (window.Energine || {}).loadCSS ? Energine.loadCSS('stylesheets/grid.css') : null; } catch (e) {}
+
         // Универсальная обертка для работы с элементами по селектору или объекту
         this.element = (typeof element === 'string')
             ? document.querySelector(element)
@@ -166,8 +169,8 @@ class Grid {
             this.deselectItem({ silent: true });
         }
 
-        item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white');
-        item.classList.add('table-primary');
+        item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
+        item.classList.add('grid-row-selected');
         this.selectedItem = item;
         this.fireEvent('select', item);
         this.fireEvent('selectionChange', item);
@@ -175,7 +178,7 @@ class Grid {
     }
     deselectItem(options = {}) {
         if (this.selectedItem) {
-            this.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white');
+            this.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
         }
         this.selectedItem = null;
         if (!options.silent) {
