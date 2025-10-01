@@ -26,7 +26,9 @@ class TabPane {
             return;
         }
 
-        tabsList.classList.add('nav', 'nav-tabs', 'mb-3');
+        tabsList.classList.add('nav', 'nav-tabs');
+        tabsList.classList.remove('mb-3');
+        tabsList.classList.add('mb-0');
         tabsList.setAttribute('role', 'tablist');
 
         const tabContent = this.element.querySelector('[data-role="tab-content"]');
@@ -40,14 +42,27 @@ class TabPane {
         }
 
         this.tabs = Array.from(tabsList.querySelectorAll('[data-role="tab"]'));
-        this.currentTab = this.tabs[0];
+        const presetActiveTab = this.tabs.find(tab => {
+            if (tab.classList.contains('current') || tab.classList.contains('active')) {
+                return true;
+            }
+            const activeLink = tab.querySelector('[data-role="tab-link"]') || tab.querySelector('a');
+            return !!(activeLink && activeLink.classList.contains('active'));
+        });
+        this.currentTab = presetActiveTab || this.tabs[0];
 
         this.tabs.forEach(tab => {
             tab.setAttribute('unselectable', 'on');
             tab.classList.add('nav-item');
             tab.setAttribute('role', 'presentation');
+
+            // ensure legacy markup with preset "active" state does not keep multiple active tabs
+            tab.classList.remove('current', 'active');
+
             const anchor = tab.querySelector('[data-role="tab-link"]') || tab.querySelector('a');
             if (!anchor) return;
+
+            anchor.classList.remove('active');
 
             const href = anchor.getAttribute('href');
             const paneId = href.slice(href.lastIndexOf('#'));

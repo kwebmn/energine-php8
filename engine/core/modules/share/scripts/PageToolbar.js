@@ -2,7 +2,6 @@ ScriptLoader.load('Toolbar', 'ModalBox', 'Cookie');
 
 class PageToolbar extends Toolbar {
     constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
-        PageToolbar.ensureBootstrapLoaded();
         super(toolbarName, props);
 
         this.componentPath = componentPath;
@@ -52,65 +51,6 @@ class PageToolbar extends Toolbar {
         });
     }
 
-    static ensureBootstrapLoaded() {
-        if (PageToolbar._bootstrapInitialized) {
-            return;
-        }
-
-        const cssPath = PageToolbar._resolveStaticPath('stylesheets/default/bootstrap.min.css');
-        if (!Toolbar.hasBootstrapStyles()) {
-            Energine.loadCSS(cssPath);
-        }
-
-        if (!Toolbar.hasBootstrapScript()) {
-            PageToolbar._appendBootstrapScript(PageToolbar._resolveStaticPath('scripts/bootstrap.bundle.min.js'));
-        }
-
-        PageToolbar._bootstrapInitialized = true;
-    }
-
-    static _appendBootstrapScript(src) {
-        if (typeof document === 'undefined' || !document.head) {
-            return;
-        }
-
-        const existingScript = document.querySelector(`script[src$="${src}"]`);
-        if (existingScript) {
-            return;
-        }
-
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = false;
-        script.dataset.energineBootstrap = 'true';
-        script.addEventListener('error', error => {
-            console.error('[PageToolbar] Failed to load Bootstrap bundle', src, error);
-            PageToolbar._bootstrapInitialized = false;
-            if (script.parentNode) {
-                script.parentNode.removeChild(script);
-            }
-        }, { once: true });
-        document.head.appendChild(script);
-    }
-
-    static _resolveStaticPath(relativePath) {
-        if (/^(?:[a-z]+:)?\/\//i.test(relativePath)) {
-            return relativePath;
-        }
-
-        const base = (window?.Energine && typeof window.Energine.static === 'string')
-            ? window.Energine.static
-            : '';
-
-        if (!base) {
-            return relativePath;
-        }
-
-        const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-        const normalizedPath = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
-        return normalizedBase + normalizedPath;
-    }
-
     static _addClass(el, cls) { el.classList.add(cls); }
     static _removeClass(el, cls) { el.classList.remove(cls); }
     static _hasClass(el, cls) { return el.classList.contains(cls); }
@@ -151,25 +91,30 @@ class PageToolbar extends Toolbar {
 
         const html = document.documentElement;
         html.classList.add('h-100');
-        document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-body-tertiary');
-        if (!PageToolbar._hasClass(html, 'e-has-topframe1')) {
-            PageToolbar._addClass(html, 'e-has-topframe1');
-        }
+        document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-light');
+        // if (!PageToolbar._hasClass(html, 'e-has-topframe1')) {
+        //     PageToolbar._addClass(html, 'e-has-topframe1');
+        // }
 
         const layoutContainer = document.createElement('div');
-        layoutContainer.classList.add('e-layout', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-4', 'py-3', 'px-3', 'px-lg-4');
+        PageToolbar._addClass(layoutContainer, 'e-layout');
+        // layoutContainer.classList.add('container-fluid');
+        // layoutContainer.classList.add('container-fluid', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-3', 'pt-3', 'pb-4', 'px-3', 'px-lg-4', 'align-items-stretch', 'mt-0');
 
         const mainFrame = document.createElement('div');
         PageToolbar._addClass(mainFrame, 'e-mainframe');
-        mainFrame.classList.add('flex-grow-1', 'container-fluid', 'bg-body', 'rounded-3', 'shadow-sm', 'p-4');
+        // mainFrame.classList.add('flex-grow-1', 'bg-white', 'rounded-3', 'shadow-sm', 'p-4', 'border');
+        // mainFrame.classList.add('flex-grow-1', 'bg-white', 'rounded-3', 'shadow-sm', 'p-4', 'border');
         mainFrame.style.minHeight = '0';
 
         const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
-        topFrame.classList.add('navbar', 'navbar-expand-lg', 'navbar-light', 'bg-body', 'border-bottom', 'shadow-sm', 'sticky-top');
+        topFrame.classList.add( 'sticky-top', 'py-1', 'px-0', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
+
+        // topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
 
         const container = document.createElement('div');
-        container.classList.add('container-fluid', 'd-flex', 'align-items-center', 'gap-3');
+        container.classList.add('container-fluid', 'd-flex', 'align-items-start', 'justify-content-start', 'gap-3', 'flex-wrap', 'py-0');
         topFrame.appendChild(container);
 
         const translations = window?.Energine?.translations;
@@ -187,65 +132,142 @@ class PageToolbar extends Toolbar {
             return '';
         };
 
+        const headerStack = document.createElement('div');
+        // headerStack.classList.add('d-flex', 'align-items-center', 'gap-3', 'flex-wrap', 'w-100', 'min-w-0');
+        headerStack.classList.add('d-flex', 'align-items-center', 'gap-3', 'flex-wrap', 'w-100', 'min-w-0');
+        container.appendChild(headerStack);
+
+        const brandStack = document.createElement('div');
+        brandStack.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-shrink-0');
+        headerStack.appendChild(brandStack);
+
+        const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
         const sidebarToggle = document.createElement('button');
         sidebarToggle.type = 'button';
-        sidebarToggle.classList.add('navbar-brand', 'pagetb_logo', 'p-0', 'border-0', 'bg-transparent');
-        const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
+        sidebarToggle.classList.add('btn', 'btn-sm', 'btn-light', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0', 'border-0');
+        // sidebarToggle.classList.add('btn', 'btn-sm', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0');
         if (sidebarLabel) {
             sidebarToggle.setAttribute('aria-label', sidebarLabel);
         }
+        const logoWrapper = document.createElement('span');
+        logoWrapper.classList.add('d-inline-flex', 'align-items-center', 'justify-content-center', 'rounded-1', 'bg-white', 'border', 'border-secondary-subtle', 'shadow-sm');
+        logoWrapper.style.width = '32px';
+        logoWrapper.style.height = '32px';
+        logoWrapper.style.lineHeight = '0';
+
         const logoImage = document.createElement('img');
         logoImage.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
         logoImage.alt = '';
-        logoImage.classList.add('pagetb_logo-img', 'img-fluid');
-        logoImage.style.height = '38px';
-        logoImage.style.width = 'auto';
-        sidebarToggle.appendChild(logoImage);
-        container.appendChild(sidebarToggle);
+        logoImage.classList.add('img-fluid');
+        logoImage.style.width = '70%';
+        logoImage.style.height = '70%';
+        logoImage.style.objectFit = 'contain';
+        logoWrapper.appendChild(logoImage);
+
+        sidebarToggle.appendChild(logoWrapper);
+        brandStack.appendChild(sidebarToggle);
         this.sidebarToggleButton = sidebarToggle;
 
-        const collapseIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
-        const collapseId = (`${collapseIdBase}-collapse`).replace(/[^A-Za-z0-9_-]/g, '-');
-
-        const toggler = document.createElement('button');
-        toggler.classList.add('navbar-toggler');
-        toggler.type = 'button';
-        toggler.setAttribute('data-bs-toggle', 'collapse');
-        toggler.setAttribute('data-bs-target', `#${collapseId}`);
-        toggler.setAttribute('aria-controls', collapseId);
-        toggler.setAttribute('aria-expanded', 'false');
-        const togglerLabel = getTranslation('TXT_MENU', 'TXT_TOOLBAR') || 'Toggle toolbar';
-        if (togglerLabel) {
-            toggler.setAttribute('aria-label', togglerLabel);
+        const toolbarLabelText = getTranslation('TXT_ADMIN_PANEL', 'TXT_CONTROL_PANEL', 'TXT_SETTINGS');
+        if (toolbarLabelText) {
+            const toolbarLabel = document.createElement('span');
+            toolbarLabel.classList.add('fw-semibold', 'small', 'text-muted', 'd-none', 'd-sm-inline');
+            toolbarLabel.textContent = toolbarLabelText;
+            brandStack.appendChild(toolbarLabel);
         }
-        const togglerIcon = document.createElement('span');
-        togglerIcon.classList.add('navbar-toggler-icon');
-        toggler.appendChild(togglerIcon);
-        container.appendChild(toggler);
 
-        const collapse = document.createElement('div');
-        collapse.classList.add('collapse', 'navbar-collapse', 'justify-content-end', 'py-2', 'py-lg-0');
-        collapse.id = collapseId;
-        container.appendChild(collapse);
+        const environmentLabel = PageToolbar._extractEnvironmentLabel();
 
-        this.element.classList.add('py-2', 'py-lg-0', 'gap-2');
-        collapse.appendChild(this.element);
+        const toolbarIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
+
+        const actionsColumn = document.createElement('div');
+        actionsColumn.classList.add('d-flex', 'flex-column', 'gap-2', 'flex-grow-1', 'min-w-0');
+        headerStack.appendChild(actionsColumn);
+
+        const primaryRow = document.createElement('div');
+        primaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'justify-content-start', 'w-100', 'min-w-0', 'py-2', 'py-lg-0');
+        actionsColumn.appendChild(primaryRow);
+
+        primaryRow.appendChild(this.element);
+
+        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap');
+        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
+        this.element.classList.add('bg-transparent', 'p-0', 'flex-grow-1', 'min-w-0');
+        this.element.querySelectorAll('button.btn').forEach(button => {
+            button.classList.add('rounded-1', 'px-3');
+            button.classList.add('btn-sm');
+            if (!button.classList.contains('btn-primary')) {
+                button.classList.remove('btn-secondary', 'btn-outline-secondary');
+                button.classList.add('btn-light', 'border', 'border-secondary-subtle',  'text-secondary');
+            }
+            const label = button.textContent ? button.textContent.trim() : '';
+            if (label && !button.getAttribute('title')) {
+                button.setAttribute('title', label);
+            }
+        });
+
+        const updateResponsiveToolbar = () => {
+            const compact = window.innerWidth < 576;
+            this.element.classList.toggle('e-toolbar-compact', compact);
+            this.element.querySelectorAll('button.btn').forEach(button => {
+                if (compact) {
+                    button.classList.remove('px-3');
+                    button.classList.add('px-2');
+                } else {
+                    button.classList.add('px-3');
+                    button.classList.remove('px-2');
+                }
+            });
+        };
+        updateResponsiveToolbar();
+        window.addEventListener('resize', updateResponsiveToolbar);
+
+        const editControlIds = ['add', 'edit', 'delete'];
+        const editButtons = editControlIds
+            .map(id => this.getControlById(id))
+            .filter(control => control && control.element instanceof HTMLElement)
+            .map(control => control.element);
+
+        let editBand = null;
+        if (editButtons.length) {
+            editBand = document.createElement('div');
+            editBand.classList.add('e-toolbar-editband', 'bg-body', 'border', 'shadow-sm', 'rounded-3', 'px-3', 'py-2', 'd-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
+            
+
+            editButtons.forEach(button => {
+                button.classList.add('shadow-sm');
+                editBand.appendChild(button);
+            });
+
+            actionsColumn.appendChild(editBand);
+        }
 
         // Перенос body-children (кроме svg и e-overlay)
         const toMove = Array.from(document.body.childNodes).filter(el =>
             el.nodeType === 1 && !((el.tagName.toLowerCase() !== 'svg') && PageToolbar._hasClass(el, 'e-overlay'))
         );
+        const anchor = toMove.length ? toMove[0] : null;
         layoutContainer.appendChild(mainFrame);
-        document.body.appendChild(topFrame);
-        document.body.appendChild(layoutContainer);
-        toMove.forEach(child => mainFrame.appendChild(child));
+
+        const contentFragment = document.createDocumentFragment();
+        toMove.forEach(child => contentFragment.appendChild(child));
+        mainFrame.appendChild(contentFragment);
+
+        const mountFragment = document.createDocumentFragment();
+        mountFragment.appendChild(topFrame);
+        mountFragment.appendChild(layoutContainer);
+        if (anchor && anchor.parentNode === document.body) {
+            document.body.insertBefore(mountFragment, anchor);
+        } else {
+            document.body.appendChild(mountFragment);
+        }
 
         // Боковая панель (sidebar)
         if (!this.properties['noSideFrame']) {
-            const sidebarId = (`${collapseIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
+            const sidebarId = (`${toolbarIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
             const sidebarFrame = document.createElement('div');
             PageToolbar._addClass(sidebarFrame, 'e-sideframe');
-            sidebarFrame.classList.add('offcanvas', 'offcanvas-start', 'shadow', 'border-0');
+            sidebarFrame.classList.add('offcanvas', 'offcanvas-start', 'shadow', 'border-0', 'bg-light');
             sidebarFrame.id = sidebarId;
             sidebarFrame.setAttribute('tabindex', '-1');
             sidebarFrame.style.width = '320px';
@@ -255,7 +277,7 @@ class PageToolbar extends Toolbar {
 
             const sidebarFrameContent = document.createElement('div');
             PageToolbar._addClass(sidebarFrameContent, 'e-sideframe-content');
-            sidebarFrameContent.classList.add('offcanvas-body', 'p-0', 'd-flex', 'flex-column', 'bg-body');
+            sidebarFrameContent.classList.add('offcanvas-body', 'd-flex', 'flex-column', 'gap-3', 'p-0', 'bg-body-tertiary');
             sidebarFrameContent.style.minHeight = '0';
 
             const sidebarFrameBorder = document.createElement('div');
@@ -268,12 +290,68 @@ class PageToolbar extends Toolbar {
 
             this.sidebarFrameElement = sidebarFrame;
 
+            const syncSidebarOffset = () => {
+                if (!this.sidebarFrameElement) {
+                    return;
+                }
+                const navHeight = Math.max(0, Math.round(topFrame.getBoundingClientRect().height || 0));
+                this.sidebarFrameElement.style.top = navHeight ? `${navHeight}px` : '0';
+                this.sidebarFrameElement.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
+            };
+            syncSidebarOffset();
+            window.addEventListener('resize', syncSidebarOffset);
+            if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(() => syncSidebarOffset());
+                resizeObserver.observe(topFrame);
+            }
+
+            const sidebarHeader = document.createElement('div');
+            sidebarHeader.classList.add('d-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'px-3', 'py-2', 'border-bottom', 'bg-white');
+
+            const sidebarHeaderContent = document.createElement('div');
+            sidebarHeaderContent.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap');
+            sidebarHeader.appendChild(sidebarHeaderContent);
+
+            if (environmentLabel) {
+                const sidebarEnv = document.createElement('span');
+                sidebarEnv.classList.add('badge', 'text-bg-secondary', 'fw-semibold');
+                sidebarEnv.textContent = environmentLabel;
+                sidebarHeaderContent.appendChild(sidebarEnv);
+            }
+
+            const headerActions = document.createElement('div');
+            headerActions.classList.add('d-flex', 'align-items-center', 'gap-2', 'ms-auto');
+            sidebarHeader.appendChild(headerActions);
+
+            const closeLabel = getTranslation('TXT_CLOSE', 'BTN_CLOSE', 'TXT_CANCEL', 'BTN_CANCEL') || 'Close';
+            const sidebarCloseButton = document.createElement('button');
+            sidebarCloseButton.type = 'button';
+            sidebarCloseButton.classList.add('btn', 'btn-sm', 'btn-outline-secondary');
+            sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
+            if (closeLabel) {
+                sidebarCloseButton.setAttribute('aria-label', closeLabel);
+                sidebarCloseButton.textContent = closeLabel;
+            }
+            headerActions.appendChild(sidebarCloseButton);
+
+            sidebarFrameContent.appendChild(sidebarHeader);
+
+            const sidebarBody = document.createElement('div');
+            //sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1', 'p-3');
+            sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1');
+            sidebarFrameContent.appendChild(sidebarBody);
+
+            const iframeWrapper = document.createElement('div');
+            iframeWrapper.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'rounded-3', 'border', 'bg-white', 'shadow-sm', 'overflow-hidden');
+            sidebarBody.appendChild(iframeWrapper);
+
             const iframe = document.createElement('iframe');
             PageToolbar._setProperties(iframe, {
                 src: this.componentPath + 'show/',
                 frameBorder: '0'
             });
-            sidebarFrameContent.appendChild(iframe);
+            iframe.classList.add('flex-grow-1', 'w-100', 'border-0');
+            iframeWrapper.appendChild(iframe);
 
             this._updateSidebarToggleState = (state = PageToolbar._hasClass(html, 'e-has-sideframe')) => {
                 const pressed = state ? 'true' : 'false';
@@ -292,12 +370,14 @@ class PageToolbar extends Toolbar {
             this._updateSidebarToggleState(shouldShowSidebar);
 
             const handleSidebarShown = () => {
+                syncSidebarOffset();
                 PageToolbar._addClass(html, 'e-has-sideframe');
                 this._updateSidebarToggleState(true);
                 PageToolbar._persistSidebarState(true);
             };
 
             const handleSidebarHidden = () => {
+                syncSidebarOffset();
                 PageToolbar._removeClass(html, 'e-has-sideframe');
                 this._updateSidebarToggleState(false);
                 PageToolbar._persistSidebarState(false);
@@ -317,7 +397,7 @@ class PageToolbar extends Toolbar {
                 }
 
                 this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
-                    backdrop: true,
+                    backdrop: false,
                     scroll: false
                 });
 
@@ -439,11 +519,122 @@ class PageToolbar extends Toolbar {
         window.dispatchEvent(evt);
     }
 
+    static _extractPageTitle() {
+        const selectors = [
+            '.page-header h1',
+            '.content-header h1',
+            'main h1',
+            'h1'
+        ];
+
+        for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (element && element.textContent) {
+                const text = element.textContent.trim();
+                if (text) {
+                    return text;
+                }
+            }
+        }
+
+        const breadcrumbCurrent = document.querySelector('.breadcrumb .active, .breadcrumb-item.active');
+        if (breadcrumbCurrent && breadcrumbCurrent.textContent) {
+            const text = breadcrumbCurrent.textContent.trim();
+            if (text) {
+                return text;
+            }
+        }
+
+        const documentTitle = document.title || '';
+        if (documentTitle) {
+            const parts = documentTitle.split('|');
+            if (parts.length > 1) {
+                const candidate = parts[0].trim();
+                if (candidate) {
+                    return candidate;
+                }
+            }
+            return documentTitle.trim();
+        }
+
+        return '';
+    }
+
+    static _collectBreadcrumbs() {
+        const selectors = [
+            '.breadcrumb .breadcrumb-item',
+            '.breadcrumb li',
+            '[data-role="breadcrumbs"] .breadcrumb-item'
+        ];
+
+        const seen = new Set();
+        const items = [];
+        selectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(node => {
+                if (!node || !node.textContent) {
+                    return;
+                }
+                const text = node.textContent.replace(/\s+/g, ' ').trim();
+                if (!text || seen.has(text)) {
+                    return;
+                }
+                seen.add(text);
+                items.push(text);
+            });
+        });
+
+        return items;
+    }
+
+    static _extractBreadcrumbTrail(pageTitle = '') {
+        const crumbs = PageToolbar._collectBreadcrumbs();
+        if (!crumbs.length) {
+            return '';
+        }
+
+        const filtered = crumbs.filter(Boolean);
+        if (!filtered.length) {
+            return '';
+        }
+
+        const normalizedTitle = pageTitle ? pageTitle.trim().toLowerCase() : '';
+        const lastItem = filtered[filtered.length - 1];
+        if (normalizedTitle && lastItem && lastItem.trim().toLowerCase() === normalizedTitle) {
+            filtered.pop();
+        }
+
+        if (!filtered.length) {
+            return '';
+        }
+
+        return filtered.join(' / ');
+    }
+
+    static _extractEnvironmentLabel() {
+        const candidate = window?.Energine?.root || window?.Energine?.base || window?.location?.href || '';
+        if (!candidate) {
+            return '';
+        }
+
+        try {
+            const parsed = new URL(candidate, window.location.origin);
+            if (parsed && (parsed.host || parsed.hostname)) {
+                return parsed.host || parsed.hostname;
+            }
+        } catch (error) {
+            // ignore and fallback to window.location
+        }
+
+        if (window?.location?.host) {
+            return window.location.host;
+        }
+
+        return '';
+    }
+
     // Вложенный контрол логотипа (если нужно)
     static Logo = class extends Toolbar.Control {};
 }
-
-PageToolbar._bootstrapInitialized = false;
 
 // экспорт для window, если надо
 window.PageToolbar = PageToolbar;

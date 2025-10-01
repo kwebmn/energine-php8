@@ -13,7 +13,7 @@ class DefaultTemplateFeedEditor extends ExtendedFeedEditor
      *
      * @var Component|null
      */
-    private ?Component $divisionEditor = null;
+    private Component|ComponentContainer|null $divisionEditor = null;
 
     /**
      * Construct default template feed editor.

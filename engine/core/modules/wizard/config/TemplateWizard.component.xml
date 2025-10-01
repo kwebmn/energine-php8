@@ -14,19 +14,19 @@
         </fields>
 
         <toolbar>
-            <control id="view" title="BTN_VIEW" type="button" onclick="view"/>
-            <control id="add" title="BTN_ADD" type="button" onclick="add"/>
-            <control id="edit" title="BTN_EDIT" type="button" onclick="edit"/>
-            <control id="delete" title="BTN_DELETE" type="button" onclick="del"/>
+            <control id="view" title="BTN_VIEW" icon="fa fa-eye" type="button" onclick="view"/>
+            <control id="add" title="BTN_ADD" icon="fa fa-plus" type="button" onclick="add"/>
+            <control id="edit" title="BTN_EDIT" icon="fa fa-pencil" type="button" onclick="edit"/>
+            <control id="delete" title="BTN_DELETE" icon="fa fa-trash" type="button" onclick="del"/>
             <!--
-                <control id="move" title="BTN_MOVE" type="button" onclick="move"/>
-                <control type="button" id="up" title="BTN_MOVE_UP" onclick="up" />
-                <control type="button" id="down" title="BTN_MOVE_DOWN" onclick="down" />
+                <control id="move" title="BTN_MOVE" icon="fa fa-arrows" type="button" onclick="move"/>
+                <control icon="fa fa-arrow-up" type="button" id="up" title="BTN_MOVE_UP" onclick="up" />
+                <control icon="fa fa-arrow-down" type="button" id="down" title="BTN_MOVE_DOWN" onclick="down" />
                 <control id="print" title="BTN_PRINT" type="button" onclick="print"/>
             -->
 
-            <control id="build" title="BTN_BUILD" type="button" onclick="builder"/>
-            <control id="linker" title="BTN_LINKER" type="button" onclick="linker"/>
+            <control id="build" title="BTN_BUILD" icon="fa fa-cogs" type="button" onclick="builder"/>
+            <control id="linker" title="BTN_LINKER" icon="fa fa-link" type="button" onclick="linker"/>
 
         </toolbar>
     </state>
@@ -59,7 +59,7 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
             <control id="after_save_action" title="TXT_AFTER_SAVE_ACTION" type="select">
                 <options>
                     <option id="reload">BTN_CLOSE</option>
@@ -67,7 +67,7 @@
                 </options>
             </control>
             <control id="sep1" type="separator"/>
-            <control id="close" title="BTN_CANCEL" type="button"
+            <control id="close" title="BTN_CANCEL" icon="fa fa-times" type="button"
                      onclick="close"/>
         </toolbar>
     </state>
@@ -101,7 +101,7 @@
         </fields>
 
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
             <control id="after_save_action" title="TXT_AFTER_SAVE_ACTION" type="select">
                 <options>
                     <option id="reload">BTN_CLOSE</option>
@@ -110,7 +110,7 @@
                 </options>
             </control>
             <control id="sep1" type="separator"/>
-            <control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="save" rights="3">
@@ -139,7 +139,7 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <!--
@@ -164,13 +164,13 @@
             <behavior name="GridManager"/>
         </javascript>
         <toolbar>
-            <control id="moveFirst" title="BTN_MOVE_FIRST" type="button" onclick="moveFirst"/>
-            <control id="moveLast" title="BTN_MOVE_LAST" type="button" onclick="moveLast"/>
+            <control id="moveFirst" title="BTN_MOVE_FIRST" icon="fa fa-angle-double-up" type="button" onclick="moveFirst"/>
+            <control id="moveLast" title="BTN_MOVE_LAST" icon="fa fa-angle-double-down" type="button" onclick="moveLast"/>
             <control id="sep01" type="separator"/>
-            <control id="moveAbove" title="BTN_MOVE_ABOVE" type="button" onclick="moveAbove"/>
-            <control id="moveBelow" title="BTN_MOVE_BELOW" type="button" onclick="moveBelow"/>
+            <control id="moveAbove" title="BTN_MOVE_ABOVE" icon="fa fa-arrow-up" type="button" onclick="moveAbove"/>
+            <control id="moveBelow" title="BTN_MOVE_BELOW" icon="fa fa-arrow-down" type="button" onclick="moveBelow"/>
             <control id="sep02" type="separator"/>
-            <control id="close" title="BTN_CANCEL" type="button" onclick="close"/>
+            <control id="close" title="BTN_CANCEL" icon="fa fa-times" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="up" rights="3">

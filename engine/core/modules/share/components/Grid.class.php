@@ -1015,7 +1015,7 @@ class Grid extends DBDataSet {
      */
     protected function applyUserFilter() {
         $filter = new Filter();
-        $filter->apply($this);
+        $filter->apply($this);        
     }
 
     /**

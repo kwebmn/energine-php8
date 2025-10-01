@@ -16,7 +16,7 @@
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
         <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
-            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+            <div class="card-header pb-0" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
                         <a href="#{$TAB_ID}" data-role="tab-link">
@@ -45,7 +45,7 @@
         
     <!-- вывод дерева разделов в боковом тулбаре -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivSidebar'][@sample='DivisionEditor'][@componentAction='main'][@type='list']]">
-        <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+        <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3 p-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
             <aside id="treeContainer" data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
             <main data-role="editor-content" class="division-editor__content flex-grow-1"></main>
         </div>
@@ -88,7 +88,7 @@
     
     <!-- поле выбора родительского раздела -->
     <xsl:template match="field[@name='smap_pid'][@mode='2'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <xsl:variable name="FIELD_UID" select="generate-id(.)"/>
         <xsl:variable name="DISPLAY_ID" select="concat($FIELD_UID, '_display')"/>
         <xsl:variable name="HIDDEN_ID" select="concat($FIELD_UID, '_value')"/>
@@ -122,9 +122,10 @@
                 </button>
             </div>
             <input type="hidden" id="{$HIDDEN_ID}" value="{.}">
+                <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
                 <xsl:attribute name="name"><xsl:choose>
-                    <xsl:when test="@tableName"><xsl:value-of select="@tableName"/><xsl:if test="@language">[<xsl:value-of select="@language"/>]</xsl:if>[<xsl:value-of select="@name" />]</xsl:when>
-                    <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+                    <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
                 </xsl:choose></xsl:attribute>
             </input>
             <xsl:call-template name="render-field-messages"/>
@@ -132,7 +133,7 @@
     </xsl:template>
    
     <xsl:template match="field[@name='smap_pid'][@mode='1'][@type!='hidden'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <div class="mb-3" data-role="form-field">
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
@@ -149,12 +150,11 @@
             </xsl:if>
             <span class="form-control-plaintext d-block"><xsl:value-of select="@data_name" disable-output-escaping="yes"/></span>
             <input type="hidden" value="{.}">
-                <xsl:attribute name="name">
-                    <xsl:choose>
-                        <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name" />]</xsl:when>
-                        <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-                    </xsl:choose>
-                </xsl:attribute>
+                <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
+                <xsl:attribute name="name"><xsl:choose>
+                    <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
+                </xsl:choose></xsl:attribute>
             </input>
             <xsl:call-template name="render-field-messages"/>
         </div>
@@ -162,7 +162,7 @@
     
     <!-- поле для ввода сегмента раздела -->
     <xsl:template match="field[@name='smap_segment'][ancestor::component[@sample='DivisionEditor' and @type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <xsl:variable name="FIELD_ID">
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
@@ -195,7 +195,7 @@
                 <span class="input-group-text">
                     <span><xsl:value-of select="../field[@name='smap_pid']/@base"/><xsl:value-of select="$LANG_ABBR"/></span>
                     <span id="smap_pid_segment"><xsl:value-of select="../field[@name='smap_pid']/@segment"/></span>
-                    <xsl:text>/</xsl:text>
+                    <!-- <xsl:text>/</xsl:text> -->
                 </span>
                 <xsl:choose>
                     <xsl:when test="@mode='1'">
@@ -228,17 +228,18 @@
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
         </xsl:variable>
-        <div class="d-flex flex-wrap align-items-start gap-2">
+        <div class="d-flex flex-wrap align-items-start gap- 2">
             <select id="{$FIELD_ID}">
                 <xsl:attribute name="class">
                     <xsl:text>form-select</xsl:text>
                     <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
                 </xsl:attribute>
+                <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
                 <xsl:attribute name="name"><xsl:choose>
-                    <xsl:when test="@tableName"><xsl:value-of select="@tableName"/>[<xsl:value-of select="@name"/>]</xsl:when>
-                    <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
+                    <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
                 </xsl:choose></xsl:attribute>
-                <xsl:if test="not(@nullable) or @nullable='0'">
+                <xsl:if test="@nullable!='1'">
                     <xsl:attribute name="required">required</xsl:attribute>
                 </xsl:if>
                 <xsl:if test="@nullable='1'">

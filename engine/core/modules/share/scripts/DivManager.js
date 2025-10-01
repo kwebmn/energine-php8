@@ -1,5 +1,29 @@
 ScriptLoader.load('TabPane', 'Toolbar', 'ModalBox', 'jquery.min', 'jstree/jstree');
 
+const DIVISION_ICON_MAP = {
+    'divisions_list.icon.gif': 'fa-solid fa-diagram-project text-primary',
+    'form.icon.gif': 'fa-solid fa-list-check text-primary',
+    'login_form.icon.gif': 'fa-solid fa-right-to-bracket text-secondary',
+    'rss.icon.gif': 'fa-solid fa-square-rss text-warning',
+    'editor.icon.gif': 'fa-solid fa-pen-to-square text-info',
+    'gallery.icon.gif': 'fa-solid fa-images text-info',
+    'profile_form.icon.gif': 'fa-solid fa-id-card text-primary',
+    'sitemap.icon.gif': 'fa-solid fa-sitemap text-secondary',
+    'empty.icon.gif': 'fa-solid fa-file text-secondary',
+    'home_page.icon.gif': 'fa-solid fa-house text-primary',
+    'restore_password_form.icon.gif': 'fa-solid fa-unlock-keyhole text-warning',
+    'text_page.icon.gif': 'fa-solid fa-file-lines text-secondary'
+};
+
+const getDivisionIconClass = (path) => {
+    if (!path) {
+        return 'fa-solid fa-file text-secondary';
+    }
+    const fileName = path.split('/').pop();
+    const className = DIVISION_ICON_MAP[fileName] || 'fa-solid fa-file text-secondary';
+    return `${className} fa-fw`;
+};
+
 class DivManager {
 
     constructor(element) {
@@ -21,7 +45,11 @@ class DivManager {
         this.tabPane = new TabPane(this.element);
         this.langId = this.element.getAttribute('lang_id');
 
-        this.element.classList.add('d-flex', 'flex-column', 'flex-lg-row', 'gap-4', 'align-items-start');
+        const isSingleMode = document.body?.classList?.contains('e-singlemode-layout');
+
+        this.element.classList.add('d-flex', 'flex-column', 'gap-4');
+        this.element.classList.toggle('flex-lg-row', !isSingleMode);
+        this.element.classList.toggle('align-items-start', !isSingleMode);
 
         // --- Создание структуры дерева (div для jsTree) ---
         this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
@@ -33,11 +61,19 @@ class DivManager {
             divTree.id = 'divTree';
             this.treeContainer.appendChild(divTree);
         }
-        this.treeContainer.classList.add('position-relative', 'flex-shrink-0', 'w-100', 'w-lg-auto', 'bg-body', 'border', 'rounded-3', 'p-3', 'shadow-sm');
-        this.treeContainer.style.maxWidth = '340px';
-        this.treeContainer.style.maxHeight = 'calc(100vh - 6rem)';
+        //this.treeContainer.classList.add('position-relative', 'w-100', 'bg-body', 'border', 'rounded-3', 'p-3', 'shadow-sm');
+        this.treeContainer.classList.toggle('flex-shrink-0', !isSingleMode);
+        this.treeContainer.classList.toggle('w-lg-auto', !isSingleMode);
+        if (isSingleMode) {
+            this.treeContainer.style.removeProperty('maxWidth');
+            this.treeContainer.style.removeProperty('maxHeight');
+        } else {
+            this.treeContainer.style.maxWidth = '340px';
+            this.treeContainer.style.maxHeight = 'calc(100vh - 6rem)';
+        }
         this.treeContainer.style.overflowY = 'auto';
-        this.treeContainer.classList.add('mb-3', 'mb-lg-0');
+        this.treeContainer.classList.add('mb-3');
+        this.treeContainer.classList.toggle('mb-lg-0', !isSingleMode);
 
         this.singlePath = this.element.getAttribute('single_template');
         this.site = this.element.getAttribute('site');
@@ -129,7 +165,7 @@ class DivManager {
             id: String(node.smap_id),
             parent: node.smap_pid && node.smap_pid !== "" ? String(node.smap_pid) : "#",
             text: node.smap_name,
-            icon: node.tmpl_icon ? Energine.base + node.tmpl_icon : Energine.base + 'templates/icons/empty.icon.gif',
+            icon: getDivisionIconClass(node.tmpl_icon),
             data: {
                 segment: node.smap_segment,
                 lang_id: node.lang_id,

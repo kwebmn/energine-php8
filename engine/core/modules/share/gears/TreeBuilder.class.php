@@ -125,7 +125,7 @@ final class TreeBuilder extends AbstractBuilder
         $fieldProperties = []
     ) {
         foreach ([
-                     'nullable',
+                     // не удаляем 'nullable' — поведение должно совпадать с базовым билдером
                      'pattern',
                      'message',
                      'tabName',

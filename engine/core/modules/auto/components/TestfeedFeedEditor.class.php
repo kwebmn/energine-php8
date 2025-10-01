@@ -13,7 +13,7 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
      *
      * @var Component|null
      */
-    private ?Component $divisionEditor = null;
+    private Component|ComponentContainer|null $divisionEditor = null;
 
     /**
      * Construct testfeed editor.
