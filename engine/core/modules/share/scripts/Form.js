@@ -1066,6 +1066,23 @@ class Form {
     static toQueryString(form) {
         // Преобразовать форму в queryString
         const data = new FormData(form);
+
+        // Совместимость с TagManager: требуется корневой ключ 'tags'
+        // Если в форме нет 'tags', но есть поле вида '*[tags]', продублируем значение в 'tags'.
+        let hasRootTags = false;
+        for (const key of data.keys()) {
+            if (key === 'tags') {
+                hasRootTags = true;
+                break;
+            }
+        }
+        if (!hasRootTags && form && form.querySelector) {
+            const tagInput = form.querySelector('input[name="tags"], input[name$="[tags]"]');
+            if (tagInput && typeof tagInput.value === 'string' && tagInput.value !== '') {
+                data.append('tags', tagInput.value);
+            }
+        }
+
         return Array.from(data.entries())
             .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
             .join('&');
