@@ -406,6 +406,10 @@ class Form {
             }
         });
 
+        // Ensure iframes that host grids expand to available height inside forms
+        this._enhanceEmbeddedGridIframes();
+        window.addEventListener('resize', () => this._enhanceEmbeddedGridIframes());
+
         // Если открыто в ModalBox
         if (window.parent.ModalBox?.initialized && window.parent.ModalBox.getCurrent()) {
             document.body.addEventListener('keypress', evt => {
@@ -1086,6 +1090,88 @@ class Form {
         return Array.from(data.entries())
             .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
             .join('&');
+    }
+
+    /**
+     * Make embedded iframes that host grids stretch to the full available height
+     * of their container. Applies safe flex/min-height fixes to ancestor containers
+     * and sets iframe height to 100% with responsive recalculation.
+     */
+    _enhanceEmbeddedGridIframes() {
+        if (!this.form) return;
+
+        const iframes = Array.from(this.form.querySelectorAll('iframe'));
+        if (!iframes.length) return;
+
+        const ensureFlexChain = (node) => {
+            if (!node) return;
+            try {
+                if (node.matches && (node.matches('[data-pane-part="body"]') || node.matches('.tab-content') || node.matches('.tab-pane'))) {
+                    if (window.getComputedStyle(node).display.indexOf('flex') === -1) {
+                        node.style.display = 'flex';
+                        node.style.flexDirection = 'column';
+                    }
+                    if (!node.style.minHeight || node.style.minHeight === '' || node.style.minHeight === 'auto') {
+                        node.style.minHeight = '0';
+                    }
+                    if (!node.style.flex || node.style.flex === '') {
+                        node.style.flex = '1 1 auto';
+                    }
+                }
+            } catch (e) { /* ignore layout issues */ }
+        };
+
+        const adjustIframe = (iframe) => {
+            if (!iframe || !iframe.parentElement) return;
+
+            // Apply safe sizing on iframe element
+            iframe.style.display = 'block';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+
+            // Ensure parent chain can allocate height
+            const paneBody = iframe.closest('[data-pane-part="body"]');
+            const tabContent = iframe.closest('.tab-content');
+            const tabPane = iframe.closest('.tab-pane');
+            ensureFlexChain(paneBody);
+            ensureFlexChain(tabContent);
+            ensureFlexChain(tabPane);
+
+            // If explicit pixel sizing is needed (older browsers), set height to parent height
+            try {
+                const host = iframe.parentElement;
+                const rect = host.getBoundingClientRect();
+                if (rect && rect.height > 0) {
+                    iframe.style.height = rect.height + 'px';
+                }
+            } catch (e) { /* ignore */ }
+
+            // If same-origin and content is a grid, hint its document to use enhanced layout
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (doc) {
+                    const hasGrid = !!doc.querySelector('[data-role="grid"]');
+                    if (hasGrid && doc.body && !doc.body.classList.contains('e-grid-layout-enhanced')) {
+                        doc.body.classList.add('e-grid-layout-enhanced');
+                    }
+                }
+            } catch (e) { /* cross-origin, ignore */ }
+        };
+
+        iframes.forEach((iframe) => {
+            if (iframe.dataset._gridEnhanced === '1') {
+                adjustIframe(iframe);
+                return;
+            }
+            iframe.dataset._gridEnhanced = '1';
+
+            // Adjust now
+            adjustIframe(iframe);
+
+            // And after load (when content exists)
+            iframe.addEventListener('load', () => adjustIframe(iframe));
+        });
     }
 
     configureValidatorStyling() {

@@ -5,6 +5,10 @@ class Grid {
      * @param {Object} [options]
      */
     constructor(element, options = {}) {
+        // Ensure document has robust flex-based layout rules when a grid exists.
+        // This helps grids inside iframes stretch to full available height.
+        Grid.ensureEnhancedLayoutStyles(document);
+
         // Универсальная обертка для работы с элементами по селектору или объекту
         this.element = (typeof element === 'string')
             ? document.querySelector(element)
@@ -1281,6 +1285,46 @@ class Grid {
             + '.grid-head-scroll-suppressed{scrollbar-width:none;-ms-overflow-style:none;}';
         targetDoc.head.appendChild(style);
         targetDoc.__gridHeadScrollStyleInjected = true;
+    }
+
+    /**
+     * Injects once-per-document CSS to make grid containers expand to full height
+     * using a safe, opt-in class on body. Useful inside iframes where default
+     * page CSS may not provide 100% height or flex parents.
+     *
+     * Adds class `e-grid-layout-enhanced` to body and a style tag that ensures
+     * form/pane/tab containers are flex columns with min-height:0 so that
+     * inner scroll areas (grid body) can occupy remaining space.
+     *
+     * @param {Document} doc
+     */
+    static ensureEnhancedLayoutStyles(doc) {
+        const d = doc || document;
+        if (!d || !d.documentElement) return;
+
+        // Avoid duplication
+        if (!d.getElementById('grid-enhanced-layout-styles')) {
+            const style = d.createElement('style');
+            style.id = 'grid-enhanced-layout-styles';
+            style.type = 'text/css';
+            style.textContent = [
+                'html, body { height: 100%; }',
+                'body.e-grid-layout-enhanced { display:flex; flex-direction:column; min-height:100%; }',
+                'body.e-grid-layout-enhanced > form { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }',
+                'body.e-grid-layout-enhanced form [data-role="pane"] { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }',
+                'body.e-grid-layout-enhanced [data-pane-part="body"] { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }',
+                'body.e-grid-layout-enhanced [data-role="tab-content"] { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }',
+                'body.e-grid-layout-enhanced .tab-content > .tab-pane { flex:1 1 auto; min-height:0; overflow:hidden; }'
+            ].join('\n');
+            (d.head || d.documentElement).appendChild(style);
+        }
+
+        // Mark body so rules apply only on pages with grids
+        try {
+            if (d.body && !d.body.classList.contains('e-grid-layout-enhanced')) {
+                d.body.classList.add('e-grid-layout-enhanced');
+            }
+        } catch (e) { /* ignore */ }
     }
 }
 
