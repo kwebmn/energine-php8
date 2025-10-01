@@ -329,6 +329,9 @@ class Form {
             onTabChange: this.onTabChange.bind(this)
         });
 
+        // Подключаем CSS для подсветки обязательных полей (один раз на страницу)
+        Form.loadCSS('stylesheets/form.css');
+
         // Валидатор
         this.validator = new Validator(this.form, this.tabPane);
         this.configureValidatorStyling();
@@ -547,6 +550,7 @@ class Form {
         });
 
         Form.initializeInputs(this.form || this.componentElement);
+        Form.applyRequiredHighlights(this.form || this.componentElement);
 
     }
 
@@ -1037,6 +1041,26 @@ class Form {
             link.href = href;
             document.head.appendChild(link);
         }
+    }
+
+    /**
+     * Проставляет класс подсветки для обязательных полей ввода в заданном контексте.
+     * Контекстом может быть форма, контейнер компонента или документ.
+     * Основано на data-required="true" у обёртки [data-role="form-field"].
+     */
+    static applyRequiredHighlights(context = document) {
+        const root = (typeof context === 'string') ? document.querySelector(context) : (context || document);
+        if (!root) return;
+
+        const wrappers = root.querySelectorAll('[data-role="form-field"][data-required="true"]');
+        wrappers.forEach(wrapper => {
+            const controls = wrapper.querySelectorAll('input, textarea, select');
+            controls.forEach(control => {
+                // Не подсвечиваем отключенные поля
+                if (control.disabled) return;
+                control.classList.add('e-required-control');
+            });
+        });
     }
 
     static toQueryString(form) {

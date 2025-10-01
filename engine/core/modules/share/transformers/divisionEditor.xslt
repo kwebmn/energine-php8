@@ -88,7 +88,7 @@
     
     <!-- поле выбора родительского раздела -->
     <xsl:template match="field[@name='smap_pid'][@mode='2'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <xsl:variable name="FIELD_UID" select="generate-id(.)"/>
         <xsl:variable name="DISPLAY_ID" select="concat($FIELD_UID, '_display')"/>
         <xsl:variable name="HIDDEN_ID" select="concat($FIELD_UID, '_value')"/>
@@ -133,7 +133,7 @@
     </xsl:template>
    
     <xsl:template match="field[@name='smap_pid'][@mode='1'][@type!='hidden'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <div class="mb-3" data-role="form-field">
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
@@ -162,7 +162,7 @@
     
     <!-- поле для ввода сегмента раздела -->
     <xsl:template match="field[@name='smap_segment'][ancestor::component[@sample='DivisionEditor' and @type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <xsl:variable name="FIELD_ID">
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
@@ -239,7 +239,7 @@
                     <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
                     <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
                 </xsl:choose></xsl:attribute>
-                <xsl:if test="not(@nullable) or @nullable='0'">
+                <xsl:if test="@nullable!='1'">
                     <xsl:attribute name="required">required</xsl:attribute>
                 </xsl:if>
                 <xsl:if test="@nullable='1'">

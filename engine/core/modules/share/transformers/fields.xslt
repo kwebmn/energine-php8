@@ -122,7 +122,7 @@
     <xsl:template match="field[@type='boolean'][ancestor::component[@type='form']]" mode="field_input">
         <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
         <xsl:variable name="FIELD_NAME"><xsl:choose><xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when><xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise></xsl:choose></xsl:variable>
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <xsl:variable name="FIELD_ID">
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
@@ -203,7 +203,7 @@
                     <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
                 </xsl:choose></xsl:attribute>
                 <xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute>
-                <xsl:if test="not(@nullable) or @nullable='0'">
+                <xsl:if test="@nullable!='1'">
                     <xsl:attribute name="required">required</xsl:attribute>
                 </xsl:if>
             </input>
@@ -241,7 +241,7 @@
                     </xsl:if>
                 </input>
             </xsl:if>
-            <xsl:if test="@nullable">
+            <xsl:if test="@nullable='1'">
                 <button type="button" data-action="clear-file">
                     <xsl:attribute name="class">
                         <xsl:text>btn btn-link</xsl:text>
@@ -281,7 +281,7 @@
                 <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
                 <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
             </xsl:choose></xsl:attribute>
-            <xsl:if test="not(@nullable) or @nullable='0'">
+            <xsl:if test="@nullable!='1'">
                 <xsl:attribute name="required">required</xsl:attribute>
             </xsl:if>
             <xsl:if test="@nullable='1'">
@@ -306,7 +306,7 @@
                 <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
                 <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
             </xsl:choose></xsl:attribute>
-            <xsl:if test="not(@nullable) or @nullable='0'">
+            <xsl:if test="@nullable!='1'">
                 <xsl:attribute name="required">required</xsl:attribute>
             </xsl:if>
             <xsl:if test="@nullable='1'">
@@ -327,7 +327,7 @@
         <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
         <xsl:variable name="NAME_BASE"><xsl:choose><xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when><xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise></xsl:choose></xsl:variable>
         <xsl:variable name="NAME" select="concat($NAME_BASE, '[]')"/>
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <xsl:variable name="HAS_ERROR" select="boolean(error)"/>
         <div>
             <xsl:for-each select="options/option">
@@ -509,7 +509,7 @@
     <!-- шаблон-обвязка для любого поля, на которое права только чтение -->
     <xsl:template match="field[@mode='1'][ancestor::component[@type='form']]">
         <xsl:if test=".!=''">
-            <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+            <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
             <div class="mb-3" data-role="form-field">
                 <xsl:attribute name="data-type">
                     <xsl:choose>
@@ -612,7 +612,7 @@
     <xsl:template match="field[@type='select'][@mode='1'][ancestor::component[@type='form']]">
         <div class="mb-3" data-role="form-field">
             <xsl:attribute name="data-type"><xsl:value-of select="@type"/></xsl:attribute>
-            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="@nullable!='1'"/></xsl:attribute>
             <xsl:apply-templates select="." mode="field_name_readonly"/>
             <div id="control_{@language}_{@name}">
                 <xsl:apply-templates select="." mode="field_input_readonly"/>
@@ -633,7 +633,7 @@
     <xsl:template match="field[@type='multi'][@mode='1'][ancestor::component[@type='form']]">
         <div class="mb-3" data-role="form-field">
             <xsl:attribute name="data-type"><xsl:value-of select="@type"/></xsl:attribute>
-            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="@nullable!='1'"/></xsl:attribute>
             <xsl:apply-templates select="." mode="field_name_readonly"/>
             <div id="control_{@language}_{@name}">
                 <xsl:apply-templates select="." mode="field_input_readonly"/>
@@ -706,7 +706,7 @@
 
     <xsl:template match="field[@type='captcha'][ancestor::component[@type='form']]">
         <div class="mb-3" data-role="form-field" data-type="captcha">
-            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="@nullable!='1'"/></xsl:attribute>
             <div id="control_{@language}_{@name}">
                 <xsl:value-of select="." disable-output-escaping="yes"/>
             </div>
@@ -751,7 +751,7 @@
 
     <xsl:template match="field[@name='upl_path'][@mode='1'][ancestor::component[@sample='FileRepository' and @type='form']]">
         <div class="mb-3" data-role="form-field" data-type="file">
-            <xsl:attribute name="data-required"><xsl:value-of select="not(@nullable) or @nullable='0'"/></xsl:attribute>
+            <xsl:attribute name="data-required"><xsl:value-of select="@nullable!='1'"/></xsl:attribute>
             <label for="{@name}" class="form-label">
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
             </label>
@@ -784,7 +784,7 @@
                 <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
             </xsl:attribute>
             <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
-            <xsl:if test="not(@nullable) or @nullable='0'">
+            <xsl:if test="@nullable!='1'">
                 <xsl:attribute name="required">required</xsl:attribute>
             </xsl:if>
             <xsl:apply-templates mode="field_input"/>

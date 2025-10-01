@@ -144,6 +144,7 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
 
         foreach ($fieldInfo as $propName => $propValue) {
             if (in_array($propName, $skipPropsInRead, true)) { continue; }
+            if ($propName === 'nullable') { continue; } // обрабатывается ниже по особым правилам
             if (is_array($propValue)) { continue; }
             // Не отбрасываем "0"
             if ($propValue !== null && $propValue !== '') {
@@ -154,11 +155,19 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
         // Дополнительные атрибуты
         if (is_array($fieldProps)) {
             foreach ($fieldProps as $propName => $propValue) {
+                if ($propName === 'nullable') { continue; } // обрабатывается ниже
                 if (!is_array($propValue)) {
                     $el->setAttribute($propName, ($propValue === null) ? '' : (string)$propValue);
                 }
             }
         }
+
+        // Специальная логика для nullable:
+        // - Обязательные поля: всегда nullable="0"
+        // - Необязательные поля: nullable="1"
+        $nullableProp = $fieldInfo->getPropertyValue('nullable');
+        $isOptional = ($nullableProp === true || $nullableProp === 1 || $nullableProp === '1');
+        $el->setAttribute('nullable', $isOptional ? '1' : '0');
 
         // Значение поля
         return $this->buildFieldValue($el, $fieldInfo, $fieldValue);

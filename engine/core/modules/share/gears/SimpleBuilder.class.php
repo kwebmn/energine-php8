@@ -34,7 +34,7 @@ class SimpleBuilder extends Builder
         $fieldProps = false
     ) {
         foreach ([
-                     'nullable',
+                     // не удаляем 'nullable' — поведение должно совпадать с базовым билдером
                      'pattern',
                      'message',
                      'tabName',

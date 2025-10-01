@@ -9,7 +9,7 @@
         Вынесена в отдельный файл для переиспользования и упрощения fields.xslt.
     -->
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <div data-role="form-field">
             <xsl:attribute name="class">mb-3</xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
@@ -32,7 +32,7 @@
                     <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
                 </xsl:attribute>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
+                <xsl:if test="(@nullable!='1') and not(ancestor::component/@exttype='grid')">
                     <span class="text-danger">*</span>
                 </xsl:if>
             </label>
@@ -44,7 +44,7 @@
             <label class="form-label">
                 <xsl:attribute name="for"><xsl:value-of select="concat(generate-id(.), '_path')"/></xsl:attribute>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
+                <xsl:if test="(@nullable!='1') and not(ancestor::component/@exttype='grid')">
                     <span class="text-danger">*</span>
                 </xsl:if>
             </label>

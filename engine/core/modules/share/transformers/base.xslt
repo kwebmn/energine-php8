@@ -45,7 +45,7 @@
         <xsl:if test="@message2">
             <xsl:attribute name="nrgn:message2" xmlns:nrgn="http://energine.org"><xsl:value-of select="@message2"/></xsl:attribute>
         </xsl:if>
-        <xsl:if test="not(@nullable) or @nullable='0'">
+        <xsl:if test="@nullable!='1'">
             <xsl:attribute name="required">required</xsl:attribute>
         </xsl:if>
     </xsl:template>

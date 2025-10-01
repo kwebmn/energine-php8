@@ -87,7 +87,7 @@
                 <div class="mb-3">
                     <label for="{@name}" class="form-label"><xsl:value-of select="@title" /></label>
                     <input type="text" class="form-control" name="{@tableName}[{@name}]" id="{@name}" value="{.}">
-                        <xsl:if test="not(@nullable = 1)">
+                        <xsl:if test="@nullable!='1'">
                             <xsl:attribute name="required">required</xsl:attribute>
                         </xsl:if>
                         <xsl:if test="@type = 'password'">
