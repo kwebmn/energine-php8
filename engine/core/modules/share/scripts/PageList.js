@@ -8,12 +8,9 @@ class PageList extends EventTarget {
         this.currentPage = 1;
         this.disabled = false;
 
-        // Подключаем стили (если нужно)
-        Energine.loadCSS('stylesheets/pagelist.css');
-
         // Основной элемент списка
         this.element = document.createElement('ul');
-        this.element.className = 'pagination pagination-sm mb-0 flex-wrap';
+        this.element.className = 'pagination pagination-sm mb-0 flex-wrap gap-2';
         this.element.setAttribute('data-role', 'page-list');
         this.element.setAttribute('unselectable', 'on');
 

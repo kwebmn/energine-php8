@@ -4,10 +4,14 @@ class PageToolbar extends Toolbar {
     constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
         super(toolbarName, props);
 
-        Energine.loadCSS('stylesheets/pagetoolbar.css');
         this.componentPath = componentPath;
         this.documentId = documentId;
         this.layoutManager = null;
+        this.sidebarToggleButton = null;
+        this._updateSidebarToggleState = null;
+        this.sidebarOffcanvas = null;
+        this.sidebarFrameElement = null;
+        this._ensureSidebarOffcanvas = null;
 
         this.dock();
         this.bindTo(this);
@@ -57,6 +61,26 @@ class PageToolbar extends Toolbar {
     static _setStyle(el, prop, val) { el.style[prop] = val; }
     static _setStyles(el, styles) { Object.entries(styles).forEach(([k, v]) => el.style[k] = v); }
 
+    static _persistSidebarState(isVisible) {
+        try {
+            const baseHref = window?.Energine?.base || window.location.pathname || '/';
+            const url = new URL(baseHref, window.location.origin);
+            const hostname = url.hostname || window.location.hostname;
+            const domainChunks = hostname.split('.');
+            if (domainChunks.length > 2) {
+                domainChunks.shift();
+            }
+            const domain = domainChunks.length ? `.${domainChunks.join('.')}` : window.location.hostname;
+            const pathName = url.pathname || '/';
+            const path = pathName.endsWith('/') ? pathName : `${pathName}/`;
+            const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString();
+            const value = isVisible ? '1' : '0';
+            document.cookie = `sidebar=${value}; expires=${expires}; domain=${domain}; path=${path}`;
+        } catch (error) {
+            console.warn('[PageToolbar] Failed to persist sidebar state', error);
+        }
+    }
+
     // ===== Основная логика =====
 
     setupLayout() {
@@ -66,54 +90,354 @@ class PageToolbar extends Toolbar {
         }
 
         const html = document.documentElement;
-        if (!PageToolbar._hasClass(html, 'e-has-topframe1')) {
-            PageToolbar._addClass(html, 'e-has-topframe1');
-        }
+        html.classList.add('h-100');
+        document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-light');
+        // if (!PageToolbar._hasClass(html, 'e-has-topframe1')) {
+        //     PageToolbar._addClass(html, 'e-has-topframe1');
+        // }
 
-        // Основные контейнеры
+        const layoutContainer = document.createElement('div');
+        PageToolbar._addClass(layoutContainer, 'e-layout');
+        // layoutContainer.classList.add('container-fluid');
+        // layoutContainer.classList.add('container-fluid', 'd-flex', 'flex-column', 'flex-lg-row', 'flex-grow-1', 'w-100', 'gap-3', 'pt-3', 'pb-4', 'px-3', 'px-lg-4', 'align-items-stretch', 'mt-0');
+
         const mainFrame = document.createElement('div');
         PageToolbar._addClass(mainFrame, 'e-mainframe');
-        const topFrame = document.createElement('div');
+        // mainFrame.classList.add('flex-grow-1', 'bg-white', 'rounded-3', 'shadow-sm', 'p-4', 'border');
+        // mainFrame.classList.add('flex-grow-1', 'bg-white', 'rounded-3', 'shadow-sm', 'p-4', 'border');
+        mainFrame.style.minHeight = '0';
+
+        const topFrame = document.createElement('nav');
         PageToolbar._addClass(topFrame, 'e-topframe');
+        topFrame.classList.add( 'sticky-top', 'py-1', 'px-0', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
+
+        // topFrame.classList.add('navbar', 'navbar-expand-lg', 'bg-body-tertiary', 'border-bottom', 'sticky-top', 'py-1', 'px-0');
+
+        const container = document.createElement('div');
+        container.classList.add('container-fluid', 'd-flex', 'align-items-start', 'justify-content-start', 'gap-3', 'flex-wrap', 'py-0');
+        topFrame.appendChild(container);
+
+        const translations = window?.Energine?.translations;
+        const getTranslation = (...keys) => {
+            if (!translations || typeof translations.get !== 'function') {
+                return '';
+            }
+            for (const key of keys) {
+                if (!key) continue;
+                const value = translations.get(key);
+                if (value) {
+                    return value;
+                }
+            }
+            return '';
+        };
+
+        const headerStack = document.createElement('div');
+        // headerStack.classList.add('d-flex', 'align-items-center', 'gap-3', 'flex-wrap', 'w-100', 'min-w-0');
+        headerStack.classList.add('d-flex', 'align-items-center', 'gap-3', 'flex-wrap', 'w-100', 'min-w-0');
+        container.appendChild(headerStack);
+
+        const brandStack = document.createElement('div');
+        brandStack.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-shrink-0');
+        headerStack.appendChild(brandStack);
+
+        const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
+        const sidebarToggle = document.createElement('button');
+        sidebarToggle.type = 'button';
+        sidebarToggle.classList.add('btn', 'btn-sm', 'btn-light', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0', 'border-0');
+        // sidebarToggle.classList.add('btn', 'btn-sm', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0');
+        if (sidebarLabel) {
+            sidebarToggle.setAttribute('aria-label', sidebarLabel);
+        }
+        const logoWrapper = document.createElement('span');
+        logoWrapper.classList.add('d-inline-flex', 'align-items-center', 'justify-content-center', 'rounded-1', 'bg-white', 'border', 'border-secondary-subtle', 'shadow-sm');
+        logoWrapper.style.width = '32px';
+        logoWrapper.style.height = '32px';
+        logoWrapper.style.lineHeight = '0';
+
+        const logoImage = document.createElement('img');
+        logoImage.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
+        logoImage.alt = '';
+        logoImage.classList.add('img-fluid');
+        logoImage.style.width = '70%';
+        logoImage.style.height = '70%';
+        logoImage.style.objectFit = 'contain';
+        logoWrapper.appendChild(logoImage);
+
+        sidebarToggle.appendChild(logoWrapper);
+        brandStack.appendChild(sidebarToggle);
+        this.sidebarToggleButton = sidebarToggle;
+
+        const toolbarLabelText = getTranslation('TXT_ADMIN_PANEL', 'TXT_CONTROL_PANEL', 'TXT_SETTINGS');
+        if (toolbarLabelText) {
+            const toolbarLabel = document.createElement('span');
+            toolbarLabel.classList.add('fw-semibold', 'small', 'text-muted', 'd-none', 'd-sm-inline');
+            toolbarLabel.textContent = toolbarLabelText;
+            brandStack.appendChild(toolbarLabel);
+        }
+
+        const environmentLabel = PageToolbar._extractEnvironmentLabel();
+
+        const toolbarIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
+
+        const actionsColumn = document.createElement('div');
+        actionsColumn.classList.add('d-flex', 'flex-column', 'gap-2', 'flex-grow-1', 'min-w-0');
+        headerStack.appendChild(actionsColumn);
+
+        const primaryRow = document.createElement('div');
+        primaryRow.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'justify-content-start', 'w-100', 'min-w-0', 'py-2', 'py-lg-0');
+        actionsColumn.appendChild(primaryRow);
+
+        primaryRow.appendChild(this.element);
+
+        this.element.classList.add('d-flex', 'align-items-center', 'justify-content-start', 'gap-1', 'flex-wrap');
+        this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
+        this.element.classList.add('bg-transparent', 'p-0', 'flex-grow-1', 'min-w-0');
+        this.element.querySelectorAll('button.btn').forEach(button => {
+            button.classList.add('rounded-1', 'px-3');
+            button.classList.add('btn-sm');
+            if (!button.classList.contains('btn-primary')) {
+                button.classList.remove('btn-secondary', 'btn-outline-secondary');
+                button.classList.add('btn-light', 'border', 'border-secondary-subtle',  'text-secondary');
+            }
+            const label = button.textContent ? button.textContent.trim() : '';
+            if (label && !button.getAttribute('title')) {
+                button.setAttribute('title', label);
+            }
+        });
+
+        const updateResponsiveToolbar = () => {
+            const compact = window.innerWidth < 576;
+            this.element.classList.toggle('e-toolbar-compact', compact);
+            this.element.querySelectorAll('button.btn').forEach(button => {
+                if (compact) {
+                    button.classList.remove('px-3');
+                    button.classList.add('px-2');
+                } else {
+                    button.classList.add('px-3');
+                    button.classList.remove('px-2');
+                }
+            });
+        };
+        updateResponsiveToolbar();
+        window.addEventListener('resize', updateResponsiveToolbar);
+
+        const editControlIds = ['add', 'edit', 'delete'];
+        const editButtons = editControlIds
+            .map(id => this.getControlById(id))
+            .filter(control => control && control.element instanceof HTMLElement)
+            .map(control => control.element);
+
+        let editBand = null;
+        if (editButtons.length) {
+            editBand = document.createElement('div');
+            editBand.classList.add('e-toolbar-editband', 'bg-body', 'border', 'shadow-sm', 'rounded-3', 'px-3', 'py-2', 'd-flex', 'align-items-center', 'gap-2', 'flex-wrap', 'w-100', 'justify-content-start');
+            
+
+            editButtons.forEach(button => {
+                button.classList.add('shadow-sm');
+                editBand.appendChild(button);
+            });
+
+            actionsColumn.appendChild(editBand);
+        }
 
         // Перенос body-children (кроме svg и e-overlay)
         const toMove = Array.from(document.body.childNodes).filter(el =>
             el.nodeType === 1 && !((el.tagName.toLowerCase() !== 'svg') && PageToolbar._hasClass(el, 'e-overlay'))
         );
-        document.body.appendChild(topFrame);
-        document.body.appendChild(mainFrame);
-        toMove.forEach(child => mainFrame.appendChild(child));
-        topFrame.appendChild(this.element);
+        const anchor = toMove.length ? toMove[0] : null;
+        layoutContainer.appendChild(mainFrame);
 
-        // Логотип/иконка
-        const gear = document.createElement('img');
-        gear.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
-        PageToolbar._addClass(gear, 'pagetb_logo');
-        topFrame.insertBefore(gear, topFrame.firstChild);
+        const contentFragment = document.createDocumentFragment();
+        toMove.forEach(child => contentFragment.appendChild(child));
+        mainFrame.appendChild(contentFragment);
+
+        const mountFragment = document.createDocumentFragment();
+        mountFragment.appendChild(topFrame);
+        mountFragment.appendChild(layoutContainer);
+        if (anchor && anchor.parentNode === document.body) {
+            document.body.insertBefore(mountFragment, anchor);
+        } else {
+            document.body.appendChild(mountFragment);
+        }
 
         // Боковая панель (sidebar)
         if (!this.properties['noSideFrame']) {
-            if (getCookie('sidebar') == 1) {
-                PageToolbar._addClass(html, 'e-has-sideframe');
-            }
+            const sidebarId = (`${toolbarIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
             const sidebarFrame = document.createElement('div');
             PageToolbar._addClass(sidebarFrame, 'e-sideframe');
+            sidebarFrame.classList.add('offcanvas', 'offcanvas-start', 'shadow', 'border-0', 'bg-light');
+            sidebarFrame.id = sidebarId;
+            sidebarFrame.setAttribute('tabindex', '-1');
+            sidebarFrame.style.width = '320px';
+            if (sidebarLabel) {
+                sidebarFrame.setAttribute('aria-label', sidebarLabel);
+            }
+
             const sidebarFrameContent = document.createElement('div');
             PageToolbar._addClass(sidebarFrameContent, 'e-sideframe-content');
+            sidebarFrameContent.classList.add('offcanvas-body', 'd-flex', 'flex-column', 'gap-3', 'p-0', 'bg-body-tertiary');
+            sidebarFrameContent.style.minHeight = '0';
+
             const sidebarFrameBorder = document.createElement('div');
             PageToolbar._addClass(sidebarFrameBorder, 'e-sideframe-border');
-            document.body.appendChild(sidebarFrame);
+            sidebarFrameBorder.classList.add('d-none', 'd-lg-block', 'border-start');
+
+            layoutContainer.insertBefore(sidebarFrame, mainFrame);
             sidebarFrame.appendChild(sidebarFrameContent);
             sidebarFrame.appendChild(sidebarFrameBorder);
+
+            this.sidebarFrameElement = sidebarFrame;
+
+            const syncSidebarOffset = () => {
+                if (!this.sidebarFrameElement) {
+                    return;
+                }
+                const navHeight = Math.max(0, Math.round(topFrame.getBoundingClientRect().height || 0));
+                this.sidebarFrameElement.style.top = navHeight ? `${navHeight}px` : '0';
+                this.sidebarFrameElement.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
+            };
+            syncSidebarOffset();
+            window.addEventListener('resize', syncSidebarOffset);
+            if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(() => syncSidebarOffset());
+                resizeObserver.observe(topFrame);
+            }
+
+            const sidebarHeader = document.createElement('div');
+            sidebarHeader.classList.add('d-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'px-3', 'py-2', 'border-bottom', 'bg-white');
+
+            const sidebarHeaderContent = document.createElement('div');
+            sidebarHeaderContent.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap');
+            sidebarHeader.appendChild(sidebarHeaderContent);
+
+            if (environmentLabel) {
+                const sidebarEnv = document.createElement('span');
+                sidebarEnv.classList.add('badge', 'text-bg-secondary', 'fw-semibold');
+                sidebarEnv.textContent = environmentLabel;
+                sidebarHeaderContent.appendChild(sidebarEnv);
+            }
+
+            const headerActions = document.createElement('div');
+            headerActions.classList.add('d-flex', 'align-items-center', 'gap-2', 'ms-auto');
+            sidebarHeader.appendChild(headerActions);
+
+            const closeLabel = getTranslation('TXT_CLOSE', 'BTN_CLOSE', 'TXT_CANCEL', 'BTN_CANCEL') || 'Close';
+            const sidebarCloseButton = document.createElement('button');
+            sidebarCloseButton.type = 'button';
+            sidebarCloseButton.classList.add('btn', 'btn-sm', 'btn-outline-secondary');
+            sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
+            if (closeLabel) {
+                sidebarCloseButton.setAttribute('aria-label', closeLabel);
+                sidebarCloseButton.textContent = closeLabel;
+            }
+            headerActions.appendChild(sidebarCloseButton);
+
+            sidebarFrameContent.appendChild(sidebarHeader);
+
+            const sidebarBody = document.createElement('div');
+            //sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1', 'p-3');
+            sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1');
+            sidebarFrameContent.appendChild(sidebarBody);
+
+            const iframeWrapper = document.createElement('div');
+            iframeWrapper.classList.add('d-flex', 'flex-column', 'flex-grow-1', 'rounded-3', 'border', 'bg-white', 'shadow-sm', 'overflow-hidden');
+            sidebarBody.appendChild(iframeWrapper);
 
             const iframe = document.createElement('iframe');
             PageToolbar._setProperties(iframe, {
                 src: this.componentPath + 'show/',
                 frameBorder: '0'
             });
-            sidebarFrameContent.appendChild(iframe);
+            iframe.classList.add('flex-grow-1', 'w-100', 'border-0');
+            iframeWrapper.appendChild(iframe);
 
-            gear.addEventListener('click', this.toggleSidebar.bind(this));
+            this._updateSidebarToggleState = (state = PageToolbar._hasClass(html, 'e-has-sideframe')) => {
+                const pressed = state ? 'true' : 'false';
+                sidebarToggle.setAttribute('aria-pressed', pressed);
+                sidebarToggle.setAttribute('aria-expanded', pressed);
+                sidebarToggle.classList.toggle('active', state);
+            };
+
+            const sidebarCookie = getCookie('sidebar');
+            const shouldShowSidebar = sidebarCookie == 1;
+            if (shouldShowSidebar) {
+                PageToolbar._addClass(html, 'e-has-sideframe');
+            } else {
+                PageToolbar._removeClass(html, 'e-has-sideframe');
+            }
+            this._updateSidebarToggleState(shouldShowSidebar);
+
+            const handleSidebarShown = () => {
+                syncSidebarOffset();
+                PageToolbar._addClass(html, 'e-has-sideframe');
+                this._updateSidebarToggleState(true);
+                PageToolbar._persistSidebarState(true);
+            };
+
+            const handleSidebarHidden = () => {
+                syncSidebarOffset();
+                PageToolbar._removeClass(html, 'e-has-sideframe');
+                this._updateSidebarToggleState(false);
+                PageToolbar._persistSidebarState(false);
+            };
+
+            sidebarFrame.addEventListener('shown.bs.offcanvas', handleSidebarShown);
+            sidebarFrame.addEventListener('hidden.bs.offcanvas', handleSidebarHidden);
+
+            const bootstrapInitAttempts = { count: 0, max: 40 };
+            const ensureOffcanvas = () => {
+                if (this.sidebarOffcanvas) {
+                    return true;
+                }
+                const bootstrapGlobal = window?.bootstrap;
+                if (!bootstrapGlobal || !bootstrapGlobal.Offcanvas) {
+                    return false;
+                }
+
+                this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                    backdrop: false,
+                    scroll: false
+                });
+
+                if (PageToolbar._hasClass(html, 'e-has-sideframe')) {
+                    this.sidebarOffcanvas.show();
+                }
+
+                return true;
+            };
+
+            const waitForOffcanvas = () => {
+                if (!ensureOffcanvas()) {
+                    if (bootstrapInitAttempts.count++ < bootstrapInitAttempts.max) {
+                        window.setTimeout(waitForOffcanvas, 50);
+                    } else {
+                        console.warn('[PageToolbar] Bootstrap Offcanvas API is not available.');
+                    }
+                }
+            };
+
+            waitForOffcanvas();
+            this._ensureSidebarOffcanvas = ensureOffcanvas;
+
+            sidebarToggle.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggleSidebar();
+            });
+
+            sidebarToggle.setAttribute('aria-controls', sidebarId);
+        } else {
+            sidebarToggle.classList.add('disabled');
+            sidebarToggle.setAttribute('aria-disabled', 'true');
+            sidebarToggle.setAttribute('aria-pressed', 'false');
+            sidebarToggle.setAttribute('aria-expanded', 'false');
+            sidebarToggle.disabled = true;
+            this._updateSidebarToggleState = null;
+            this.sidebarFrameElement = null;
+            this.sidebarOffcanvas = null;
+            this._ensureSidebarOffcanvas = null;
         }
 
         // Деактивируем editBlocks если editMode включён
@@ -142,22 +466,32 @@ class PageToolbar extends Toolbar {
     }
 
     toggleSidebar() {
+        if (typeof this._ensureSidebarOffcanvas === 'function') {
+            this._ensureSidebarOffcanvas();
+        }
+
+        if (this.sidebarOffcanvas && typeof this.sidebarOffcanvas.toggle === 'function') {
+            const element = this.sidebarOffcanvas._element || this.sidebarFrameElement;
+            const isShown = element ? element.classList.contains('show') : false;
+            this.sidebarOffcanvas.toggle();
+            return !isShown;
+        }
+
         const html = document.documentElement;
-        html.classList.toggle('e-has-sideframe');
+        PageToolbar._toggleClass(html, 'e-has-sideframe');
+        const isSidebarVisible = PageToolbar._hasClass(html, 'e-has-sideframe');
+        PageToolbar._persistSidebarState(isSidebarVisible);
 
-        // Используем стандартный URL!
-        const url = new URL(window.Energine.base, window.location.origin);
-        let domainChunks = url.hostname.split('.');
-        if (domainChunks.length > 2) domainChunks.shift();
-        const domain = '.' + domainChunks.join('.');
+        if (typeof this._updateSidebarToggleState === 'function') {
+            this._updateSidebarToggleState(isSidebarVisible);
+        } else if (this.sidebarToggleButton) {
+            const pressed = isSidebarVisible ? 'true' : 'false';
+            this.sidebarToggleButton.setAttribute('aria-pressed', pressed);
+            this.sidebarToggleButton.setAttribute('aria-expanded', pressed);
+            this.sidebarToggleButton.classList.toggle('active', isSidebarVisible);
+        }
 
-        // Path с / на конце
-        const path = url.pathname.endsWith('/') ? url.pathname : url.pathname + '/';
-
-        // Кука на 30 дней
-        const value = html.classList.contains('e-has-sideframe') ? '1' : '0';
-        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString();
-        document.cookie = `sidebar=${value}; expires=${expires}; domain=${domain}; path=${path}`;
+        return isSidebarVisible;
     }
 
     showTmplEditor() { ModalBox.open({ url: this.componentPath + 'template' }); }
@@ -183,6 +517,119 @@ class PageToolbar extends Toolbar {
     onEditModeUnpressed(state) {
         const evt = new CustomEvent('oneditmodeunpressed', { detail: state });
         window.dispatchEvent(evt);
+    }
+
+    static _extractPageTitle() {
+        const selectors = [
+            '.page-header h1',
+            '.content-header h1',
+            'main h1',
+            'h1'
+        ];
+
+        for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (element && element.textContent) {
+                const text = element.textContent.trim();
+                if (text) {
+                    return text;
+                }
+            }
+        }
+
+        const breadcrumbCurrent = document.querySelector('.breadcrumb .active, .breadcrumb-item.active');
+        if (breadcrumbCurrent && breadcrumbCurrent.textContent) {
+            const text = breadcrumbCurrent.textContent.trim();
+            if (text) {
+                return text;
+            }
+        }
+
+        const documentTitle = document.title || '';
+        if (documentTitle) {
+            const parts = documentTitle.split('|');
+            if (parts.length > 1) {
+                const candidate = parts[0].trim();
+                if (candidate) {
+                    return candidate;
+                }
+            }
+            return documentTitle.trim();
+        }
+
+        return '';
+    }
+
+    static _collectBreadcrumbs() {
+        const selectors = [
+            '.breadcrumb .breadcrumb-item',
+            '.breadcrumb li',
+            '[data-role="breadcrumbs"] .breadcrumb-item'
+        ];
+
+        const seen = new Set();
+        const items = [];
+        selectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(node => {
+                if (!node || !node.textContent) {
+                    return;
+                }
+                const text = node.textContent.replace(/\s+/g, ' ').trim();
+                if (!text || seen.has(text)) {
+                    return;
+                }
+                seen.add(text);
+                items.push(text);
+            });
+        });
+
+        return items;
+    }
+
+    static _extractBreadcrumbTrail(pageTitle = '') {
+        const crumbs = PageToolbar._collectBreadcrumbs();
+        if (!crumbs.length) {
+            return '';
+        }
+
+        const filtered = crumbs.filter(Boolean);
+        if (!filtered.length) {
+            return '';
+        }
+
+        const normalizedTitle = pageTitle ? pageTitle.trim().toLowerCase() : '';
+        const lastItem = filtered[filtered.length - 1];
+        if (normalizedTitle && lastItem && lastItem.trim().toLowerCase() === normalizedTitle) {
+            filtered.pop();
+        }
+
+        if (!filtered.length) {
+            return '';
+        }
+
+        return filtered.join(' / ');
+    }
+
+    static _extractEnvironmentLabel() {
+        const candidate = window?.Energine?.root || window?.Energine?.base || window?.location?.href || '';
+        if (!candidate) {
+            return '';
+        }
+
+        try {
+            const parsed = new URL(candidate, window.location.origin);
+            if (parsed && (parsed.host || parsed.hostname)) {
+                return parsed.host || parsed.hostname;
+            }
+        } catch (error) {
+            // ignore and fallback to window.location
+        }
+
+        if (window?.location?.host) {
+            return window.location.host;
+        }
+
+        return '';
     }
 
     // Вложенный контрол логотипа (если нужно)

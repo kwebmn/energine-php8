@@ -25,13 +25,18 @@
             <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
-                        <a href="#{$IDD}" class="nav-link" data-mdb-tab-init="1" data-role="tab-link"><xsl:value-of select="$TRANSLATION[@const='TXT_IMG_MANAGER']"/></a>
+                        <a href="#{$IDD}" data-role="tab-link">
+                            <xsl:attribute name="class">nav-link active</xsl:attribute>
+                            <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
+                            <xsl:attribute name="data-bs-target">#<xsl:value-of select="$IDD"/></xsl:attribute>
+                            <xsl:value-of select="$TRANSLATION[@const='TXT_IMG_MANAGER']"/>
+                        </a>
                     </li>
                 </ul>
             </div>
             <div class="card-body" data-pane-part="body">
                 <div class="tab-content" data-role="tab-content">
-                    <div id="{$IDD}" class="tab-pane" data-role="pane-item">
+                    <div id="{$IDD}" class="tab-pane fade show active" data-role="pane-item">
                         <div style="max-height:300px; max-width:650px; overflow:auto;border: thin inset; width: auto;">
                             <img id="thumbnail" alt=""  style="display: block;"/>
                         </div>

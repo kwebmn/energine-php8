@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document debug="1" editable="0">
+  <properties>
+    <property name="keywords"></property>
+    <property name="description">Відкрийте інноваційні можливості нашої демонстраційної платформи! </property>
+    <property name="robots"></property>
+    <property name="ID">80</property>
+    <property name="default">1</property>
+    <property name="is_user">1</property>
+    <property name="url">https://phpbase.kweb.biz/?debug</property>
+    <property name="title" alt="">Головна сторінка</property>
+    <property name="base" static="https://phpbase.kweb.biz/" media="https://phpbase.kweb.biz/" resizer="https://phpbase.kweb.biz/resizer/" folder="default" default="https://phpbase.kweb.biz/">https://phpbase.kweb.biz/</property>
+    <property name="lang" abbr="" default="2" real_abbr="uk">2</property>
+  </properties>
+  <layout name="page" file="default.layout.xml">
+    <component name="mainMenu" module="share" componentAction="main" class="PageList" state="" template="" single_template="single/mainMenu/" type="list">
+      <recordset>
+        <record>
+          <field name="Id" type="integer" mode="2" key="1">3730</field>
+          <field name="Pid" type="integer" mode="2">80</field>
+          <field name="Name" type="string" mode="2">Test feed1112</field>
+          <field name="Segment" type="string" mode="2">test2/</field>
+          <field name="attachments" type="custom" mode="2">
+            <recordset rows="1">
+              <record>
+                <field name="id" type="" mode="2" title="Ідентифікатор блоку">32004</field>
+                <field name="file" type="string" mode="2" title="FIELD_FILE">uploads/public/gallery/17508596039881.jpg</field>
+                <field name="type" type="string" mode="2" title="FIELD_TYPE">image</field>
+                <field name="duration" type="string" mode="2" title="FIELD_DURATION"/>
+                <field name="mime" type="string" mode="2" title="FIELD_MIME">image/jpeg</field>
+                <field name="data" type="string" mode="2" title="FIELD_DATA"/>
+                <field name="title" type="string" mode="2" title="Заголовок блоку">den2.jpg</field>
+                <field name="name" type="" mode="2" title="Назва">den2.jpg</field>
+                <field name="secure" type="hidden" mode="2" title="FIELD_SECURE"/>
+                <field name="upl_id" type="string" mode="2" title="FIELD_UPL_ID"/>
+              </record>
+            </recordset>
+          </field>
+          <field name="DescriptionRtf" type="string" mode="2"/>
+          <field name="Icon" type="string" mode="2"/>
+          <field name="Site" type="string" mode="2" title="Дані з сайту">https://phpbase.kweb.biz/</field>
+          <field name="Redirect" type="string" mode="2" title="FIELD_REDIRECT"/>
+          <recordset>
+            <record>
+              <field name="Id" type="integer" mode="2" key="1">3733</field>
+              <field name="Pid" type="integer" mode="2">3730</field>
+              <field name="Name" type="string" mode="2">test5</field>
+              <field name="Segment" type="string" mode="2">test2/test6/</field>
+              <field name="attachments" type="custom" mode="2"/>
+              <field name="DescriptionRtf" type="string" mode="2"/>
+              <field name="Icon" type="string" mode="2"/>
+              <field name="Site" type="string" mode="2" title="Дані з сайту">https://phpbase.kweb.biz/</field>
+              <field name="Redirect" type="string" mode="2" title="FIELD_REDIRECT"/>
+            </record>
+            <record>
+              <field name="Id" type="integer" mode="2" key="1">3741</field>
+              <field name="Pid" type="integer" mode="2">3730</field>
+              <field name="Name" type="string" mode="2">123</field>
+              <field name="Segment" type="string" mode="2">test2/5555/</field>
+              <field name="attachments" type="custom" mode="2"/>
+              <field name="DescriptionRtf" type="string" mode="2"/>
+              <field name="Icon" type="string" mode="2"/>
+              <field name="Site" type="string" mode="2" title="Дані з сайту">https://phpbase.kweb.biz/</field>
+              <field name="Redirect" type="string" mode="2" title="FIELD_REDIRECT"/>
+            </record>
+            <record>
+              <field name="Id" type="integer" mode="2" key="1">3734</field>
+              <field name="Pid" type="integer" mode="2">3730</field>
+              <field name="Name" type="string" mode="2">tttest</field>
+              <field name="Segment" type="string" mode="2">test2/tttest/</field>
+              <field name="attachments" type="custom" mode="2"/>
+              <field name="DescriptionRtf" type="string" mode="2"/>
+              <field name="Icon" type="string" mode="2"/>
+              <field name="Site" type="string" mode="2" title="Дані з сайту">https://phpbase.kweb.biz/</field>
+              <field name="Redirect" type="string" mode="2" title="FIELD_REDIRECT"/>
+            </record>
+            <record>
+              <field name="Id" type="integer" mode="2" key="1">3732</field>
+              <field name="Pid" type="integer" mode="2">3730</field>
+              <field name="Name" type="string" mode="2">test5</field>
+              <field name="Segment" type="string" mode="2">test2/test5/</field>
+              <field name="attachments" type="custom" mode="2"/>
+              <field name="DescriptionRtf" type="string" mode="2"/>
+              <field name="Icon" type="string" mode="2"/>
+              <field name="Site" type="string" mode="2" title="Дані з сайту">https://phpbase.kweb.biz/</field>
+              <field name="Redirect" type="string" mode="2" title="FIELD_REDIRECT"/>
+            </record>
+            <record>
+              <field name="Id" type="integer" mode="2" key="1">3737</field>
+              <field name="Pid" type="integer" mode="2">3730</field>
+              <field name="Name" type="string" mode="2">aasdas</field>
+              <field name="Segment" type="string" mode="2">test2/aasdas/</field>
+              <field name="attachments" type="custom" mode="2"/>
+              <field name="DescriptionRtf" type="string" mode="2"/>
+              <field name="Icon" type="string" mode="2"/>
+              <field name="Site" type="string" mode="2" title="Дані з сайту">https://phpbase.kweb.biz/</field>
+              <field name="Redirect" type="string" mode="2" title="FIELD_REDIRECT"/>
+            </record>
+          </recordset>
+        </record>
+        <record>
+          <field name="Id" type="integer" mode="2" key="1">3727</field>
+          <field name="Pid" type="integer" mode="2">80</field>
+          <field name="Name" type="string" mode="2">Тест1</field>
+          <field name="Segment" type="string" mode="2">test/</field>
+          <field name="attachments" type="custom" mode="2">
+            <recordset rows="1">
+              <record>
+                <field name="id" type="" mode="2" title="Ідентифікатор блоку">31962</field>
+                <field name="file" type="string" mode="2" title="FIELD_FILE">uploads/public/fast-upload/17508576797036.webp</field>
+                <field name="type" type="string" mode="2" title="FIELD_TYPE">image</field>
+                <field name="duration" type="string" mode="2" title="FIELD_DURATION"/>
+                <field name="mime" type="string" mode="2" title="FIELD_MIME">image/webp</field>
+                <field name="data" type="string" mode="2" title="FIELD_DATA"/>
+                <field name="title" type="string" mode="2" title="Заголовок блоку">credit1.webp</field>
+                <field name="name" type="" mode="2" title="Назва">credit1.webp</field>
+                <field name="secure" type="hidden" mode="2" title="FIELD_SECURE"/>
+                <field name="upl_id" type="string" mode="2" title="FIELD_UPL_ID"/>
+              </record>
+            </recordset>
+          </field>
+          <field name="DescriptionRtf" type="string" mode="2"/>
+          <field name="Icon" type="string" mode="2"/>
+          <field name="Site" type="string" mode="2" title="Дані з сайту">https://phpbase.kweb.biz/</field>
+          <field name="Redirect" type="string" mode="2" title="FIELD_REDIRECT"/>
+        </record>
+      </recordset>
+    </component>
+    <component name="langSwitcher" module="share" componentAction="main" class="LangSwitcher" state="" template="" single_template="single/langSwitcher/" type="list">
+      <recordset rows="5">
+        <record>
+          <field name="lang_id" type="integer" mode="2" title="FIELD_LANG_ID">5</field>
+          <field name="lang_abbr" type="string" mode="2" title="Абревіатура мови">pl</field>
+          <field name="lang_name" type="string" mode="2" title="Назва мови">Poland</field>
+          <field name="lang_url" type="string" mode="2" title="FIELD_LANG_URL">pl/</field>
+          <field name="lang_real_abbr" type="string" mode="2" title="FIELD_LANG_REAL_ABBR">pl</field>
+        </record>
+        <record>
+          <field name="lang_id" type="integer" mode="2" title="FIELD_LANG_ID">4</field>
+          <field name="lang_abbr" type="string" mode="2" title="Абревіатура мови">de</field>
+          <field name="lang_name" type="string" mode="2" title="Назва мови">Deutsch</field>
+          <field name="lang_url" type="string" mode="2" title="FIELD_LANG_URL">de/</field>
+          <field name="lang_real_abbr" type="string" mode="2" title="FIELD_LANG_REAL_ABBR">de</field>
+        </record>
+        <record>
+          <field name="lang_id" type="integer" mode="2" title="FIELD_LANG_ID">3</field>
+          <field name="lang_abbr" type="string" mode="2" title="Абревіатура мови">en</field>
+          <field name="lang_name" type="string" mode="2" title="Назва мови">English</field>
+          <field name="lang_url" type="string" mode="2" title="FIELD_LANG_URL">en/</field>
+          <field name="lang_real_abbr" type="string" mode="2" title="FIELD_LANG_REAL_ABBR">en</field>
+        </record>
+        <record>
+          <field name="lang_id" type="integer" mode="2" title="FIELD_LANG_ID">1</field>
+          <field name="lang_abbr" type="string" mode="2" title="Абревіатура мови">ru</field>
+          <field name="lang_name" type="string" mode="2" title="Назва мови">Русский</field>
+          <field name="lang_url" type="string" mode="2" title="FIELD_LANG_URL">ru/</field>
+          <field name="lang_real_abbr" type="string" mode="2" title="FIELD_LANG_REAL_ABBR">ru</field>
+        </record>
+        <record>
+          <field name="lang_id" type="integer" mode="2" title="FIELD_LANG_ID">2</field>
+          <field name="lang_abbr" type="string" mode="2" title="Абревіатура мови"/>
+          <field name="lang_name" type="string" mode="2" title="Назва мови">Українська</field>
+          <field name="lang_url" type="string" mode="2" title="FIELD_LANG_URL"/>
+          <field name="lang_real_abbr" type="string" mode="2" title="FIELD_LANG_REAL_ABBR">uk</field>
+        </record>
+      </recordset>
+    </component>
+    <component name="footerTextBlock" module="share" componentAction="main" class="TextBlock" state="" template="" single_template="single/footerTextBlock/" sample="TextBlock" type="form" global="global" num="footerTextBlock">
+      <recordset rows="1">
+        <record>
+          <field name="footerTextBlock" type="htmlblock" mode="2" title="FIELD_FOOTERTEXTBLOCK" sort="0" pattern="/^.+$/m" message="Поле не може бути порожнім.">&lt;p&gt;Lorem ipsum dolor sit amet consectetur adipisicing elit. Sunt distinctio earum repellat quaerat voluptatibus placeat nam, commodi optio pariatur est quia magnam eum harum corrupti dicta, aliquam sequi voluptate quas.&lt;/p&gt;
+</field>
+        </record>
+      </recordset>
+    </component>
+    <component name="adminPanel" module="share" componentAction="showPageToolbar" class="DivisionEditor" state="" template="" single_template="single/adminPanel/" sample="DivisionEditor" type="list" exttype="grid" title="Список розділів">
+      <javascript>
+        <behavior name="PageToolbar" path=""/>
+      </javascript>
+      <toolbar name="main_toolbar">
+        <control id="editMode" action="" mode="2" title="Режим редагування" onclick="editMode" state="0" type="switcher"/>
+        <control id="sep3" mode="2" type="separator"/>
+        <control id="transEditor" action="" mode="2" title="Переклади" onclick="showTransEditor" type="button"/>
+        <control id="sep13" mode="2" type="separator"/>
+        <control id="language" action="" mode="2" title="Мови" onclick="showLangEditor" type="button"/>
+        <control id="sep4" mode="2" type="separator"/>
+        <control id="user" action="" mode="2" title="Користувачі" onclick="showUserEditor" type="button"/>
+        <control id="sep14" mode="2" type="separator"/>
+        <control id="role" action="" mode="2" title="Ролі" onclick="showRoleEditor" type="button"/>
+        <control id="sep5" mode="2" type="separator"/>
+        <control id="fileRepository" action="" mode="2" title="Файловий репозиторій" onclick="showFileRepository" type="button"/>
+        <control id="sep6" mode="2" type="separator"/>
+        <control id="siteEditor" action="" mode="2" title="Сайти" onclick="showSiteEditor" type="button"/>
+      </toolbar>
+    </component>
+    <component name="translationList" module="default" componentAction="main" class="TranslationList" state="" template="" single_template="single/translationList/" type="form">
+      <recordset empty="Немає жодного запису." rows="0">
+        <record empty="Немає жодного запису."/>
+      </recordset>
+    </component>
+  </layout>
+  <content name="content" file="textblock.content.xml">
+    <component name="textBlock_1" module="share" componentAction="main" class="TextBlock" state="" template="" single_template="single/textBlock_1/" sample="TextBlock" type="form" num="1">
+      <recordset rows="1">
+        <record>
+          <field name="textBlock_1" type="htmlblock" mode="2" title="FIELD_TEXTBLOCK_1" sort="0" pattern="/^.+$/m" message="Поле не може бути порожнім.">&lt;p&gt;1223&lt;a href="uploads/public/gallery/17508596121248.jpg"&gt;11333&lt;/a&gt;1&lt;/p&gt;
+
+&lt;p&gt;222&lt;/p&gt;
+
+&lt;p&gt;&lt;img alt="den4.jpg" src="uploads/public/gallery/17508596121248.jpg" style="border-width:0px;border-style:solid;height:720px;" /&gt;&lt;/p&gt;
+</field>
+        </record>
+      </recordset>
+    </component>
+    <component name="navMenu" module="share" componentAction="main" class="SiteProperties" template="" single_template="single/navMenu/"/>
+  </content>
+  <component name="breadCrumbs" module="share" componentAction="main" class="BreadCrumbs" state="" template="" single_template="single/breadCrumbs/" type="list" site="Energine">
+    <recordset rows="1">
+      <record>
+        <field name="Id" type="string" mode="2" title="Ідентифікатор блоку" key="1">80</field>
+        <field name="Name" type="string" mode="2" title="Назва">Головна сторінка</field>
+        <field name="Segment" type="string" mode="2" title="FIELD_SEGMENT"/>
+        <field name="Title" type="string" mode="2" title="Заголовок блоку"/>
+      </record>
+    </recordset>
+  </component>
+  <component name="jsdata" module="default" componentAction="main" class="JSData" state="" template="" single_template="single/jsdata/" type="form">
+    <recordset rows="1">
+      <record/>
+    </recordset>
+  </component>
+  <translations json="{&quot;TXT_HOME&quot;:&quot;Головна&quot;,&quot;TXT_COPYRIGHT&quot;:&quot;© 2024&quot;,&quot;TXT_ARE_YOU_SURE_SAVE&quot;:&quot;Ви впевнені, що хочете зберегти зміни?&quot;}">
+    <translation const="TXT_HOME" component="mainMenu">Головна</translation>
+    <translation const="TXT_COPYRIGHT" component="translationList">© 2024</translation>
+    <translation const="TXT_ARE_YOU_SURE_SAVE" component="textBlock_1">Ви впевнені, що хочете зберегти зміни?</translation>
+  </translations>
+  <javascript>
+    <library path="Toolbar"/>
+    <library path="ModalBox"/>
+    <library path="Cookie"/>
+    <library path="PageToolbar"/>
+  </javascript>
+</document>

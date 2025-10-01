@@ -149,7 +149,7 @@ class Filter extends BaseObject
         if (!isset($data['condition']) || !in_array($data['condition'], array_keys($this->map), true)) {
             throw new SystemException('ERR_BAD_FILTER_DATA', SystemException::ERR_CRITICAL, $data);
         }
-        $this->condition = $data['condition'];
+        $this->condition = $data['condition'];        
         unset($data['condition']);
         $this->data = $data;
     }
@@ -162,6 +162,7 @@ class Filter extends BaseObject
      */
     public function apply(Grid $grid): void
     {
+        
         if (!$this->data) {
             return;
         }
@@ -172,7 +173,7 @@ class Filter extends BaseObject
         $tableName = key($this->data);
         $fieldName = key($this->data[$tableName]);
         $values = $this->normalizeValues($this->data[$tableName][$fieldName]);
-
+        
         if (
             !$dbh->tableExists($tableName) ||
             !($tableInfo = $dbh->getColumnsInfo($tableName)) ||
@@ -233,6 +234,7 @@ class Filter extends BaseObject
             $conditionSql .= "ESCAPE '\\\\' ";
         }
 
+        
         $grid->addFilterCondition($conditionSql);
     }
 

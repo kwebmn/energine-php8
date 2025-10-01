@@ -99,7 +99,6 @@
                 <xsl:apply-templates select="." mode="stylesheets"/>
             </xsl:when>
             <xsl:otherwise>
-                <link rel="stylesheet" type="text/css" href="{$STATIC_URL}stylesheets/singlemode.css"/>
                 <!--<script type="text/javascript">window.singleMode = true;</script>-->
             </xsl:otherwise>
         </xsl:choose>
@@ -110,7 +109,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="keywords" content="{$DOC_PROPS[@name='keywords']}"/>
         <meta name="description" content="{$DOC_PROPS[@name='description']}"/>
-        <link href="assets/minified.css" rel="stylesheet" />
+        <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet" />
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>
@@ -137,7 +136,7 @@
 <!--            </xsl:otherwise>-->
 <!--        </xsl:choose>-->
 <!--        <link href="assets/minified.css" rel="stylesheet" />-->
-        <script type="text/javascript" src="assets/minified.js" />
+        <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
         <script type="text/javascript">
             Object.assign(Energine, {

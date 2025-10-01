@@ -13,6 +13,22 @@
     
     <!-- Элемент панели управления -->
     <xsl:template match="toolbar/control">
+        <xsl:variable name="ICON_RAW" select="@icon"/>
+        <xsl:variable name="ICON_NORMALIZED" select="normalize-space($ICON_RAW)"/>
+        <xsl:variable name="TITLE" select="normalize-space(@title)"/>
+        <xsl:variable name="TOOLTIP" select="normalize-space(@tooltip)"/>
+        <xsl:variable name="HAS_ICON" select="string-length($ICON_NORMALIZED) &gt; 0"/>
+        <xsl:variable name="HAS_TITLE" select="string-length($TITLE) &gt; 0"/>
+        <xsl:variable name="ICON_ONLY_FLAG" select="translate(normalize-space(@icon-only), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="ICON_ONLY" select="$HAS_ICON and (($ICON_ONLY_FLAG='true') or ($ICON_ONLY_FLAG='1') or ($ICON_ONLY_FLAG='yes') or ($ICON_ONLY_FLAG='on') or not($HAS_TITLE))"/>
+        <xsl:variable name="ICON_IS_CLASS" select="$HAS_ICON and string-length(translate($ICON_NORMALIZED, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ', '')) = 0"/>
+        <xsl:variable name="ARIA_LABEL">
+            <xsl:choose>
+                <xsl:when test="$HAS_TITLE"><xsl:value-of select="$TITLE"/></xsl:when>
+                <xsl:when test="string-length($TOOLTIP) &gt; 0"><xsl:value-of select="$TOOLTIP"/></xsl:when>
+                <xsl:otherwise/>
+            </xsl:choose>
+        </xsl:variable>
         <xsl:variable name="CONTROL">
                 <xsl:choose>
                         <xsl:when test="@type = 'button'">button</xsl:when>
@@ -43,20 +59,64 @@
                 <xsl:attribute name="name"><xsl:value-of select="@id"/></xsl:attribute>
                 <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
                 <xsl:if test="@tooltip != ''">
-                    <xsl:attribute name="data-mdb-tooltip-init">1</xsl:attribute>
+                    <xsl:attribute name="data-bs-toggle">tooltip</xsl:attribute>
                 </xsl:if>
                 <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
+                <xsl:if test="$HAS_ICON">
+                    <xsl:text>d-inline-flex align-items-center </xsl:text>
+                    <xsl:choose>
+                        <xsl:when test="$ICON_ONLY">
+                            <xsl:text>justify-content-center px-2 </xsl:text>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:text>gap-2 </xsl:text>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:if>
                 <xsl:value-of select="$BUTTON_VARIANT"/>
             </xsl:attribute>
             <xsl:if test="@click!=''">
                 <xsl:attribute name="onclick"><xsl:value-of select="@click"/></xsl:attribute>
             </xsl:if>
-                <xsl:value-of select="@title"/>
+            <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
+                <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$HAS_ICON">
+                <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
+                    <xsl:choose>
+                        <xsl:when test="$ICON_IS_CLASS">
+                            <i class="{$ICON_NORMALIZED}" aria-hidden="true"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="$ICON_NORMALIZED"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </span>
+            </xsl:if>
+            <xsl:if test="not($ICON_ONLY)">
+                <span class="toolbar-control-label"><xsl:value-of select="@title"/></span>
+            </xsl:if>
         </xsl:element>
     </xsl:template>
     <xsl:template match="toolbar/control[(@type='link') and (@mode != 0) and not(@disabled)]">
+        <xsl:variable name="ICON_RAW" select="@icon"/>
+        <xsl:variable name="ICON_NORMALIZED" select="normalize-space($ICON_RAW)"/>
+        <xsl:variable name="TITLE" select="normalize-space(@title)"/>
+        <xsl:variable name="TOOLTIP" select="normalize-space(@tooltip)"/>
+        <xsl:variable name="HAS_ICON" select="string-length($ICON_NORMALIZED) &gt; 0"/>
+        <xsl:variable name="HAS_TITLE" select="string-length($TITLE) &gt; 0"/>
+        <xsl:variable name="ICON_ONLY_FLAG" select="translate(normalize-space(@icon-only), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="ICON_ONLY" select="$HAS_ICON and (($ICON_ONLY_FLAG='true') or ($ICON_ONLY_FLAG='1') or ($ICON_ONLY_FLAG='yes') or ($ICON_ONLY_FLAG='on') or not($HAS_TITLE))"/>
+        <xsl:variable name="ICON_IS_CLASS" select="$HAS_ICON and string-length(translate($ICON_NORMALIZED, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ', '')) = 0"/>
+        <xsl:variable name="ARIA_LABEL">
+            <xsl:choose>
+                <xsl:when test="$HAS_TITLE"><xsl:value-of select="$TITLE"/></xsl:when>
+                <xsl:when test="string-length($TOOLTIP) &gt; 0"><xsl:value-of select="$TOOLTIP"/></xsl:when>
+                <xsl:otherwise/>
+            </xsl:choose>
+        </xsl:variable>
         <xsl:variable name="LINK_KEY" select="translate(concat(@id, '|', @click, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
         <xsl:variable name="LINK_VARIANT">
             <xsl:choose>
@@ -68,13 +128,41 @@
         <a href="{$BASE}{$LANG_ABBR}{@click}" id="{@id}">
             <xsl:if test="@tooltip != ''">
                 <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
-                <xsl:attribute name="data-mdb-tooltip-init">1</xsl:attribute>
+                <xsl:attribute name="data-bs-toggle">tooltip</xsl:attribute>
             </xsl:if>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
+                <xsl:if test="$HAS_ICON">
+                    <xsl:text>d-inline-flex align-items-center </xsl:text>
+                    <xsl:choose>
+                        <xsl:when test="$ICON_ONLY">
+                            <xsl:text>justify-content-center px-2 </xsl:text>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:text>gap-2 </xsl:text>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:if>
                 <xsl:value-of select="$LINK_VARIANT"/>
             </xsl:attribute>
-            <xsl:value-of select="@title"/>
+            <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
+                <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$HAS_ICON">
+                <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
+                    <xsl:choose>
+                        <xsl:when test="$ICON_IS_CLASS">
+                            <i class="{$ICON_NORMALIZED}" aria-hidden="true"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="$ICON_NORMALIZED"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </span>
+            </xsl:if>
+            <xsl:if test="not($ICON_ONLY)">
+                <span class="toolbar-control-label"><xsl:value-of select="@title"/></span>
+            </xsl:if>
         </a>
     </xsl:template>
 
@@ -119,6 +207,7 @@
                     title: '<xsl:value-of select="@title"/>',
                     action: '<xsl:value-of select="@onclick"/>',
                     icon: '<xsl:value-of select="@icon"/>',
+                    iconOnly: '<xsl:value-of select="@icon-only"/>',
                     disabled: '<xsl:value-of select="@disabled"/>'
                 })
             );
@@ -131,20 +220,23 @@
         id: '<xsl:value-of select="@id"/>',
         title: '<xsl:value-of select="@title"/>',
         action: '<xsl:value-of select="@onclick"/>',
-        icon: '<xsl:value-of select="@icon"/>'
+        icon: '<xsl:value-of select="@icon"/>',
+        aicon: '<xsl:value-of select="@aicon"/>',
+        iconOnly: '<xsl:value-of select="@icon-only"/>'
         })
         );
     </xsl:template>
 
     <xsl:template match="component[@exttype='grid']/toolbar/control[@type='file']">
-    	componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
+        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
             new Toolbar.File({
                 id: '<xsl:value-of select="@id"/>',
                 title: '<xsl:value-of select="@title"/>',
                 action: '<xsl:value-of select="@onclick"/>',
-                icon: '<xsl:value-of select="@icon"/>'
+                icon: '<xsl:value-of select="@icon"/>',
+                iconOnly: '<xsl:value-of select="@icon-only"/>'
             })
-    	);
+        );
     </xsl:template>
 
     <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'select']">
@@ -172,55 +264,67 @@
     
     <!-- листалка по страницам -->
     <xsl:template match="toolbar[@name='pager']">
-        <xsl:if test="count(control)&gt;1">
-            <div class="pager">
-                <xsl:apply-templates select="properties/property[@name='title']"/>
-                <xsl:apply-templates/>    
-            </div>
+        <xsl:if test="count(control) &gt; 1">
+            <xsl:variable name="PAGER_TITLE" select="properties/property[@name='title']"/>
+            <nav class="grid-pager-nav w-100 mt-2 mb-0" aria-label="Pagination">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <xsl:if test="$PAGER_TITLE">
+                        <span class="text-muted small fw-semibold">
+                            <xsl:value-of select="$PAGER_TITLE"/>
+                        </span>
+                    </xsl:if>
+                    <ul class="pagination pagination-sm mb-0" data-role="page-list">
+                        <xsl:apply-templates select="control"/>
+                    </ul>
+                </div>
+            </nav>
         </xsl:if>
     </xsl:template>
-    
-    <xsl:template match="control[parent::toolbar[@name='pager']]">
-        <span class="control">
-            <a>
-                <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>                            
-                <xsl:value-of select="@title"/>
-            </a>
-        </span>
-    </xsl:template>
-    
-    <!-- номер текущей страницы выделен -->
+
     <xsl:template match="control[@disabled][parent::toolbar[@name='pager']]">
         <xsl:if test="preceding-sibling::control">
-            <span class="control arrow">
-                <a>
+            <li class="page-item">
+                <a class="page-link" aria-label="Previous" rel="prev">
                     <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action - 1"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>
-                    <img src="images/prev_page.gif"/>
+                    <span aria-hidden="true">&#8249;</span>
+                    <span class="visually-hidden">Previous</span>
                 </a>
-            </span>
+            </li>
         </xsl:if>
-        <span class="control current"><xsl:value-of select="@title"/></span>
+        <li class="page-item active" aria-current="page">
+            <span class="page-link"><xsl:value-of select="@title"/></span>
+        </li>
         <xsl:if test="following-sibling::control">
-            <span class="control arrow">
-                <a>
+            <li class="page-item">
+                <a class="page-link" aria-label="Next" rel="next">
                     <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action + 1"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>
-                    <img src="images/next_page.gif"/>
+                    <span aria-hidden="true">&#8250;</span>
+                    <span class="visually-hidden">Next</span>
                 </a>
-            </span>
+            </li>
         </xsl:if>
     </xsl:template>
-    
+
+    <xsl:template match="control[parent::toolbar[@name='pager']][not(@disabled)][not(@type='separator')]"><!-- другие страницы -->
+        <li class="page-item">
+            <a class="page-link">
+                <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../../@template"/><xsl:value-of select="../properties/property[@name='additional_url']"/>page-<xsl:value-of select="@action"/>/<xsl:if test="../properties/property[@name='get_string']!=''">?<xsl:value-of select="../properties/property[@name='get_string']"/></xsl:if></xsl:attribute>
+                <xsl:value-of select="@title"/>
+            </a>
+        </li>
+    </xsl:template>
+
     <!-- разделитель между группами цифр -->
     <xsl:template match="control[@type='separator'][parent::toolbar[@name='pager']]">
-        <span class="control break">...</span>
+        <li class="page-item disabled" aria-hidden="true">
+            <span class="page-link">…</span>
+        </li>
     </xsl:template>
-    
+
     <xsl:template match="properties[parent::toolbar[@name='pager']]"/>
-    
-    <xsl:template match="property[@name='title'][ancestor::toolbar[@name='pager']]">
-        <span class="title"><xsl:value-of select="."/>:</span>
-    </xsl:template>
-    <!-- /листалка по страницам -->     
+
+    <xsl:template match="property[@name='title'][ancestor::toolbar[@name='pager']]"/>
+    <!-- /листалка по страницам -->
     
     <!-- Панель управления страницей обрабатывается в document.xslt  -->
     <xsl:template match="toolbar[parent::component[@class='PageToolBar']]"/>

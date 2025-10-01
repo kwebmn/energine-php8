@@ -30,6 +30,183 @@ class Form {
     // Класс Energine.request как статическое свойство
     static request = Energine.request;
 
+    static previewIconMap = {
+        default: 'fa-solid fa-file text-secondary',
+        file: 'fa-solid fa-file text-secondary',
+        image: 'fa-solid fa-file-image text-info',
+        video: 'fa-solid fa-file-video text-info',
+        audio: 'fa-solid fa-file-audio text-info',
+        zip: 'fa-solid fa-file-zipper text-warning',
+        text: 'fa-solid fa-file-lines text-secondary',
+        folder: 'fa-solid fa-folder text-warning',
+        folderup: 'fa-solid fa-arrow-up text-secondary',
+        repo: 'fa-solid fa-database text-primary',
+        unknown: 'fa-solid fa-file text-secondary',
+        error: 'fa-solid fa-triangle-exclamation text-danger',
+        spinner: 'fa-solid fa-spinner fa-spin text-secondary'
+    };
+
+    static getPreviewIconKey(type) {
+        switch (type) {
+            case 'image':
+            case 'video':
+            case 'audio':
+            case 'zip':
+            case 'text':
+            case 'folder':
+            case 'folderup':
+            case 'repo':
+            case 'unknown':
+                return type;
+            default:
+                return 'file';
+        }
+    }
+
+    static findPreviewWrapper(previewEl) {
+        if (!previewEl) return null;
+        if (previewEl.classList && previewEl.classList.contains('file-preview-wrapper')) {
+            return previewEl;
+        }
+        if (typeof previewEl.closest === 'function') {
+            return previewEl.closest('.file-preview-wrapper');
+        }
+        return null;
+    }
+
+    static ensurePreviewWrapper(previewEl) {
+        if (!previewEl) return null;
+        const existing = Form.findPreviewWrapper(previewEl);
+        if (existing) {
+            return existing;
+        }
+
+        const isImage = previewEl.tagName && previewEl.tagName.toLowerCase() === 'img';
+        const width = parseInt(previewEl.getAttribute?.('width') || previewEl.width || 64, 10) || 64;
+        const height = parseInt(previewEl.getAttribute?.('height') || previewEl.height || 64, 10) || 64;
+
+        if (!isImage) {
+            previewEl.classList?.add('file-preview-wrapper', 'd-inline-flex', 'align-items-center', 'justify-content-center', 'border', 'rounded', 'bg-body-tertiary', 'position-relative', 'overflow-hidden');
+            previewEl.style.minWidth = previewEl.style.minWidth || `${width}px`;
+            previewEl.style.minHeight = previewEl.style.minHeight || `${height}px`;
+            previewEl.style.maxWidth = previewEl.style.maxWidth || `${width}px`;
+            previewEl.style.maxHeight = previewEl.style.maxHeight || `${height}px`;
+            return previewEl;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'file-preview-wrapper d-inline-flex align-items-center justify-content-center border rounded bg-body-tertiary position-relative overflow-hidden';
+        wrapper.style.minWidth = `${width}px`;
+        wrapper.style.minHeight = `${height}px`;
+        wrapper.style.maxWidth = `${width}px`;
+        wrapper.style.maxHeight = `${height}px`;
+
+        if (previewEl.parentNode) {
+            previewEl.parentNode.insertBefore(wrapper, previewEl);
+        }
+
+        wrapper.appendChild(previewEl);
+        previewEl.classList?.add('img-fluid');
+        previewEl.style.objectFit = previewEl.style.objectFit || 'contain';
+        previewEl.style.maxWidth = '100%';
+        previewEl.style.maxHeight = '100%';
+
+        return wrapper;
+    }
+
+    static getPreviewImage(previewEl) {
+        if (!previewEl) return null;
+        if (previewEl.tagName && previewEl.tagName.toLowerCase() === 'img') {
+            return previewEl;
+        }
+        return previewEl.querySelector ? previewEl.querySelector('img') : null;
+    }
+
+    static showPreviewElement(element) {
+        if (!element) return;
+        element.classList?.remove('d-none', 'hidden');
+        element.removeAttribute?.('hidden');
+        element.setAttribute?.('aria-hidden', 'false');
+    }
+
+    static hidePreviewElement(element) {
+        if (!element) return;
+        element.classList?.add('d-none');
+        element.setAttribute?.('hidden', 'hidden');
+        element.setAttribute?.('aria-hidden', 'true');
+    }
+
+    static showIconPreview(previewEl, iconKey = 'file') {
+        if (!previewEl) return;
+        const wrapper = Form.ensurePreviewWrapper(previewEl) || previewEl;
+        const iconClass = Form.previewIconMap[iconKey] || Form.previewIconMap.file;
+        let icon = wrapper.querySelector?.('.file-preview-icon') || null;
+        if (!icon) {
+            icon = document.createElement('i');
+            icon.className = 'file-preview-icon fa-2x fa-fw';
+            wrapper.appendChild(icon);
+        }
+        icon.className = `file-preview-icon fa-2x fa-fw ${iconClass}`;
+        icon.setAttribute('aria-hidden', 'true');
+
+        const image = Form.getPreviewImage(previewEl);
+        if (image) {
+            image.removeAttribute('src');
+            Form.hidePreviewElement(image);
+        }
+
+        Form.showPreviewElement(wrapper);
+        if (previewEl !== wrapper) {
+            Form.showPreviewElement(previewEl);
+        }
+    }
+
+    static showSpinner(previewEl) {
+        Form.showIconPreview(previewEl, 'spinner');
+    }
+
+    static showImagePreview(previewEl, src, alt = '') {
+        if (!previewEl) return;
+        const wrapper = Form.ensurePreviewWrapper(previewEl) || previewEl;
+        const image = Form.getPreviewImage(previewEl);
+
+        if (image) {
+            image.src = src;
+            if (alt) {
+                image.alt = alt;
+            }
+            image.classList?.remove('d-none', 'hidden');
+            image.removeAttribute?.('hidden');
+            image.setAttribute?.('aria-hidden', 'false');
+        }
+
+        const icon = wrapper.querySelector?.('.file-preview-icon');
+        icon?.remove();
+
+        Form.showPreviewElement(wrapper);
+        if (previewEl !== wrapper) {
+            Form.showPreviewElement(previewEl);
+        }
+    }
+
+    static resetPreview(previewEl) {
+        if (!previewEl) return;
+        const wrapper = Form.findPreviewWrapper(previewEl) || previewEl;
+        const icon = wrapper.querySelector?.('.file-preview-icon');
+        icon?.remove();
+
+        const image = Form.getPreviewImage(previewEl);
+        if (image) {
+            image.removeAttribute('src');
+            Form.hidePreviewElement(image);
+        }
+
+        Form.hidePreviewElement(wrapper);
+        if (previewEl !== wrapper) {
+            Form.hidePreviewElement(previewEl);
+        }
+    }
+
     /**
      * Legacy helper. Initializes forms or re-triggers MDB input styling.
      * @param {Element|NodeList|string|Array<Element>} [target]
@@ -70,72 +247,52 @@ class Form {
     }
 
     /**
-     * Переинициализирует floating labels из MDB.
-     * @param {Document|DocumentFragment|Element|Array<Element>|NodeList} [context=document]
+     * Подготавливает элементы формы для корректного отображения в Bootstrap.
+     * Добавляет недостающие служебные классы, настраивает form-floating и ARIA-атрибуты.
+     * @param {Document|DocumentFragment|Element|Array<Element>|NodeList|string} [context=document]
      */
     static initializeInputs(context = document) {
-        const inputModule = window?.mdb?.Input;
-        if (!inputModule || typeof inputModule.init !== 'function') {
-            return;
-        }
+        const selectors = 'input, textarea, select';
+        const controls = new Set();
 
-        const collectTargets = (source) => {
-            const result = [];
+        const pushControls = (source) => {
             if (!source) {
-                return result;
+                return;
             }
 
-            if ((source instanceof Element || source instanceof DocumentFragment) && typeof source.matches === 'function') {
-                if (source.matches('.form-outline')) {
-                    result.push(source);
-                }
+            if (typeof source === 'string') {
+                pushControls((source ? document.querySelector(source) : null));
+                return;
+            }
+
+            const nodeType = source.nodeType;
+            const isElement = nodeType === 1;
+            const isDocument = nodeType === 9;
+            const isFragment = nodeType === 11;
+            if (!isElement && !isDocument && !isFragment) {
+                return;
+            }
+
+            if (isElement && typeof source.matches === 'function' && source.matches(selectors)) {
+                controls.add(source);
             }
 
             if (typeof source.querySelectorAll === 'function') {
-                result.push(...source.querySelectorAll('.form-outline'));
+                source.querySelectorAll(selectors).forEach((el) => controls.add(el));
             }
-
-            return result;
         };
 
-        let nodes = [];
         if (Form.isNodeCollection(context)) {
-            nodes = context ? Array.from(context).flatMap((item) => collectTargets(item)) : [];
+            Array.from(context).forEach((item) => pushControls(item));
         } else {
-            nodes = collectTargets(context);
+            pushControls(context || document);
         }
 
-        const uniqueNodes = Array.from(new Set(nodes));
-
-        if (!uniqueNodes.length) {
-            try {
-                inputModule.init();
-            } catch (error) {
-                console.warn('Form.init: failed to initialize MDB inputs', error);
-            }
-            return;
-        }
-
-        let lastError = null;
-        const attempts = [
-            () => inputModule.init(uniqueNodes),
-            () => uniqueNodes.forEach((node) => inputModule.init(node)),
-            () => inputModule.init(),
-        ];
-
-        for (const attempt of attempts) {
-            try {
-                attempt();
-                lastError = null;
-                break;
-            } catch (error) {
-                lastError = error;
-            }
-        }
-
-        if (lastError) {
-            console.warn('Form.init: failed to initialize MDB inputs', lastError);
-        }
+        controls.forEach((control) => {
+            Form.applyBootstrapControlClasses(control);
+            Form.prepareFloatingLabel(control);
+            Form.synchronizeInvalidState(control);
+        });
     }
 
     request(...args) {
@@ -143,9 +300,6 @@ class Form {
     }
 
     constructor(element) {
-        // Загрузка стилей (имитируем Asset.css)
-        Form.loadCSS('stylesheets/form.mdb.css');
-
         // this.overlay = new Overlay();
 
         // Получаем элемент формы
@@ -174,6 +328,9 @@ class Form {
         this.tabPane = new TabPane(this.componentElement, {
             onTabChange: this.onTabChange.bind(this)
         });
+
+        // Подключаем CSS для подсветки обязательных полей (один раз на страницу)
+        Form.loadCSS('stylesheets/form.css');
 
         // Валидатор
         this.validator = new Validator(this.form, this.tabPane);
@@ -248,6 +405,10 @@ class Form {
                 this.dateControls.push(Energine.createDatePicker(dateControl, isNullable));
             }
         });
+
+        // Ensure iframes that host grids expand to available height inside forms
+        this._enhanceEmbeddedGridIframes();
+        window.addEventListener('resize', () => this._enhanceEmbeddedGridIframes());
 
         // Если открыто в ModalBox
         if (window.parent.ModalBox?.initialized && window.parent.ModalBox.getCurrent()) {
@@ -393,6 +554,7 @@ class Form {
         });
 
         Form.initializeInputs(this.form || this.componentElement);
+        Form.applyRequiredHighlights(this.form || this.componentElement);
 
     }
 
@@ -496,14 +658,10 @@ class Form {
             if (anchor) {
                 anchor.removeAttribute('href');
             }
-            const image = preview.querySelector('img');
-            if (image) {
-                image.removeAttribute('src');
-            }
-            preview.setAttribute('hidden', 'hidden');
+            Form.resetPreview(preview);
         }
         if (button) {
-            button.setAttribute('hidden', 'hidden');
+            button.classList.add('d-none');
         }
 
         const inputId = button?.dataset?.input;
@@ -534,35 +692,35 @@ class Form {
         const anchor = previewEl && previewEl.tagName.toLowerCase() === 'a'
             ? previewEl
             : previewEl?.querySelector('a');
-        let image = null;
         if (previewEl) {
-            image = previewEl.querySelector('img');
-            if (!image && previewEl.tagName.toLowerCase() === 'img') {
-                image = previewEl;
+            const type = result['upl_internal_type'];
+            const href = result['upl_path'] ? Energine.media + result['upl_path'] : '';
+
+            if (anchor) {
+                if (href) {
+                    anchor.setAttribute('href', href);
+                } else {
+                    anchor.removeAttribute('href');
+                }
             }
-        }
-        if (image) {
-            let src;
-            switch (result['upl_internal_type']) {
+
+            switch (type) {
                 case 'image':
-                    src = Energine.media + result['upl_path'];
+                    Form.showImagePreview(previewEl, Energine.media + result['upl_path'], result['upl_title'] || '');
                     break;
                 case 'video':
-                    src = Energine.resizer + 'w0-h0/' + result['upl_path'];
+                    Form.showImagePreview(previewEl, Energine.resizer + 'w0-h0/' + result['upl_path'], result['upl_title'] || '');
                     break;
                 default:
-                    src = Energine['static'] + 'images/icons/icon_undefined.gif';
+                    Form.showIconPreview(previewEl, Form.getPreviewIconKey(type));
+                    break;
             }
-            image.setAttribute('src', src);
-            if (anchor) {
-                anchor.setAttribute('href', Energine.media + result['upl_path']);
-            }
-            previewEl?.removeAttribute('hidden');
         }
 
         const clearButton = linkId
             ? this.form.querySelector(`[data-action="clear-file"][data-target="${linkId}"]`)
             : null;
+        clearButton?.classList.remove('d-none', 'hidden');
         clearButton?.removeAttribute('hidden');
     }
 
@@ -653,6 +811,233 @@ class Form {
 
     // --- Вспомогательные методы ---
 
+    static applyBootstrapControlClasses(control) {
+        if (!Form.isElement(control)) {
+            return;
+        }
+
+        const tagName = (control.tagName || '').toLowerCase();
+        if (!tagName) {
+            return;
+        }
+
+        if (tagName === 'select') {
+            if (!control.classList.contains('form-select') && !control.classList.contains('form-control')) {
+                control.classList.add('form-select');
+            }
+            return;
+        }
+
+        if (tagName === 'textarea') {
+            if (!control.classList.contains('form-control')) {
+                control.classList.add('form-control');
+            }
+            return;
+        }
+
+        if (tagName !== 'input') {
+            return;
+        }
+
+        const type = (control.getAttribute('type') || 'text').toLowerCase();
+        if (['hidden', 'submit', 'reset', 'button', 'image'].includes(type)) {
+            return;
+        }
+
+        if (type === 'checkbox' || type === 'radio') {
+            control.classList.add('form-check-input');
+            return;
+        }
+
+        if (type === 'range') {
+            control.classList.add('form-range');
+            return;
+        }
+
+        if (type === 'file') {
+            control.classList.add('form-control');
+            return;
+        }
+
+        if (type === 'color') {
+            control.classList.add('form-control');
+            control.classList.add('form-control-color');
+            return;
+        }
+
+        if (!control.classList.contains('form-control')) {
+            control.classList.add('form-control');
+        }
+    }
+
+    static prepareFloatingLabel(control) {
+        if (!Form.isElement(control)) {
+            return;
+        }
+
+        const wrapper = Form.safeClosest(control, '.form-floating');
+        if (!wrapper) {
+            return;
+        }
+
+        if (!control.hasAttribute('placeholder') || control.getAttribute('placeholder') === '') {
+            control.setAttribute('placeholder', ' ');
+        }
+
+        const label = wrapper.querySelector('label');
+        if (Form.isElement(label) && !label.getAttribute('for')) {
+            const controlId = Form.ensureControlId(control);
+            label.setAttribute('for', controlId);
+        }
+    }
+
+    static synchronizeInvalidState(control) {
+        if (!Form.isElement(control)) {
+            return;
+        }
+
+        if (control.classList.contains('is-invalid')) {
+            control.setAttribute('aria-invalid', 'true');
+        } else {
+            control.removeAttribute('aria-invalid');
+        }
+
+        const feedbacks = Form.findInvalidFeedbacks(control);
+        if (!feedbacks.length) {
+            return;
+        }
+
+        const controlId = Form.ensureControlId(control);
+        const describedBy = new Set((control.getAttribute('aria-describedby') || '')
+            .split(/\s+/)
+            .map(token => token.trim())
+            .filter(Boolean));
+
+        feedbacks.forEach((feedback) => {
+            if (!feedback.id) {
+                const generatedId = Form.generateFeedbackId(control);
+                feedback.id = generatedId;
+                if (!control.dataset.feedbackId) {
+                    control.dataset.feedbackId = generatedId;
+                }
+            }
+            if (feedback.dataset && !feedback.dataset.feedbackFor) {
+                feedback.dataset.feedbackFor = controlId;
+            }
+            if (!feedback.hasAttribute('aria-live')) {
+                feedback.setAttribute('aria-live', 'polite');
+            }
+            describedBy.add(feedback.id);
+        });
+
+        if (describedBy.size) {
+            control.setAttribute('aria-describedby', Array.from(describedBy).join(' '));
+        }
+    }
+
+    static findInvalidFeedbacks(control) {
+        if (!Form.isElement(control)) {
+            return [];
+        }
+
+        const wrappers = new Set([
+            Form.safeClosest(control, '[data-role="form-field"]'),
+            Form.safeClosest(control, '.form-floating'),
+            Form.safeClosest(control, '.input-group'),
+            control.parentElement,
+        ]);
+
+        const feedbacks = new Set();
+
+        wrappers.forEach((wrapper) => {
+            if (!Form.isElement(wrapper) && !(wrapper && typeof wrapper.querySelectorAll === 'function')) {
+                return;
+            }
+            wrapper.querySelectorAll?.('.invalid-feedback').forEach((feedback) => {
+                if (Form.isFeedbackForControl(feedback, control)) {
+                    feedbacks.add(feedback);
+                }
+            });
+        });
+
+        return Array.from(feedbacks);
+    }
+
+    static isFeedbackForControl(feedback, control) {
+        if (!Form.isElement(feedback) || !Form.isElement(control)) {
+            return false;
+        }
+
+        const target = feedback.dataset ? feedback.dataset.feedbackFor : null;
+        if (target) {
+            const controlId = control.id;
+            if (controlId && target === controlId) {
+                return true;
+            }
+            if (!controlId && control.name && target === control.name) {
+                return true;
+            }
+            return false;
+        }
+
+        const feedbackField = Form.safeClosest(feedback, '[data-role="form-field"]');
+        const controlField = Form.safeClosest(control, '[data-role="form-field"]');
+        if (feedbackField || controlField) {
+            return feedbackField === controlField;
+        }
+
+        const floatingWrapper = Form.safeClosest(control, '.form-floating');
+        if (floatingWrapper) {
+            return Form.safeClosest(feedback, '.form-floating') === floatingWrapper;
+        }
+
+        const groupWrapper = Form.safeClosest(control, '.input-group');
+        if (groupWrapper) {
+            return Form.safeClosest(feedback, '.input-group') === groupWrapper;
+        }
+
+        return feedback.parentElement === control.parentElement;
+    }
+
+    static ensureControlId(control) {
+        if (!Form.isElement(control)) {
+            return '';
+        }
+
+        if (control.id) {
+            return control.id;
+        }
+
+        const ownerDoc = control.ownerDocument || document;
+        const baseRaw = (control.name || control.getAttribute('data-role') || 'field').toString();
+        const base = baseRaw.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
+        let candidate = base;
+        let counter = 1;
+
+        while (ownerDoc.getElementById(candidate)) {
+            candidate = `${base}-${counter}`;
+            counter += 1;
+        }
+
+        control.id = candidate;
+        return candidate;
+    }
+
+    static isElement(node) {
+        return !!(node && typeof node === 'object' && node.nodeType === 1);
+    }
+
+    static safeClosest(element, selector) {
+        if (!Form.isElement(element) || typeof element.closest !== 'function' || !selector) {
+            return null;
+        }
+        try {
+            return element.closest(selector);
+        } catch (e) {
+            return null;
+        }
+    }
+
     static loadCSS(href) {
         if (![...document.querySelectorAll('link[rel=stylesheet]')].some(l => l.href.includes(href))) {
             let link = document.createElement('link');
@@ -662,12 +1047,131 @@ class Form {
         }
     }
 
+    /**
+     * Проставляет класс подсветки для обязательных полей ввода в заданном контексте.
+     * Контекстом может быть форма, контейнер компонента или документ.
+     * Основано на data-required="true" у обёртки [data-role="form-field"].
+     */
+    static applyRequiredHighlights(context = document) {
+        const root = (typeof context === 'string') ? document.querySelector(context) : (context || document);
+        if (!root) return;
+
+        const wrappers = root.querySelectorAll('[data-role="form-field"][data-required="true"]');
+        wrappers.forEach(wrapper => {
+            const controls = wrapper.querySelectorAll('input, textarea, select');
+            controls.forEach(control => {
+                // Не подсвечиваем отключенные поля
+                if (control.disabled) return;
+                control.classList.add('e-required-control');
+            });
+        });
+    }
+
     static toQueryString(form) {
         // Преобразовать форму в queryString
         const data = new FormData(form);
+
+        // Совместимость с TagManager: требуется корневой ключ 'tags'
+        // Если в форме нет 'tags', но есть поле вида '*[tags]', продублируем значение в 'tags'.
+        let hasRootTags = false;
+        for (const key of data.keys()) {
+            if (key === 'tags') {
+                hasRootTags = true;
+                break;
+            }
+        }
+        if (!hasRootTags && form && form.querySelector) {
+            const tagInput = form.querySelector('input[name="tags"], input[name$="[tags]"]');
+            if (tagInput && typeof tagInput.value === 'string' && tagInput.value !== '') {
+                data.append('tags', tagInput.value);
+            }
+        }
+
         return Array.from(data.entries())
             .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
             .join('&');
+    }
+
+    /**
+     * Make embedded iframes that host grids stretch to the full available height
+     * of their container. Applies safe flex/min-height fixes to ancestor containers
+     * and sets iframe height to 100% with responsive recalculation.
+     */
+    _enhanceEmbeddedGridIframes() {
+        if (!this.form) return;
+
+        const iframes = Array.from(this.form.querySelectorAll('iframe'));
+        if (!iframes.length) return;
+
+        const ensureFlexChain = (node) => {
+            if (!node) return;
+            try {
+                if (node.matches && (node.matches('[data-pane-part="body"]') || node.matches('.tab-content') || node.matches('.tab-pane'))) {
+                    if (window.getComputedStyle(node).display.indexOf('flex') === -1) {
+                        node.style.display = 'flex';
+                        node.style.flexDirection = 'column';
+                    }
+                    if (!node.style.minHeight || node.style.minHeight === '' || node.style.minHeight === 'auto') {
+                        node.style.minHeight = '0';
+                    }
+                    if (!node.style.flex || node.style.flex === '') {
+                        node.style.flex = '1 1 auto';
+                    }
+                }
+            } catch (e) { /* ignore layout issues */ }
+        };
+
+        const adjustIframe = (iframe) => {
+            if (!iframe || !iframe.parentElement) return;
+
+            // Apply safe sizing on iframe element
+            iframe.style.display = 'block';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+
+            // Ensure parent chain can allocate height
+            const paneBody = iframe.closest('[data-pane-part="body"]');
+            const tabContent = iframe.closest('.tab-content');
+            const tabPane = iframe.closest('.tab-pane');
+            ensureFlexChain(paneBody);
+            ensureFlexChain(tabContent);
+            ensureFlexChain(tabPane);
+
+            // If explicit pixel sizing is needed (older browsers), set height to parent height
+            try {
+                const host = iframe.parentElement;
+                const rect = host.getBoundingClientRect();
+                if (rect && rect.height > 0) {
+                    iframe.style.height = rect.height + 'px';
+                }
+            } catch (e) { /* ignore */ }
+
+            // If same-origin and content is a grid, hint its document to use enhanced layout
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (doc) {
+                    const hasGrid = !!doc.querySelector('[data-role="grid"]');
+                    if (hasGrid && doc.body && !doc.body.classList.contains('e-grid-layout-enhanced')) {
+                        doc.body.classList.add('e-grid-layout-enhanced');
+                    }
+                }
+            } catch (e) { /* cross-origin, ignore */ }
+        };
+
+        iframes.forEach((iframe) => {
+            if (iframe.dataset._gridEnhanced === '1') {
+                adjustIframe(iframe);
+                return;
+            }
+            iframe.dataset._gridEnhanced = '1';
+
+            // Adjust now
+            adjustIframe(iframe);
+
+            // And after load (when content exists)
+            iframe.addEventListener('load', () => adjustIframe(iframe));
+        });
     }
 
     configureValidatorStyling() {
@@ -873,10 +1377,11 @@ class Form {
     }
 
     static generateFeedbackId(control) {
-        const baseRaw = (control.id || control.name || 'field').toString();
+        const ownerDoc = control?.ownerDocument || document;
+        const baseRaw = (control?.id || control?.name || 'field').toString();
         const base = baseRaw.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
         let id = `${base}-feedback`;
-        while (document.getElementById(id)) {
+        while (ownerDoc.getElementById(id)) {
             id = `${base}-feedback-${Math.random().toString(36).slice(2, 8)}`;
         }
         return id;

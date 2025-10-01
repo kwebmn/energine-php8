@@ -18,6 +18,7 @@ class MultiLanguageBuilder extends AbstractBuilder
     protected function run(): void
     {
         $langService = E()->getLanguage();
+        $languagesMap = $langService->getLanguages();
 
         $domRecordset = $this->result->createElement('recordset');
         $this->result->appendChild($domRecordset);
@@ -80,8 +81,24 @@ class MultiLanguageBuilder extends AbstractBuilder
                         $langID = $langField->getRowData($rowIndex);
 
                         $fieldInfo->setProperty('language', $langID);
+                        $fieldInfo->setProperty('languageOrder', (int)($languagesMap[$langID]['lang_order_num'] ?? 0));
                         $fieldInfo->setProperty('languageAbbr', $langService->getAbbrByID($langID));
-                        $fieldInfo->setProperty('tabName', $langService->getNameByID($langID));
+                        $langName = $langService->getNameByID($langID);
+                        if (is_string($langName) && $langName !== '') {
+                            if (function_exists('mb_strtoupper') && function_exists('mb_convert_case') && function_exists('mb_strtolower')) {
+                                $upper = mb_strtoupper($langName, 'UTF-8');
+                                if ($upper === $langName) {
+                                    $langName = mb_convert_case(mb_strtolower($langName, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+                                }
+                            } else {
+                                $upper = strtoupper($langName);
+                                if ($upper === $langName) {
+                                    $langName = ucwords(strtolower($langName));
+                                }
+                            }
+                        }
+
+                        $fieldInfo->setProperty('tabName', $langName);
 
                         $records[$correlation[$rowIndex]][] = $this->createField(
                             $fieldName,

@@ -16,14 +16,14 @@
 				<field name="u_group" type="text" title="FIELD_U_GROUP" sort="0"/>
 			</fields>
 			<toolbar>
-				<control id="auth" title="BTN_AUTH" type="button" onclick="auth"/>
-				<control id="add" title="BTN_ADD" type="button" onclick="add"/>
-				<control id="edit" title="BTN_EDIT" type="button" onclick="edit"/>
-				<control id="delete" title="BTN_DELETE" type="button" onclick="del"/>
+				<control id="auth" title="BTN_AUTH" icon="fa fa-sign-in" type="button" onclick="auth"/>
+				<control id="add" title="BTN_ADD" icon="fa fa-plus" type="button" onclick="add"/>
+				<control id="edit" title="BTN_EDIT" icon="fa fa-pencil" type="button" onclick="edit"/>
+				<control id="delete" title="BTN_DELETE" icon="fa fa-trash" type="button" onclick="del"/>
 				<control id="sep1" type="separator"></control>
-				<control id="activate" title="BTN_ACTIVATE" type="button" onclick="activate"/>
+				<control id="activate" title="BTN_ACTIVATE" icon="fa fa-check" type="button" onclick="activate"/>
 				<control id="sep2" type="separator"></control>
-                <control id="close" title="BTN_CLOSE" type="button" onclick="close"/>
+                <control id="close" title="BTN_CLOSE" icon="fa fa-times" type="button" onclick="close"/>
 			</toolbar>
 		</state>
 		<state name="add" >
@@ -34,8 +34,8 @@
 				<behavior name="Form"/>
 			</javascript>
 			<toolbar>
-				<control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-				<control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+				<control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+				<control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
 			</toolbar>
 		</state>
 		<state name="edit" >
@@ -46,8 +46,8 @@
 				<behavior name="Form"/>
 			</javascript>
 			<toolbar>
-				<control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-				<control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+				<control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+				<control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
 			</toolbar>
 		</state>
 		<state name="save">

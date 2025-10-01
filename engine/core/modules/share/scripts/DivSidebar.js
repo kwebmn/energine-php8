@@ -8,11 +8,13 @@ class DivSidebar extends DivManager {
         super(element); // Можно вызвать super(), затем переопределить специфичное
 
         this.contentPanel = this.element ? this.element.querySelector('[data-role="editor-content"]') : null;
+        if (this.contentPanel) {
+            this.contentPanel.classList.add('flex-grow-1', 'd-flex', 'flex-column', 'gap-3', 'w-100');
+        }
         this.organizeContentPanel();
     }
 
     initManager() {
-        Energine.loadCSS('stylesheets/div.css');
         Energine.loadCSS('scripts/jstree/themes/default/style.min.css');
 
         if (!this.element) throw new Error('DivManager: element not found');
@@ -193,9 +195,10 @@ class DivSidebar extends DivManager {
         panesToMove.forEach(node => this.contentPanel.appendChild(node));
 
         if (this.contentPanel.children.length === 0) {
-            this.contentPanel.classList.add('division-editor__content--empty');
+            this.contentPanel.classList.add('d-none');
         } else {
-            this.contentPanel.classList.remove('division-editor__content--empty');
+            this.contentPanel.classList.remove('d-none');
+            this.contentPanel.classList.add('flex-grow-1');
         }
     }
 }

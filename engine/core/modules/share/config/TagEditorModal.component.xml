@@ -13,12 +13,12 @@
             <pattern>/show/[tag_id]/</pattern>
         </uri_patterns>
         <toolbar>
-            <control mode="1" id="select" title="BTN_SELECT" type="button" onclick="select"/>
+            <control mode="1" id="select" title="BTN_SELECT" icon="fa fa-check-square-o" type="button" onclick="select"/>
             <control id="sep01" type="separator"/>
-            <control mode="1" id="add" title="BTN_ADD" type="button" onclick="add"/>
-            <control id="edit" title="BTN_EDIT" type="button" onclick="edit"/>
+            <control mode="1" id="add" title="BTN_ADD" icon="fa fa-plus" type="button" onclick="add"/>
+            <control id="edit" title="BTN_EDIT" icon="fa fa-pencil" type="button" onclick="edit"/>
             <control id="sep02" type="separator"/>
-            <control id="close" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="close" title="BTN_CLOSE" icon="fa fa-times" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="add">
@@ -35,8 +35,8 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-            <control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+            <control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="edit">
@@ -51,8 +51,8 @@
             <behavior name="Form"/>
         </javascript>
         <toolbar>
-            <control id="save" title="BTN_SAVE" type="button" onclick="save"/>
-            <control id="list" title="BTN_CLOSE" type="button" onclick="close"/>
+            <control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
+            <control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>
         </toolbar>
     </state>
     <state name="save" rights="3">

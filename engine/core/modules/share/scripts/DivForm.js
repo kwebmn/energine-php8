@@ -129,7 +129,7 @@ class DivForm extends Form {
             this.codeEditors[0].setValue('');
             // Скрыть контейнер поля
             let inputField = this.codeEditors[0].getInputField && this.codeEditors[0].getInputField();
-            let fieldDiv = inputField && inputField.closest('[data-role="form-field"], .form-outline, .mb-3');
+            let fieldDiv = inputField && inputField.closest('[data-role="form-field"], .form-floating, .mb-3');
             if (fieldDiv) fieldDiv.classList.add('d-none');
         }
     }

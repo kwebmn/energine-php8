@@ -2,6 +2,32 @@
 /**
  * Query Abstraction Layer (улучшенная версия).
  * Совместима с имеющимся кодом, новые методы — опциональны.
+ *
+ * Основные задачи:
+ * - унифицированный SQL-API поверх PDO;
+ * - централизованная сборка условий WHERE/ORDER/LIMIT;
+ * - вспомогательные методы для массовых операций и безопасного чтения.
+ *
+ * Структура:
+ * - базовые методы совместимости (`select`, `modify`, `buildSQL`, `getScalar`, `getColumn`);
+ * - генераторы условий (`buildWhereCondition`, `buildOrderCondition`, `buildLimitStatement`, `buildOrderSafe`);
+ * - высокоуровневые выборки (`selectRow`, `selectOne`, `selectPairs`, `exists`, `count`, `paginate`);
+ * - массовые операции (`upsert`, `insertMany`, `updateMany`);
+ * - управление транзакциями (`transaction`) и логирование (`maybeLogQuery`).
+ *
+ * Поведение:
+ * - поддерживает подготовленные запросы, если включено `database.prepare`;
+ * - автоматически логирует медленные запросы через Monolog (порог `database.slow_ms`);
+ * - контролирует размер IN-условий, разбивая массивы на батчи по `$maxInChunk`.
+ *
+ * Минимальный пример:
+ * $db = new QAL(...);
+ * $users = $db->select('users', ['id', 'email'], ['status' => 'active'], ['id' => QAL::ASC]);
+ * if ($db->exists('orders', ['user_id' => $users[0]['id']])) {
+ *     $db->transaction(function(QAL $tx) use ($users) {
+ *         $tx->insertMany('audit', [['user_id' => $users[0]['id'], 'created_at' => date('Y-m-d H:i:s')]]);
+ *     });
+ * }
  */
 final class QAL extends DBA {
     // Режимы
@@ -45,6 +71,13 @@ final class QAL extends DBA {
     // СТАРЫЕ ПУБЛИЧНЫЕ МЕТОДЫ (оставлены без изменений сигнатур)
     // ---------------------------------------------------------------------
 
+    /**
+     * Универсальный SELECT, совместимый с прежним API.
+     * Принимает готовый SQL или параметры для buildSQL.
+     *
+     * @param mixed ...$args
+     * @return array|true
+     */
     public function select() {
         $args = func_get_args();
         if (empty($args)) {
@@ -59,6 +92,16 @@ final class QAL extends DBA {
         return $res;
     }
 
+    /**
+     * Выполнить INSERT/UPDATE/DELETE или произвольную MODIFY-операцию.
+     * При использовании констант QAL собирает SQL автоматически.
+     *
+     * @param string $mode
+     * @param string|null $tableName
+     * @param array|null $data
+     * @param array|string|null $condition
+     * @return int|bool
+     */
     public function modify($mode, $tableName = null, $data = null, $condition = null) {
         if (!in_array($mode, [self::INSERT, self::INSERT_IGNORE, self::REPLACE, self::DELETE, self::UPDATE], true)) {
             $t0 = microtime(true);
@@ -127,13 +170,21 @@ final class QAL extends DBA {
         return $r;
     }
 
+    /**
+     * Построить WHERE-условие из массива/строки с поддержкой вложенных групп,
+     * операторов сравнения и подготовленных выражений.
+     *
+     * @param array|string|null $condition
+     * @param array<int,mixed>|null $args
+     * @return string
+     */
     public function buildWhereCondition($condition, array &$args = null) {
         // Если включены prepared + $args пришли — используем плейсхолдеры
         $prepared = $this->getConfigValue('database.prepare') && $args !== null;
 
         $build = function($cond) use (&$build, $prepared, &$args) {
             if (empty($cond)) return '';
-
+            
             if (is_string($cond)) {
                 return ' WHERE '.$cond;
             }
@@ -266,6 +317,12 @@ final class QAL extends DBA {
         return $build($condition);
     }
 
+    /**
+     * Построить ORDER BY для строкового или массивного описания сортировки.
+     *
+     * @param array|string|null $clause
+     * @return string
+     */
     public function buildOrderCondition($clause) {
         $orderClause = '';
         if (!empty($clause)) {
@@ -284,6 +341,12 @@ final class QAL extends DBA {
         return $orderClause;
     }
 
+    /**
+     * Построить LIMIT для массива вида [offset, limit] или одного числа.
+     *
+     * @param array|int|null $clause
+     * @return string
+     */
     public function buildLimitStatement($clause) {
         $limitClause = '';
         if (is_array($clause)) {
@@ -295,6 +358,12 @@ final class QAL extends DBA {
         return $limitClause;
     }
 
+    /**
+     * Сконструировать SELECT-запрос из сокращённой сигнатуры (таблица, поля, условия).
+     *
+     * @param array<int,mixed> $args
+     * @return array{0:string}
+     */
     protected function buildSQL(array $args) {
         if (strpos($args[0], ' ')) {
             return $args;
@@ -327,6 +396,12 @@ final class QAL extends DBA {
         return [$sqlQuery];
     }
 
+    /**
+     * Получить первое значение первой строки результата.
+     *
+     * @param mixed ...$args
+     * @return mixed|null
+     */
     public function getScalar() {
         $t0 = microtime(true);
         $res = call_user_func_array([$this, 'fulfill'], $this->buildSQL(func_get_args()));
@@ -338,6 +413,12 @@ final class QAL extends DBA {
         return $val;
     }
 
+    /**
+     * Получить первую колонку результата в виде одномерного массива.
+     *
+     * @param mixed ...$args
+     * @return array<int,mixed>
+     */
     public function getColumn() {
         $t0 = microtime(true);
         $res = call_user_func_array([$this, 'fulfill'], $this->buildSQL(func_get_args()));

@@ -34,9 +34,8 @@
                         href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&amp;display=swap"
                         rel="stylesheet"
                 />
-                <!-- MDB -->
                 <link
-                        href="stylesheets/default/mdb/mdb.min.css"
+                        href="stylesheets/default/bootstrap.min.css"
                         rel="stylesheet"
                 />
         	</head>
@@ -73,10 +72,10 @@
                     </div>
                 </div>
 
-                <!-- MDB -->
                 <script
                         type="text/javascript"
-                        src="scripts/default/mdb/mdb.umd.min.js"
+                        src="scripts/default/bootstrap.bundle.min.js"
+                        defer="defer"
                 ></script>
         	</body>
         </html>
@@ -95,7 +94,7 @@
             </h1>
             <xsl:if test="$IN_DEBUG_MODE = 1">
                 <div class="error_text m-t-20">
-                    <div class="alert alert-notice" data-mdb-alert-init="1">
+                    <div class="alert alert-info alert-notice" role="alert">
                         <div><strong>File: </strong><xsl:value-of select="@file"/></div>
                         <div><strong>Line: </strong><xsl:value-of select="@line"/></div>
                     </div>

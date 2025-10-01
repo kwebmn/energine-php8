@@ -8,8 +8,8 @@ class FeedToolbar extends Toolbar {
         super('feed_toolbar');
 
         // Подключаем CSS динамически (эмуляция Asset.css)
-        FeedToolbar.loadCSS('stylesheets/pagetoolbar.css');
-        FeedToolbar.loadCSS('stylesheets/feedtoolbar.css');
+        // FeedToolbar.loadCSS('stylesheets/pagetoolbar.css');
+         FeedToolbar.loadCSS('stylesheets/feedtoolbar.css');
 
         this.bindTo = this.bindTo?.bind?.(this) || (() => {}); // если осталась поддержка bindTo
         this.bindTo(this);
@@ -50,19 +50,32 @@ class FeedToolbar extends Toolbar {
         this.container = Container;
         this.previous = false;
 
-        setTimeout(
-            () => {
+        if (this.element) {
+            this.element.classList.add('mt-3', 'mt-lg-0', 'ms-0');
+        }
 
-                const topFrame = document.querySelector('.e-topframe');
-                if (topFrame && this.element) {
-                    topFrame.appendChild(this.element);
-                }
+        setTimeout(() => {
+            if (!this.element) {
+                return;
+            }
 
-                // Переключение классов e-has-topframe*
+            const topFrame = document.querySelector('.e-topframe');
+            if (!topFrame) {
+                return;
+            }
 
-            },
-            100
-        );
+            const collapse = topFrame.querySelector('.navbar-collapse');
+            const navbarNav = topFrame.querySelector('.navbar-nav');
+            const target = collapse || navbarNav || topFrame;
+
+            if (!target.contains(this.element)) {
+                target.appendChild(this.element);
+            }
+
+            if (collapse && !this.element.classList.contains('ms-lg-auto')) {
+                this.element.classList.add('ms-lg-auto');
+            }
+        }, 100);
 
 
     }

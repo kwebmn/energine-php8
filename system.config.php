@@ -45,7 +45,7 @@ return array(
     // настройки сайта
     'site' => array(
         // имя домена
-        'domain' => 'phpbase.kweb.biz',
+        'domain' => 'phpbase.kweb.ua', 
         // корень проекта
         'root' => '/',
         // отладочный режим: 1 - включено, 0 - выключено
