@@ -35,32 +35,39 @@ class TagEditor extends GridManager {
      * Overridden parent close action.
      */
     close() {
-        const overlay = this.overlay;
-        overlay.show();
+        // Use global loader and Energine.request; close modal even on error
+        showLoader();
 
-        fetch(this.singlePath + 'tags/get-tags/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
+        Energine.request(
+            `${this.singlePath}tags/get-tags/`,
+            {
                 json: 1,
                 tag_id: this.tag_id
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                overlay.hide();
-                if (data && data.data && data.data.length) {
-                    ModalBox.setReturnValue(data.data.join(','));
-                } else {
-                    ModalBox.setReturnValue('');
+            },
+            (data) => {
+                hideLoader();
+                try {
+                    if (data && data.data && data.data.length) {
+                        ModalBox.setReturnValue(data.data.join(','));
+                    } else {
+                        // Explicitly return empty value if nothing selected
+                        ModalBox.setReturnValue('');
+                    }
+                } catch (e) {
+                    // ignore and just close
                 }
                 ModalBox.close();
-            })
-            .catch(() => {
-                overlay.hide();
-            });
+            },
+            () => {
+                // error or abort: just close to prevent being stuck
+                hideLoader();
+                ModalBox.close();
+            },
+            () => {
+                hideLoader();
+                ModalBox.close();
+            }
+        );
     }
 
     /**
@@ -89,7 +96,8 @@ class TagEditor extends GridManager {
         this.toolbar.enableControls();
         const selectBtn = this.toolbar.getControlById('select');
         const addBtn = this.toolbar.getControlById('add');
-        if (r && !this.tag_id) {
+        // Enable selection controls whenever a row is selected
+        if (r) {
             if (addBtn) addBtn.enable(true);
             if (selectBtn) selectBtn.enable(true);
         }
