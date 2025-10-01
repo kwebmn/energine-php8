@@ -88,11 +88,15 @@
     
     <!-- поле выбора родительского раздела -->
     <xsl:template match="field[@name='smap_pid'][@mode='2'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_OPTIONAL" select="normalize-space(@nullable)='1'"/>
+        <xsl:variable name="IS_REQUIRED" select="not($IS_OPTIONAL)"/>
         <xsl:variable name="FIELD_UID" select="generate-id(.)"/>
         <xsl:variable name="DISPLAY_ID" select="concat($FIELD_UID, '_display')"/>
         <xsl:variable name="HIDDEN_ID" select="concat($FIELD_UID, '_value')"/>
         <div class="mb-3" data-role="form-field">
+            <xsl:if test="$IS_OPTIONAL">
+                <xsl:attribute name="class">mb-3 bg-success-subtle border border-success-subtle rounded-2</xsl:attribute>
+            </xsl:if>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
@@ -133,8 +137,12 @@
     </xsl:template>
    
     <xsl:template match="field[@name='smap_pid'][@mode='1'][@type!='hidden'][ancestor::component[@sample='DivisionEditor'][@type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_OPTIONAL" select="normalize-space(@nullable)='1'"/>
+        <xsl:variable name="IS_REQUIRED" select="not($IS_OPTIONAL)"/>
         <div class="mb-3" data-role="form-field">
+            <xsl:if test="$IS_OPTIONAL">
+                <xsl:attribute name="class">mb-3 bg-success-subtle border border-success-subtle rounded-2</xsl:attribute>
+            </xsl:if>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
@@ -162,7 +170,8 @@
     
     <!-- поле для ввода сегмента раздела -->
     <xsl:template match="field[@name='smap_segment'][ancestor::component[@sample='DivisionEditor' and @type='form']]">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="IS_OPTIONAL" select="normalize-space(@nullable)='1'"/>
+        <xsl:variable name="IS_REQUIRED" select="not($IS_OPTIONAL)"/>
         <xsl:variable name="FIELD_ID">
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
@@ -174,6 +183,9 @@
             </xsl:choose>
         </xsl:variable>
         <div class="mb-3" data-role="form-field">
+            <xsl:if test="$IS_OPTIONAL">
+                <xsl:attribute name="class">mb-3 bg-success-subtle border border-success-subtle rounded-2</xsl:attribute>
+            </xsl:if>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type"><xsl:value-of select="$DATA_TYPE"/></xsl:attribute>
             <xsl:attribute name="data-required"><xsl:value-of select="$IS_REQUIRED"/></xsl:attribute>
@@ -228,6 +240,8 @@
             <xsl:value-of select="@name"/>
             <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
         </xsl:variable>
+        <xsl:variable name="IS_OPTIONAL" select="normalize-space(@nullable)='1'"/>
+        <xsl:variable name="IS_REQUIRED" select="not($IS_OPTIONAL)"/>
         <div class="d-flex flex-wrap align-items-start gap- 2">
             <select id="{$FIELD_ID}">
                 <xsl:attribute name="class">
@@ -239,10 +253,10 @@
                     <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
                     <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
                 </xsl:choose></xsl:attribute>
-                <xsl:if test="not(@nullable) or @nullable='0'">
+                <xsl:if test="$IS_REQUIRED">
                     <xsl:attribute name="required">required</xsl:attribute>
                 </xsl:if>
-                <xsl:if test="@nullable='1'">
+                <xsl:if test="$IS_OPTIONAL">
                     <option></option>
                 </xsl:if>
                 <xsl:apply-templates mode="field_input"/>

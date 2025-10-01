@@ -9,9 +9,16 @@
         Вынесена в отдельный файл для переиспользования и упрощения fields.xslt.
     -->
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
-        <xsl:variable name="IS_REQUIRED" select="not(@nullable) or @nullable='0'"/>
+        <xsl:variable name="NULLABLE" select="normalize-space(@nullable)"/>
+        <xsl:variable name="IS_OPTIONAL" select="$NULLABLE='1'"/>
+        <xsl:variable name="IS_REQUIRED" select="not($IS_OPTIONAL)"/>
         <div data-role="form-field">
-            <xsl:attribute name="class">mb-3</xsl:attribute>
+            <xsl:attribute name="class">
+                <xsl:text>mb-3</xsl:text>
+                <xsl:if test="$IS_OPTIONAL">
+                    <xsl:text> bg-success-subtle border border-success-subtle rounded-2</xsl:text>
+                </xsl:if>
+            </xsl:attribute>
             <xsl:attribute name="id">control_{@language}_{@name}</xsl:attribute>
             <xsl:attribute name="data-type">
                 <xsl:choose>
@@ -25,6 +32,8 @@
     </xsl:template>
 
     <xsl:template match="field[ancestor::component[@type='form']]" mode="field_name">
+        <xsl:variable name="IS_OPTIONAL" select="normalize-space(@nullable)='1'"/>
+        <xsl:variable name="IS_REQUIRED" select="not($IS_OPTIONAL)"/>
         <xsl:if test="@title and @type!='boolean'">
             <label class="form-label">
                 <xsl:attribute name="for">
@@ -32,7 +41,7 @@
                     <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
                 </xsl:attribute>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
+                <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
                     <span class="text-danger">*</span>
                 </xsl:if>
             </label>
@@ -40,11 +49,13 @@
     </xsl:template>
 
     <xsl:template match="field[@type='file'][ancestor::component[@type='form']]" mode="field_name">
+        <xsl:variable name="IS_OPTIONAL" select="normalize-space(@nullable)='1'"/>
+        <xsl:variable name="IS_REQUIRED" select="not($IS_OPTIONAL)"/>
         <xsl:if test="@title">
             <label class="form-label">
                 <xsl:attribute name="for"><xsl:value-of select="concat(generate-id(.), '_path')"/></xsl:attribute>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
-                <xsl:if test="(not(@nullable) or @nullable='0') and not(ancestor::component/@exttype='grid')">
+                <xsl:if test="$IS_REQUIRED and not(ancestor::component/@exttype='grid')">
                     <span class="text-danger">*</span>
                 </xsl:if>
             </label>
