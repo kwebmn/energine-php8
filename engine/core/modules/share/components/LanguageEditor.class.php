@@ -167,35 +167,37 @@ final class LanguageEditor extends Grid
 
                     // Столбцы таблицы
                     $cols = array_keys($this->dbh->getColumnsInfo($tableName));
-                    if (empty($cols) || $cols[0] !== 'smap_id' && $cols[0] !== 'lang_id') {
-                        // Формат таблицы не стандартный — пропустим безопасно
+                    if (empty($cols) || !in_array('lang_id', $cols, true)) {
+                        // Таблица не языковая — пропустим безопасно
                         continue;
                     }
 
-                    // Подменяем значение lang_id во второй колонке
-                    // (обычно порядок: smap_id, lang_id, ... )
-                    $colsForSelect = $cols;
-                    // Нельзя просто заменить в массиве имена — используем селект со вставкой, подставив $langID
-                    // Пример: INSERT INTO tbl SELECT smap_id, {langID}, col3, col4 FROM tbl WHERE lang_id = {default}
+                    // Собираем список колонок для INSERT и SELECT-часть, где lang_id подменён на новый $langID
                     $selectParts = [];
-                    foreach ($cols as $i => $colName) {
-                        if ($colName === 'lang_id') {
-                            $selectParts[] = (string)$langID;
-                        } else {
-                            $selectParts[] = $colName;
-                        }
+                    foreach ($cols as $colName) {
+                        $selectParts[] = ($colName === 'lang_id') ? (string)$langID : $colName;
                     }
 
                     $sql = sprintf(
-                        'INSERT INTO %1$s (%2$s) SELECT %3$s FROM %1$s WHERE lang_id = %4$d',
+                        'INSERT IGNORE INTO %1$s (%2$s) SELECT %3$s FROM %1$s WHERE lang_id = %4$d',
                         $tableName,
                         implode(',', $cols),
                         implode(',', $selectParts),
                         $defaultLangID
                     );
-                    $this->dbh->select($sql);
+                    // Выполняем как модифицирующий запрос
+                    $this->dbh->modifyRequest($sql);
                 }
             }
+        }
+
+        // 6) Инвалидируем кеш языков, чтобы новый язык сразу появился в админке/интерфейсе
+        try {
+            if (E()->__isset('psrCache') && method_exists(E()->psrCache, 'invalidateTags')) {
+                E()->psrCache->invalidateTags(['langs']);
+            }
+        } catch (\Throwable $e) {
+            // Молча игнорируем проблемы с кешом, чтобы не мешать сохранению
         }
 
         return $langID;
