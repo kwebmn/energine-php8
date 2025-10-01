@@ -354,6 +354,9 @@ class FileRepository extends GridManager {
         this.pathBreadCrumbs.load(result.breadcrumbs, (upl_id) => {
             this.currentPID = upl_id;
             if (this.filter) this.filter.remove();
+            // При смене директории сбрасываем пагинацию на первую страницу,
+            // иначе GridManager переиспользует старую currentPage и можем уйти на пустую страницу.
+            if (this.pageList) this.pageList.currentPage = 1;
             this.loadPage(1);
         });
 
@@ -370,10 +373,14 @@ class FileRepository extends GridManager {
             case 'folder':
                 this.currentPID = r.upl_id;
                 if (this.filter) this.filter.remove();
+                // Сброс пагинации при входе в папку/репозиторий
+                if (this.pageList) this.pageList.currentPage = 1;
                 this.loadPage(1);
                 break;
             case 'folderup':
                 this.currentPID = r.upl_id;
+                // Сброс пагинации при переходе на уровень вверх
+                if (this.pageList) this.pageList.currentPage = 1;
                 this.loadPage(1);
                 break;
             default:
@@ -421,6 +428,8 @@ class FileRepository extends GridManager {
             onClose: (response) => {
                 if (response && response.result) {
                     this.currentPID = response.data;
+                    // После создания папки меняется контекст — сбрасываем пагинацию
+                    if (this.pageList) this.pageList.currentPage = 1;
                     this.processAfterCloseAction(response);
                 }
             }
