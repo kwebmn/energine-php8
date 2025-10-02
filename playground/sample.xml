@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document debug="1">
+    <properties>
+        <property name="base" folder="/" static="/static/" media="/media/" resizer="/resizer/" default="/">/</property>
+        <property name="lang" abbr="en/" real_abbr="en"/>
+        <property name="title">Playground</property>
+        <property name="title_alt"/>
+        <property name="single">0</property>
+        <property name="ID">1</property>
+        <property name="keywords">demo</property>
+        <property name="description">Sample XSLT playground data</property>
+        <property name="robots">index, follow</property>
+    </properties>
+    <translations json="{}"/>
+    <content html_class="container">
+        <container name="hero" html_class="py-5">
+            <component name="textBlock" module="content" sample="TextBlock" title="Hello!">
+                <recordset>
+                    <record>
+                        <field name="Text">Welcome to the playground.</field>
+                    </record>
+                </recordset>
+            </component>
+        </container>
+        <component type="list" name="news" module="share" action="/list" componentAction="save">
+            <recordset>
+                <record>
+                    <field name="Title">News item</field>
+                </record>
+            </recordset>
+        </component>
+        <component type="form" name="contact" module="share" action="/submit" componentAction="save">
+            <toolbar position="top">
+                <control type="submit" id="submit" title="Send"/>
+            </toolbar>
+            <recordset>
+                <record>
+                    <field name="Name" type="text" nullable="0">John Doe</field>
+                    <field name="Message" type="textarea" nullable="0">Hello!</field>
+                </record>
+            </recordset>
+        </component>
+    </content>
+</document>

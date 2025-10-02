@@ -188,7 +188,7 @@
             <div class="row justify-content-center">
                 <div class="col-lg-6 text-center">
                     <div class="alert alert-success" role="alert">
-                        <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD_MESSAGE']" disable-output-escaping="yes"/>
+                        <xsl:value-of select="//translation[@const='TXT_RECOVER_PASSWORD_MESSAGE']"/>
                     </div>
                 </div>
             </div>

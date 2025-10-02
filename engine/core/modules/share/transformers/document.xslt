@@ -1,18 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xsl:stylesheet 
-    version="1.0" 
+<xsl:stylesheet
+    version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 
+    <!--
+        Document-level helpers and defaults.
+
+        Summary
+        -------
+        * Declares global variables (`$DOC_PROPS`, `$COMPONENTS`, …) and keys
+          consumed by downstream templates.
+        * Provides legacy head/title favicon handling kept for backwards
+          compatibility.
+
+        Usage
+        -----
+        * Import this stylesheet before site overrides so variables are
+          initialised in a predictable order.
+        * Extend modes like `head`, `title`, `scripts` instead of rewriting
+          the root template.
+
+        Rules of the road
+        ------------------
+        * Keep the variables names intact – overrides rely on them.
+        * Avoid introducing DOE or side effects here; this file sets the stage
+          for all other templates.
+    -->
+
     >
+    <xsl:key name="translations-by-component" match="/document/translations/translation" use="@component"/>
+    <xsl:key name="toolbar-controls-by-toolbar" match="toolbar/control" use="generate-id(..)"/>
+    <xsl:key name="toolbar-properties-by-toolbar" match="toolbar/properties/property" use="generate-id(../..)"/>
+    <xsl:key name="components-by-name" match="/document//component[@name]" use="@name"/>
+    <xsl:key name="containers-by-name" match="/document//container[@name]" use="@name"/>
+
     <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
     <xsl:variable name="COMPONENTS" select="//component[@name][@module]"/>
     <xsl:variable name="TRANSLATION" select="/document/translations/translation"/>
+    <xsl:variable name="JAVASCRIPT_VARIABLES" select="/document//javascript/variable"/>
+    <xsl:variable name="JAVASCRIPT_LIBRARIES" select="/document/javascript/library"/>
+    <xsl:variable name="EDITABLE_COMPONENT_NAMES" select="$COMPONENTS[@editable]/@name"/>
+    <xsl:variable name="HAS_ADMIN_PANEL" select="boolean(key('components-by-name', 'adminPanel'))"/>
     <xsl:variable name="ID" select="$DOC_PROPS[@name='ID']"/>
 	<xsl:variable name="BASE" select="$DOC_PROPS[@name='base']"/>
     <xsl:variable name="FOLDER" select="$DOC_PROPS[@name='base']/@folder"/>
 	<xsl:variable name="LANG_ID" select="$DOC_PROPS[@name='lang']"/>
 	<xsl:variable name="LANG_ABBR" select="$DOC_PROPS[@name='lang']/@abbr"/>
-	<xsl:variable name="NBSP"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></xsl:variable>
+    <xsl:variable name="NBSP"><xsl:text>&#160;</xsl:text></xsl:variable>
     <xsl:variable name="STATIC_URL"><xsl:value-of select="$BASE/@static"/></xsl:variable>
     <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
     <xsl:variable name="RESIZER_URL"><xsl:value-of select="$BASE/@resizer"/></xsl:variable>
@@ -150,8 +184,8 @@
             'singleMode':<xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/>
             });
         </script>
-        <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
-        <xsl:apply-templates select="/document/javascript/library" mode="head"/>
+        <xsl:apply-templates select="$JAVASCRIPT_VARIABLES" mode="head"/>
+        <xsl:apply-templates select="$JAVASCRIPT_LIBRARIES" mode="head"/>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="text/javascript">
@@ -162,12 +196,14 @@
 
             <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
                 Energine.addTask( function(){
-             <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
-            var pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
-            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
+            <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
+            <xsl:variable name="PAGE_TOOLBAR_NODE" select="$PAGE_TOOLBAR/toolbar"/>
+            <xsl:variable name="PAGE_TOOLBAR_ID" select="generate-id($PAGE_TOOLBAR_NODE)"/>
+            var pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR_NODE/@name"/>', [
+            <xsl:for-each select="key('toolbar-controls-by-toolbar', $PAGE_TOOLBAR_ID)">
                 { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>
             ]<xsl:if
-                test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
+                test="count(key('toolbar-properties-by-toolbar', $PAGE_TOOLBAR_ID)) &gt; 0">, <xsl:for-each select="key('toolbar-properties-by-toolbar', $PAGE_TOOLBAR_ID)">{'<xsl:value-of select="@name"/>':'<xsl:value-of
                 select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
 
                 }
@@ -210,7 +246,7 @@
 
         </script>
 
-        <xsl:if test="not(//property[@name='single'])">
+        <xsl:if test="not($DOC_PROPS[@name='single'])">
             <xsl:if test="$DOC_PROPS[@name='google_analytics'] and ($DOC_PROPS[@name='google_analytics'] != '')">
                 <xsl:value-of select="$DOC_PROPS[@name='google_analytics']" disable-output-escaping="yes"/>
             </xsl:if>
@@ -228,16 +264,15 @@
         <xsl:apply-templates/>
     </xsl:template>
     
-    <xsl:template match="/document/translations"/>
-
-    <xsl:template match="component/javascript"/>
-    
-    <!-- Выводим переводы для WYSIWYG -->
-    <xsl:template match="/document/translations[translation[@component=//component[@editable]/@name]]">
+    <xsl:template match="/document/translations">
+        <xsl:if test="count($EDITABLE_COMPONENT_NAMES) &gt; 0">
             <script type="text/javascript">
                 document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
             </script>
+        </xsl:if>
     </xsl:template>
+
+    <xsl:template match="component/javascript"/>
 
     <xsl:template match="/document/javascript"/>
 

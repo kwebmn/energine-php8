@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<x:description xmlns:x="http://www.jenitennison.com/xslt/xspec"
+    stylesheet="harness/form-fields.xsl">
+
+    <x:scenario label="FORM_ELEMENT_ATTRIBUTES generates stable attributes">
+        <x:context>
+            <field name="Title" tableName="tbl" nullable="0" length="120" />
+        </x:context>
+        <x:call-template name="test-form-element-attributes">
+            <x:with-param name="field" select="." />
+        </x:call-template>
+        <x:expect label="id attribute" test="/input/@id='Title'" />
+        <x:expect label="name attribute" test="/input/@name='tbl[Title]'" />
+        <x:expect label="required attribute" test="/input/@required='required'" />
+        <x:expect label="maxlength preserved" test="/input/@maxlength='120'" />
+    </x:scenario>
+
+    <x:scenario label="FORM_ELEMENT_ATTRIBUTES_READONLY mirrors ids and names">
+        <x:context>
+            <field name="Body" tableName="tbl" language="en" nullable="1">Value</field>
+        </x:context>
+        <x:call-template name="test-form-element-attributes-readonly">
+            <x:with-param name="field" select="." />
+        </x:call-template>
+        <x:expect label="type hidden" test="/input/@type='hidden'" />
+        <x:expect label="id suffix" test="/input/@id='Body'" />
+        <x:expect label="name preserves table and language"
+            test="/input/@name='tbl[Body]'" />
+    </x:scenario>
+
+    <x:scenario label="class.form-control marks invalid fields">
+        <x:context>
+            <field name="Title">
+                <error>Required</error>
+            </field>
+        </x:context>
+        <x:call-template name="test-class-form-control">
+            <x:with-param name="field" select="." />
+        </x:call-template>
+        <x:expect label="default class" test="contains(/input/@class, 'form-control')" />
+        <x:expect label="has invalid modifier" test="contains(/input/@class, 'is-invalid')" />
+    </x:scenario>
+
+    <x:scenario label="field_messages keeps rich markup">
+        <x:context>
+            <field name="Message">
+                <error><strong>Bold</strong> error</error>
+                <hint><p>HTML <em>hint</em></p></hint>
+            </field>
+        </x:context>
+        <x:call-template name="test-field-messages">
+            <x:with-param name="field" select="." />
+        </x:call-template>
+        <x:expect label="error retains strong"
+            test="count(/div/div[@class='invalid-feedback']/strong)=1" />
+        <x:expect label="hint copies paragraph"
+            test="/div/div[@class='form-text']/p/em='hint'" />
+    </x:scenario>
+
+</x:description>

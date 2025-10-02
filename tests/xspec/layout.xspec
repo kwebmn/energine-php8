@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<x:description xmlns:x="http://www.jenitennison.com/xslt/xspec"
+    stylesheet="harness/layout.xsl">
+
+    <x:scenario label="Container exposes admin widget hooks">
+        <x:context href="fixtures/document-basic.xml"
+            select="/document/content/container"/>
+        <x:call-template name="render-node">
+            <x:with-param name="node" select="."/>
+        </x:call-template>
+        <x:expect label="class includes html_class" test="contains(/div/@class, 'hero-block')"/>
+        <x:expect label="admin widget attribute present" test="/div/@widget='hero'"/>
+    </x:scenario>
+
+    <x:scenario label="List renders recordset inside form">
+        <x:context href="fixtures/document-basic.xml"
+            select="/document/content/component[@type='list']"/>
+        <x:call-template name="render-node">
+            <x:with-param name="node" select="."/>
+        </x:call-template>
+        <x:expect label="wraps output in form" test="name(/*)='form'"/>
+        <x:expect label="renders ordered list" test="count(//ol/li)=1"/>
+    </x:scenario>
+
+    <x:scenario label="Form component wraps controls in section card">
+        <x:context href="fixtures/document-basic.xml"
+            select="/document/content/component[@type='form']"/>
+        <x:call-template name="render-node">
+            <x:with-param name="node" select="."/>
+        </x:call-template>
+        <x:expect label="outer element is section" test="name(/*)='section'"/>
+        <x:expect label="bootstrap card class" test="contains(/*/@class, 'card')"/>
+        <x:expect label="contains form element" test="count(//form)=1"/>
+    </x:scenario>
+
+    <x:scenario label="Head mode renders base href and viewport">
+        <x:context href="fixtures/document-basic.xml" select="/document"/>
+        <x:call-template name="render-node-mode-head">
+            <x:with-param name="node" select="."/>
+        </x:call-template>
+        <x:expect label="base href present" test="/base/@href='/'"/>
+        <x:expect label="viewport meta present" test="count(/meta[@name='viewport'])=1"/>
+    </x:scenario>
+
+</x:description>

@@ -5,25 +5,8 @@
     >
 
     <!--
-        Form field wrapper (Bootstrap layout).
-
-        Summary
-        -------
-        * Hosts the public modes `field_name`, `field_input` and
-          `field_messages` and applies consistent spacing/metadata wrappers.
-        * Keeps the layout concerns separated from the control renderers.
-
-        Usage
-        -----
-        * When overriding, call `xsl:apply-templates` in the same order so
-          sub-templates execute with expected context.
-        * Add extra classes by extending the wrapper rather than editing child
-          templates.
-
-        Rules of the road
-        ------------------
-        * Do not hardcode ids: they must match helper-generated ones.
-        * Preserve `data-role="form-field"` for JS hooks.
+        Обёртка для полей формы на базе стандартной сетки Bootstrap.
+        Вынесена в отдельный файл для переиспользования и упрощения fields.xslt.
     -->
     <xsl:template match="field[not(@mode='1') and not(@mode=0)][ancestor::component[@type='form']]" priority="-1">
         <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
@@ -44,7 +27,10 @@
     <xsl:template match="field[ancestor::component[@type='form']]" mode="field_name">
         <xsl:if test="@title and @type!='boolean'">
             <label class="form-label">
-                <xsl:call-template name="field-attribute-for"/>
+                <xsl:attribute name="for">
+                    <xsl:value-of select="@name"/>
+                    <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+                </xsl:attribute>
                 <xsl:value-of select="@title" disable-output-escaping="yes"/>
                 <xsl:if test="(@nullable!='1') and not(ancestor::component/@exttype='grid')">
                     <span class="text-danger">*</span>
@@ -68,7 +54,20 @@
     <xsl:template match="field[ancestor::component[@type='form']]" mode="field_content">
         <xsl:apply-templates select="." mode="field_name"/>
         <xsl:apply-templates select="." mode="field_input"/>
-        <xsl:apply-templates select="." mode="field_messages"/>
+        <xsl:call-template name="render-field-messages"/>
+    </xsl:template>
+
+    <xsl:template name="render-field-messages">
+        <xsl:for-each select="error[normalize-space(.)!='']">
+            <div class="invalid-feedback">
+                <xsl:value-of select="." disable-output-escaping="yes"/>
+            </div>
+        </xsl:for-each>
+        <xsl:if test="hint">
+            <div class="form-text">
+                <xsl:value-of select="hint" disable-output-escaping="yes"/>
+            </div>
+        </xsl:if>
     </xsl:template>
 
 </xsl:stylesheet>

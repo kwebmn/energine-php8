@@ -4,51 +4,81 @@
 
         version="1.0">
     <!--
-    Контейнер может иметь следующие атрибуты:
-	1) name (значение: *) - уникальное имя контейнера, обязательный атрибут, значение используется для виджетов и колонок в специальных атрибутах, для JavaScript
-	2) html_class (значение: *) - контейнер с таким атрибутом будет выведен как div с указанным классом
-	3) column (значение: column) - указывает, что контейнер является колонкой, т.е. содержит набор виджетов, контейнер с таким атрибутом будет выведен для администратора как div с атрибутом column="name", обязателен для работы лейаут-менеджера
-	4) widget (значение: widget | static) - указывает, что контейнер является виджетом, т.е. целостным блоком, который можно перетащить в другое место на странице, контейнер с таким атрибутом будет выведен для администратора как div с атрибутом widget="name" и классом class="e-widget", обязателен для работы лейаут-менеджера
-		widget - виджет, доступный для перемещения и удаления, а также для редактирования параметров
-		static - виджет, доступный только для редактирования параметров, применяется для тех виджетов, которые всегда должны быть на одном и том же месте
-	5) block (значение: alfa | beta) - указывает, что контейнер является "блоком", т.е. визуально целостным объектом, служит именно для визуального оформления, контейнер с таким атрибутом будет выведен как кусок html-кода, создающий нужное форматирование
-		alfa - блок, который является "главным" на странице
-		beta - любой другой блок
+        Container renderer.
+
+        Summary
+        -------
+        * Splits container rendering into match-specific templates instead of a
+          monolithic `xsl:choose`.
+        * Supports admin metadata (`widget`, `column`) and public layout hooks
+          (`block`, `html_class`).
+
+        Usage
+        -----
+        * Container attributes:
+          - `name` (required) — stable identifier used by widgets and columns.
+          - `html_class` — extra CSS classes for the wrapper `<div>`.
+          - `column` — marks layout columns; admin mode adds `column="..."`.
+          - `widget` — indicates draggable widgets; accepts `widget` or
+            `static` (non-draggable) values.
+          - `block` — semantic block wrapper, accepts `alfa` or `beta`.
+        * Use the `@contains` attribute to embed containers/components by name.
+
+        Rules of the road
+        ------------------
+        * Keep admin-specific attributes behind `$COMPONENTS[@name='adminPanel']`
+          checks to avoid leaking them publicly.
+        * Do not remove `generate-id()` usage; layout scripts depend on them.
     -->
 
-    <xsl:template match="container[(@column or @widget) and //component[@name='adminPanel']]">
-        <div>
-            <xsl:choose>
-                <xsl:when test="@column">
-                    <xsl:attribute name="column"><xsl:value-of select="@name"/></xsl:attribute>
-                </xsl:when>
-                <xsl:when test="@widget">
-                    <xsl:attribute name="class">e-widget</xsl:attribute>
-                    <xsl:attribute name="widget"><xsl:value-of select="@name"/></xsl:attribute>
+    <xsl:template match="container[@column][not(@html_class)]" priority="1">
+        <xsl:choose>
+            <xsl:when test="$HAS_ADMIN_PANEL">
+                <div column="{@name}">
+                    <xsl:apply-templates/>
+                </div>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:apply-templates/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:template>
+
+    <xsl:template match="container[@widget][not(@html_class)]" priority="0.75">
+        <xsl:choose>
+            <xsl:when test="$HAS_ADMIN_PANEL">
+                <div class="e-widget" widget="{@name}">
                     <xsl:if test="@widget='static'">
                         <xsl:attribute name="static">static</xsl:attribute>
                     </xsl:if>
-                </xsl:when>
-            </xsl:choose>
-            <xsl:apply-templates/>
-        </div>
+                    <xsl:apply-templates/>
+                </div>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:apply-templates/>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
 
     <!-- Контейнеры с атрибутом html_class выводятся в виде div с соответствующим классом -->
     <xsl:template match="content[@html_class] | container[@html_class]">
-        <div class="{@html_class}">
-            <xsl:choose>
-                <xsl:when test="@column and $COMPONENTS[@name='adminPanel']">
-                    <xsl:attribute name="column"><xsl:value-of select="@name"/></xsl:attribute>
-                </xsl:when>
-                <xsl:when test="@widget and $COMPONENTS[@name='adminPanel']">
-                    <xsl:attribute name="class">e-widget <xsl:value-of select="@html_class"/></xsl:attribute>
-                    <xsl:attribute name="widget"><xsl:value-of select="@name"/></xsl:attribute>
-                    <xsl:if test="@widget='static'">
-                        <xsl:attribute name="static">static</xsl:attribute>
-                    </xsl:if>
-                </xsl:when>
-            </xsl:choose>
+        <div>
+            <xsl:variable name="IS_ADMIN" select="$HAS_ADMIN_PANEL"/>
+            <xsl:attribute name="class">
+                <xsl:if test="$IS_ADMIN and @widget and not(@column)">
+                    <xsl:text>e-widget </xsl:text>
+                </xsl:if>
+                <xsl:value-of select="@html_class"/>
+            </xsl:attribute>
+            <xsl:if test="$IS_ADMIN and @column">
+                <xsl:attribute name="column"><xsl:value-of select="@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$IS_ADMIN and not(@column) and @widget">
+                <xsl:attribute name="widget"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:if test="@widget='static'">
+                    <xsl:attribute name="static">static</xsl:attribute>
+                </xsl:if>
+            </xsl:if>
             <xsl:apply-templates/>
         </div>
     </xsl:template>
@@ -60,11 +90,9 @@
             <div>
                 <xsl:attribute name="class">block<xsl:if test="@block='alfa'"> alfa_block</xsl:if><xsl:if test="@html_class"><xsl:text> </xsl:text><xsl:value-of select="@html_class"/></xsl:if><xsl:if test="@widget and $COMPONENTS[@name='adminPanel']"> e-widget</xsl:if></xsl:attribute>
                 <xsl:if test="@widget and $COMPONENTS[@name='adminPanel']">
+                    <xsl:variable name="HOLDER" select="normalize-space($HOLDER_NAME)"/>
                     <xsl:attribute name="widget">
-                        <xsl:choose>
-                            <xsl:when test="$HOLDER_NAME"><xsl:value-of select="$HOLDER_NAME"/></xsl:when>
-                            <xsl:otherwise><xsl:value-of select="@name"/></xsl:otherwise>
-                        </xsl:choose>
+                        <xsl:value-of select="concat($HOLDER, substring(@name, 1, (1 - boolean($HOLDER)) * string-length(@name)))"/>
                     </xsl:attribute>
                     <xsl:if test="@widget='static'">
                         <xsl:attribute name="static">static</xsl:attribute>
@@ -82,7 +110,9 @@
     -->
     <xsl:template match="container[@contains]">
         <xsl:variable name="CONTAINS" select="@contains"/>
-        <xsl:apply-templates select="//container[@name=$CONTAINS] | $COMPONENTS[@name=$CONTAINS]">
+        <xsl:variable name="CONTAINERS" select="key('containers-by-name', $CONTAINS)"/>
+        <xsl:variable name="COMPONENT_MATCHES" select="key('components-by-name', $CONTAINS)"/>
+        <xsl:apply-templates select="$CONTAINERS | $COMPONENT_MATCHES">
             <xsl:with-param name="HOLDER_NAME"><xsl:if test="@widget='widget'"><xsl:value-of select="@name"/></xsl:if></xsl:with-param>
         </xsl:apply-templates>
     </xsl:template>
@@ -91,8 +121,8 @@
     <xsl:template match="container[@block]" mode="block_header">
         <xsl:variable name="MAIN_COMPONENT" select="component[1]"/>
         <xsl:if test="$MAIN_COMPONENT/@title">
-            <div class="block_header clearfix">                
-                <h2 class="block_title"><xsl:value-of select="$MAIN_COMPONENT/@title" disable-output-escaping="yes"/></h2>
+            <div class="block_header clearfix">
+                <h2 class="block_title"><xsl:value-of select="$MAIN_COMPONENT/@title"/></h2>
             </div>
         </xsl:if>
     </xsl:template>
@@ -108,7 +138,7 @@
     <xsl:template match="container[@block='alfa']" mode="block_header">
         <xsl:if test="$DOC_PROPS[@name='default'] != 1">
             <div class="block_header clearfix">
-                <h1 class="block_title"><xsl:value-of select="$DOC_PROPS[@name='title']" disable-output-escaping="yes"/></h1>
+                <h1 class="block_title"><xsl:value-of select="$DOC_PROPS[@name='title']"/></h1>
             </div>
         </xsl:if>
     </xsl:template>

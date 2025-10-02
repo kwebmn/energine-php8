@@ -5,10 +5,7 @@
 
     <xsl:output method="html" doctype-system="about:legacy-compat" indent="yes" />
 
-    <xsl:include href="../../../../core/modules/share/transformers/include.xslt"/>
-    <xsl:include href="../../../../core/modules/user/transformers/include.xslt"/>
-    <xsl:include href="../../../../core/modules/apps/transformers/include.xslt"/>
-    <xsl:include href="../../../../core/modules/auto/transformers/include.xslt"/>
+    <xsl:param name="refactor-enabled" select="'1'"/>
 
     <xsl:include href="include.xslt"/>
 

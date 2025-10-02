@@ -17,7 +17,7 @@
 
             <div class="bg-body-secondary py-3">
                 <div class="container text-center small text-muted">
-                    <xsl:value-of select="//translation[@const='TXT_COPYRIGHT']" disable-output-escaping="yes"/>
+                    <xsl:value-of select="//translation[@const='TXT_COPYRIGHT']"/>
                 </div>
             </div>
         </footer>
@@ -27,7 +27,15 @@
         <xsl:if test="string-length(normalize-space(recordset/record/field)) &gt; 0">
             <div class="col-12 col-lg-5">
                 <div class="text-muted">
-                    <xsl:value-of select="recordset/record/field" disable-output-escaping="yes"/>
+                    <xsl:variable name="FOOTER_TEXT" select="recordset/record/field"/>
+                    <xsl:choose>
+                        <xsl:when test="count($FOOTER_TEXT/node()) &gt; 0">
+                            <xsl:copy-of select="$FOOTER_TEXT/node()"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="$FOOTER_TEXT"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
                 </div>
             </div>
         </xsl:if>
@@ -83,7 +91,14 @@
                 </a>
                 <xsl:if test="string-length(normalize-space($DESCRIPTION)) &gt; 0">
                     <div class="small text-muted">
-                        <xsl:value-of select="$DESCRIPTION" disable-output-escaping="yes"/>
+                        <xsl:choose>
+                            <xsl:when test="count($DESCRIPTION/node()) &gt; 0">
+                                <xsl:copy-of select="$DESCRIPTION/node()"/>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:value-of select="$DESCRIPTION"/>
+                            </xsl:otherwise>
+                        </xsl:choose>
                     </div>
                 </xsl:if>
             </li>

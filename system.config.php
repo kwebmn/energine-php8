@@ -87,7 +87,7 @@ return array(
         // основная точка входа в xslt преобразователь
         'transformer' => 'main.xslt',
         // насткойка кеширования xslt (при использовании XSLTCache)
-        'xslcache' => 0,
+        'xslcache' => extension_loaded('xslcache') ? 1 : 0,
         // тип контента по умолчанию для XML-ответов
         'xml_content_type' => 'application/xml; charset=UTF-8',
         // выводить XML с форматированием
@@ -290,7 +290,8 @@ return array(
         'fast_route'      => 0,   // роутер выключен
         'dbal'            => 0,   // включишь позже
         'validator'       => 1,
-        'translation'     => 1
+        'translation'     => 1,
+        'xsl_refactor'    => 1,
     ],
 
     // DI (php-di)

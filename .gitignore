@@ -22,3 +22,10 @@ scripts/
 stylesheets/
 templates/
 uploads/
+!engine/
+!engine/core/
+!engine/core/modules/
+!engine/core/modules/share/
+!engine/core/modules/share/transformers/
+!engine/core/modules/share/transformers/legacy/
+!engine/core/modules/share/transformers/legacy/**

@@ -1,30 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xsl:stylesheet
-    version="1.0"
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:stylesheet 
+    version="1.0" 
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
 
-    <!--
-        List renderer (interactive + grid).
-
-        Summary
-        -------
-        * Outputs the generic `<form>` wrapper and delegates grid specifics to
-          specialised templates.
-        * Extends translation support via the `translations-by-component` key
-          declared in document.xslt.
-
-        Usage
-        -----
-        * Override match templates with additional predicates instead of
-          copy-pasting base logic.
-        * Keep the print mode isolated in list.print.xslt – this file focuses on
-          the interactive experience.
-
-        Rules of the road
-        ------------------
-        * Preserve `generate-id()` calls: grid scripts rely on them for pane ids.
-        * Prefer `key()` lookups instead of `//` queries when adding new logic.
-    -->
+    xmlns:set="http://exslt.org/sets"
+    extension-element-prefixes="set">
 
     <xsl:template match="component[@type='list']">
         <form method="post" action="{@action}">
@@ -48,9 +28,6 @@
     <xsl:template match="component[@type='list']/recordset/record">
         <li><xsl:apply-templates/></li>
     </xsl:template>
-
-    <xsl:variable name="GRID_FORMS_WITH_HTMLBLOCK" select="$COMPONENTS[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name"/>
-    <xsl:variable name="NEEDS_WYSIWYG_TRANSLATIONS" select="count($GRID_FORMS_WITH_HTMLBLOCK) &gt; 0"/>
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
         <xsl:variable name="NAME" select="../@name"/>
@@ -77,7 +54,7 @@
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
             <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
-            <xsl:if test="count(key('translations-by-component', $NAME)) &gt; 0">
+            <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
                 <script type="text/javascript">
                     <!--<xsl:for-each select="$TRANSLATION[@component=$NAME]">
                         Energine.translations.set('<xsl:value-of select="@const"/>', '<xsl:value-of select="."/>');
@@ -86,12 +63,16 @@
                     document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
                 </script>
             </xsl:if>
-            <xsl:if test="$NEEDS_WYSIWYG_TRANSLATIONS and not(../preceding::component[@type='list' and @exttype='grid'])">
-                <script type="text/javascript">
-                    document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
-                </script>
-            </xsl:if>
         </div>
+    </xsl:template>
+    
+    <!-- Выводим переводы для WYSIWYG -->
+    <xsl:template match="document/translations[translation[@component=//component[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name]]">
+            <script type="text/javascript">
+<!--                Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);-->
+                document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
+            </script>
+
     </xsl:template>
 
     <!--Фильтр обрабатывается в BUILD_GRID-->
@@ -310,7 +291,7 @@
                                                                         <xsl:apply-templates select="$FIELD_VALUE"/>
                                                                     </xsl:when>
                                                                     <xsl:otherwise>
-                                                                        <xsl:text>&#160;</xsl:text>
+                                                                        <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
                                                                     </xsl:otherwise>
                                                                 </xsl:choose>
                                                             </td>
@@ -342,7 +323,7 @@
         <xsl:choose>
             <xsl:when test="$TEXT = ''">
                 <span>
-                    <xsl:text>&#160;</xsl:text>
+                    <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
                 </span>
             </xsl:when>
             <xsl:when test="string-length($TEXT) &gt; $LIMIT">
@@ -366,13 +347,12 @@
     </xsl:template>
 -->
     <xsl:template match="component[@type='list']/recordset/record/field[@type='select']">
-        <xsl:variable name="SELECTED" select="key('field-selected-options-by-field', generate-id(.))"/>
-        <xsl:variable name="TEXT" select="normalize-space(string($SELECTED))"/>
+        <xsl:variable name="TEXT" select="normalize-space(string(options/option[@selected='selected']))"/>
         <xsl:variable name="LIMIT" select="200"/>
         <xsl:choose>
             <xsl:when test="$TEXT = ''">
                 <span>
-                    <xsl:text>&#160;</xsl:text>
+                    <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
                 </span>
             </xsl:when>
             <xsl:when test="string-length($TEXT) &gt; $LIMIT">
@@ -401,4 +381,40 @@
         <span><b><xsl:value-of select="."/></b> </span>
     </xsl:template>
 
+    <xsl:template match="component[@type='list'][@exttype='print']">
+        <style type="text/css">
+            THEAD { display: table-header-group; }
+        </style>
+        <table border="1">
+            <caption><xsl:value-of select="@title"/></caption>
+            <thead>
+                <tr>
+                    <th>...</th>
+                    <xsl:for-each select="recordset/record[1]/field[@type!='hidden'][@index != 'PRI' or not(@index)]">
+                            <th><xsl:value-of select="@title"/></th>
+                    </xsl:for-each>
+                </tr>
+            </thead>
+            <tbody>
+                <xsl:for-each select="recordset/record">
+                        <tr>
+                            <td><xsl:number value="position()" format="1. "/></td>
+                            <xsl:for-each select="field[@type!='hidden'][@index != 'PRI' or not(@index)]">
+                                <td><xsl:choose>
+                                    <xsl:when test="@type='select'">
+                                        <xsl:value-of select="options/option[@selected]"/>
+                                    </xsl:when>
+                                    <xsl:when test="@type='image'">
+                                        <img src="{.}" border="0"/>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:value-of select="."/>
+                                    </xsl:otherwise>
+                                </xsl:choose></td>
+                            </xsl:for-each>
+                        </tr>
+                </xsl:for-each>
+            </tbody>
+        </table>
+    </xsl:template>
 </xsl:stylesheet>

@@ -154,7 +154,15 @@
                         </xsl:choose>
                     </h3>
                     <div class="text-muted">
-                        <xsl:value-of select="field[@name='DescriptionRtf']" disable-output-escaping="yes"/>
+                        <xsl:variable name="DESCRIPTION_RTF" select="field[@name='DescriptionRtf']"/>
+                        <xsl:choose>
+                            <xsl:when test="count($DESCRIPTION_RTF/node()) &gt; 0">
+                                <xsl:copy-of select="$DESCRIPTION_RTF/node()"/>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:value-of select="$DESCRIPTION_RTF"/>
+                            </xsl:otherwise>
+                        </xsl:choose>
                     </div>
                 </div>
             </div>
