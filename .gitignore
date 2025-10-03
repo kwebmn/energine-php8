@@ -13,12 +13,12 @@ tmp/
 .env
 
 # PHP/Composer (под ваш кейс: для приложений lock обычно коммитят)
-vendor/
-stats/
-core/
-assets/
-images/
-scripts/
-stylesheets/
-templates/
-uploads/
+/vendor/
+/stats/
+/core/
+/assets/
+/images/
+/scripts/
+/stylesheets/
+/templates/
+/uploads/
