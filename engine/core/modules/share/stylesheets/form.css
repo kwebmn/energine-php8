@@ -1,0 +1,16 @@
+/* Required field highlight used by Form.applyRequiredHighlights() (`.e-required-control`). */
+.e-required-control {
+    background-color: var(--form-required-bg, rgba(167, 220, 172, 0.14));
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.e-required-control:focus {
+    background-color: var(--form-required-focus-bg, rgba(167, 220, 172, 0.14));
+    box-shadow: 0 0 0 0.2rem rgba(167, 220, 172, 0.14);
+}
+
+.e-required-control:disabled,
+.e-required-control[readonly] {
+    background-color: inherit;
+    box-shadow: none;
+}
