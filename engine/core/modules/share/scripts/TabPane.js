@@ -1,4 +1,4 @@
-class TabPane {
+export default class TabPane {
     static count = 1;
     static assignID() {
         return this.count++;
@@ -285,4 +285,8 @@ class TabPane {
         link.dataset.tabpane = href;
         document.head.appendChild(link);
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.TabPane = TabPane;
 }

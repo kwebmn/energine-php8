@@ -1,10 +1,11 @@
-ScriptLoader.load('Form', 'ModalBox');
+import Form from './Form.js';
+import ModalBox from './ModalBox.js';
 
 // ImageManager.js
 
-class ImageManager extends Form {
-    constructor(element) {
-        super(element);
+export default class ImageManager extends Form {
+    constructor(element, options = {}) {
+        super(element, options);
 
         /**
          * Image object with metadata.
@@ -130,6 +131,10 @@ class ImageManager extends Form {
         }
         this.close();
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.ImageManager = ImageManager;
 }
 
 // Если нужна глобальная привязка:

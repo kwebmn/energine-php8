@@ -1,8 +1,9 @@
-class SignIn {
-  constructor(element) {
+export default class SignIn {
+  constructor(element, options = {}) {
     // element может быть селектором или DOM-узлом
     this.componentElement =
       typeof element === 'string' ? document.querySelector(element) : element;
+    this.options = options;
 
     // Берём template из атрибута компонента (если есть)
     this.singlePath = this.componentElement?.getAttribute('template') || '';
@@ -176,6 +177,10 @@ class SignIn {
     alert.textContent = message ?? '';
     alert.classList.remove('d-none');
   }
+}
+
+if (typeof window !== 'undefined') {
+    window.SignIn = SignIn;
 }
 
 // Пример использования:

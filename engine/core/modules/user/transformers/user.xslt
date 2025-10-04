@@ -4,17 +4,26 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
 
+    <xsl:import href="../../share/transformers/base.xslt"/>
+
     <!-- компонент LoginForm  -->
     <!-- режим гостя -->
     <xsl:template match="component[@sample='LoginForm']">
         <form method="post" action="{@action}" class="base_form login_form">
+            <xsl:call-template name="energine-component-attributes"/>
             <input type="hidden" name="componentAction" value="{@componentAction}" />
             <xsl:apply-templates/>
         </form>
     </xsl:template>
 
     <xsl:template match="recordset[parent::component[@sample='LoginForm']]">
-        <div id="{generate-id(.)}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" template="{$BASE}{$LANG_ABBR}{../@template}">
+        <xsl:variable name="RECORDSET_UID" select="generate-id(.)"/>
+        <div>
+            <xsl:attribute name="data-energine-param-recordset"><xsl:value-of select="$RECORDSET_UID"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
+            <xsl:attribute name="template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
             <xsl:apply-templates/>
         </div>
     </xsl:template>
@@ -26,19 +35,26 @@
     </xsl:template>
 
     <xsl:template match="control[(@id='auth.facebook') and not(@disabled)][ancestor::component[@sample='LoginForm']]">
-        <a href="#" id="fbAuth" onclick="return false;"><xsl:value-of select="@title"/></a>
-        <script type="text/javascript">
-            FBL.set('<xsl:value-of select="@appID"/>');
-        </script>
-        <div id="fb-root"></div>
+        <div class="auth-provider auth-provider-facebook">
+            <xsl:attribute name="data-energine-js">FBL</xsl:attribute>
+            <xsl:attribute name="data-energine-param-app-id"><xsl:value-of select="@appID"/></xsl:attribute>
+            <xsl:if test="@click">
+                <xsl:attribute name="data-energine-param-click"><xsl:value-of select="@click"/></xsl:attribute>
+            </xsl:if>
+            <a href="{$BASE}{$LANG_ABBR}{@click}" id="fbAuth"><xsl:value-of select="@title"/></a>
+            <div id="fb-root"></div>
+        </div>
     </xsl:template>
 
     <xsl:template match="control[(@id='auth.vk') and not(@disabled)][ancestor::component[@sample='LoginForm']]">
-        <script type="text/javascript" src="//vk.com/js/api/openapi.js?95"></script>
-        <a href="#" id="vkAuth" onclick="return false;"><xsl:value-of select="@title"/></a>
-        <script type="text/javascript">
-            VKI.set('<xsl:value-of select="@appID"/>');
-        </script>
+        <div class="auth-provider auth-provider-vk">
+            <xsl:attribute name="data-energine-js">VKI</xsl:attribute>
+            <xsl:attribute name="data-energine-param-app-id"><xsl:value-of select="@appID"/></xsl:attribute>
+            <xsl:if test="@click">
+                <xsl:attribute name="data-energine-param-click"><xsl:value-of select="@click"/></xsl:attribute>
+            </xsl:if>
+            <a href="{$BASE}{$LANG_ABBR}{@click}" id="vkAuth"><xsl:value-of select="@title"/></a>
+        </div>
     </xsl:template>
 
     <xsl:template match="field[@name='message'][ancestor::component[@sample='LoginForm']]">
@@ -70,7 +86,11 @@
 
     <xsl:template match="recordset[parent::component[@class='Register']]">
         <div><xsl:value-of select="$TRANSLATION[@const='TXT_REGISTRATION_TEXT']" disable-output-escaping="yes"/></div>
-        <div id="{generate-id(.)}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <xsl:variable name="RECORDSET_UID" select="generate-id(.)"/>
+        <div>
+            <xsl:attribute name="data-energine-param-recordset"><xsl:value-of select="$RECORDSET_UID"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
             <xsl:apply-templates/>
         </div>
         <xsl:if test="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']">

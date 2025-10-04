@@ -12,17 +12,15 @@
         <xsl:variable name="PLAYER_ID">player_<xsl:value-of select="generate-id()"/></xsl:variable>
         <script type="text/javascript" src="{$STATIC_URL}scripts/jwplayer/jwplayer.js"></script>
         <script type="text/javascript" src="{$STATIC_URL}scripts/Player.js"></script>
-        <div id="{$PLAYER_ID}"/>
-        <script type="text/javascript">
-            var <xsl:value-of select="$PLAYER_ID"/> = new Player({
-                'player_id': '<xsl:value-of select="$PLAYER_ID"/>',
-                'image': '<xsl:value-of select="$RESIZER_URL"/>w<xsl:value-of select="$PLAYER_WIDTH"/>-h<xsl:value-of select="$PLAYER_HEIGHT"/>/<xsl:value-of select="$FILE"/>',
-                'files': ['<xsl:value-of select="$MEDIA_URL"/><xsl:value-of select="$FILE"/>'],
-                'width': '<xsl:value-of select="$PLAYER_WIDTH"/>',
-                'height': '<xsl:value-of select="$PLAYER_HEIGHT"/>',
-                'autostart': false
-            });
-        </script>
+        <div id="{$PLAYER_ID}">
+            <xsl:attribute name="data-energine-js">Player</xsl:attribute>
+            <xsl:attribute name="data-energine-param-player_id"><xsl:value-of select="$PLAYER_ID"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-image"><xsl:value-of select="$RESIZER_URL"/>w<xsl:value-of select="$PLAYER_WIDTH"/>-h<xsl:value-of select="$PLAYER_HEIGHT"/>/<xsl:value-of select="$FILE"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-files"><xsl:value-of select="$MEDIA_URL"/><xsl:value-of select="$FILE"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-width"><xsl:value-of select="$PLAYER_WIDTH"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-height"><xsl:value-of select="$PLAYER_HEIGHT"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-autostart">false</xsl:attribute>
+        </div>
     </xsl:template>
     <!-- /Video player (JW Player) -->
     

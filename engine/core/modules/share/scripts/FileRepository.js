@@ -1,4 +1,13 @@
-ScriptLoader.load('GridManager', 'Cookie', 'FileAPI/FileAPI');
+import GridManager, { Grid } from './GridManager.js';
+import Cookie from './Cookie.js';
+import './FileAPI/FileAPI.js';
+
+const ensureFileAPI = () => {
+    if (typeof window === 'undefined' || !window.FileAPI) {
+        throw new Error('FileAPI is required for FileRepository');
+    }
+    return window.FileAPI;
+};
 
 // Глобальное имя cookie для файла
 const FILE_COOKIE_NAME = 'NRGNFRPID';
@@ -203,9 +212,10 @@ class GridWithPopImage extends Grid {
  * Класс FileRepository
  * @extends GridManager
  */
-class FileRepository extends GridManager {
-    constructor(element) {
-        super(element);
+export default class FileRepository extends GridManager {
+    constructor(element, options = {}) {
+        super(element, options);
+        this.fileAPI = ensureFileAPI();
         this.grid = new GridWithPopImage(this.element.querySelector('[data-role="grid"]'), {
             onSelect: this.onSelect.bind(this),
             onSortChange: this.onSortChange.bind(this),
@@ -251,8 +261,10 @@ class FileRepository extends GridManager {
         this.progressBar = progressBar;
         this.progressText = progressText;
 
-        window.repository = this; // В старом коде для FileAPI.callback-ов
-        FileAPI.event.dnd(
+        if (typeof window !== 'undefined') {
+            window.repository = this; // В старом коде для FileAPI.callback-ов
+        }
+        this.fileAPI.event.dnd(
             document,
             function(){},
             files => {
@@ -277,8 +289,8 @@ class FileRepository extends GridManager {
                 });
             }
         );
-        FileAPI.event.on(document, 'dragleave', () => { this.element.style.opacity = '1'; });
-        FileAPI.event.on(document, 'dragover', () => { this.element.style.opacity = '0.5'; });
+        this.fileAPI.event.on(document, 'dragleave', () => { this.element.style.opacity = '1'; });
+        this.fileAPI.event.on(document, 'dragover', () => { this.element.style.opacity = '0.5'; });
     }
 
     // --- Событие двойного клика (открытие элемента) ---
@@ -480,7 +492,9 @@ class FileRepository extends GridManager {
 
         let f = {};
         f[field_name] = files;
-        return FileAPI.upload({
+        const fileAPI = this.fileAPI || ensureFileAPI();
+
+        return fileAPI.upload({
             url: `${this.singlePath}upload-temp/?json`,
             data: {
                 'key': field_name,
@@ -488,7 +502,7 @@ class FileRepository extends GridManager {
             },
             files: f,
             prepare: function (file, options) {
-                options.data[FileAPI.uid()] = 1;
+                options.data[fileAPI.uid()] = 1;
             },
             beforeupload: function () { },
             upload: function () { },
@@ -497,7 +511,7 @@ class FileRepository extends GridManager {
             filecomplete: function (err, xhr, file) {
                 if (!err) {
                     try {
-                        let result = FileAPI.parseJSON(xhr.responseText);
+                        let result = fileAPI.parseJSON(xhr.responseText);
                         if (result && !result.error) {
                             response_callback(result);
                         }
@@ -560,7 +574,8 @@ class PathList {
     }
 }
 
-// Привязки к window, если требуется:
-window.GridWithPopImage = GridWithPopImage;
-window.FileRepository = FileRepository;
-window.PathList = PathList;
+if (typeof window !== 'undefined') {
+    window.GridWithPopImage = GridWithPopImage;
+    window.FileRepository = FileRepository;
+    window.PathList = PathList;
+}

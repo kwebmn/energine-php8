@@ -54,7 +54,7 @@ XML-конфиг считывается на стороне сервера, из
 * `Form` или `FileRepoForm` — формы ввода.
 * `FileRepository`, `SiteSelector` и др. — специализированные поведения.
 
-При генерации HTML имя поведения превращается в инициализацию JS-класса (см. `engine/core/modules/share/scripts/Toolbar.js`).
+Во время рендеринга XSLT вызывает шаблон `energine-component-attributes`, который проставляет `data-energine-js` и `data-energine-param-*` атрибуты на корневой элемент компонента (см. `engine/core/modules/share/transformers/base.xslt`). Эти маркеры считывает единый загрузчик `loader.js`, автоматически находящий модуль класса и вызывающий его конструктор без inline-скриптов.
 
 ### Поля (`<fields>`) 
 

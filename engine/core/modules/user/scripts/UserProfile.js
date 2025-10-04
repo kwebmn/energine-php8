@@ -1,16 +1,16 @@
+import ValidForm from '../../share/scripts/ValidForm.js';
+
 /**
  * UserProfile (ES6 version)
  * @extends ValidForm
  */
-class UserProfile  {
+export default class UserProfile extends ValidForm {
     /**
      * @param {HTMLElement|string} element
+     * @param {Object} [options]
      */
-    constructor(element) {
-        // singlePath
-        this.componentElement = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+    constructor(element, options = {}) {
+        super(element, options);
         // Получаем путь для сохранения
         this.url = this.componentElement.getAttribute('single_template');
 
@@ -34,5 +34,6 @@ class UserProfile  {
 
 }
 
-// Глобальная привязка, если нужно
-window.UserProfile = UserProfile;
+if (typeof window !== 'undefined') {
+    window.UserProfile = UserProfile;
+}

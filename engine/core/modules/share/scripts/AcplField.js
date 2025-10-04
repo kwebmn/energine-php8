@@ -233,7 +233,9 @@ class ActiveList {
 }
 
 // Пример совместимости с MooTools-стилем:
-window.ActiveList = ActiveList;
+if (typeof window !== 'undefined') {
+    window.ActiveList = ActiveList;
+}
 
 /**
  * Выпадающий список (drop box) — наследуется от ActiveList.
@@ -344,7 +346,9 @@ class DropBoxList extends ActiveList {
 }
 
 // Для совместимости
-window.DropBoxList = DropBoxList;
+if (typeof window !== 'undefined') {
+    window.DropBoxList = DropBoxList;
+}
 
 class AcplField {
     static selector = '[data-role="acpl"]';
@@ -538,4 +542,10 @@ class AcplField {
 }
 
 // Для совместимости:
-window.AcplField = AcplField;
+if (typeof window !== 'undefined') {
+    window.ActiveList = ActiveList;
+    window.DropBoxList = DropBoxList;
+    window.AcplField = AcplField;
+}
+
+export default AcplField;

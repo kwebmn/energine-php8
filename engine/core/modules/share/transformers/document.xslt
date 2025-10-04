@@ -82,8 +82,25 @@
     </xsl:template>
 
     <xsl:template match="/" mode="scripts">
-        <xsl:if test="not($DOC_PROPS[@name='single'])"><!-- User JS is here--></xsl:if>
-
+        <xsl:choose>
+            <xsl:when test="/document/@debug = '0'">
+                <xsl:variable name="SITE_BUNDLE" select="string($DOC_PROPS[@name='site_bundle'])"/>
+                <xsl:if test="$SITE_BUNDLE != ''">
+                    <script defer="defer" type="module">
+                        <xsl:attribute name="src"><xsl:value-of select="concat($STATIC_URL, $SITE_BUNDLE)"/></xsl:attribute>
+                    </script>
+                </xsl:if>
+                <xsl:variable name="ADMIN_BUNDLE" select="string($DOC_PROPS[@name='admin_bundle'])"/>
+                <xsl:if test="$DOC_PROPS[@name='is_admin']='1' and $ADMIN_BUNDLE != ''">
+                    <script defer="defer" type="module">
+                        <xsl:attribute name="src"><xsl:value-of select="concat($STATIC_URL, $ADMIN_BUNDLE)"/></xsl:attribute>
+                    </script>
+                </xsl:if>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:if test="not($DOC_PROPS[@name='single'])"><!-- User JS is here--></xsl:if>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
 
     <xsl:template match="/" mode="og">
@@ -113,12 +130,9 @@
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>
-        <script type="text/javascript"  src="{$STATIC_URL}scripts/Energine.js"></script>
 <!--        <xsl:apply-templates select="." mode="og"/>-->
 
-<!--        <xsl:if test="$DOC_PROPS[@name='single'] or $DOC_PROPS[@name='is_user'] > 0">-->
-<!--            <xsl:call-template name="START_ENERGINE_JS" />-->
-<!--        </xsl:if>-->
+        <xsl:call-template name="START_ENERGINE_JS"/>
 
 <!--        <xsl:if test="//property[@name='single']">-->
 <!--            <script type="text/javascript" src="scripts/jquery.min.js"></script>-->
@@ -127,88 +141,23 @@
     </xsl:template>
 
     <xsl:template name="START_ENERGINE_JS">
-<!--        <xsl:choose>-->
-<!--            <xsl:when test="document/@debug=1">-->
-<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.js"></script>-->
-<!--            </xsl:when>-->
-<!--            <xsl:otherwise>-->
-<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.min.js"></script>-->
-<!--            </xsl:otherwise>-->
-<!--        </xsl:choose>-->
-<!--        <link href="assets/minified.css" rel="stylesheet" />-->
-        <!-- <script type="text/javascript" src="assets/minified.js" /> -->
-
-        <script type="text/javascript">
-            Object.assign(Energine, {
-            <xsl:if test="document/@debug=1">'debug' :true,</xsl:if>
-            'base' : '<xsl:value-of select="$BASE"/>',
-            'static' : '<xsl:value-of select="$STATIC_URL"/>',
-            'resizer' : '<xsl:value-of select="$RESIZER_URL"/>',
-            'media' : '<xsl:value-of select="$MEDIA_URL"/>',
-            'root' : '<xsl:value-of select="$MAIN_SITE"/>',
-            'lang' : '<xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/>',
-            'singleMode':<xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/>
-            });
-        </script>
+        <meta data-energine-config="core">
+            <xsl:if test="document/@debug=1">
+                <xsl:attribute name="data-energine-config-debug">true</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-energine-config-base"><xsl:value-of select="$BASE"/></xsl:attribute>
+            <xsl:attribute name="data-energine-config-static"><xsl:value-of select="$STATIC_URL"/></xsl:attribute>
+            <xsl:attribute name="data-energine-config-resizer"><xsl:value-of select="$RESIZER_URL"/></xsl:attribute>
+            <xsl:attribute name="data-energine-config-media"><xsl:value-of select="$MEDIA_URL"/></xsl:attribute>
+            <xsl:attribute name="data-energine-config-root"><xsl:value-of select="$MAIN_SITE"/></xsl:attribute>
+            <xsl:attribute name="data-energine-config-lang"><xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/></xsl:attribute>
+            <xsl:attribute name="data-energine-config-single-mode"><xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/></xsl:attribute>
+        </meta>
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
         <xsl:apply-templates select="/document/javascript/library" mode="head"/>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
-        <script type="text/javascript">
-            var componentToolbars = [];
-            <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
-                var <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]"><xsl:value-of select="generate-id(../recordset)"/><xsl:if test="position() != last()">,</xsl:if></xsl:for-each>;
-            </xsl:if>
-
-            <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                Energine.addTask( function(){
-             <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
-            var pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
-            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>
-            ]<xsl:if
-                test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
-
-                }
-            );
-            </xsl:if>
-            <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
-                <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
-                if(document.getElementById('<xsl:value-of select="$objectID"/>')){
-                    try {
-                         <xsl:value-of select="$objectID"/> = new <xsl:value-of select="@name"/>(document.getElementById('<xsl:value-of select="$objectID"/>'));
-                    }
-                    catch (e) {
-                        safeConsoleError(e);
-                    }
-                }
-            </xsl:for-each>
-            <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
-                <xsl:if test="position()=1">
-                    <xsl:variable name="objectID" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
-                    try {
-                    <xsl:value-of select="$objectID"/> = new PageEditor();
-                    }
-                    catch (e) {
-                    safeConsoleError(e);
-                    }
-                </xsl:if>
-            </xsl:if>
-
-
-<!--            if (window.delayStart)-->
-<!--                for (const func of window.delayStart) {-->
-<!--                    func();-->
-<!--                }-->
-<!--            };-->
-<!--            Energine.addTask(startEnergine);-->
-<!--            document.addEventListener('DOMContentLoaded', startEnergine);-->
-            document.addEventListener('DOMContentLoaded', Energine.run);
-
-
-
-        </script>
+    </xsl:template>
 
         <xsl:if test="not(//property[@name='single'])">
             <xsl:if test="$DOC_PROPS[@name='google_analytics'] and ($DOC_PROPS[@name='google_analytics'] != '')">
@@ -234,9 +183,9 @@
     
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="/document/translations[translation[@component=//component[@editable]/@name]]">
-            <script type="text/javascript">
-                document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
-            </script>
+        <meta data-energine-translations-scope="editable">
+            <xsl:attribute name="data-energine-translations"><xsl:value-of select="/document/translations/@json"/></xsl:attribute>
+        </meta>
     </xsl:template>
 
     <xsl:template match="/document/javascript"/>
@@ -246,26 +195,55 @@
     <xsl:template match="/document//javascript/variable"/>
 
     <xsl:template match="/document/javascript/library" mode="head">
-        <script type="text/javascript" src="{$STATIC_URL}scripts/{@path}.js"/>
+        <xsl:variable name="SRC">
+            <xsl:choose>
+                <xsl:when test="@src">
+                    <xsl:choose>
+                        <xsl:when test="starts-with(@src, 'http://') or starts-with(@src, 'https://') or starts-with(@src, '//')">
+                            <xsl:value-of select="@src"/>
+                        </xsl:when>
+                        <xsl:when test="starts-with(@src, '/')">
+                            <xsl:value-of select="@src"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="concat($STATIC_URL, @src)"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat($STATIC_URL, 'scripts/', @path, '.js')"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="IS_MODULE" select="@type = 'module'"/>
+        <script defer="defer">
+            <xsl:attribute name="type">
+                <xsl:choose>
+                    <xsl:when test="$IS_MODULE">module</xsl:when>
+                    <xsl:otherwise>text/javascript</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+            <xsl:attribute name="src"><xsl:value-of select="$SRC"/></xsl:attribute>
+        </script>
     </xsl:template>
 
     <xsl:template match="/document//javascript/variable" mode="head">
-        <script type="text/javascript">
-            <xsl:text>window["</xsl:text>
-            <xsl:value-of select="@name"/>
-            <xsl:text>"] = </xsl:text>
-            <xsl:choose>
-                <xsl:when test="@type='json'">
-                    <xsl:value-of select="."/>
-                </xsl:when>
-                <xsl:otherwise>
-                    <xsl:text>"</xsl:text>
-                    <xsl:value-of select="."/>
-                    <xsl:text>"</xsl:text>
-                </xsl:otherwise>
-            </xsl:choose>
-            <xsl:text>;</xsl:text>
-        </script>
+        <meta>
+            <xsl:attribute name="data-energine-variable"><xsl:value-of select="@name"/></xsl:attribute>
+            <xsl:if test="@type">
+                <xsl:attribute name="data-energine-variable-type"><xsl:value-of select="@type"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="content">
+                <xsl:choose>
+                    <xsl:when test="@type='json'">
+                        <xsl:value-of select="."/>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <xsl:value-of select="."/>
+                    </xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+        </meta>
     </xsl:template>
 
     <xsl:template match="component[@class='SiteProperties']">

@@ -69,7 +69,7 @@
                 </xsl:for-each>
             </xsl:attribute>
             <xsl:if test="@name = 'tags'">
-                <xsl:attribute name="component_id">
+                <xsl:attribute name="data-energine-param-component_id">
                     <xsl:value-of select="generate-id(../..)"/>
                 </xsl:attribute>
             </xsl:if>

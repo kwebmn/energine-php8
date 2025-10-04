@@ -9,20 +9,26 @@
 <!--        <link rel="stylesheet" type="text/css" href="scripts/jstree/themes/default/style.css" />-->
 
 
-        <div
-                id="{generate-id(.)}"
-                single-template="{../@single_template}"
-                txt_add="{//translation[@const='BTN_ADD']}"
-                txt_edit="{//translation[@const='BTN_EDIT']}"
-                txt_delete="{//translation[@const='BTN_DELETE']}"
-                txt_confirm="{//translation[@const='MSG_CONFIRM_DELETE']}"
-                txt_refresh="{//translation[@const='BTN_REFRESH']}"
-                txt_up="{//translation[@const='BTN_UP']}"
-                txt_down="{//translation[@const='BTN_DOWN']}"
-        >
-            <div id="filter-tree" style="font-size: 1em;padding:1em;">
-
-            </div>
+        <xsl:variable name="RECORDSET_UID" select="generate-id(.)"/>
+        <div>
+            <xsl:attribute name="data-energine-param-recordset"><xsl:value-of select="$RECORDSET_UID"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="single-template"><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-txt_add"><xsl:value-of select="//translation[@const='BTN_ADD']"/></xsl:attribute>
+            <xsl:attribute name="txt_add"><xsl:value-of select="//translation[@const='BTN_ADD']"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-txt_edit"><xsl:value-of select="//translation[@const='BTN_EDIT']"/></xsl:attribute>
+            <xsl:attribute name="txt_edit"><xsl:value-of select="//translation[@const='BTN_EDIT']"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-txt_delete"><xsl:value-of select="//translation[@const='BTN_DELETE']"/></xsl:attribute>
+            <xsl:attribute name="txt_delete"><xsl:value-of select="//translation[@const='BTN_DELETE']"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-txt_confirm"><xsl:value-of select="//translation[@const='MSG_CONFIRM_DELETE']"/></xsl:attribute>
+            <xsl:attribute name="txt_confirm"><xsl:value-of select="//translation[@const='MSG_CONFIRM_DELETE']"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-txt_refresh"><xsl:value-of select="//translation[@const='BTN_REFRESH']"/></xsl:attribute>
+            <xsl:attribute name="txt_refresh"><xsl:value-of select="//translation[@const='BTN_REFRESH']"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-txt_up"><xsl:value-of select="//translation[@const='BTN_UP']"/></xsl:attribute>
+            <xsl:attribute name="txt_up"><xsl:value-of select="//translation[@const='BTN_UP']"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-txt_down"><xsl:value-of select="//translation[@const='BTN_DOWN']"/></xsl:attribute>
+            <xsl:attribute name="txt_down"><xsl:value-of select="//translation[@const='BTN_DOWN']"/></xsl:attribute>
+            <div id="filter-tree" style="font-size: 1em;padding:1em;"></div>
         </div>
 
     </xsl:template>

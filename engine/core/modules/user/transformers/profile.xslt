@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
+    <xsl:import href="../../share/transformers/base.xslt"/>
+
     <xsl:template match="container[@name='profile']">
         <div class="card">
             <div class="card-body">
@@ -65,10 +67,18 @@
     </xsl:template>
 
     <xsl:template match="component[@class='UserProfile']">
-        <form method="POST" action="{$BASE}{$LANG_ABBR}{@action}" id ="{generate-id(recordset)}" single_template="{@single_template}" class="justify-content-center">
-
+        <xsl:variable name="FORM_ID">
+            <xsl:choose>
+                <xsl:when test="@name">profile-form-<xsl:value-of select="@name"/></xsl:when>
+                <xsl:otherwise>profile-form</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <form method="POST" action="{$BASE}{$LANG_ABBR}{@action}" class="justify-content-center">
+            <xsl:attribute name="id"><xsl:value-of select="$FORM_ID"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="@single_template"/></xsl:attribute>
+            <xsl:call-template name="energine-component-attributes"/>
+            <input type="hidden" name="componentAction" value="{@componentAction}" />
             <xsl:apply-templates />
-
         </form>
     </xsl:template>
 
@@ -105,11 +115,18 @@
     </xsl:template>
 
     <xsl:template match="component[@class='UserProfile']/toolbar">
-        <xsl:apply-templates />
+        <div class="d-flex gap-2">
+            <xsl:if test="not(@name)">
+                <xsl:attribute name="data-energine-toolbar"/>
+            </xsl:if>
+            <xsl:call-template name="energine-toolbar-attributes"/>
+            <xsl:apply-templates select="control"/>
+        </div>
     </xsl:template>
 
     <xsl:template match="component[@class='UserProfile']/toolbar/control">
         <button type="{@type}"  class="btn btn-primary py-2" >
+            <xsl:call-template name="energine-control-attributes"/>
             <xsl:value-of select="@title" />
         </button>
     </xsl:template>

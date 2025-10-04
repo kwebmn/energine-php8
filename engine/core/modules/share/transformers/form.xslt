@@ -12,6 +12,10 @@
     <xsl:template match="component[@type='form']">
         <xsl:variable name="FORM_ID" select="concat('form-', generate-id())"/>
         <section class="card h-100 d-flex flex-column" data-role="pane">
+            <xsl:call-template name="energine-component-attributes"/>
+            <xsl:if test="descendant::field[@type='code']">
+                <xsl:attribute name="data-energine-param-codemirror">true</xsl:attribute>
+            </xsl:if>
             <div class="card-header flex-shrink-0" data-pane-part="header" data-pane-toolbar="top">
                 <xsl:apply-templates select="toolbar[@position='top']"/>
             </div>
@@ -39,28 +43,26 @@
     </xsl:template>
     
     <xsl:template match="component[@type='form' and @exttype='grid']">
-        <!--Если есть поля типа code  - добавляем вызовы js и css-->
-        <xsl:if test="recordset/record/field[@type='code']">
-            <link rel="stylesheet" href="scripts/codemirror/lib/codemirror.css" />
-            <script type="text/javascript" src="scripts/codemirror/lib/codemirror.js"></script>
-            <script type="text/javascript" src="scripts/codemirror/mode/xml/xml.js"></script>
-            <script  type="text/javascript" src="scripts/codemirror/mode/javascript/javascript.js"></script>
-            <script  type="text/javascript" src="scripts/codemirror/mode/css/css.js"></script>
-            <link rel="stylesheet" href="scripts/codemirror/theme/elegant.css" />
-            <script  type="text/javascript" src="scripts/codemirror/mode/htmlmixed/htmlmixed.js"></script>
-            <!--<link rel="stylesheet" href="scripts/codemirror/css/docs.css" />-->
-        </xsl:if>
-
         <form method="post" action="{@action}" class="e-grid-form">
+            <xsl:call-template name="energine-component-attributes"/>
+            <xsl:if test="recordset/record/field[@type='code']">
+                <xsl:attribute name="data-energine-param-codemirror">true</xsl:attribute>
+            </xsl:if>
             <input type="hidden" name="componentAction" value="{@componentAction}" id="componentAction"/>
             <xsl:apply-templates/>
         </form>
     </xsl:template>
     
     <xsl:template match="recordset[parent::component[@type='form']]">
-    	<div id="{generate-id(.)}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" template="{$BASE}{$LANG_ABBR}{../@template}">
-    		<xsl:apply-templates/>
-    	</div>
+        <xsl:variable name="RECORDSET_UID" select="generate-id(.)"/>
+        <div>
+            <xsl:attribute name="data-energine-param-recordset"><xsl:value-of select="$RECORDSET_UID"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
+            <xsl:attribute name="template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
+                <xsl:apply-templates/>
+        </div>
 		<xsl:if test="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
 			<div class="note">
 				<xsl:value-of select="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']" disable-output-escaping="yes"/>
@@ -76,6 +78,7 @@
     <xsl:template match="toolbar[parent::component[@type='form']]">
         <xsl:variable name="FORM_ID" select="concat('form-', generate-id(..))"/>
         <div class="card-toolbar d-flex flex-wrap align-items-center gap-2">
+            <xsl:call-template name="energine-toolbar-attributes"/>
             <xsl:apply-templates>
                 <xsl:with-param name="form-id" select="$FORM_ID"/>
             </xsl:apply-templates>
@@ -100,6 +103,7 @@
         </xsl:variable>
 
         <xsl:element name="{$CONTROL}">
+            <xsl:call-template name="energine-control-attributes"/>
             <xsl:if test="@mode=1">
                 <xsl:attribute name="disabled">disabled</xsl:attribute>
             </xsl:if>
@@ -110,9 +114,6 @@
             </xsl:if>
             <xsl:attribute name="type"><xsl:value-of select="$CONTROL_TYPE"/></xsl:attribute>
             <xsl:attribute name="form"><xsl:value-of select="$form-id"/></xsl:attribute>
-            <xsl:if test="@click!=''">
-                <xsl:attribute name="onclick"><xsl:value-of select="@click"/></xsl:attribute>
-            </xsl:if>
             <xsl:value-of select="@title"/>
         </xsl:element>
     </xsl:template>
@@ -120,9 +121,14 @@
     <!-- форма как часть grid-а выводится в другом стиле -->
    <xsl:template match="recordset[parent::component[@type='form' and @exttype='grid']]">
     <xsl:variable name="FIELDS" select="record/field"/>
-    <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100"
-         template="{$BASE}{$LANG_ABBR}{../@template}"
-         single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+    <div data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100">
+         <xsl:attribute name="data-energine-param-template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
+         <xsl:attribute name="template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
+         <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+         <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+        <xsl:call-template name="energine-component-attributes">
+            <xsl:with-param name="component" select=".."/>
+        </xsl:call-template>
         <div class="card-header bg-body-tertiary border-bottom flex-shrink-0 pb-0" data-pane-part="header" data-pane-toolbar="top">
             <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
@@ -187,9 +193,12 @@
             </div>
         </div>
 
-        <xsl:if test="../toolbar">
-            <div class="card-footer bg-body-tertiary border-top flex-shrink-0" data-pane-part="footer" data-pane-toolbar="bottom"></div>
-        </xsl:if>
+        <xsl:for-each select="../toolbar">
+            <div class="card-footer bg-body-tertiary border-top flex-shrink-0" data-pane-part="footer" data-pane-toolbar="bottom">
+                <xsl:call-template name="energine-toolbar-attributes"/>
+                <xsl:apply-templates select="control"/>
+            </div>
+        </xsl:for-each>
     </div>
 </xsl:template>
 

@@ -1,11 +1,42 @@
-ScriptLoader.load('Toolbar', 'ModalBox');
+import Toolbar from '../../share/scripts/Toolbar.js';
+import ModalBox from '../../share/scripts/ModalBox.js';
 
-class FeedToolbar extends Toolbar {
+const readParam = (element, name) => {
+    if (!element) {
+        return null;
+    }
+    if (typeof element.getProperty === 'function') {
+        const value = element.getProperty(name);
+        if (value !== undefined && value !== null) {
+            return value;
+        }
+    }
+    if (element.getAttribute) {
+        const dataAttr = element.getAttribute(`data-energine-param-${name}`);
+        if (dataAttr !== null) {
+            return dataAttr;
+        }
+        return element.getAttribute(name);
+    }
+    return null;
+};
+
+const findRecordsetElement = (identifier) => {
+    if (!identifier) {
+        return null;
+    }
+    return document.getElementById(identifier) || document.querySelector(`[data-energine-param-recordset="${identifier}"]`);
+};
+
+export default class FeedToolbar extends Toolbar {
     // Сохраняем request для совместимости
     static request = Energine.request;
 
-    constructor(Container) {
+    constructor(Container, options = {}) {
         super('feed_toolbar');
+
+        this.options = options;
+        this.componentElement = Container;
 
         // Подключаем CSS динамически (эмуляция Asset.css)
         // FeedToolbar.loadCSS('stylesheets/pagetoolbar.css');
@@ -28,15 +59,15 @@ class FeedToolbar extends Toolbar {
         }
 
         this.load(Container);
-        this.singlePath = Container.getAttribute('single_template');
-        const linkedToId = Container.getAttribute('linkedTo');
-        const feedElement = linkedToId ? document.getElementById(linkedToId) : null;
+        this.singlePath = readParam(Container, 'single_template');
+        const linkedToId = readParam(Container, 'linked-recordset');
+        const feedElement = findRecordsetElement(linkedToId);
 
         this.disableControls();
 
         if (feedElement) {
             this._prepareDataSet(feedElement);
-            const current = feedElement.getProperty?.('current');
+            const current = readParam(feedElement, 'current');
             if (this.selected = current) {
                 this.enableControls('add', 'edit');
             } else {
@@ -46,7 +77,9 @@ class FeedToolbar extends Toolbar {
         }
         if (Container.dispose) Container.dispose();
 
-        window.feedToolbar = this;
+        if (typeof window !== 'undefined') {
+            window.feedToolbar = this;
+        }
         this.container = Container;
         this.previous = false;
 
@@ -81,13 +114,13 @@ class FeedToolbar extends Toolbar {
     }
 
     initializeFeedElements() {
-        this.singlePath = this.container.getProperty('single_template');
-        const linkedToId = this.container.getProperty('linkedTo');
-        const feedElement = linkedToId ? document.getElementById(linkedToId) : null;
+        this.singlePath = readParam(this.container, 'single_template');
+        const linkedToId = readParam(this.container, 'linked-recordset');
+        const feedElement = findRecordsetElement(linkedToId);
         this.disableControls();
         if (feedElement) {
             this._prepareDataSet(feedElement);
-            const current = feedElement.getProperty?.('current');
+            const current = readParam(feedElement, 'current');
             if (this.selected = current) {
                 this.enableControls('add', 'edit');
             } else {
@@ -137,7 +170,7 @@ class FeedToolbar extends Toolbar {
         try {
             if (direction === 'up') {
                 const sibling = this.previous?.previousElementSibling;
-                if (!sibling || !sibling.hasAttribute('record')) throw 'error';
+                if (!sibling || (!sibling.hasAttribute('data-energine-param-record') && !sibling.hasAttribute('record'))) throw 'error';
                 sibling.parentNode.insertBefore(this.previous, sibling);
             } else {
                 const next = this.previous?.nextElementSibling;
@@ -158,7 +191,7 @@ class FeedToolbar extends Toolbar {
         } else {
             this.previous = element;
             element.classList.add('record_select');
-            this.selected = element.getAttribute('record');
+            this.selected = readParam(element, 'record');
             this.enableControls();
         }
     }
@@ -178,7 +211,7 @@ class FeedToolbar extends Toolbar {
     }
 
     _prepareDataSet(linkID) {
-        const linkChilds = Array.from(linkID.querySelectorAll('[record]'));
+        const linkChilds = Array.from(linkID.querySelectorAll('[data-energine-param-record], [record]'));
         if (linkChilds.length) {
             linkID.classList.add('active_component');
             linkID.style.opacity = 0.7;
@@ -206,6 +239,10 @@ class FeedToolbar extends Toolbar {
             document.head.appendChild(link);
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.FeedToolbar = FeedToolbar;
 }
 
 // Пример использования:

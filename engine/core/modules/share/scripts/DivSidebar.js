@@ -1,11 +1,12 @@
-ScriptLoader.load('DivManager', 'jquery.min', 'jstree/jstree');
+import DivManager from './DivManager.js';
 
-class DivSidebar extends DivManager {
+export default class DivSidebar extends DivManager {
     /**
      * @param {Element|string} element
+     * @param {Object} [options]
      */
-    constructor(element) {
-        super(element); // Можно вызвать super(), затем переопределить специфичное
+    constructor(element, options = {}) {
+        super(element, options); // Можно вызвать super(), затем переопределить специфичное
 
         this.contentPanel = this.element ? this.element.querySelector('[data-role="editor-content"]') : null;
         if (this.contentPanel) {
@@ -201,4 +202,8 @@ class DivSidebar extends DivManager {
             this.contentPanel.classList.add('flex-grow-1');
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.DivSidebar = DivSidebar;
 }

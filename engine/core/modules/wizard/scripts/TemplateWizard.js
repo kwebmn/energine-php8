@@ -1,9 +1,10 @@
-ScriptLoader.load('GridManager');
+import GridManager from '../../share/scripts/GridManager.js';
+import ModalBox from '../../share/scripts/ModalBox.js';
 /**
  * TemplateWizard (ES6 version)
  * @extends GridManager
  */
-class TemplateWizard extends GridManager {
+export default class TemplateWizard extends GridManager {
     /**
      * @param {HTMLElement|string} element
      */
@@ -39,5 +40,6 @@ class TemplateWizard extends GridManager {
     }
 }
 
-// Глобально, если требуется
-window.TemplateWizard = TemplateWizard;
+if (typeof window !== 'undefined') {
+    window.TemplateWizard = TemplateWizard;
+}

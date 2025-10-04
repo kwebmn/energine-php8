@@ -432,14 +432,30 @@ class ModalBoxClass {
 }
 
 // Singleton-глобал (window.top — если есть)
-const ModalBox = window.top.ModalBox || new ModalBoxClass();
-window.top.ModalBox = ModalBox;
+const modalBoxSingleton = (() => {
+    if (typeof window === 'undefined') {
+        return new ModalBoxClass();
+    }
 
-// DOM ready init
-if (!ModalBox.initialized) {
+    const topWindow = window.top || window;
+    const existing = topWindow.ModalBox;
+    if (existing instanceof ModalBoxClass || (existing && typeof existing.init === 'function')) {
+        window.ModalBox = existing;
+        return existing;
+    }
+
+    const instance = new ModalBoxClass();
+    topWindow.ModalBox = instance;
+    window.ModalBox = instance;
+    return instance;
+})();
+
+if (!modalBoxSingleton.initialized) {
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => ModalBox.init());
+        document.addEventListener('DOMContentLoaded', () => modalBoxSingleton.init());
     } else {
-        ModalBox.init();
+        modalBoxSingleton.init();
     }
 }
+
+export default modalBoxSingleton;

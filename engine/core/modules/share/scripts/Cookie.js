@@ -1,4 +1,4 @@
-class Cookie {
+export default class Cookie {
     // Получить значение cookie по имени
     static read(name) {
         const matches = document.cookie.match(
@@ -45,7 +45,6 @@ class Cookie {
     }
 }
 
-// Пример использования:
-// Cookie.write('test', '123', { duration: 1 });
-// const val = Cookie.read('test');
-// Cookie.remove('test');
+if (typeof window !== 'undefined') {
+    window.Cookie = Cookie;
+}

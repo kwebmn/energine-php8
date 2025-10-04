@@ -22,3 +22,7 @@ tmp/
 /stylesheets/
 /templates/
 /uploads/
+
+# Node/Vite artifacts
+/node_modules/
+/htdocs/assets/
