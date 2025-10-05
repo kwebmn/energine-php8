@@ -459,6 +459,9 @@ abstract class DataSet extends Component
     {
         $result = null;
 
+        $behaviorNames = [];
+        $behaviorModules = [];
+
         if (($config = $this->getConfig()->getCurrentStateConfig()) && $config->javascript) {
             $result = $this->doc->createElement('javascript');
 
@@ -468,8 +471,16 @@ abstract class DataSet extends Component
                 $name = isset($value['name']) ? (string)$value['name'] : '';
                 $path = isset($value['path']) ? (string)$value['path'] : '';
 
+                if ($name !== '') {
+                    $behaviorNames[$name] = true;
+                    if ($path !== '') {
+                        $normalizedPath = rtrim((string)$path, '/') . '/';
+                        $behaviorModules[$name] = $normalizedPath;
+                        $JSObjectXML->setAttribute('path', $normalizedPath);
+                    }
+                }
+
                 $JSObjectXML->setAttribute('name', $name);
-                $JSObjectXML->setAttribute('path', $path !== '' ? rtrim($path, '/') . '/' : '');
 
                 $result->appendChild($JSObjectXML);
             }
@@ -487,6 +498,19 @@ abstract class DataSet extends Component
 
                 $result->appendChild($JSObjectXML);
             }
+        }
+
+        if (!empty($behaviorNames)) {
+            $this->setProperty('js-behaviors', implode(' ', array_keys($behaviorNames)));
+
+            if (count($behaviorModules) === 1) {
+                $this->setProperty('js-module', reset($behaviorModules));
+            } else {
+                $this->removeProperty('js-module');
+            }
+        } else {
+            $this->removeProperty('js-behaviors');
+            $this->removeProperty('js-module');
         }
 
         return $result;

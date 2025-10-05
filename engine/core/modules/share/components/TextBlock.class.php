@@ -150,6 +150,8 @@ final class TextBlock extends DataSet implements SampleTextBlock
     protected function buildJS(): ?\DOMNode
     {
         if (!$this->isEditable) {
+            // Даже в публичном режиме обеспечиваем выставление js-behaviors (для data-energine-js).
+            parent::buildJS();
             return null;
         }
 

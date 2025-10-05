@@ -30,7 +30,7 @@ export default defineConfig({
   publicDir: false,
   build: {
     emptyOutDir: false,
-    outDir: resolve(rootDir, 'htdocs/assets'),
+    outDir: resolve(rootDir, 'assets'),
     manifest: true,
     rollupOptions: {
       input: entryPoints,

@@ -515,12 +515,38 @@ final class Document extends DBWorker implements IDocument
      */
     private function getCoreScriptEntries(): array
     {
-        return [
-            [
-                'src'  => 'engine/core/modules/share/scripts/Energine.js',
-                'type' => 'module',
-            ],
+        $baseRelativePath = 'engine/core/modules/share/scripts/';
+        $baseAbsolutePath = rtrim(HTDOCS_DIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $baseRelativePath;
+
+        $coreModules = [
+            'Energine.js',
+            'Toolbar.js',
+            'TabPane.js',
+            'GridManager.js',
+            'Form.js',
+            'ValidForm.js',
+            'Validator.js',
+            'AcplField.js',
+            'Cookie.js',
+            'ModalBox.js',
+            'PageList.js',
+            'TextBlock.js',
         ];
+
+        $entries = [];
+
+        foreach ($coreModules as $module) {
+            $absolute = $baseAbsolutePath . $module;
+            if (!is_file($absolute)) {
+                continue;
+            }
+            $entries[] = [
+                'src'  => $baseRelativePath . $module,
+                'type' => 'module',
+            ];
+        }
+
+        return $entries;
     }
 
     /**

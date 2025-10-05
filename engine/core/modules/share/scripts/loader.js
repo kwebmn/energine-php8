@@ -167,22 +167,54 @@
     };
 
     const instantiateComponent = (element) => {
-        const className = element.getAttribute('data-energine-js');
-        const Constructor = resolveConstructor(className);
-        if (typeof Constructor !== 'function') {
-            console.warn('[Energine loader] Class not found for', className);
+        const classAttr = element.getAttribute('data-energine-js') || '';
+        const classNames = classAttr.split(/\s+/).map(name => name.trim()).filter(Boolean);
+        if (!classNames.length) {
             return null;
         }
+
+        let resolvedName = '';
+        let Constructor = null;
+
+        for (let index = 0; index < classNames.length; index += 1) {
+            const candidate = classNames[index];
+            const maybeConstructor = resolveConstructor(candidate);
+            if (typeof maybeConstructor === 'function') {
+                Constructor = maybeConstructor;
+                resolvedName = candidate;
+                break;
+            }
+        }
+
+        if (typeof Constructor !== 'function') {
+            console.warn('[Energine loader] Class not found for', classAttr);
+            return null;
+        }
+
         const options = readPrefixedAttributes(element, PARAM_ATTR_PREFIX);
         let instance = null;
         try {
             instance = new Constructor(element, options);
         } catch (error) {
-            console.error('[Energine loader] Failed to initialise', className, error);
+            console.error('[Energine loader] Failed to initialise', resolvedName || classAttr, error);
             return null;
         }
+
         element.__energineInstance = instance;
         element.dataset.energineInitialized = 'true';
+        if (resolvedName) {
+            element.dataset.energineResolvedClass = resolvedName;
+        }
+
+        if (classNames.length > 1) {
+            classNames.forEach((name) => {
+                if (name === resolvedName) {
+                    return;
+                }
+                resolveConstructor(name);
+            });
+        }
+
         return instance;
     };
 

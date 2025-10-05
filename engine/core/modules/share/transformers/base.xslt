@@ -14,18 +14,48 @@
 
     <xsl:template name="energine-component-attributes">
         <xsl:param name="component" select="."/>
-        <xsl:variable name="BEHAVIOR" select="$component/javascript/behavior[1]/@name"/>
+
+        <xsl:variable name="JS_BEHAVIORS_ATTR" select="normalize-space($component/@js-behaviors)"/>
+        <xsl:variable name="BEHAVIOR_NODES" select="$component/javascript/behavior[@name != '']"/>
+        <xsl:variable name="HAS_BEHAVIORS" select="string-length($JS_BEHAVIORS_ATTR) &gt; 0 or count($BEHAVIOR_NODES) &gt; 0"/>
         <xsl:variable name="FALLBACK_CLASS">
             <xsl:choose>
-                <xsl:when test="string-length($BEHAVIOR) &gt; 0"><xsl:value-of select="$BEHAVIOR"/></xsl:when>
+                <xsl:when test="$HAS_BEHAVIORS">
+                    <xsl:text></xsl:text>
+                </xsl:when>
                 <xsl:when test="string-length($component/@class) &gt; 0"><xsl:value-of select="$component/@class"/></xsl:when>
                 <xsl:when test="string-length($component/@sample) &gt; 0"><xsl:value-of select="$component/@sample"/></xsl:when>
                 <xsl:otherwise><xsl:value-of select="$component/@type"/></xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <xsl:if test="string-length($FALLBACK_CLASS) &gt; 0">
-            <xsl:attribute name="data-energine-js"><xsl:value-of select="$FALLBACK_CLASS"/></xsl:attribute>
-        </xsl:if>
+
+        <xsl:choose>
+            <xsl:when test="string-length($JS_BEHAVIORS_ATTR) &gt; 0">
+                <xsl:attribute name="data-energine-js"><xsl:value-of select="$JS_BEHAVIORS_ATTR"/></xsl:attribute>
+                <xsl:if test="string-length($component/@js-module) &gt; 0">
+                    <xsl:attribute name="data-energine-module"><xsl:value-of select="$component/@js-module"/></xsl:attribute>
+                </xsl:if>
+            </xsl:when>
+            <xsl:when test="count($BEHAVIOR_NODES) &gt; 0">
+                <xsl:attribute name="data-energine-js">
+                    <xsl:for-each select="$BEHAVIOR_NODES">
+                        <xsl:value-of select="@name"/>
+                        <xsl:if test="position() != last()">
+                            <xsl:text> </xsl:text>
+                        </xsl:if>
+                    </xsl:for-each>
+                </xsl:attribute>
+                <xsl:if test="count($BEHAVIOR_NODES) = 1 and string-length(normalize-space($BEHAVIOR_NODES/@path)) &gt; 0">
+                    <xsl:attribute name="data-energine-module">
+                        <xsl:value-of select="normalize-space($BEHAVIOR_NODES/@path)"/>
+                    </xsl:attribute>
+                </xsl:if>
+            </xsl:when>
+            <xsl:when test="string-length($FALLBACK_CLASS) &gt; 0">
+                <xsl:attribute name="data-energine-js"><xsl:value-of select="$FALLBACK_CLASS"/></xsl:attribute>
+            </xsl:when>
+        </xsl:choose>
+
         <xsl:for-each select="$component/@*">
             <xsl:attribute name="{concat('data-energine-param-', name())}"><xsl:value-of select="."/></xsl:attribute>
         </xsl:for-each>
