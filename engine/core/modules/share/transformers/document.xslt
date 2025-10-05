@@ -138,6 +138,12 @@
 <!--            <script type="text/javascript" src="scripts/jquery.min.js"></script>-->
 <!--        </xsl:if>-->
 
+        <xsl:if test="not(//property[@name='single'])">
+            <xsl:if test="$DOC_PROPS[@name='google_analytics'] and ($DOC_PROPS[@name='google_analytics'] != '')">
+                <xsl:value-of select="$DOC_PROPS[@name='google_analytics']" disable-output-escaping="yes"/>
+            </xsl:if>
+        </xsl:if>
+
     </xsl:template>
 
     <xsl:template name="START_ENERGINE_JS">
@@ -157,14 +163,6 @@
         <xsl:apply-templates select="/document/javascript/library" mode="head"/>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
-    </xsl:template>
-
-        <xsl:if test="not(//property[@name='single'])">
-            <xsl:if test="$DOC_PROPS[@name='google_analytics'] and ($DOC_PROPS[@name='google_analytics'] != '')">
-                <xsl:value-of select="$DOC_PROPS[@name='google_analytics']" disable-output-escaping="yes"/>
-            </xsl:if>
-        </xsl:if>
-
     </xsl:template>
 
     <!-- Single mode document -->
