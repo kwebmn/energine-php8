@@ -1,6 +1,6 @@
 import ModalBox from './ModalBox.js';
 
-export default class FiltersTreeEditor {
+class FiltersTreeEditor {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
@@ -216,3 +216,5 @@ if (typeof window !== 'undefined') {
 
 // Пример создания экземпляра
 // new FiltersTreeEditor(document.getElementById('your-element-id'));
+
+export default FiltersTreeEditor;

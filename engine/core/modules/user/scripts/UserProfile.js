@@ -4,7 +4,7 @@ import ValidForm from '../../share/scripts/ValidForm.js';
  * UserProfile (ES6 version)
  * @extends ValidForm
  */
-export default class UserProfile extends ValidForm {
+class UserProfile extends ValidForm {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
@@ -37,3 +37,5 @@ export default class UserProfile extends ValidForm {
 if (typeof window !== 'undefined') {
     window.UserProfile = UserProfile;
 }
+
+export default UserProfile;

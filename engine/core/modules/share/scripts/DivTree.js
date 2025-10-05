@@ -5,7 +5,7 @@ import DivManager from './DivManager.js';
 // Предполагаем, что DivManager уже определён как ES6-класс
 // и что TreeView тоже — ES6 или совместимая конструкция.
 
-export default class DivTree extends DivManager {
+class DivTree extends DivManager {
     /**
      * @param {Element|string} el The main holder element.
      */
@@ -89,3 +89,5 @@ if (typeof window !== 'undefined') {
 
 // Для обратной совместимости (если нужно глобально)
 window.DivTree = DivTree;
+
+export default DivTree;

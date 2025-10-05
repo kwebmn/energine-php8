@@ -1,6 +1,6 @@
 import DivManager from './DivManager.js';
 
-export default class DivSidebar extends DivManager {
+class DivSidebar extends DivManager {
     /**
      * @param {Element|string} element
      * @param {Object} [options]
@@ -207,3 +207,5 @@ export default class DivSidebar extends DivManager {
 if (typeof window !== 'undefined') {
     window.DivSidebar = DivSidebar;
 }
+
+export default DivSidebar;

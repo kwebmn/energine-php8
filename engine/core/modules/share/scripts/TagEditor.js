@@ -4,7 +4,7 @@ import ModalBox from './ModalBox.js';
  * Tag editor.
  * @extends GridManager
  */
-export default class TagEditor extends GridManager {
+class TagEditor extends GridManager {
     /**
      * @param {HTMLElement|string} element The main holder element.
      * @param {Object} [options]
@@ -109,3 +109,5 @@ export default class TagEditor extends GridManager {
 if (typeof window !== 'undefined') {
     window.TagEditor = TagEditor;
 }
+
+export default TagEditor;

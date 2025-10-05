@@ -1,4 +1,4 @@
-export default class SignIn {
+class SignIn {
   constructor(element, options = {}) {
     // element может быть селектором или DOM-узлом
     this.componentElement =
@@ -185,3 +185,5 @@ if (typeof window !== 'undefined') {
 
 // Пример использования:
 // new SignIn('#sign-in-component');
+
+export default SignIn;

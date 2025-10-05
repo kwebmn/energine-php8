@@ -3,7 +3,7 @@ import Validator from './Validator.js';
 /**
  * ValidForm (ES6 version)
  */
-export default class ValidForm {
+class ValidForm {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
@@ -51,3 +51,5 @@ if (typeof window !== 'undefined') {
 
 // Глобальная привязка (если требуется)
 window.ValidForm = ValidForm;
+
+export default ValidForm;

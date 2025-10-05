@@ -1,4 +1,4 @@
-export default class TabPane {
+class TabPane {
     static count = 1;
     static assignID() {
         return this.count++;
@@ -290,3 +290,5 @@ export default class TabPane {
 if (typeof window !== 'undefined') {
     window.TabPane = TabPane;
 }
+
+export default TabPane;

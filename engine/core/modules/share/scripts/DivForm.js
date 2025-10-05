@@ -3,7 +3,7 @@ import ModalBox from './ModalBox.js';
 
 // Подключения: Form и ModalBox должны быть подключены как ES6-модули
 
-export default class DivForm extends Form {
+class DivForm extends Form {
     constructor(element, options = {}) {
         super(element, options);
 
@@ -187,3 +187,5 @@ Object.assign(DivForm.prototype, {
 
 // Для совместимости
 window.DivForm = DivForm;
+
+export default DivForm;

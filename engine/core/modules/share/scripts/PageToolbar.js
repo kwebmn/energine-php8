@@ -2,7 +2,7 @@ import Toolbar from './Toolbar.js';
 import ModalBox from './ModalBox.js';
 import Cookie from './Cookie.js';
 
-export default class PageToolbar extends Toolbar {
+class PageToolbar extends Toolbar {
     constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
         super(toolbarName, props);
 
@@ -644,3 +644,5 @@ if (typeof window !== 'undefined') {
 
 // экспорт для window, если надо
 window.PageToolbar = PageToolbar;
+
+export default PageToolbar;

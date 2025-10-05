@@ -3,7 +3,7 @@ import ModalBox from './ModalBox.js';
 
 // ImageManager.js
 
-export default class ImageManager extends Form {
+class ImageManager extends Form {
     constructor(element, options = {}) {
         super(element, options);
 
@@ -139,3 +139,5 @@ if (typeof window !== 'undefined') {
 
 // Если нужна глобальная привязка:
 window.ImageManager = ImageManager;
+
+export default ImageManager;

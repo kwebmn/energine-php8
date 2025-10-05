@@ -1338,7 +1338,7 @@ export class Grid {
 /**
  * GridManager (ES6 version)
  */
-export default class GridManager {
+class GridManager {
     /**
      * GridManager orchestrates data grid interactions, paging, filtering and toolbar wiring.
      * It preserves the legacy API so existing integrations keep working while the internals
@@ -2039,7 +2039,8 @@ export default class GridManager {
 
 // Для совместимости (глобально)
 // window.GridManager = GridManager;
-// export default GridManager;
+
+export default GridManager;
 
 /**
  * Filter tool.

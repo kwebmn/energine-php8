@@ -1,4 +1,4 @@
-export default class RecoverPassword {
+class RecoverPassword {
     constructor(element, options = {}) {
         // element — это или селектор, или DOM-элемент
         this.componentElement = (typeof element === 'string')
@@ -69,3 +69,5 @@ export default class RecoverPassword {
 if (typeof window !== 'undefined') {
     window.RecoverPassword = RecoverPassword;
 }
+
+export default RecoverPassword;

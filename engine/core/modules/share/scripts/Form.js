@@ -32,7 +32,7 @@ import Cookie from './Cookie.js';
  * @version 1.0.1
  */
 
-export default class Form {
+class Form {
     // Класс Energine.request как статическое свойство
     static request = Energine.request;
 
@@ -2066,3 +2066,5 @@ Form.RichEditor = FormRichEditor;
 if (typeof window !== 'undefined') {
     window.Form = Form;
 }
+
+export default Form;

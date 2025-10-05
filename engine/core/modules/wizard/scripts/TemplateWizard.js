@@ -4,7 +4,7 @@ import ModalBox from '../../share/scripts/ModalBox.js';
  * TemplateWizard (ES6 version)
  * @extends GridManager
  */
-export default class TemplateWizard extends GridManager {
+class TemplateWizard extends GridManager {
     /**
      * @param {HTMLElement|string} element
      */
@@ -43,3 +43,5 @@ export default class TemplateWizard extends GridManager {
 if (typeof window !== 'undefined') {
     window.TemplateWizard = TemplateWizard;
 }
+
+export default TemplateWizard;

@@ -10,7 +10,7 @@ const ensureFileAPI = () => {
 
 // FileRepoForm.js
 
-export default class FileRepoForm extends Form {
+class FileRepoForm extends Form {
     constructor(el, options = {}) {
         super(el, options);
 
@@ -188,3 +188,5 @@ if (typeof window !== 'undefined') {
 
 // Привязка к глобальному пространству (если нужно)
 // window.FileRepoForm = FileRepoForm;
+
+export default FileRepoForm;

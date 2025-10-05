@@ -12,7 +12,7 @@ const ensureFileAPI = () => {
  * AttachmentEditor
  * @extends GridManager
  */
-export default class AttachmentEditor extends GridManager {
+class AttachmentEditor extends GridManager {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
@@ -244,3 +244,5 @@ if (typeof window !== 'undefined') {
 
 // Привязка глобально, если требуется:
 window.AttachmentEditor = AttachmentEditor;
+
+export default AttachmentEditor;

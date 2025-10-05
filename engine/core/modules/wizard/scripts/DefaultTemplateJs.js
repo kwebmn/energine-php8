@@ -20,7 +20,7 @@ const readTemplateAttribute = (element, options = {}) => {
     return null;
 };
 
-export default class DefaultTemplateJs {
+class DefaultTemplateJs {
     constructor(element, options = {}) {
         this.element = resolveElement(element);
         this.componentElement = this.element;
@@ -32,3 +32,5 @@ export default class DefaultTemplateJs {
 if (typeof window !== 'undefined') {
     window.DefaultTemplateJs = DefaultTemplateJs;
 }
+
+export default DefaultTemplateJs;

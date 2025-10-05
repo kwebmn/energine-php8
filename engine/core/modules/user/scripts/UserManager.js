@@ -4,7 +4,7 @@ import GridManager from '../../share/scripts/GridManager.js';
  * UserManager (ES6 version)
  * @extends GridManager
  */
-export default class UserManager extends GridManager {
+class UserManager extends GridManager {
     /**
      * Активировать пользователя
      */
@@ -34,3 +34,5 @@ export default class UserManager extends GridManager {
 if (typeof window !== 'undefined') {
     window.UserManager = UserManager;
 }
+
+export default UserManager;

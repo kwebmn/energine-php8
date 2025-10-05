@@ -1,4 +1,4 @@
-export default class Cookie {
+class Cookie {
     // Получить значение cookie по имени
     static read(name) {
         const matches = document.cookie.match(
@@ -48,3 +48,5 @@ export default class Cookie {
 if (typeof window !== 'undefined') {
     window.Cookie = Cookie;
 }
+
+export default Cookie;

@@ -20,7 +20,7 @@ const readTemplateAttribute = (element, options = {}) => {
     return null;
 };
 
-export default class Test {
+class Test {
     constructor(element, options = {}) {
         this.element = resolveElement(element);
         this.componentElement = this.element;
@@ -32,3 +32,5 @@ export default class Test {
 if (typeof window !== 'undefined') {
     window.Test = Test;
 }
+
+export default Test;

@@ -4,7 +4,7 @@
  * @version 2.0.0
  */
 
-export default class Validator {
+class Validator {
     /**
      * @param {HTMLFormElement|string} form - форма (DOM-элемент или id)
      * @param {TabPane} tabPane - (необязательно) объект TabPane
@@ -147,3 +147,5 @@ if (typeof window !== 'undefined') {
 
 // Для совместимости
 window.Validator = Validator;
+
+export default Validator;

@@ -26,7 +26,7 @@ const getDivisionIconClass = (path) => {
     return `${className} fa-fw`;
 };
 
-export default class DivManager {
+class DivManager {
 
     constructor(element, options = {}) {
         this.element = typeof element === 'string'
@@ -349,3 +349,5 @@ export default class DivManager {
 if (typeof window !== 'undefined') {
     window.DivManager = DivManager;
 }
+
+export default DivManager;

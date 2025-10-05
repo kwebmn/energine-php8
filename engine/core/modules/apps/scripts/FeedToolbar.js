@@ -28,7 +28,7 @@ const findRecordsetElement = (identifier) => {
     return document.getElementById(identifier) || document.querySelector(`[data-energine-param-recordset="${identifier}"]`);
 };
 
-export default class FeedToolbar extends Toolbar {
+class FeedToolbar extends Toolbar {
     // Сохраняем request для совместимости
     static request = Energine.request;
 
@@ -247,3 +247,5 @@ if (typeof window !== 'undefined') {
 
 // Пример использования:
 // const toolbar = new FeedToolbar(container);
+
+export default FeedToolbar;

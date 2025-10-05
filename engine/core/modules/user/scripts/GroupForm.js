@@ -4,7 +4,7 @@ import Form from '../../share/scripts/Form.js';
  * GroupForm (ES6 version)
  * @extends Form
  */
-export default class GroupForm extends Form {
+class GroupForm extends Form {
     /**
      * @param {HTMLElement|string} element The form element.
      * @param {Object} [options]
@@ -77,3 +77,5 @@ if (typeof window !== 'undefined') {
 
 // Глобальная привязка, если требуется
 window.GroupForm = GroupForm;
+
+export default GroupForm;

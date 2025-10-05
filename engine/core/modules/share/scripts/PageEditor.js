@@ -18,7 +18,7 @@ function applyEditorOutline(area, editor) {
     }
 }
 
-export default class PageEditor {
+class PageEditor {
     editorClassName = 'nrgnEditor';
     editors = [];
 
@@ -262,3 +262,5 @@ if (typeof window.PageEditor === 'undefined') {
 }
 window.PageEditor.BlockEditor = BlockEditor;
 ;
+
+export default PageEditor;

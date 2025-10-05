@@ -5,7 +5,7 @@ import ModalBox from './ModalBox.js';
  * Site manager.
  * @extends GridManager
  */
-export default class SiteManager extends GridManager {
+class SiteManager extends GridManager {
     /**
      * @param {HTMLElement|string} element Main holder element for the SiteManager
      */
@@ -53,3 +53,5 @@ export default class SiteManager extends GridManager {
 if (typeof window !== 'undefined') {
     window.SiteManager = SiteManager;
 }
+
+export default SiteManager;

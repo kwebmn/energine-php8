@@ -212,7 +212,7 @@ class GridWithPopImage extends Grid {
  * Класс FileRepository
  * @extends GridManager
  */
-export default class FileRepository extends GridManager {
+class FileRepository extends GridManager {
     constructor(element, options = {}) {
         super(element, options);
         this.fileAPI = ensureFileAPI();
@@ -579,3 +579,5 @@ if (typeof window !== 'undefined') {
     window.FileRepository = FileRepository;
     window.PathList = PathList;
 }
+
+export default FileRepository;
