@@ -4,7 +4,7 @@
   "description": "Модернизированная версия CMS Energine, основанная на форке проекта energine-cmf и адаптированная к современным стандартам PHP и фронтенда.",
   "type": "module",
   "scripts": {
-    "build": "vite build"
+    "build": "vite build && vite build --mode admin"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",

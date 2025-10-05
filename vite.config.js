@@ -1,4 +1,5 @@
 import { resolve } from 'path';
+import { defineConfig } from 'vite';
 
 const baseBuildOptions = {
   outDir: 'public/assets',
@@ -8,25 +9,32 @@ const baseBuildOptions = {
   target: 'es2018',
 };
 
-const createBundleConfig = (name, entry) => ({
-  build: {
-    ...baseBuildOptions,
-    rollupOptions: {
-      input: {
-        [name]: resolve(__dirname, entry),
-      },
-      output: {
-        format: 'iife',
-        entryFileNames: `${name}.js`,
-        chunkFileNames: 'chunks/[name].js',
-        assetFileNames: 'assets/[name][extname]',
-        manualChunks: undefined,
+const bundles = {
+  site: {
+    entry: 'js/_bundles/site.bundle.js',
+    fileName: 'site.js',
+  },
+  admin: {
+    entry: 'js/_bundles/admin.bundle.js',
+    fileName: 'admin.js',
+  },
+};
+
+export default defineConfig(({ mode }) => {
+  const bundle = mode === 'admin' ? bundles.admin : bundles.site;
+
+  return {
+    build: {
+      ...baseBuildOptions,
+      rollupOptions: {
+        input: resolve(__dirname, bundle.entry),
+        output: {
+          format: 'iife',
+          entryFileNames: bundle.fileName,
+          chunkFileNames: 'chunks/[name].js',
+          assetFileNames: 'assets/[name][extname]',
+        },
       },
     },
-  },
+  };
 });
-
-export default [
-  createBundleConfig('site', 'js/_bundles/site.bundle.js'),
-  createBundleConfig('admin', 'js/_bundles/admin.bundle.js'),
-];
