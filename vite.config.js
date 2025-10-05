@@ -1,24 +1,32 @@
 import { resolve } from 'path';
 
-export default {
+const baseBuildOptions = {
+  outDir: 'public/assets',
+  emptyOutDir: false,
+  sourcemap: false,
+  minify: 'esbuild',
+  target: 'es2018',
+};
+
+const createBundleConfig = (name, entry) => ({
   build: {
-    outDir: 'public/assets',
-    emptyOutDir: false,
-    sourcemap: false,
-    minify: 'esbuild',
-    target: 'es2018',
+    ...baseBuildOptions,
     rollupOptions: {
       input: {
-        site: resolve(__dirname, 'js/_bundles/site.bundle.js'),
-        admin: resolve(__dirname, 'js/_bundles/admin.bundle.js'),
+        [name]: resolve(__dirname, entry),
       },
       output: {
         format: 'iife',
-        inlineDynamicImports: false,
-        entryFileNames: '[name].js',
+        entryFileNames: `${name}.js`,
         chunkFileNames: 'chunks/[name].js',
         assetFileNames: 'assets/[name][extname]',
+        manualChunks: undefined,
       },
     },
   },
-};
+});
+
+export default [
+  createBundleConfig('site', 'js/_bundles/site.bundle.js'),
+  createBundleConfig('admin', 'js/_bundles/admin.bundle.js'),
+];
