@@ -1,7 +1,9 @@
 // --- ScriptLoader глобально ---
-window.ScriptLoader = {
-    load() {}
-};
+if (typeof window.ScriptLoader !== 'object' || window.ScriptLoader === null) {
+    window.ScriptLoader = {
+        load() {},
+    };
+}
 
 // --- Вспомогательная функция: сериализация данных ---
 function serializeToFormEncoded(obj, prefix) {
@@ -22,204 +24,224 @@ function serializeToFormEncoded(obj, prefix) {
 }
 
 // --- Energine глобально ---
-window.Energine = {
-    debug: false,
-    base: '',
-    static: '',
-    resizer: '',
-    media: '',
-    root: '',
-    lang: '',
-    translations: {
-        get(constant) {
-            return (window.Energine.translations[constant] || null);
-        },
-        set(constant, translation) {
-            window.Energine.translations[constant] = translation;
-        },
-        extend(obj) {
-            Object.assign(window.Energine.translations, obj);
+const Energine = window.Energine = (typeof window.Energine === 'object' && window.Energine !== null) ? window.Energine : {};
+
+if (typeof Energine.debug !== 'boolean') {
+    Energine.debug = false;
+}
+if (typeof Energine.base !== 'string') {
+    Energine.base = '';
+}
+if (typeof Energine.static !== 'string') {
+    Energine.static = '';
+}
+if (typeof Energine.resizer !== 'string') {
+    Energine.resizer = '';
+}
+if (typeof Energine.media !== 'string') {
+    Energine.media = '';
+}
+if (typeof Energine.root !== 'string') {
+    Energine.root = '';
+}
+if (typeof Energine.lang !== 'string') {
+    Energine.lang = '';
+}
+
+if (typeof Energine.translations !== 'object' || Energine.translations === null) {
+    Energine.translations = {};
+}
+
+Energine.translations.get = function (constant) {
+    return (Energine.translations[constant] || null);
+};
+
+Energine.translations.set = function (constant, translation) {
+    Energine.translations[constant] = translation;
+};
+
+Energine.translations.extend = function (obj) {
+    Object.assign(Energine.translations, obj);
+};
+
+if (typeof Energine.forceJSON !== 'boolean') {
+    Energine.forceJSON = false;
+}
+if (typeof Energine.supportContentEdit !== 'boolean') {
+    Energine.supportContentEdit = true;
+}
+
+if (!Array.isArray(Energine.tasks)) {
+    Energine.tasks = [];
+}
+
+// --- Универсальный AJAX-запрос ---
+Energine.request = async function (uri, data, onSuccess, onUserError, onServerError = () => {}, method = 'post') {
+    let url = uri + (Energine.forceJSON ? '?json' : '');
+    const isGet = method.toLowerCase() === 'get';
+    const headers = { 'X-Request': 'json' };
+    const fetchOpts = { method: method.toUpperCase(), headers };
+
+    if (Energine.forceJSON) {
+        headers['Content-Type'] = 'application/json';
+        if (!isGet) {
+            fetchOpts.body = JSON.stringify(data);
+        } else if (data) {
+            const params = new URLSearchParams(data).toString();
+            url += (url.includes('?') ? '&' : '?') + params;
         }
-    },
-    forceJSON: false,
-    supportContentEdit: true,
-    tasks: [],
-
-    // --- Универсальный AJAX-запрос ---
-    request: async function(uri, data, onSuccess, onUserError, onServerError = () => {}, method = 'post') {
-        let url = uri + (window.Energine.forceJSON ? '?json' : '');
-        const isGet = method.toLowerCase() === 'get';
-        const headers = { 'X-Request': 'json' };
-        const fetchOpts = { method: method.toUpperCase(), headers };
-
-        if (window.Energine.forceJSON) {
-            headers['Content-Type'] = 'application/json';
-            if (!isGet) {
-                fetchOpts.body = JSON.stringify(data);
-            } else if (data) {
-                const params = new URLSearchParams(data).toString();
-                url += (url.includes('?') ? '&' : '?') + params;
-            }
+    } else {
+        if (typeof data === 'string') {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            fetchOpts.body = data;
         } else {
-            if (typeof data === 'string') {
+            const formEncoded = serializeToFormEncoded(data);
+            if (isGet) {
+                url += (url.includes('?') ? '&' : '?') + formEncoded;
+            } else {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded';
-                fetchOpts.body = data;
-            } else {
-                const formEncoded = serializeToFormEncoded(data);
-                if (isGet) {
-                    url += (url.includes('?') ? '&' : '?') + formEncoded;
-                } else {
-                    headers['Content-Type'] = 'application/x-www-form-urlencoded';
-                    fetchOpts.body = formEncoded;
-                }
+                fetchOpts.body = formEncoded;
             }
         }
+    }
 
+    try {
+        const res = await fetch(url, fetchOpts);
+        const text = await res.text();
+        let response;
         try {
-            const res = await fetch(url, fetchOpts);
-            const text = await res.text();
-            let response;
-            try {
-                response = JSON.parse(text);
-            } catch {
-                response = null;
-            }
-
-            if (!response) return onServerError(text);
-
-            if (response.result) {
-                onSuccess(response);
-            } else {
-                let msg = response.title || 'Произошла ошибка:\n';
-                if (Array.isArray(response.errors)) {
-                    response.errors.forEach(error => {
-                        if (typeof error.field !== 'undefined') {
-                            msg += error.field + " :\t";
-                        }
-                        if (typeof error.message !== 'undefined') {
-                            msg += error.message + "\n";
-                        } else {
-                            msg += error + "\n";
-                        }
-                    });
-                }
-                alert(msg);
-                if (onUserError) onUserError(response);
-            }
-        } catch (e) {
-            console.error(e);
-            onServerError(e.toString());
+            response = JSON.parse(text);
+        } catch {
+            response = null;
         }
-    },
 
-    cancelEvent(e) {
-        e = e || window.event;
-        try {
-            if (e.preventDefault) {
-                e.stopPropagation();
-                e.preventDefault();
-            } else {
-                e.returnValue = false;
-                e.cancelBubble = true;
-            }
-        } catch (err) {
-            console.warn(err);
-        }
-    },
+        if (!response) return onServerError(text);
 
-    resize(img, src, w, h, r = '') {
-        img.setAttribute('src', `${window.Energine.resizer}${r}w${w}-h${h}/${src}`);
-    },
-
-    confirmBox(message, yes, no) {
-        if (typeof Swal === 'undefined') {
-            if (confirm(message)) {
-                if (yes) yes();
-            } else {
-                if (no) no();
-            }
+        if (response.result) {
+            onSuccess(response);
         } else {
-            Swal.fire({
-                title: message,
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Yes",
-                cancelButtonText: "No",
-            }).then((result) => {
-                if (result.isConfirmed && yes) yes();
-                else if (no) no();
-            });
+            let msg = response.title || 'Произошла ошибка:\n';
+            if (Array.isArray(response.errors)) {
+                response.errors.forEach(error => {
+                    if (typeof error.field !== 'undefined') {
+                        msg += error.field + " :\t";
+                    }
+                    if (typeof error.message !== 'undefined') {
+                        msg += error.message + "\n";
+                    } else {
+                        msg += error + "\n";
+                    }
+                });
+            }
+            alert(msg);
+            if (onUserError) onUserError(response);
         }
-    },
+    } catch (e) {
+        console.error(e);
+        onServerError(e.toString());
+    }
+};
 
-    alertBox(message) {
-        if (typeof Swal === 'undefined') {
-            alert(message);
+Energine.cancelEvent = function (e) {
+    e = e || window.event;
+    try {
+        if (e.preventDefault) {
+            e.stopPropagation();
+            e.preventDefault();
         } else {
-            Swal.fire({
-                title: message,
-                icon: "error",
-            });
+            e.returnValue = false;
+            e.cancelBubble = true;
         }
-    },
+    } catch (err) {
+        console.warn(err);
+    }
+};
 
-    noticeBox(message, icon, callback) {
-        if (typeof Swal === 'undefined') {
-            alert(message);
+Energine.resize = function (img, src, w, h, r = '') {
+    img.setAttribute('src', `${Energine.resizer}${r}w${w}-h${h}/${src}`);
+};
+
+Energine.confirmBox = function (message, yes, no) {
+    if (typeof Swal === 'undefined') {
+        if (confirm(message)) {
+            if (yes) yes();
+        } else {
+            if (no) no();
+        }
+    } else {
+        Swal.fire({
+            title: message,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes",
+            cancelButtonText: "No",
+        }).then((result) => {
+            if (result.isConfirmed && yes) yes();
+            else if (no) no();
+        });
+    }
+};
+
+Energine.alertBox = function (message) {
+    if (typeof Swal === 'undefined') {
+        alert(message);
+    } else {
+        Swal.fire({
+            title: message,
+            icon: "error",
+        });
+    }
+};
+
+Energine.noticeBox = function (message, icon, callback) {
+    if (typeof Swal === 'undefined') {
+        alert(message);
+        if (callback) callback();
+    } else {
+        Swal.fire({
+            icon,
+            title: message,
+            timer: 1500
+        }).then(() => {
             if (callback) callback();
-        } else {
-            Swal.fire({
-                icon,
-                title: message,
-                timer: 1500
-            }).then(() => {
-                if (callback) callback();
-            });
-        }
-    },
+        });
+    }
+};
 
-    createDatePicker: function(datePickerId, nullable) {
+Energine.createDatePicker = function (datePickerId, nullable) {
 
-    },
+};
 
+Energine.createDateTimePicker = function (datePickerId, nullable) {
 
-    createDateTimePicker: function(datePickerId, nullable) {
+};
 
-    },
+Energine.loadCSS = function (file) {
+    if (!document.querySelector(`link[href$="${file}"]`)) {
+        const link = document.createElement('link');
+        link.rel = "stylesheet";
+        link.href = file;
+        document.head.appendChild(link);
+    }
+};
 
-    loadCSS: function(file) {
-        if (!document.querySelector(`link[href$="${file}"]`)) {
-            const link = document.createElement('link');
-            link.rel = "stylesheet";
-            link.href = file;
-            document.head.appendChild(link);
-        }
-    },
+Energine.addTask = function (task, priority = 5) {
+    if (!Energine.tasks[priority]) {
+        Energine.tasks[priority] = [];
+    }
+    Energine.tasks[priority].push(task);
+};
 
-    addTask: function(task, priority = 5)
-    {
-        if (!Energine.tasks[priority])
-        {
-            Energine.tasks[priority] = [];
-        }
-        Energine.tasks[priority].push(task);
-
-    },
-
-    run: function()
-    {
-        if (Energine.tasks)
-        {
-            for (const priority of Energine.tasks) {
-                if (priority)
-                {
-                    for (const func of priority) {
-                        try {
-                            func();
-                        }
-                        catch (e) {
-                            safeConsoleError(e);
-                        }
+Energine.run = function () {
+    if (Energine.tasks) {
+        for (const priority of Energine.tasks) {
+            if (priority) {
+                for (const func of priority) {
+                    try {
+                        func();
+                    }
+                    catch (e) {
+                        safeConsoleError(e);
                     }
                 }
             }
@@ -289,4 +311,4 @@ window.hideLoader = function(container = document.body) {
     if (loader) loader.remove();
 };
 
-Window.Energine = Energine;
+window.Energine = Energine;

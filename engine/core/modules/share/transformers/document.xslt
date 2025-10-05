@@ -138,7 +138,57 @@
         <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
         <script type="text/javascript">
-            Object.assign(Energine, {
+            window.ScriptLoader = window.ScriptLoader || { load: function () {} };
+
+            if (typeof window.Energine !== 'object' || window.Energine === null) {
+                window.Energine = {};
+            }
+
+            if (!Array.isArray(window.Energine.tasks)) {
+                window.Energine.tasks = [];
+            }
+
+            if (typeof window.Energine.addTask !== 'function') {
+                window.Energine.addTask = function (task, priority) {
+                    const level = typeof priority === 'number' ? priority : 5;
+
+                    if (!this.tasks[level]) {
+                        this.tasks[level] = [];
+                    }
+
+                    this.tasks[level].push(task);
+                };
+            }
+
+            if (typeof window.Energine.run !== 'function') {
+                window.Energine.run = function () {
+                    if (!Array.isArray(this.tasks)) {
+                        return;
+                    }
+
+                    for (const group of this.tasks) {
+                        if (!Array.isArray(group)) {
+                            continue;
+                        }
+
+                        for (const task of group) {
+                            try {
+                                task();
+                            }
+                            catch (e) {
+                                if (typeof window.safeConsoleError === 'function') {
+                                    window.safeConsoleError(e);
+                                }
+                                else if (window.console && typeof window.console.error === 'function') {
+                                    window.console.error(e);
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+
+            Object.assign(window.Energine, {
             <xsl:if test="document/@debug=1">'debug' :true,</xsl:if>
             'base' : '<xsl:value-of select="$BASE"/>',
             'static' : '<xsl:value-of select="$STATIC_URL"/>',
@@ -202,7 +252,11 @@
 <!--            };-->
 <!--            Energine.addTask(startEnergine);-->
 <!--            document.addEventListener('DOMContentLoaded', startEnergine);-->
-            document.addEventListener('DOMContentLoaded', Energine.run);
+            document.addEventListener('DOMContentLoaded', function () {
+                if (window.Energine && (typeof window.Energine.run === 'function')) {
+                    window.Energine.run();
+                }
+            });
 
 
 
