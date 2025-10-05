@@ -125,31 +125,30 @@
 
     </xsl:template>
 
-    <xsl:template name="START_ENERGINE_JS">
-<!--        <xsl:choose>-->
-<!--            <xsl:when test="document/@debug=1">-->
-<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.js"></script>-->
-<!--            </xsl:when>-->
-<!--            <xsl:otherwise>-->
-<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.min.js"></script>-->
-<!--            </xsl:otherwise>-->
-<!--        </xsl:choose>-->
-<!--        <link href="assets/minified.css" rel="stylesheet" />-->
-        <!-- <script type="text/javascript" src="assets/minified.js" /> -->
-
+    <xsl:template name="INIT_ENERGINE_GLOBALS">
         <script type="text/javascript">
-            window.ScriptLoader = window.ScriptLoader || { load: function () {} };
+            var ScriptLoader = window.ScriptLoader = window.ScriptLoader || { load: function () {} };
 
-            if (typeof window.Energine !== 'object' || window.Energine === null) {
-                window.Energine = {};
+            if (typeof window.safeConsoleError !== 'function') {
+                window.safeConsoleError = function (e) {
+                    if (window.console && typeof window.console.error === 'function') {
+                        window.console.error(e);
+                    }
+                };
             }
 
-            if (!Array.isArray(window.Energine.tasks)) {
-                window.Energine.tasks = [];
+            var Energine = window.Energine;
+            if (typeof Energine !== 'object' || Energine === null) {
+                Energine = {};
+                window.Energine = Energine;
             }
 
-            if (typeof window.Energine.addTask !== 'function') {
-                window.Energine.addTask = function (task, priority) {
+            if (!Array.isArray(Energine.tasks)) {
+                Energine.tasks = [];
+            }
+
+            if (typeof Energine.addTask !== 'function') {
+                Energine.addTask = function (task, priority) {
                     const level = typeof priority === 'number' ? priority : 5;
 
                     if (!this.tasks[level]) {
@@ -160,8 +159,8 @@
                 };
             }
 
-            if (typeof window.Energine.run !== 'function') {
-                window.Energine.run = function () {
+            if (typeof Energine.run !== 'function') {
+                Energine.run = function () {
                     if (!Array.isArray(this.tasks)) {
                         return;
                     }
@@ -188,7 +187,7 @@
                 };
             }
 
-            Object.assign(window.Energine, {
+            Object.assign(Energine, {
             <xsl:if test="document/@debug=1">'debug' :true,</xsl:if>
             'base' : '<xsl:value-of select="$BASE"/>',
             'static' : '<xsl:value-of select="$STATIC_URL"/>',
@@ -199,10 +198,29 @@
             'singleMode':<xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/>
             });
         </script>
+    </xsl:template>
+
+    <xsl:template name="START_ENERGINE_JS">
+        <xsl:param name="includeGlobals" select="true()"/>
+<!--        <xsl:choose>-->
+<!--            <xsl:when test="document/@debug=1">-->
+<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.js"></script>-->
+<!--            </xsl:when>-->
+<!--            <xsl:otherwise>-->
+<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.min.js"></script>-->
+<!--            </xsl:otherwise>-->
+<!--        </xsl:choose>-->
+<!--        <link href="assets/minified.css" rel="stylesheet" />-->
+        <!-- <script type="text/javascript" src="assets/minified.js" /> -->
+
+        <xsl:if test="$includeGlobals">
+            <xsl:call-template name="INIT_ENERGINE_GLOBALS"/>
+        </xsl:if>
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="text/javascript">
+            var Energine = window.Energine || {};
             var componentToolbars = [];
             <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
                 var <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]"><xsl:value-of select="generate-id(../recordset)"/><xsl:if test="position() != last()">,</xsl:if></xsl:for-each>;

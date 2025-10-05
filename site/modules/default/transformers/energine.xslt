@@ -48,6 +48,7 @@
 
             </head>
             <body>
+                <xsl:call-template name="INIT_ENERGINE_GLOBALS" />
                 <xsl:apply-templates select="document"/>
 
                 <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
@@ -71,7 +72,9 @@
                 <xsl:variable name="isAdmin" select="//property[@name='is_admin']/text()"/>
                 <xsl:variable name="staticRoot" select="/document/properties/property[@name='base']/@static"/>
 
-                <xsl:call-template name="START_ENERGINE_JS" />
+                <xsl:call-template name="START_ENERGINE_JS">
+                    <xsl:with-param name="includeGlobals" select="false()"/>
+                </xsl:call-template>
 
                 <xsl:choose>
                     <xsl:when test="$isDebug = '1'">
