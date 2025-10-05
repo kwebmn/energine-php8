@@ -1,4 +1,10 @@
-ScriptLoader.load('ckeditor/ckeditor', 'TabPane', 'Toolbar', 'Validator', 'ModalBox', 'AcplField', 'Cookie');
+import Energine from './Energine.js';
+import TabPane from './TabPane.js';
+import Toolbar from './Toolbar.js';
+import Validator from './Validator.js';
+import ModalBox from './ModalBox.js';
+import AcplField from './AcplField.js';
+import Cookie from './Cookie.js';
 
 /**
  * @file Contain the description of the next classes:
@@ -26,7 +32,7 @@ ScriptLoader.load('ckeditor/ckeditor', 'TabPane', 'Toolbar', 'Validator', 'Modal
  * @version 1.0.1
  */
 
-class Form {
+export default class Form {
     // Класс Energine.request как статическое свойство
     static request = Energine.request;
 
@@ -299,13 +305,15 @@ class Form {
         return Energine.request(...args);
     }
 
-    constructor(element) {
+    constructor(element, options = {}) {
         // this.overlay = new Overlay();
 
         // Получаем элемент формы
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
+
+        this.options = options;
 
         // singlePath
         this.componentElement = (typeof element === 'string')
@@ -2054,4 +2062,7 @@ class FormRichEditor {
 
 // Для обратной совместимости:
 Form.RichEditor = FormRichEditor;
-;
+
+if (typeof window !== 'undefined') {
+    window.Form = Form;
+}

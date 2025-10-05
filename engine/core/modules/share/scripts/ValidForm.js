@@ -1,17 +1,19 @@
-ScriptLoader.load('Validator');
+import Validator from './Validator.js';
 
 /**
  * ValidForm (ES6 version)
  */
-class ValidForm {
+export default class ValidForm {
     /**
      * @param {HTMLElement|string} element
+     * @param {Object} [options]
      */
-    constructor(element) {
+    constructor(element, options = {}) {
         // Основной элемент (по селектору или ссылке)
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
+        this.options = options;
 
         if (this.componentElement) {
             // Находим родительскую форму
@@ -41,6 +43,10 @@ class ValidForm {
             return true;
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.ValidForm = ValidForm;
 }
 
 // Глобальная привязка (если требуется)

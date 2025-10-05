@@ -1,4 +1,4 @@
-class PageList extends EventTarget {
+export default class PageList extends EventTarget {
     /**
      * @param {Object} [options]
      */
@@ -16,7 +16,11 @@ class PageList extends EventTarget {
 
         // Мержим опции (если есть)
         this.options = options;
-    }
+}
+
+if (typeof window !== 'undefined') {
+    window.PageList = PageList;
+}
 
     getElement() {
         return this.element;

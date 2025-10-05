@@ -1,13 +1,22 @@
-ScriptLoader.load('Form', 'FileAPI/FileAPI');
+import Form from './Form.js';
+import './FileAPI/FileAPI.js';
+
+const ensureFileAPI = () => {
+    if (typeof window === 'undefined' || !window.FileAPI) {
+        throw new Error('FileAPI is required for FileRepoForm');
+    }
+    return window.FileAPI;
+};
 
 // FileRepoForm.js
 
-class FileRepoForm extends Form {
-    constructor(el) {
-        super(el);
+export default class FileRepoForm extends Form {
+    constructor(el, options = {}) {
+        super(el, options);
 
-        FileAPI.staticPath = Energine.base + 'scripts/FileAPI/';
-        FileAPI.debug = false;
+        this.fileAPI = ensureFileAPI();
+        this.fileAPI.staticPath = Energine.base + 'scripts/FileAPI/';
+        this.fileAPI.debug = false;
 
         this.componentElement = typeof el === 'string' ? document.getElementById(el) : el;
 
@@ -42,7 +51,8 @@ class FileRepoForm extends Form {
     // Превью для thumb-инпутов
     showThumbPreview(evt) {
         const el = evt.target;
-        const files = FileAPI.getFiles(evt);
+        const fileAPI = this.fileAPI || ensureFileAPI();
+        const files = fileAPI.getFiles(evt);
 
         for (const file of files) {
             if (/^image\//.test(file.type)) {
@@ -80,7 +90,9 @@ class FileRepoForm extends Form {
         const f = {};
         f[field_name] = files;
 
-        return FileAPI.upload({
+        const fileAPI = this.fileAPI || ensureFileAPI();
+
+        return fileAPI.upload({
             url: this.singlePath + 'upload-temp/?json',
             data: {
                 key: field_name,
@@ -88,12 +100,12 @@ class FileRepoForm extends Form {
             },
             files: f,
             prepare: (file, options) => {
-                options.data[FileAPI.uid()] = 1;
+                options.data[fileAPI.uid()] = 1;
             },
             filecomplete: (err, xhr, file) => {
                 if (!err) {
                     try {
-                        const result = FileAPI.parseJSON(xhr.responseText);
+                        const result = fileAPI.parseJSON(xhr.responseText);
                         if (result && !result.error) {
                             response_callback(result);
                         }
@@ -118,7 +130,8 @@ class FileRepoForm extends Form {
             });
         }
 
-        const files = FileAPI.getFiles(evt);
+        const fileAPI = this.fileAPI || ensureFileAPI();
+        const files = fileAPI.getFiles(evt);
         const enableTab = this.tabPane && this.tabPane.enableTab ? this.tabPane.enableTab.bind(this.tabPane, 1) : () => {};
         const generatePreviews = this.generatePreviews.bind(this);
 
@@ -167,6 +180,10 @@ class FileRepoForm extends Form {
         ModalBox.setReturnValue({ width, height });
         this.close();
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.FileRepoForm = FileRepoForm;
 }
 
 // Привязка к глобальному пространству (если нужно)

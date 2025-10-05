@@ -1,13 +1,15 @@
-ScriptLoader.load('ModalBox', 'jquery.min', 'jstree/jstree.min');
+import ModalBox from './ModalBox.js';
 
-class FiltersTreeEditor {
+export default class FiltersTreeEditor {
     /**
      * @param {HTMLElement|string} element
+     * @param {Object} [options]
      */
-    constructor(element) {
+    constructor(element, options = {}) {
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
+        this.options = options;
         this.singlePath = this.componentElement.getAttribute('single-template');
         Energine.loadCSS('scripts/jstree/themes/default/style.css');
         this.initTree();
@@ -206,6 +208,10 @@ class FiltersTreeEditor {
             }
         });
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.FiltersTreeEditor = FiltersTreeEditor;
 }
 
 // Пример создания экземпляра

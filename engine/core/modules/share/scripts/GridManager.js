@@ -1,5 +1,9 @@
-ScriptLoader.load('TabPane', 'PageList', 'Toolbar',  'ModalBox');
-class Grid {
+import TabPane from './TabPane.js';
+import PageList from './PageList.js';
+import Toolbar from './Toolbar.js';
+import ModalBox from './ModalBox.js';
+
+export class Grid {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
@@ -1331,13 +1335,10 @@ class Grid {
     }
 }
 
-// Экспорт для ES-модуля (если нужно)
-// export default Grid;
-
 /**
  * GridManager (ES6 version)
  */
-class GridManager {
+export default class GridManager {
     /**
      * GridManager orchestrates data grid interactions, paging, filtering and toolbar wiring.
      * It preserves the legacy API so existing integrations keep working while the internals
@@ -1345,8 +1346,9 @@ class GridManager {
      *
      * @param {HTMLElement|string} element Root element that hosts the grid UI.
      */
-    constructor(element) {
+    constructor(element, options = {}) {
         this.element = this._resolveElement(element);
+        this.options = options;
         this._initializeState();
 
         this._initializeFilter();
@@ -2425,6 +2427,11 @@ class QueryControls {
 }
 // Привязка к глобальному пространству
 GridManager.Filter.QueryControls = QueryControls;
+
+if (typeof window !== 'undefined') {
+    window.Grid = Grid;
+    window.GridManager = GridManager;
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     /**

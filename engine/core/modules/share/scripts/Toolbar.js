@@ -1,4 +1,4 @@
-class Toolbar {
+export default class Toolbar {
     constructor(toolbarName, props = {}) {
         this.name = toolbarName;
         this.element = document.createElement('div');
@@ -842,4 +842,6 @@ class Toolbar {
 }
 
 // Экспортируем в window
-window.Toolbar = Toolbar;
+if (typeof window !== 'undefined') {
+    window.Toolbar = Toolbar;
+}

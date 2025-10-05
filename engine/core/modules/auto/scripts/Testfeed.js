@@ -1,11 +1,34 @@
-class Testfeed {
-    /**
-     * @param {Element|string} element
-     */
-    constructor(element) {
-        this.element = typeof element === 'string'
-            ? document.querySelector(element) || document.getElementById(element)
-            : element;
-        this.singlePath = this.componentElement.getProperty('template');
+const resolveElement = (element) => {
+    if (typeof element === 'string') {
+        return document.querySelector(element) || document.getElementById(element);
     }
+    return element || null;
+};
+
+const readTemplateAttribute = (element, options = {}) => {
+    if (!element) {
+        return options.template || null;
+    }
+    if (options.template) {
+        return options.template;
+    }
+    if (element.getAttribute) {
+        return element.getAttribute('data-energine-param-template')
+            || element.getAttribute('template')
+            || null;
+    }
+    return null;
+};
+
+export default class Testfeed {
+    constructor(element, options = {}) {
+        this.element = resolveElement(element);
+        this.componentElement = this.element;
+        this.options = options;
+        this.singlePath = readTemplateAttribute(this.element, options);
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.Testfeed = Testfeed;
 }

@@ -1,4 +1,6 @@
-ScriptLoader.load('TabPane', 'Toolbar', 'ModalBox', 'jquery.min', 'jstree/jstree');
+import TabPane from './TabPane.js';
+import Toolbar from './Toolbar.js';
+import ModalBox from './ModalBox.js';
 
 const DIVISION_ICON_MAP = {
     'divisions_list.icon.gif': 'fa-solid fa-diagram-project text-primary',
@@ -24,14 +26,16 @@ const getDivisionIconClass = (path) => {
     return `${className} fa-fw`;
 };
 
-class DivManager {
+export default class DivManager {
 
-    constructor(element) {
+    constructor(element, options = {}) {
         this.element = typeof element === 'string'
             ? document.querySelector(element) || document.getElementById(element)
             : element;
 
         this.selectOnStart = false;
+
+        this.options = options;
 
         this.initManager();
     }
@@ -340,4 +344,8 @@ class DivManager {
             }
         );
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.DivManager = DivManager;
 }

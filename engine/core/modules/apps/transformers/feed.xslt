@@ -3,12 +3,19 @@
         version="1.0"
         xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
+    <xsl:import href="../../share/transformers/base.xslt"/>
+
     <!-- компонент типа feed -->
     <xsl:template match="component[@exttype='feed']">
         <div class="feed">
+            <xsl:call-template name="energine-component-attributes"/>
+            <xsl:variable name="RECORDSET_UID" select="generate-id(recordset)"/>
             <xsl:choose>
                 <xsl:when test="recordset/@empty">
-                    <div class="empty_message" id="{generate-id(recordset)}"><xsl:value-of select="recordset/@empty" disable-output-escaping="yes"/></div>
+                    <div class="empty_message">
+                        <xsl:attribute name="data-energine-param-recordset"><xsl:value-of select="$RECORDSET_UID"/></xsl:attribute>
+                        <xsl:value-of select="recordset/@empty" disable-output-escaping="yes"/>
+                    </div>
                 </xsl:when>
                 <xsl:otherwise>
                     <xsl:apply-templates/>
@@ -19,7 +26,10 @@
 
     <!-- компонент feed в режиме списка -->
     <xsl:template match="recordset[parent::component[@exttype='feed'][@type='list']]">
-        <ul id="{generate-id(.)}" class="feed_list">
+        <xsl:variable name="RECORDSET_UID" select="generate-id(.)"/>
+        <ul class="feed_list">
+            <xsl:attribute name="data-energine-param-recordset"><xsl:value-of select="$RECORDSET_UID"/></xsl:attribute>
+            <xsl:attribute name="id"><xsl:value-of select="$RECORDSET_UID"/></xsl:attribute>
             <xsl:apply-templates/>
         </ul>
     </xsl:template>
@@ -27,6 +37,9 @@
     <xsl:template match="record[ancestor::component[@exttype='feed'][@type='list']]">
         <li class="feed_item">
             <xsl:if test="$COMPONENTS[@editable]">
+                <xsl:attribute name="data-energine-param-record">
+                    <xsl:value-of select="field[@index='PRI']"/>
+                </xsl:attribute>
                 <xsl:attribute name="record">
                     <xsl:value-of select="field[@index='PRI']"/>
                 </xsl:attribute>
@@ -50,8 +63,14 @@
     </xsl:template>
 
     <xsl:template match="record[ancestor::component[@exttype='feed'][@type='form']]">
-        <div class="feed_view" id="{generate-id(../.)}">
+        <div class="feed_view">
+            <xsl:variable name="VIEW_UID" select="generate-id(../.)"/>
+            <xsl:attribute name="data-energine-param-recordset"><xsl:value-of select="$VIEW_UID"/></xsl:attribute>
+            <xsl:attribute name="id"><xsl:value-of select="$VIEW_UID"/></xsl:attribute>
             <xsl:if test="$COMPONENTS[@editable]">
+                <xsl:attribute name="data-energine-param-current">
+                    <xsl:value-of select="field[@index='PRI']"/>
+                </xsl:attribute>
                 <xsl:attribute name="current">
                     <xsl:value-of select="field[@index='PRI']"/>
                 </xsl:attribute>
@@ -65,8 +84,11 @@
         <h3 class="feed_name">
             <xsl:if test="ancestor::component/@editable">
                 <xsl:attribute name="class">nrgnEditor feed_name</xsl:attribute>
+                <xsl:attribute name="data-energine-param-num"><xsl:value-of select="@name"/></xsl:attribute>
                 <xsl:attribute name="num"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="ancestor::component/@single_template"/></xsl:attribute>
                 <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="ancestor::component/@single_template"/></xsl:attribute>
+                <xsl:attribute name="data-energine-param-eID"><xsl:value-of select="../field[@index='PRI']"/></xsl:attribute>
                 <xsl:attribute name="eID"><xsl:value-of select="../field[@index='PRI']"/></xsl:attribute>
             </xsl:if>
             <xsl:value-of select="." disable-output-escaping="yes"/>
@@ -84,8 +106,11 @@
         <div class="feed_text">
             <xsl:if test="ancestor::component/@editable">
                 <xsl:attribute name="class">nrgnEditor feed_text</xsl:attribute>
+                <xsl:attribute name="data-energine-param-num"><xsl:value-of select="@name"/></xsl:attribute>
                 <xsl:attribute name="num"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="ancestor::component/@single_template"/></xsl:attribute>
                 <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="ancestor::component/@single_template"/></xsl:attribute>
+                <xsl:attribute name="data-energine-param-eID"><xsl:value-of select="../field[@index='PRI']"/></xsl:attribute>
                 <xsl:attribute name="eID"><xsl:value-of select="../field[@index='PRI']"/></xsl:attribute>
             </xsl:if>
             <xsl:value-of select="$FIELD_VALUE" disable-output-escaping="yes"/>
@@ -97,13 +122,20 @@
             <xsl:variable name="LINK">
                 <xsl:value-of select="@linkedComponent"/>
             </xsl:variable>
-            <ul id="{generate-id(recordset)}" style="display:none;"
-                single_template="{$BASE}{$LANG_ABBR}{@single_template}"
-                linkedTo="{generate-id($COMPONENTS[@name=$LINK]/recordset)}">
-                <xsl:for-each select="toolbar/control">
-                    <li id="{@id}" title="{@title}" type="{@type}" action="{@onclick}"></li>
+            <div class="feed-editor-toolbar d-none" aria-hidden="true">
+                <xsl:call-template name="energine-component-attributes"/>
+                <xsl:attribute name="data-energine-param-linked-component"><xsl:value-of select="$LINK"/></xsl:attribute>
+                <xsl:attribute name="data-energine-param-linked-recordset"><xsl:value-of select="generate-id($COMPONENTS[@name=$LINK]/recordset)"/></xsl:attribute>
+                <xsl:attribute name="linkedTo"><xsl:value-of select="generate-id($COMPONENTS[@name=$LINK]/recordset)"/></xsl:attribute>
+                <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="@single_template"/></xsl:attribute>
+                <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="@single_template"/></xsl:attribute>
+                <xsl:for-each select="toolbar">
+                    <div data-energine-toolbar="{@name}">
+                        <xsl:call-template name="energine-toolbar-attributes"/>
+                        <xsl:apply-templates select="control"/>
+                    </div>
                 </xsl:for-each>
-            </ul>
+            </div>
         </xsl:if>
     </xsl:template>
 
@@ -113,6 +145,7 @@
     <!-- фид новостей -->
     <xsl:template match="component[@class='NewsFeed']">
         <div class="feed news">
+            <xsl:call-template name="energine-component-attributes"/>
             <xsl:apply-templates/>
         </div>
     </xsl:template>
@@ -201,6 +234,7 @@
 
     <xsl:template match="component[@name='topNews']">
         <div class="feed short_feed news short_news">
+            <xsl:call-template name="energine-component-attributes"/>
             <xsl:apply-templates/>
         </div>
     </xsl:template>
@@ -261,6 +295,7 @@
     <!-- фид проектов (тестовый фид из apps_feed) -->
     <xsl:template match="component[@name='testFeed']">
         <div class="feed news">
+            <xsl:call-template name="energine-component-attributes"/>
             <xsl:apply-templates/>
         </div>
     </xsl:template>

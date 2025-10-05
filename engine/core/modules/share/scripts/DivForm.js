@@ -1,10 +1,11 @@
-ScriptLoader.load('Form', 'ModalBox');
+import Form from './Form.js';
+import ModalBox from './ModalBox.js';
 
 // Подключения: Form и ModalBox должны быть подключены как ES6-модули
 
-class DivForm extends Form {
-    constructor(element) {
-        super(element);
+export default class DivForm extends Form {
+    constructor(element, options = {}) {
+        super(element, options);
 
         // --------- prepareLabel ---------
         // Предполагаем, что 'site_id' — id поля, в нем value — строка с id, а далее '/list/' как в оригинале
@@ -170,6 +171,10 @@ class DivForm extends Form {
             this.processServerResponse.bind(this)
         );
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.DivForm = DivForm;
 }
 
 // --- Mixin методов из Form.Label (setLabel, prepareLabel, restoreLabel, showTree) ---

@@ -53,6 +53,7 @@
         </xsl:variable>
 
         <xsl:element name="{$CONTROL}">
+            <xsl:call-template name="energine-control-attributes"/>
             <xsl:if test="@mode=1">
                 <xsl:attribute name="disabled">disabled</xsl:attribute>
             </xsl:if>
@@ -77,9 +78,6 @@
                 </xsl:if>
                 <xsl:value-of select="$BUTTON_VARIANT"/>
             </xsl:attribute>
-            <xsl:if test="@click!=''">
-                <xsl:attribute name="onclick"><xsl:value-of select="@click"/></xsl:attribute>
-            </xsl:if>
             <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
                 <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
             </xsl:if>
@@ -126,6 +124,7 @@
             </xsl:choose>
         </xsl:variable>
         <a href="{$BASE}{$LANG_ABBR}{@click}" id="{@id}">
+            <xsl:call-template name="energine-control-attributes"/>
             <xsl:if test="@tooltip != ''">
                 <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
                 <xsl:attribute name="data-bs-toggle">tooltip</xsl:attribute>
@@ -173,96 +172,6 @@
         <br/>
     </xsl:template>
     <!-- Панель управления для формы -->
-    <xsl:template match="toolbar[parent::component[@exttype='grid']]">
-
-        <script type="text/javascript">
-<!--            document.addEventListener('DOMContentLoaded', function(){-->
-            Energine.addTask(function(){
-            componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
-                test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
-                <xsl:apply-templates />
-            if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
-            var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
-                content = holder.querySelector('[data-pane-part="body"]');
-            if (content <xsl:text disable-output-escaping="yes">&amp;&amp;</xsl:text> parseInt(document.body.clientWidth) <xsl:text disable-output-escaping="yes">&lt;</xsl:text>= 680) {
-                var tToolbar = holder.querySelector('[data-pane-part="header"]'),
-                    bToolbar = holder.querySelector('[data-pane-part="footer"]'),
-                    contentHeight = document.body.clientHeight;
-                if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
-                if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;
-                <!--content.setStyles({
-                    height: contentHeight,
-                    position: 'static'
-                });-->
-            }
-        });
-        </script>
-    </xsl:template>    
-    
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'button']">
-            componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-                new Toolbar.Button({
-                    id: '<xsl:value-of select="@id"/>',
-                    title: '<xsl:value-of select="@title"/>',
-                    action: '<xsl:value-of select="@onclick"/>',
-                    icon: '<xsl:value-of select="@icon"/>',
-                    iconOnly: '<xsl:value-of select="@icon-only"/>',
-                    disabled: '<xsl:value-of select="@disabled"/>'
-                })
-            );
-    </xsl:template>
-
-
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'switcher']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-        new Toolbar.Switcher({
-        id: '<xsl:value-of select="@id"/>',
-        title: '<xsl:value-of select="@title"/>',
-        action: '<xsl:value-of select="@onclick"/>',
-        icon: '<xsl:value-of select="@icon"/>',
-        aicon: '<xsl:value-of select="@aicon"/>',
-        iconOnly: '<xsl:value-of select="@icon-only"/>'
-        })
-        );
-    </xsl:template>
-
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type='file']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.File({
-                id: '<xsl:value-of select="@id"/>',
-                title: '<xsl:value-of select="@title"/>',
-                action: '<xsl:value-of select="@onclick"/>',
-                icon: '<xsl:value-of select="@icon"/>',
-                iconOnly: '<xsl:value-of select="@icon-only"/>'
-            })
-        );
-    </xsl:template>
-
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'select']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.Select({
-                id: '<xsl:value-of select="@id"/>',
-                title: '<xsl:value-of select="@title"/>',
-                action: '<xsl:value-of select="@action"/>'
-            },
-            {
-                <xsl:if test="options">
-                    <xsl:for-each select="options/option">
-                        '<xsl:value-of select="@id"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if>
-                    </xsl:for-each>
-                </xsl:if>
-            })
-        );
-    </xsl:template>
-  
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'separator']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.Separator({ id: '<xsl:value-of select="@id"/>' })
-    	);
-    </xsl:template>
-    
-    <!-- листалка по страницам -->
     <xsl:template match="toolbar[@name='pager']">
         <xsl:if test="count(control) &gt; 1">
             <xsl:variable name="PAGER_TITLE" select="properties/property[@name='title']"/>

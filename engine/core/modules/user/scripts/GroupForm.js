@@ -1,15 +1,16 @@
-ScriptLoader.load('Form');
+import Form from '../../share/scripts/Form.js';
 
 /**
  * GroupForm (ES6 version)
  * @extends Form
  */
-class GroupForm extends Form {
+export default class GroupForm extends Form {
     /**
      * @param {HTMLElement|string} element The form element.
+     * @param {Object} [options]
      */
-    constructor(element) {
-        super(element);
+    constructor(element, options = {}) {
+        super(element, options);
 
         // Найти все .groupRadio и навесить обработчик
         this.componentElement
@@ -68,6 +69,10 @@ class GroupForm extends Form {
             }
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.GroupForm = GroupForm;
 }
 
 // Глобальная привязка, если требуется

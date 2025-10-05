@@ -8,6 +8,7 @@
 
     <xsl:template match="component[@type='list']">
         <form method="post" action="{@action}">
+            <xsl:call-template name="energine-component-attributes"/>
             <xsl:if test="@exttype='grid'">
                 <xsl:attribute name="data-role">grid-form</xsl:attribute>
             </xsl:if>
@@ -31,47 +32,67 @@
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
         <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <div data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100">
+            <xsl:attribute name="data-energine-param-template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
+            <xsl:attribute name="template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@template"/></xsl:attribute>
+            <xsl:attribute name="data-energine-param-single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="../@single_template"/></xsl:attribute>
+            <xsl:call-template name="energine-component-attributes">
+                <xsl:with-param name="component" select=".."/>
+            </xsl:call-template>
             <xsl:if test="../@quickUploadPath">
+                <xsl:attribute name="data-energine-param-quickUploadPath">
+                    <xsl:value-of select="../@quickUploadPath"/>
+                </xsl:attribute>
                 <xsl:attribute name="quick_upload_path">
                     <xsl:value-of select="../@quickUploadPath"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@quickUploadPid">
+                <xsl:attribute name="data-energine-param-quickUploadPid">
+                    <xsl:value-of select="../@quickUploadPid"/>
+                </xsl:attribute>
                 <xsl:attribute name="quick_upload_pid">
                     <xsl:value-of select="../@quickUploadPid"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@quickUploadEnabled">
+                <xsl:attribute name="data-energine-param-quickUploadEnabled">
+                    <xsl:value-of select="../@quickUploadEnabled"/>
+                </xsl:attribute>
                 <xsl:attribute name="quick_upload_enabled">
                     <xsl:value-of select="../@quickUploadEnabled"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@moveFromId">
+                <xsl:attribute name="data-energine-param-moveFromId">
+                    <xsl:value-of select="../@moveFromId"/>
+                </xsl:attribute>
                 <xsl:attribute name="move_from_id">
                     <xsl:value-of select="../@moveFromId"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
-            <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <xsl:for-each select="../toolbar[not(@position) or @position='bottom']">
+                <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom">
+                    <xsl:call-template name="energine-toolbar-attributes"/>
+                    <xsl:apply-templates select="control"/>
+                </div>
+            </xsl:for-each>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
-                <script type="text/javascript">
-                    <!--<xsl:for-each select="$TRANSLATION[@component=$NAME]">
-                        Energine.translations.set('<xsl:value-of select="@const"/>', '<xsl:value-of select="."/>');
-                    </xsl:for-each>-->
-<!--		            Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);-->
-                    document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
-                </script>
+                <div class="d-none" aria-hidden="true">
+                    <xsl:attribute name="data-energine-translations-component"><xsl:value-of select="$NAME"/></xsl:attribute>
+                    <xsl:attribute name="data-energine-translations"><xsl:value-of select="/document/translations/@json"/></xsl:attribute>
+                </div>
             </xsl:if>
         </div>
     </xsl:template>
     
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="document/translations[translation[@component=//component[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name]]">
-            <script type="text/javascript">
-<!--                Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);-->
-                document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
-            </script>
+        <div class="d-none" aria-hidden="true" data-energine-translations-scope="form">
+            <xsl:attribute name="data-energine-translations"><xsl:value-of select="/document/translations/@json"/></xsl:attribute>
+        </div>
 
     </xsl:template>
 
@@ -152,6 +173,12 @@
                     </xsl:otherwise>
                 </xsl:choose>
             </ul>
+            <xsl:for-each select="../toolbar[@position='top']">
+                <div class="grid-toolbar d-flex flex-wrap align-items-center gap-2 mt-3">
+                    <xsl:call-template name="energine-toolbar-attributes"/>
+                    <xsl:apply-templates select="control"/>
+                </div>
+            </xsl:for-each>
         </div>
         <div class="card-body p-0 flex-grow-1 d-flex flex-column bg-body" data-pane-part="body">
             <div class="tab-content flex-grow-1 d-flex flex-column overflow-hidden" data-role="tab-content">

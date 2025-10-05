@@ -1,15 +1,16 @@
-ScriptLoader.load('GridManager');
+import GridManager from './GridManager.js';
+import ModalBox from './ModalBox.js';
 
 /**
  * Site manager.
  * @extends GridManager
  */
-class SiteManager extends GridManager {
+export default class SiteManager extends GridManager {
     /**
      * @param {HTMLElement|string} element Main holder element for the SiteManager
      */
-    constructor(element) {
-        super(element);
+    constructor(element, options = {}) {
+        super(element, options);
     }
 
     /**
@@ -47,4 +48,8 @@ class SiteManager extends GridManager {
     go() {
         window.top.location.href = `${this.singlePath}goto/${this.grid.getSelectedRecordKey()}/`;
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.SiteManager = SiteManager;
 }

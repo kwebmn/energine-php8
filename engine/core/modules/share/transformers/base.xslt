@@ -12,6 +12,42 @@
         их позже в site/transformers.
     -->
 
+    <xsl:template name="energine-component-attributes">
+        <xsl:param name="component" select="."/>
+        <xsl:variable name="BEHAVIOR" select="$component/javascript/behavior[1]/@name"/>
+        <xsl:variable name="FALLBACK_CLASS">
+            <xsl:choose>
+                <xsl:when test="string-length($BEHAVIOR) &gt; 0"><xsl:value-of select="$BEHAVIOR"/></xsl:when>
+                <xsl:when test="string-length($component/@class) &gt; 0"><xsl:value-of select="$component/@class"/></xsl:when>
+                <xsl:when test="string-length($component/@sample) &gt; 0"><xsl:value-of select="$component/@sample"/></xsl:when>
+                <xsl:otherwise><xsl:value-of select="$component/@type"/></xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:if test="string-length($FALLBACK_CLASS) &gt; 0">
+            <xsl:attribute name="data-energine-js"><xsl:value-of select="$FALLBACK_CLASS"/></xsl:attribute>
+        </xsl:if>
+        <xsl:for-each select="$component/@*">
+            <xsl:attribute name="{concat('data-energine-param-', name())}"><xsl:value-of select="."/></xsl:attribute>
+        </xsl:for-each>
+    </xsl:template>
+
+    <xsl:template name="energine-toolbar-attributes">
+        <xsl:param name="toolbar" select="."/>
+        <xsl:if test="string-length($toolbar/@name) &gt; 0">
+            <xsl:attribute name="data-energine-toolbar"><xsl:value-of select="$toolbar/@name"/></xsl:attribute>
+        </xsl:if>
+        <xsl:for-each select="$toolbar/@*[name()!='name']">
+            <xsl:attribute name="{concat('data-energine-toolbar-', name())}"><xsl:value-of select="."/></xsl:attribute>
+        </xsl:for-each>
+    </xsl:template>
+
+    <xsl:template name="energine-control-attributes">
+        <xsl:param name="control" select="."/>
+        <xsl:for-each select="$control/@*">
+            <xsl:attribute name="{concat('data-energine-control-', name())}"><xsl:value-of select="."/></xsl:attribute>
+        </xsl:for-each>
+    </xsl:template>
+
     <!-- именованный шаблон с дефолтным набором атрибутов для элемента формы - НЕ ПЕРЕПИСЫВАТЬ В ДРУГОМ МЕСТЕ! -->
     <xsl:template name="FORM_ELEMENT_ATTRIBUTES">
         <xsl:if test="not(@type='text') and not(@type='htmlblock')">

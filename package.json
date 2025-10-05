@@ -1,0 +1,10 @@
+{
+  "name": "energine",
+  "private": true,
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^5.1.0"
+  }
+}

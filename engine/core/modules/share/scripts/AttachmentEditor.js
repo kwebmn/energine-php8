@@ -1,15 +1,24 @@
-ScriptLoader.load('GridManager', 'FileAPI/FileAPI');
+import GridManager from './GridManager.js';
+import './FileAPI/FileAPI.js';
+
+const ensureFileAPI = () => {
+    if (typeof window === 'undefined' || !window.FileAPI) {
+        throw new Error('FileAPI is required for AttachmentEditor');
+    }
+    return window.FileAPI;
+};
 
 /**
  * AttachmentEditor
  * @extends GridManager
  */
-class AttachmentEditor extends GridManager {
+export default class AttachmentEditor extends GridManager {
     /**
      * @param {HTMLElement|string} element
+     * @param {Object} [options]
      */
-    constructor(element) {
-        super(element);
+    constructor(element, options = {}) {
+        super(element, options);
 
         this.quick_upload_path = this.element.getAttribute('quick_upload_path');
         this.quick_upload_pid = this.element.getAttribute('quick_upload_pid');
@@ -18,7 +27,8 @@ class AttachmentEditor extends GridManager {
         // Drag & Drop + FileAPI
         this.repository = this;
 
-        FileAPI.event.dnd(
+        this.fileAPI = ensureFileAPI();
+        this.fileAPI.event.dnd(
             document,
             () => {},
             (files) => {
@@ -57,10 +67,10 @@ class AttachmentEditor extends GridManager {
             }
         );
 
-        FileAPI.event.on(document, 'dragleave', () => {
+        this.fileAPI.event.on(document, 'dragleave', () => {
             this.element.style.opacity = '1';
         });
-        FileAPI.event.on(document, 'dragover', () => {
+        this.fileAPI.event.on(document, 'dragover', () => {
             this.element.style.opacity = '0.5';
         });
 
@@ -189,7 +199,9 @@ class AttachmentEditor extends GridManager {
         const f = {};
         f[field_name] = files;
 
-        return FileAPI.upload({
+        const fileAPI = this.fileAPI || ensureFileAPI();
+
+        return fileAPI.upload({
             url: `${this.singlePath}file-library/upload-temp/?json`,
             data: {
                 key: field_name,
@@ -197,12 +209,12 @@ class AttachmentEditor extends GridManager {
             },
             files: f,
             prepare: function (file, options) {
-                options.data[FileAPI.uid()] = 1;
+                options.data[fileAPI.uid()] = 1;
             },
             filecomplete: (err, xhr, file) => {
                 if (!err) {
                     try {
-                        const result = FileAPI.parseJSON(xhr.responseText);
+                        const result = fileAPI.parseJSON(xhr.responseText);
                         if (result && !result.error) {
                             response_callback(result);
                         }
@@ -224,6 +236,10 @@ class AttachmentEditor extends GridManager {
             }
         });
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.AttachmentEditor = AttachmentEditor;
 }
 
 // Привязка глобально, если требуется:

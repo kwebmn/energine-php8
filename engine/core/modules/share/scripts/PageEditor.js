@@ -1,4 +1,4 @@
-ScriptLoader.load('ckeditor/ckeditor', 'ModalBox');
+import ModalBox from './ModalBox.js';
 
 function applyEditorOutline(area, editor) {
     if (!area) {
@@ -18,11 +18,16 @@ function applyEditorOutline(area, editor) {
     }
 }
 
-class PageEditor {
+export default class PageEditor {
     editorClassName = 'nrgnEditor';
     editors = [];
 
-    constructor() {
+    constructor(element, options = {}) {
+        this.componentElement = typeof element === 'string'
+            ? document.querySelector(element)
+            : element;
+        this.options = options;
+
         CKEDITOR.config.versionCheck = false;
         CKEDITOR.disableAutoInline = true;
         CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,energineimage,energinefile';
@@ -119,6 +124,10 @@ class PageEditor {
             }
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.PageEditor = PageEditor;
 }
 /**
  * Block editor.

@@ -1,16 +1,16 @@
-ScriptLoader.load('DivManager', 'jquery.min', 'jstree/jstree');
+import DivManager from './DivManager.js';
 
 // DivTree.js
 
 // Предполагаем, что DivManager уже определён как ES6-класс
 // и что TreeView тоже — ES6 или совместимая конструкция.
 
-class DivTree extends DivManager {
+export default class DivTree extends DivManager {
     /**
      * @param {Element|string} el The main holder element.
      */
-    constructor(el) {
-        super(el); // Создаст дерево, this.tree, this.treeRoot и всё остальное
+    constructor(el, options = {}) {
+        super(el, options); // Создаст дерево, this.tree, this.treeRoot и всё остальное
 
         this.langId = this.element.getAttribute('lang_id');
         this.singlePath = this.element.getAttribute('single_template');
@@ -78,6 +78,10 @@ class DivTree extends DivManager {
             btnSelect?.enable();
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.DivTree = DivTree;
 }
 
 // Если нужен экспорт как модуль:

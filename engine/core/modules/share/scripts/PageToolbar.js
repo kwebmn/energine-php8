@@ -1,6 +1,8 @@
-ScriptLoader.load('Toolbar', 'ModalBox', 'Cookie');
+import Toolbar from './Toolbar.js';
+import ModalBox from './ModalBox.js';
+import Cookie from './Cookie.js';
 
-class PageToolbar extends Toolbar {
+export default class PageToolbar extends Toolbar {
     constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
         super(toolbarName, props);
 
@@ -634,6 +636,10 @@ class PageToolbar extends Toolbar {
 
     // Вложенный контрол логотипа (если нужно)
     static Logo = class extends Toolbar.Control {};
+}
+
+if (typeof window !== 'undefined') {
+    window.PageToolbar = PageToolbar;
 }
 
 // экспорт для window, если надо

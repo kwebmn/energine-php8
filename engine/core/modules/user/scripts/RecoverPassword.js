@@ -1,9 +1,10 @@
-class RecoverPassword {
-    constructor(element) {
+export default class RecoverPassword {
+    constructor(element, options = {}) {
         // element — это или селектор, или DOM-элемент
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
+        this.options = options;
 
         // getProperty => getAttribute (если это DOM-элемент)
         this.singlePath = this.componentElement.getAttribute('single_template');
@@ -63,4 +64,8 @@ class RecoverPassword {
             return false;
         });
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.RecoverPassword = RecoverPassword;
 }

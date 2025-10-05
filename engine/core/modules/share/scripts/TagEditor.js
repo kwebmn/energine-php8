@@ -1,14 +1,16 @@
-ScriptLoader.load('GridManager');
+import GridManager from './GridManager.js';
+import ModalBox from './ModalBox.js';
 /**
  * Tag editor.
  * @extends GridManager
  */
-class TagEditor extends GridManager {
+export default class TagEditor extends GridManager {
     /**
      * @param {HTMLElement|string} element The main holder element.
+     * @param {Object} [options]
      */
-    constructor(element) {
-        super(element);
+    constructor(element, options = {}) {
+        super(element, options);
         /**
          * Tag id.
          * @type {string}
@@ -102,4 +104,8 @@ class TagEditor extends GridManager {
             if (selectBtn) selectBtn.enable(true);
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.TagEditor = TagEditor;
 }
