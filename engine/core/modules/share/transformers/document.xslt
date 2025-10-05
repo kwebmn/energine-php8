@@ -131,7 +131,7 @@
 
             if (typeof window.safeConsoleError !== 'function') {
                 window.safeConsoleError = function (e) {
-                    if (window.console && typeof window.console.error === 'function') {
+                    if (window.console &amp;&amp; typeof window.console.error === 'function') {
                         window.console.error(e);
                     }
                 };
