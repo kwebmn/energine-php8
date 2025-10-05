@@ -286,3 +286,5 @@ class TabPane {
         document.head.appendChild(link);
     }
 }
+
+window.TabPane = window.TabPane || TabPane;

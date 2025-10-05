@@ -63,24 +63,33 @@
                 </xsl:if>
 
                 <xsl:if test="not(//property[@name='single'])">
-                    <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
-                    <script defer="defer" type="text/javascript" src="scripts/default/sweetalert2.min.js"></script>
                     <!-- SweetAlert2 -->
                     <link href="stylesheets/default/sweetalert2.css" rel="stylesheet"/>
                 </xsl:if>
 
-<!--                <xsl:if test="not($DOC_PROPS[@name='single']) and $DOC_PROPS[@name='is_user'] = '0'">-->
-<!--                    <xsl:call-template name="START_ENERGINE_JS" />-->
-<!--                </xsl:if>-->
+                <xsl:variable name="isDebug" select="/document/@debug"/>
+                <xsl:variable name="isAdmin" select="//property[@name='is_admin']/text()"/>
+                <xsl:variable name="staticRoot" select="/document/properties/property[@name='base']/@static"/>
+
                 <xsl:call-template name="START_ENERGINE_JS" />
 
-
-<!--                <script type="text/javascript" src="scripts/default/jquery.min.js"></script>-->
-                <!--<script type="text/javascript" src="scripts/jstree/jstree.min.js"></script>-->
-<!--                <script type="text/javascript">-->
-<!--                    jQuery.noConflict();-->
-<!--                </script>-->
-                <script defer="defer" type="text/javascript" src="scripts/default/default.js"></script>
+                <xsl:choose>
+                    <xsl:when test="$isDebug = '1'">
+                        <xsl:for-each select="//javascript/library">
+                            <script type="module">
+                                <xsl:attribute name="src">
+                                    <xsl:value-of select="concat($staticRoot, 'scripts/', @path, '.js')"/>
+                                </xsl:attribute>
+                            </script>
+                        </xsl:for-each>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <script defer="defer" src="/assets/site.js"></script>
+                        <xsl:if test="$isAdmin = '1'">
+                            <script defer="defer" src="/assets/admin.js"></script>
+                        </xsl:if>
+                    </xsl:otherwise>
+                </xsl:choose>
             </body>
         </html>
     </xsl:template>

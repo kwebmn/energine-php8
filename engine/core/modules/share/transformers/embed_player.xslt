@@ -10,18 +10,6 @@
         <xsl:variable name="DATA" select="recordset/record[1]/field"/>
         <html>
             <head>
-                <xsl:choose>
-                    <xsl:when test="document/@debug=1">
-                        <script type="text/javascript" src="{$STATIC_URL}scripts/mootools-debug.js"></script>
-                        <script type="text/javascript" src="{$STATIC_URL}scripts/mootools-more-debug.js"></script>
-                        <script type="text/javascript" src="{$STATIC_URL}scripts/mootools-ext-debug.js"></script>
-                    </xsl:when>
-                    <xsl:otherwise>
-                        <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.js"></script>
-                        <script type="text/javascript" src="{$STATIC_URL}scripts/mootools-more.js"></script>
-                        <script type="text/javascript" src="{$STATIC_URL}scripts/mootools-ext.js"></script>
-                    </xsl:otherwise>
-                </xsl:choose>
                 <meta property="og:video" content="{$MEDIA_URL}{$DATA[@name='file']}"/>
                 <meta property="og:video:type" content="application/x-shockwave-flash"/>
                 <meta property="og:image" content="{$RESIZER_URL}w0-h0/{$DATA[@name='file']}"/>
@@ -42,6 +30,18 @@
                     <xsl:with-param name="PLAYER_HEIGHT">100%</xsl:with-param>
                     <xsl:with-param name="FILE"><xsl:value-of select="$DATA[@name='file']"/></xsl:with-param>
                 </xsl:call-template>
+                <xsl:choose>
+                    <xsl:when test="document/@debug=1">
+                        <script defer="defer" src="{$STATIC_URL}scripts/mootools-debug.js"></script>
+                        <script defer="defer" src="{$STATIC_URL}scripts/mootools-more-debug.js"></script>
+                        <script defer="defer" src="{$STATIC_URL}scripts/mootools-ext-debug.js"></script>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <script defer="defer" src="{$STATIC_URL}scripts/mootools.js"></script>
+                        <script defer="defer" src="{$STATIC_URL}scripts/mootools-more.js"></script>
+                        <script defer="defer" src="{$STATIC_URL}scripts/mootools-ext.js"></script>
+                    </xsl:otherwise>
+                </xsl:choose>
             </body>
         </html>
     </xsl:template>

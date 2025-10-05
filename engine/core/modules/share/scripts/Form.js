@@ -2054,4 +2054,5 @@ class FormRichEditor {
 
 // Для обратной совместимости:
 Form.RichEditor = FormRichEditor;
-;
+
+window.Form = window.Form || Form;

@@ -2426,6 +2426,9 @@ class QueryControls {
 // Привязка к глобальному пространству
 GridManager.Filter.QueryControls = QueryControls;
 
+window.Grid = window.Grid || Grid;
+window.GridManager = window.GridManager || GridManager;
+
 document.addEventListener('DOMContentLoaded', function () {
     /**
      * Scroll bar width of the browser.

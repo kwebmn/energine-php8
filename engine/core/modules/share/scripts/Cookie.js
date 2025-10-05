@@ -49,3 +49,5 @@ class Cookie {
 // Cookie.write('test', '123', { duration: 1 });
 // const val = Cookie.read('test');
 // Cookie.remove('test');
+
+window.Cookie = window.Cookie || Cookie;

@@ -341,3 +341,5 @@ class DivManager {
         );
     }
 }
+
+window.DivManager = window.DivManager || DivManager;

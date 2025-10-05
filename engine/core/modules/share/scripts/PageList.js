@@ -186,3 +186,5 @@ class PageList extends EventTarget {
 
     // Подключение CSS
     }
+
+window.PageList = window.PageList || PageList;

@@ -210,3 +210,5 @@ class FiltersTreeEditor {
 
 // Пример создания экземпляра
 // new FiltersTreeEditor(document.getElementById('your-element-id'));
+
+window.FiltersTreeEditor = window.FiltersTreeEditor || FiltersTreeEditor;

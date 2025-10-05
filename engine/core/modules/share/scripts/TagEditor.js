@@ -103,3 +103,5 @@ class TagEditor extends GridManager {
         }
     }
 }
+
+window.TagEditor = window.TagEditor || TagEditor;

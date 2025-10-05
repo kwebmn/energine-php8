@@ -170,4 +170,4 @@ class FileRepoForm extends Form {
 }
 
 // Привязка к глобальному пространству (если нужно)
-// window.FileRepoForm = FileRepoForm;
+window.FileRepoForm = window.FileRepoForm || FileRepoForm;

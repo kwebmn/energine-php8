@@ -202,3 +202,5 @@ class DivSidebar extends DivManager {
         }
     }
 }
+
+window.DivSidebar = window.DivSidebar || DivSidebar;

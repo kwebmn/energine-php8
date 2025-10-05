@@ -247,9 +247,6 @@ class BlockEditor {
     }
 }
 
-// Чтобы было как PageEditor.BlockEditor (экспортируйте, если надо)
-if (typeof window.PageEditor === 'undefined') {
-    window.PageEditor = {};
-}
-window.PageEditor.BlockEditor = BlockEditor;
-;
+// Глобальные экспорты для совместимости
+window.PageEditor = window.PageEditor || PageEditor;
+window.PageEditor.BlockEditor = window.PageEditor.BlockEditor || BlockEditor;

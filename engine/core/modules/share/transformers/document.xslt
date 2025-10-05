@@ -113,7 +113,6 @@
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>
-        <script type="text/javascript"  src="{$STATIC_URL}scripts/Energine.js"></script>
 <!--        <xsl:apply-templates select="." mode="og"/>-->
 
 <!--        <xsl:if test="$DOC_PROPS[@name='single'] or $DOC_PROPS[@name='is_user'] > 0">-->
@@ -151,7 +150,6 @@
             });
         </script>
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
-        <xsl:apply-templates select="/document/javascript/library" mode="head"/>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="text/javascript">

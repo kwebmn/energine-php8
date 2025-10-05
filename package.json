@@ -1,0 +1,15 @@
+{
+  "name": "energine-php8",
+  "version": "1.0.0",
+  "description": "Модернизированная версия CMS Energine, основанная на форке проекта energine-cmf и адаптированная к современным стандартам PHP и фронтенда.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.4",
+    "rollup": "^4.24.0",
+    "vite": "^5.4.9"
+  }
+}

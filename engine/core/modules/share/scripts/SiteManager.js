@@ -48,3 +48,5 @@ class SiteManager extends GridManager {
         window.top.location.href = `${this.singlePath}goto/${this.grid.getSelectedRecordKey()}/`;
     }
 }
+
+window.SiteManager = window.SiteManager || SiteManager;
