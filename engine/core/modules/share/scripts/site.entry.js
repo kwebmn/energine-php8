@@ -14,6 +14,7 @@ import './AcplField.js';
 import './Cookie.js';
 import './ModalBox.js';
 import './PageList.js';
+import './TextBlock.js';
 
 // Site modules.
 import '../../apps/scripts/FeedToolbar.js';
