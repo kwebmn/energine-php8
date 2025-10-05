@@ -14,6 +14,7 @@ export default {
       },
       output: {
         format: 'iife',
+        inlineDynamicImports: false,
         entryFileNames: '[name].js',
         chunkFileNames: 'chunks/[name].js',
         assetFileNames: 'assets/[name][extname]',
