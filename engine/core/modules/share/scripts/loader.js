@@ -37,6 +37,27 @@
         return options;
     };
 
+    const FALLBACK_CONSTRUCTORS = {
+        TextBlock: class TextBlockFallback {
+            constructor(element, options = {}) {
+                this.element = element;
+                this.options = options;
+                this.toolbar = null;
+            }
+
+            getElement() {
+                return this.element;
+            }
+
+            attachToolbar(toolbar) {
+                this.toolbar = toolbar;
+                return this;
+            }
+        },
+    };
+
+    const fallbackNotifications = new Set();
+
     const resolveConstructor = (className) => {
         if (!className) {
             return null;
@@ -47,6 +68,15 @@
         }
         if (globalScope.Energine && typeof globalScope.Energine[className] === 'function') {
             return globalScope.Energine[className];
+        }
+        if (Object.prototype.hasOwnProperty.call(FALLBACK_CONSTRUCTORS, className)) {
+            const Constructor = FALLBACK_CONSTRUCTORS[className];
+            globalScope[className] = Constructor;
+            if (!fallbackNotifications.has(className) && globalScope.console) {
+                fallbackNotifications.add(className);
+                console.warn(`[Energine loader] Falling back to a built-in ${className} stub`);
+            }
+            return Constructor;
         }
         return null;
     };
