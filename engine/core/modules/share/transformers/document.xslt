@@ -179,7 +179,7 @@
                                 if (typeof window.safeConsoleError === 'function') {
                                     window.safeConsoleError(e);
                                 }
-                                else if (window.console && typeof window.console.error === 'function') {
+                                else if (window.console &amp;&amp; typeof window.console.error === 'function') {
                                     window.console.error(e);
                                 }
                             }
@@ -253,7 +253,7 @@
 <!--            Energine.addTask(startEnergine);-->
 <!--            document.addEventListener('DOMContentLoaded', startEnergine);-->
             document.addEventListener('DOMContentLoaded', function () {
-                if (window.Energine && (typeof window.Energine.run === 'function')) {
+                if (window.Energine &amp;&amp; (typeof window.Energine.run === 'function')) {
                     window.Energine.run();
                 }
             });
