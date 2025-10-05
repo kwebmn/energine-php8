@@ -26,3 +26,4 @@ tmp/
 # Node/Vite artifacts
 /node_modules/
 /htdocs/assets/
+node_modules
