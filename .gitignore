@@ -22,3 +22,4 @@ tmp/
 /stylesheets/
 /templates/
 /uploads/
+node_modules/
