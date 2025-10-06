@@ -290,7 +290,6 @@
 
     <!-- Single mode document -->
     <xsl:template match="document[properties/property[@name='single']]">
-        <xsl:attribute name="class">e-singlemode-layout</xsl:attribute>
         <xsl:apply-templates select="container | component"/>
     </xsl:template>
 

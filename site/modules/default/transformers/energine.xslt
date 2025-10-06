@@ -47,7 +47,10 @@
                 </xsl:choose>
 
             </head>
-            <body>
+            <xsl:element name="body">
+                <xsl:if test="//property[@name='single']">
+                    <xsl:attribute name="class">e-singlemode-layout</xsl:attribute>
+                </xsl:if>
                 <xsl:call-template name="INIT_ENERGINE_GLOBALS" />
                 <xsl:apply-templates select="document"/>
 
@@ -93,7 +96,7 @@
                         </xsl:if>
                     </xsl:otherwise>
                 </xsl:choose>
-            </body>
+            </xsl:element>
         </html>
     </xsl:template>
 
