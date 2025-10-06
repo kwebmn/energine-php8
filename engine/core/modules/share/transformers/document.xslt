@@ -221,13 +221,15 @@
         <xsl:apply-templates select="document/translations"/>
         <script type="text/javascript">
             var Energine = window.Energine || {};
-            var componentToolbars = [];
+            window.Energine = Energine;
+            var componentToolbars = window.componentToolbars || [];
+            window.componentToolbars = componentToolbars;
             <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
                 var <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]"><xsl:value-of select="generate-id(../recordset)"/><xsl:if test="position() != last()">,</xsl:if></xsl:for-each>;
             </xsl:if>
 
+            function startEnergineComponents() {
             <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                Energine.addTask( function(){
              <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
             var pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
             <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
@@ -236,8 +238,6 @@
                 test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
                 select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
 
-                }
-            );
             </xsl:if>
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
                 <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
@@ -261,15 +261,10 @@
                     }
                 </xsl:if>
             </xsl:if>
+            }
 
+            Energine.addTask(startEnergineComponents);
 
-<!--            if (window.delayStart)-->
-<!--                for (const func of window.delayStart) {-->
-<!--                    func();-->
-<!--                }-->
-<!--            };-->
-<!--            Energine.addTask(startEnergine);-->
-<!--            document.addEventListener('DOMContentLoaded', startEnergine);-->
             document.addEventListener('DOMContentLoaded', function () {
                 if (window.Energine &amp;&amp; (typeof window.Energine.run === 'function')) {
                     window.Energine.run();
