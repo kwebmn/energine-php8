@@ -1,9 +1,8 @@
-ScriptLoader.load('DivManager', 'jquery.min', 'jstree/jstree');
+import DivManager from './DivManager.js';
 
-// DivTree.js
-
-// Предполагаем, что DivManager уже определён как ES6-класс
-// и что TreeView тоже — ES6 или совместимая конструкция.
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class DivTree extends DivManager {
     /**
@@ -80,8 +79,16 @@ class DivTree extends DivManager {
     }
 }
 
-// Если нужен экспорт как модуль:
+export { DivTree };
+export default DivTree;
 
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return DivTree;
+    }
 
-// Для обратной совместимости (если нужно глобально)
-window.DivTree = DivTree;
+    target.DivTree = DivTree;
+    return DivTree;
+}
+
+attachToWindow();

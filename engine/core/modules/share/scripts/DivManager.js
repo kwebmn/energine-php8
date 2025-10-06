@@ -1,4 +1,14 @@
-ScriptLoader.load('TabPane', 'Toolbar', 'ModalBox', 'jquery.min', 'jstree/jstree');
+import Energine, { showLoader, hideLoader } from './Energine.js';
+import TabPane from './TabPane.js';
+import './Toolbar.js';
+import './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const $ = globalScope?.jQuery || globalScope?.$;
+const ModalBox = globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 
 const DIVISION_ICON_MAP = {
     'divisions_list.icon.gif': 'fa-solid fa-diagram-project text-primary',
@@ -341,3 +351,17 @@ class DivManager {
         );
     }
 }
+
+export { DivManager };
+export default DivManager;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return DivManager;
+    }
+
+    target.DivManager = DivManager;
+    return DivManager;
+}
+
+attachToWindow();
