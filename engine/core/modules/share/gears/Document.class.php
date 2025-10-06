@@ -269,6 +269,7 @@ final class Document extends DBWorker implements IDocument
             foreach ($includes as $js) {
                 $lib = $this->doc->createElement('library');
                 $lib->setAttribute('path', (string)$js);
+                $lib->setAttribute('loader', $this->isGlobalLibrary((string)$js) ? 'classic' : 'module');
                 $jsNode->appendChild($lib);
             }
             $root->appendChild($jsNode);
@@ -288,6 +289,36 @@ final class Document extends DBWorker implements IDocument
                 $js_includes[] = $dep;
             }
         }
+    }
+
+    protected function isGlobalLibrary(string $path): bool
+    {
+        $classicPrefixes = [
+            'ckeditor/',
+            'FileAPI/',
+            'jstree/',
+            'codemirror/',
+            'fancytree/',
+        ];
+        foreach ($classicPrefixes as $prefix) {
+            if (strpos($path, $prefix) === 0) {
+                return true;
+            }
+        }
+
+        $classicNames = [
+            'jquery',
+            'jquery.min',
+            'bootstrap.bundle',
+            'bootstrap.bundle.min',
+        ];
+        foreach ($classicNames as $name) {
+            if ($path === $name || strpos($path, $name . '.') === 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

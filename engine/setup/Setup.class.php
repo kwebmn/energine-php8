@@ -1139,16 +1139,115 @@ final class Setup {
         $result = array();
 
         $data = file_get_contents($script);
-        $r = array();
-        if (preg_match_all('/ScriptLoader\.load\((([\s,]{1,})?((?:\'|")([a-zA-Z\/.-]{1,})(?:\'|")){1,}([\s,]{1,})?){1,}\)/', $data, $r)) {
-            $s = str_replace(array('ScriptLoader.load', '(', ')', "\r", "\n"), '', (string)$r[0][0]);
-            $classes = array_map(function ($el) {
-                return str_replace(array('\'', '"',',', ' '), '', $el);
-            }, explode(',', $s));
-            $result = $classes;
+        if ($data === false) {
+            return $result;
+        }
+
+        $directory = dirname($script);
+
+        if (preg_match_all('/ScriptLoader\.load\(([^)]+)\)/m', $data, $legacyMatches)) {
+            foreach ($legacyMatches[1] as $arguments) {
+                $parts = preg_split('/\s*,\s*/', (string)$arguments, -1, PREG_SPLIT_NO_EMPTY);
+                foreach ($parts as $part) {
+                    $candidate = trim($part, " \t\n\r\0\x0B'\"");
+                    if ($candidate === '') {
+                        continue;
+                    }
+                    $normalized = $this->normalizeModuleSpecifier($candidate, $directory, true);
+                    if ($normalized !== null) {
+                        $result[] = $normalized;
+                    }
+                }
+            }
+        }
+
+        if (preg_match_all('/import\s+(?:[^\'";]*?\s+from\s+)?[\'\"]([^\'\"]+)[\'\"]/m', $data, $importMatches)) {
+            foreach ($importMatches[1] as $specifier) {
+                $normalized = $this->normalizeModuleSpecifier($specifier, $directory, false);
+                if ($normalized !== null) {
+                    $result[] = $normalized;
+                }
+            }
+        }
+
+        if (preg_match_all('/import\(\s*[\'\"]([^\'\"]+)[\'\"]\s*\)/m', $data, $dynamicMatches)) {
+            foreach ($dynamicMatches[1] as $specifier) {
+                $normalized = $this->normalizeModuleSpecifier($specifier, $directory, false);
+                if ($normalized !== null) {
+                    $result[] = $normalized;
+                }
+            }
+        }
+
+        if ($result) {
+            $result = array_values(array_unique($result));
         }
 
         return $result;
+    }
+
+    private function normalizeModuleSpecifier($specifier, $currentDir, $allowFallback) {
+        $specifier = trim((string)$specifier);
+        if ($specifier === '') {
+            return null;
+        }
+
+        if (preg_match('#^(?:https?:|data:|//|#)#', $specifier)) {
+            return null;
+        }
+
+        if (!preg_match('#^[./A-Za-z0-9_-][A-Za-z0-9_.-/]*$#', $specifier)) {
+            return null;
+        }
+
+        $base = HTDOCS_DIR . '/scripts';
+        $candidates = array();
+
+        if ($specifier[0] === '.') {
+            $candidates[] = $this->resolveImportPath($currentDir . '/' . $specifier);
+        } elseif ($specifier[0] === '/') {
+            $candidates[] = $this->resolveImportPath($base . $specifier);
+        } else {
+            $candidates[] = $this->resolveImportPath($base . '/' . $specifier);
+        }
+
+        foreach ($candidates as $candidate) {
+            if ($candidate && is_file($candidate)) {
+                return str_replace(array($base . '/', '.js'), '', $candidate);
+            }
+        }
+
+        if (!$allowFallback) {
+            return null;
+        }
+
+        if (preg_match('/\.(css|json|wasm)$/i', $specifier)) {
+            return null;
+        }
+
+        $normalized = preg_replace('#^(\./|\.\./)+#', '', $specifier);
+        $normalized = ltrim((string)$normalized, '/');
+        if (str_ends_with($normalized, '.js')) {
+            $normalized = substr($normalized, 0, -3);
+        }
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private function resolveImportPath($path) {
+        $candidates = array($path);
+        if (!str_ends_with($path, '.js')) {
+            $candidates[] = $path . '.js';
+        }
+
+        foreach ($candidates as $candidate) {
+            $real = realpath($candidate);
+            if ($real !== false && str_starts_with($real, HTDOCS_DIR . '/scripts/')) {
+                return $real;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -73,6 +73,7 @@
 <!--                    <xsl:call-template name="START_ENERGINE_JS" />-->
 <!--                </xsl:if>-->
                 <xsl:call-template name="START_ENERGINE_JS" />
+                <!-- Subsequent project scripts must import Energine helpers from the module entrypoint. -->
 
 
 <!--                <script type="text/javascript" src="scripts/default/jquery.min.js"></script>-->
@@ -80,7 +81,7 @@
 <!--                <script type="text/javascript">-->
 <!--                    jQuery.noConflict();-->
 <!--                </script>-->
-                <script defer="defer" type="text/javascript" src="scripts/default/default.js"></script>
+                <script type="module" src="scripts/default/default.js"></script>
             </body>
         </html>
     </xsl:template>

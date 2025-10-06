@@ -5,11 +5,13 @@
     xmlns:set="http://exslt.org/sets"
     extension-element-prefixes="set">
 
+    <xsl:variable name="STATIC_URL" select="/document/properties/property[@name='base']/@static"/>
+
     <xsl:template match="document/translations[translation[@component=//component[@sample='DivisionEditor' or @class='SiteEditor']/@name]]">
-            <script type="text/javascript">
-                document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
-<!--		        Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);-->
-            </script>
+        <script type="module">
+            import { stageTranslations } from "{$STATIC_URL}scripts/Energine.js";
+            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+        </script>
     </xsl:template>
     
     <!-- вывод дерева разделов -->

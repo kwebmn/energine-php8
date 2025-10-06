@@ -1,8 +1,10 @@
 <?xml version='1.0' encoding="UTF-8"?>
-<xsl:stylesheet 
-    version="1.0" 
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+<xsl:stylesheet
+    version="1.0"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
+
+    <xsl:variable name="STATIC_URL" select="/document/properties/property[@name='base']/@static"/>
 
     <!-- Шаблоны панели управления -->
     
@@ -175,9 +177,9 @@
     <!-- Панель управления для формы -->
     <xsl:template match="toolbar[parent::component[@exttype='grid']]">
 
-        <script type="text/javascript">
-<!--            document.addEventListener('DOMContentLoaded', function(){-->
-            Energine.addTask(function(){
+        <script type="module">
+            import { queueTask } from "{$STATIC_URL}scripts/Energine.js";
+            queueTask(() => {
             componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
                 test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
                 select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xsl:stylesheet 
-    version="1.0" 
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+<xsl:stylesheet
+    version="1.0"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
+
+    <xsl:variable name="STATIC_URL" select="/document/properties/property[@name='base']/@static"/>
     
     <!-- компонент ImageManager (редактор изображения при вставке в текстовый блок, выводится в модальное окно) -->
     <!--
@@ -56,8 +58,9 @@
     </xsl:template>
     
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
-        <script type="text/javascript">
-            Energine.addTask(function(){
+        <script type="module">
+            import { queueTask } from "{$STATIC_URL}scripts/Energine.js";
+            queueTask(() => {
                 componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>');
                     <xsl:apply-templates/>
                     if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
