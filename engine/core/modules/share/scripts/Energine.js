@@ -217,10 +217,22 @@ Energine.createDateTimePicker = function (datePickerId, nullable) {
 };
 
 Energine.loadCSS = function (file) {
-    if (!document.querySelector(`link[href$="${file}"]`)) {
+    if (!file) {
+        return;
+    }
+
+    const isAbsolute = /^(?:[a-z]+:)?\/\//i.test(file) || file.startsWith('/');
+    const base = typeof Energine.static === 'string' ? Energine.static : '';
+    const normalizedBase = base && !base.endsWith('/') && file && !file.startsWith('/')
+        ? `${base}/`
+        : base;
+    const href = isAbsolute ? file : `${normalizedBase}${file}`;
+
+    if (!document.querySelector(`link[data-energine-css="${href}"]`)) {
         const link = document.createElement('link');
-        link.rel = "stylesheet";
-        link.href = file;
+        link.rel = 'stylesheet';
+        link.href = href;
+        link.setAttribute('data-energine-css', href);
         document.head.appendChild(link);
     }
 };

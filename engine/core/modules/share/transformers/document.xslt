@@ -197,6 +197,27 @@
             'lang' : '<xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/>',
             'singleMode':<xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/>
             });
+
+            if (typeof Energine.loadCSS !== 'function') {
+                Energine.loadCSS = function (file) {
+                    if (!file) {
+                        return;
+                    }
+
+                    var isAbsolute = /^(?:[a-z]+:)?\/\//i.test(file) || file.charAt(0) === '/';
+                    var base = (typeof Energine.static === 'string') ? Energine.static : '';
+                    var normalizedBase = base && base.charAt(base.length - 1) !== '/' && file && file.charAt(0) !== '/' ? base + '/' : base;
+                    var href = isAbsolute ? file : normalizedBase + file;
+
+                    if (!document.querySelector('link[data-energine-css="' + href + '"]')) {
+                        var link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = href;
+                        link.setAttribute('data-energine-css', href);
+                        document.head.appendChild(link);
+                    }
+                };
+            }
         </script>
     </xsl:template>
 
@@ -266,6 +287,13 @@
             Energine.addTask(startEnergineComponents);
 
             document.addEventListener('DOMContentLoaded', function () {
+                if (window.jQuery && !window.$) {
+                    window.$ = window.jQuery;
+                }
+                if (window.$ && !window.jQuery) {
+                    window.jQuery = window.$;
+                }
+
                 if (window.Energine &amp;&amp; (typeof window.Energine.run === 'function')) {
                     window.Energine.run();
                 }
