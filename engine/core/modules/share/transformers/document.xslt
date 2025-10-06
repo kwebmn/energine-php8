@@ -290,7 +290,7 @@
         <xsl:apply-templates select="document/translations"/>
         <script type="module">
             // NOTE: downstream Energine modules must import helpers from this entrypoint instead of relying on globals.
-            import { bootEnergine, attachToWindow, createConfigFromProps, safeConsoleError } from "{$STATIC_URL}scripts/Energine.js";
+            import { bootEnergine, attachToWindow, createConfigFromProps, safeConsoleError } from "<xsl:value-of select="$STATIC_URL"/>scripts/Energine.js";
 
             const config = createConfigFromProps({
             <xsl:if test="document/@debug=1">debug: true,</xsl:if>
@@ -380,7 +380,7 @@
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="/document/translations[translation[@component=//component[@editable]/@name]]">
         <script type="module">
-            import { stageTranslations } from "{$STATIC_URL}scripts/Energine.js";
+            import { stageTranslations } from "<xsl:value-of select="$STATIC_URL"/>scripts/Energine.js";
             stageTranslations(<xsl:value-of select="/document/translations/@json" />);
         </script>
     </xsl:template>
