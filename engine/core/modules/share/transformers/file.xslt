@@ -4,8 +4,6 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
 
-    <xsl:variable name="STATIC_URL" select="/document/properties/property[@name='base']/@static"/>
-    
     <!-- компонент ImageManager (редактор изображения при вставке в текстовый блок, выводится в модальное окно) -->
     <!--
     or descendant::field[@type='pfile']
@@ -59,7 +57,7 @@
     
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
         <script type="module">
-            import { queueTask } from "{$STATIC_URL}scripts/Energine.js";
+            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
             queueTask(() => {
                 componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>');
                     <xsl:apply-templates/>

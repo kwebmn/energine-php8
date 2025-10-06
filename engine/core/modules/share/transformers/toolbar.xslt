@@ -4,8 +4,6 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
 
-    <xsl:variable name="STATIC_URL" select="/document/properties/property[@name='base']/@static"/>
-
     <!-- Шаблоны панели управления -->
     
     <!-- Собственно панель управления -->
@@ -178,7 +176,7 @@
     <xsl:template match="toolbar[parent::component[@exttype='grid']]">
 
         <script type="module">
-            import { queueTask } from "{$STATIC_URL}scripts/Energine.js";
+            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
             queueTask(() => {
             componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
                 test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
@@ -187,7 +185,7 @@
             if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
             var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
                 content = holder.querySelector('[data-pane-part="body"]');
-            if (content <xsl:text disable-output-escaping="yes">&amp;&amp;</xsl:text> parseInt(document.body.clientWidth) <xsl:text disable-output-escaping="yes">&lt;</xsl:text>= 680) {
+            if (content &amp;&amp; parseInt(document.body.clientWidth, 10) &lt;= 680) {
                 var tToolbar = holder.querySelector('[data-pane-part="header"]'),
                     bToolbar = holder.querySelector('[data-pane-part="footer"]'),
                     contentHeight = document.body.clientHeight;

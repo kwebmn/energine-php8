@@ -6,8 +6,6 @@
     xmlns:set="http://exslt.org/sets"
     extension-element-prefixes="set">
 
-    <xsl:variable name="STATIC_URL" select="/document/properties/property[@name='base']/@static"/>
-
     <xsl:template match="component[@type='list']">
         <form method="post" action="{@action}">
             <xsl:if test="@exttype='grid'">
@@ -58,7 +56,7 @@
             <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
                 <script type="module">
-                    import { stageTranslations } from "{$STATIC_URL}scripts/Energine.js";
+                    import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
                     stageTranslations(<xsl:value-of select="/document/translations/@json" />);
                 </script>
             </xsl:if>
@@ -68,7 +66,7 @@
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="document/translations[translation[@component=//component[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name]]">
         <script type="module">
-            import { stageTranslations } from "{$STATIC_URL}scripts/Energine.js";
+            import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
             stageTranslations(<xsl:value-of select="/document/translations/@json" />);
         </script>
 

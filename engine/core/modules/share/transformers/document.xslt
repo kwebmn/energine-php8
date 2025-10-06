@@ -130,7 +130,7 @@
 
                 const translationFacade = {
                     get(constant) {
-                        if (runtime && runtime.translations) {
+                        if (runtime &amp;&amp; runtime.translations) {
                             return runtime.translations.get(constant);
                         }
                         return Object.prototype.hasOwnProperty.call(pending.translations, constant)
@@ -138,14 +138,14 @@
                             : null;
                     },
                     set(constant, value) {
-                        if (runtime && runtime.translations) {
+                        if (runtime &amp;&amp; runtime.translations) {
                             runtime.translations.set(constant, value);
                         } else {
                             pending.translations[constant] = value;
                         }
                     },
                     extend(values) {
-                        if (runtime && runtime.translations) {
+                        if (runtime &amp;&amp; runtime.translations) {
                             runtime.translations.extend(values);
                         } else {
                             Object.assign(pending.translations, values);
@@ -176,7 +176,7 @@
                 function setRuntime(instance) {
                     runtime = instance;
                     Object.assign(runtime, pending.config);
-                    if (runtime.translations && Object.keys(pending.translations).length) {
+                    if (runtime.translations &amp;&amp; Object.keys(pending.translations).length) {
                         runtime.translations.extend(pending.translations);
                         pending.translations = {};
                     }
@@ -246,7 +246,7 @@
         </script>
         <script type="text/javascript">
             (function (bridge) {
-                const target = bridge && bridge.pendingConfig ? bridge.pendingConfig : (window.Energine || {});
+                const target = bridge &amp;&amp; bridge.pendingConfig ? bridge.pendingConfig : (window.Energine || {});
                 Object.assign(target, {
                 <xsl:if test="document/@debug=1">debug: true,</xsl:if>
                 base: '<xsl:value-of select="$BASE"/>',
@@ -304,7 +304,7 @@
             });
 
             const runtime = bootEnergine(config);
-            if (window.__energineBridge && typeof window.__energineBridge.setRuntime === 'function') {
+            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {
                 window.__energineBridge.setRuntime(runtime);
             }
             const Energine = attachToWindow(window, runtime);
