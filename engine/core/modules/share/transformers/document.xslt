@@ -206,7 +206,7 @@
 
                     var isAbsolute = /^(?:[a-z]+:)?\/\//i.test(file) || file.charAt(0) === '/';
                     var base = (typeof Energine.static === 'string') ? Energine.static : '';
-                    var normalizedBase = base && base.charAt(base.length - 1) !== '/' && file && file.charAt(0) !== '/' ? base + '/' : base;
+                    var normalizedBase = base &amp;&amp; base.charAt(base.length - 1) !== '/' &amp;&amp; file &amp;&amp; file.charAt(0) !== '/' ? base + '/' : base;
                     var href = isAbsolute ? file : normalizedBase + file;
 
                     if (!document.querySelector('link[data-energine-css="' + href + '"]')) {
@@ -287,10 +287,10 @@
             Energine.addTask(startEnergineComponents);
 
             document.addEventListener('DOMContentLoaded', function () {
-                if (window.jQuery && !window.$) {
+                if (window.jQuery &amp;&amp; !window.$) {
                     window.$ = window.jQuery;
                 }
-                if (window.$ && !window.jQuery) {
+                if (window.$ &amp;&amp; !window.jQuery) {
                     window.jQuery = window.$;
                 }
 
