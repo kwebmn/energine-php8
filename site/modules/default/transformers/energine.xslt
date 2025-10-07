@@ -76,10 +76,10 @@
                 <!-- Subsequent project scripts must import Energine helpers from the module entrypoint. -->
 
 
-                <xsl:if test="//property[@name='single']">
+                <!-- <xsl:if test="//property[@name='single']">
                     <script type="text/javascript" src="scripts/jquery.min.js"></script>
                     <script type="text/javascript" src="scripts/jstree/jstree.min.js"></script>
-                </xsl:if>
+                </xsl:if> -->
 <!--                <script type="text/javascript" src="scripts/default/jquery.min.js"></script>-->
                 <!--<script type="text/javascript" src="scripts/jstree/jstree.min.js"></script>-->
 <!--                <script type="text/javascript">-->
