@@ -227,7 +227,9 @@ class ModalBoxClass {
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
             <div class="modal-content h-100" style="position:relative;display:flex;flex-direction:column;">
-              <button type="button" class="btn-close position-absolute end-0 m-2" aria-label="Close" style="z-index:2"></button>
+              <div class="modal-header border-0 justify-content-end align-items-start" style="flex:0 0 auto;">
+                <button type="button" class="btn-close" aria-label="Close"></button>
+              </div>
               <div class="modal-body p-0 d-flex flex-column" style="min-width:300px;flex:1 1 auto;min-height:0;">
               </div>
             </div>
