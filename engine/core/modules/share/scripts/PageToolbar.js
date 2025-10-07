@@ -1,4 +1,11 @@
-ScriptLoader.load('Toolbar', 'ModalBox', 'Cookie');
+import Energine from './Energine.js';
+import Toolbar from './Toolbar.js';
+import ModalBox from './ModalBox.js';
+import Cookie from './Cookie.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class PageToolbar extends Toolbar {
     constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
@@ -63,19 +70,27 @@ class PageToolbar extends Toolbar {
 
     static _persistSidebarState(isVisible) {
         try {
-            const baseHref = window?.Energine?.base || window.location.pathname || '/';
-            const url = new URL(baseHref, window.location.origin);
-            const hostname = url.hostname || window.location.hostname;
-            const domainChunks = hostname.split('.');
+            const baseHref = Energine?.base || globalScope?.location?.pathname || '/';
+            const origin = globalScope?.location
+                ? `${globalScope.location.protocol}//${globalScope.location.host}`
+                : undefined;
+            const url = origin ? new URL(baseHref, origin) : new URL(baseHref, 'http://localhost');
+            const hostname = url.hostname || globalScope?.location?.hostname || '';
+            const domainChunks = hostname ? hostname.split('.') : [];
             if (domainChunks.length > 2) {
                 domainChunks.shift();
             }
-            const domain = domainChunks.length ? `.${domainChunks.join('.')}` : window.location.hostname;
+            const domain = domainChunks.length
+                ? `.${domainChunks.join('.')}`
+                : (globalScope?.location?.hostname || undefined);
             const pathName = url.pathname || '/';
             const path = pathName.endsWith('/') ? pathName : `${pathName}/`;
-            const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString();
             const value = isVisible ? '1' : '0';
-            document.cookie = `sidebar=${value}; expires=${expires}; domain=${domain}; path=${path}`;
+            Cookie.write('sidebar', value, {
+                duration: 30,
+                path,
+                domain,
+            });
         } catch (error) {
             console.warn('[PageToolbar] Failed to persist sidebar state', error);
         }
@@ -84,11 +99,6 @@ class PageToolbar extends Toolbar {
     // ===== Основная логика =====
 
     setupLayout() {
-        function getCookie(name) {
-            let match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[]\/+^])/g, '\\$1') + '=([^;]*)'));
-            return match ? decodeURIComponent(match[1]) : undefined;
-        }
-
         const html = document.documentElement;
         html.classList.add('h-100');
         document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-light');
@@ -156,7 +166,7 @@ class PageToolbar extends Toolbar {
         logoWrapper.style.lineHeight = '0';
 
         const logoImage = document.createElement('img');
-        logoImage.src = window.Energine.static + (window.Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
+        logoImage.src = (Energine.static || '') + (Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
         logoImage.alt = '';
         logoImage.classList.add('img-fluid');
         logoImage.style.width = '70%';
@@ -360,7 +370,7 @@ class PageToolbar extends Toolbar {
                 sidebarToggle.classList.toggle('active', state);
             };
 
-            const sidebarCookie = getCookie('sidebar');
+        const sidebarCookie = Cookie.read('sidebar');
             const shouldShowSidebar = sidebarCookie == 1;
             if (shouldShowSidebar) {
                 PageToolbar._addClass(html, 'e-has-sideframe');
@@ -636,5 +646,16 @@ class PageToolbar extends Toolbar {
     static Logo = class extends Toolbar.Control {};
 }
 
-// экспорт для window, если надо
-window.PageToolbar = PageToolbar;
+export { PageToolbar };
+export default PageToolbar;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return PageToolbar;
+    }
+
+    target.PageToolbar = PageToolbar;
+    return PageToolbar;
+}
+
+attachToWindow();

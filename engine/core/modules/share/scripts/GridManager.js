@@ -1,20 +1,21 @@
+import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn } from './Energine.js';
+import TabPaneModule from './TabPane.js';
+import ToolbarModule from './Toolbar.js';
+import ModalBoxModule from './ModalBox.js';
+import PageListModule from './PageList.js';
+
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const ScriptLoader = globalScope?.ScriptLoader;
-if (ScriptLoader && typeof ScriptLoader.load === 'function') {
-    ScriptLoader.load('TabPane', 'PageList', 'Toolbar', 'ModalBox');
-}
-
-const Energine = globalScope?.Energine || {};
-const TabPane = globalScope?.TabPane;
-const PageList = globalScope?.PageList;
-const Toolbar = globalScope?.Toolbar;
-const showLoader = globalScope?.showLoader || (() => {});
-const hideLoader = globalScope?.hideLoader || (() => {});
+const Energine = EnergineModule || globalScope?.Energine || {};
+const TabPane = TabPaneModule || globalScope?.TabPane;
+const PageList = PageListModule || globalScope?.PageList;
+const Toolbar = ToolbarModule || globalScope?.Toolbar;
+const showLoader = showLoaderFn || globalScope?.showLoader || (() => {});
+const hideLoader = hideLoaderFn || globalScope?.hideLoader || (() => {});
 const $ = globalScope?.jQuery || globalScope?.$;
-const getModalBox = () => globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
+const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 class Grid {
     /**
      * @param {HTMLElement|string} element

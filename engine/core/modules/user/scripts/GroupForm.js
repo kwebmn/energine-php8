@@ -1,4 +1,8 @@
-ScriptLoader.load('Form');
+import Form from '../../share/scripts/Form.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 /**
  * GroupForm (ES6 version)
@@ -70,5 +74,16 @@ class GroupForm extends Form {
     }
 }
 
-// Глобальная привязка, если требуется
-window.GroupForm = GroupForm;
+export { GroupForm };
+export default GroupForm;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return GroupForm;
+    }
+
+    target.GroupForm = GroupForm;
+    return GroupForm;
+}
+
+attachToWindow();

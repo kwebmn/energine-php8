@@ -1,5 +1,18 @@
+import Energine from '../../share/scripts/Energine.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const $ = globalScope?.jQuery || globalScope?.$;
+const Swal = globalScope?.Swal;
+
 class RecoverPassword {
     constructor(element) {
+        if (!$) {
+            throw new Error('RecoverPassword requires jQuery to be available globally.');
+        }
+
         // element — это или селектор, или DOM-элемент
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
@@ -20,14 +33,14 @@ class RecoverPassword {
                 },
                 function (result) {
                     if (result.result) {
-                        Swal.fire({
+                        Swal?.fire({
                             title: result.message,
                             icon: "success",
-                        }).then(() => {
-                            document.location.href = `/${Energine.lang}/login/`;
+                        })?.then?.(() => {
+                            globalScope.location.href = `/${Energine.lang}/login/`;
                         });
                     } else {
-                        Swal.fire({
+                        Swal?.fire({
                             title: result.message,
                             icon: "error",
                         });
@@ -45,14 +58,14 @@ class RecoverPassword {
                 data,
                 function (result) {
                     if (result.result) {
-                        Swal.fire({
+                        Swal?.fire({
                             title: result.message,
                             icon: "success",
-                        }).then(() => {
-                            document.location.href = `/${Energine.lang}/login/`;
+                        })?.then?.(() => {
+                            globalScope.location.href = `/${Energine.lang}/login/`;
                         });
                     } else {
-                        Swal.fire({
+                        Swal?.fire({
                             title: result.message,
                             icon: "error",
                         });
@@ -64,3 +77,17 @@ class RecoverPassword {
         });
     }
 }
+
+export { RecoverPassword };
+export default RecoverPassword;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return RecoverPassword;
+    }
+
+    target.RecoverPassword = RecoverPassword;
+    return RecoverPassword;
+}
+
+attachToWindow();

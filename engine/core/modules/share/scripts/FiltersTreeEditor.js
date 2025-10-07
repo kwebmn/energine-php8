@@ -1,10 +1,21 @@
-ScriptLoader.load('ModalBox', 'jquery.min', 'jstree/jstree.min');
+import Energine from './Energine.js';
+import ModalBox from './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const $ = globalScope?.jQuery || globalScope?.$;
 
 class FiltersTreeEditor {
     /**
      * @param {HTMLElement|string} element
      */
     constructor(element) {
+        if (!$) {
+            throw new Error('FiltersTreeEditor requires jQuery to be loaded globally.');
+        }
+
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
@@ -208,5 +219,16 @@ class FiltersTreeEditor {
     }
 }
 
-// Пример создания экземпляра
-// new FiltersTreeEditor(document.getElementById('your-element-id'));
+export { FiltersTreeEditor };
+export default FiltersTreeEditor;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return FiltersTreeEditor;
+    }
+
+    target.FiltersTreeEditor = FiltersTreeEditor;
+    return FiltersTreeEditor;
+}
+
+attachToWindow();

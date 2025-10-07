@@ -1,4 +1,8 @@
-function ensureComputedSize(targetWindow) {
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+function ensureComputedSize(targetWindow = globalScope) {
     if (!targetWindow || !targetWindow.Element) {
         return;
     }
@@ -432,14 +436,34 @@ class ModalBoxClass {
 }
 
 // Singleton-глобал (window.top — если есть)
-const ModalBox = window.top.ModalBox || new ModalBoxClass();
-window.top.ModalBox = ModalBox;
+const topWindow = globalScope?.top || globalScope;
+const ModalBox = (topWindow && topWindow.ModalBox instanceof ModalBoxClass)
+    ? topWindow.ModalBox
+    : new ModalBoxClass();
+
+if (topWindow && topWindow.ModalBox !== ModalBox) {
+    topWindow.ModalBox = ModalBox;
+}
 
 // DOM ready init
 if (!ModalBox.initialized) {
-    if (document.readyState === 'loading') {
+    if (typeof document !== 'undefined' && document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => ModalBox.init());
-    } else {
+    } else if (typeof document !== 'undefined') {
         ModalBox.init();
     }
 }
+
+export { ModalBoxClass, ModalBox };
+export default ModalBox;
+
+export function attachToWindow(target = topWindow) {
+    if (!target) {
+        return ModalBox;
+    }
+
+    target.ModalBox = ModalBox;
+    return ModalBox;
+}
+
+attachToWindow();
