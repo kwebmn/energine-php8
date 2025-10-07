@@ -180,11 +180,15 @@
             import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
             queueTask(() => {
                 const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
-                componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
+                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
+                componentToolbars[componentId] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
                 test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
                 select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
                 <xsl:apply-templates />
-                if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
+                const componentInstance = globalThis[componentId];
+                if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
+                    componentInstance.attachToolbar(componentToolbars[componentId]);
+                }
                 var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
                     content = holder.querySelector('[data-pane-part="body"]');
                 if (content &amp;&amp; parseInt(document.body.clientWidth, 10) &lt;= 680) {

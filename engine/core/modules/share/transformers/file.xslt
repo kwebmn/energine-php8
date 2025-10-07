@@ -61,9 +61,15 @@
             import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
             queueTask(() => {
                 const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
-                componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>');
+                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
+                componentToolbars[componentId] = new Toolbar(
+                    '<xsl:value-of select="@name"/>'
+                );
                     <xsl:apply-templates/>
-                    if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
+                    const componentInstance = globalThis[componentId];
+                    if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
+                        componentInstance.attachToolbar(componentToolbars[componentId]);
+                    }
             });
         </script>
         <!--
