@@ -2,7 +2,9 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-function ensureComputedSize(targetWindow = globalScope) {
+const topWindow = globalScope?.top || globalScope;
+
+function ensureComputedSize(targetWindow = topWindow || globalScope) {
     if (!targetWindow || !targetWindow.Element) {
         return;
     }
@@ -62,22 +64,29 @@ function ensureComputedSize(targetWindow = globalScope) {
     };
 }
 
-ensureComputedSize(window);
+ensureComputedSize(topWindow || globalScope);
 
 class ModalBoxClass {
-    constructor() {
+    constructor(hostWindow = topWindow || globalScope) {
+        this.window = hostWindow;
+        this.document = hostWindow?.document || null;
         this.boxes = [];
         this.initialized = false;
     }
 
     init() {
+        if (!this.document || this.initialized) {
+            return;
+        }
         this.initialized = true;
     }
 
     _getFocusableElements(container) {
-        if (!container) {
+        if (!container || !this.window) {
             return [];
         }
+
+        const HTMLElementCtor = this.window.HTMLElement;
 
         const selectors = [
             'a[href]',
@@ -95,7 +104,7 @@ class ModalBoxClass {
 
         return Array.from(container.querySelectorAll(selectors.join(',')))
             .filter((el) => {
-                if (!(el instanceof HTMLElement)) {
+                if (!HTMLElementCtor || !(el instanceof HTMLElementCtor)) {
                     return false;
                 }
 
@@ -116,7 +125,7 @@ class ModalBoxClass {
     }
 
     _closeInstance(instance, returnValue) {
-        if (!instance || instance.isClosing) {
+        if (!instance || instance.isClosing || !this.document) {
             return;
         }
 
@@ -126,8 +135,8 @@ class ModalBoxClass {
             instance.returnValue = returnValue;
         }
 
-        document.removeEventListener('keydown', instance.escHandler);
-        document.removeEventListener('focusin', instance.focusInHandler, true);
+        this.document.removeEventListener('keydown', instance.escHandler);
+        this.document.removeEventListener('focusin', instance.focusInHandler, true);
 
         if (instance.focusTrapHandler) {
             instance.modal.removeEventListener('keydown', instance.focusTrapHandler);
@@ -151,9 +160,11 @@ class ModalBoxClass {
         instance.modal.setAttribute('aria-hidden', 'true');
         instance.backdrop.remove();
 
-        document.body.style.overflow = 'auto';
+        if (this.document.body) {
+            this.document.body.style.overflow = 'auto';
+        }
 
-        setTimeout(() => {
+        (this.window?.setTimeout || setTimeout)(() => {
             instance.modal.remove();
 
             if (typeof instance.options.onClose === 'function') {
@@ -183,24 +194,35 @@ class ModalBoxClass {
             throw new Error('ModalBox.open: required parameter "url" missing');
         }
 
-        const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        if (!this.document || !this.window) {
+            throw new Error('ModalBox.open: host window is not available');
+        }
+
+        const previousActiveElement = this.document.activeElement instanceof this.window.HTMLElement
+            ? this.document.activeElement
+            : null;
 
         // Создаем backdrop (оверлей MDB)
-        const backdrop = document.createElement('div');
+        const backdrop = this.document.createElement('div');
         backdrop.className = 'modal-backdrop fade show';
         // z-index выше для вложенных модалов
         backdrop.style.zIndex = 1040 + this.boxes.length * 10;
-        document.body.appendChild(backdrop);
+        if (!this.document.body) {
+            throw new Error('ModalBox.open: document body is not available');
+        }
+        this.document.body.appendChild(backdrop);
 
         // Создаем модал
-        const modal = document.createElement('div');
+        const modal = this.document.createElement('div');
         modal.className = 'modal top show';
         modal.style.display = 'block';
         modal.tabIndex = -1;
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
+        if (this.document.body) {
+            this.document.body.style.overflow = 'hidden';
+        }
         modal.style.zIndex = 1050 + this.boxes.length * 10;
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
@@ -213,9 +235,9 @@ class ModalBoxClass {
         `;
 
         const modalBody = modal.querySelector('.modal-body');
-        showLoader(modalBody);
+        this._showLoader(modalBody);
 
-        const iframe = document.createElement('iframe');
+        const iframe = this.document.createElement('iframe');
         iframe.src = options.url;
         iframe.width = '100%';
         iframe.height = options.height || '100%';
@@ -228,7 +250,7 @@ class ModalBoxClass {
         modalBody.appendChild(iframe);
 
         iframe.onload = () => {
-            hideLoader(modalBody);
+            this._hideLoader(modalBody);
 
             try {
                 const doc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -304,7 +326,7 @@ class ModalBoxClass {
             }
         };
 
-        document.body.appendChild(modal);
+        this.document.body.appendChild(modal);
 
         const instance = {
             modal,
@@ -349,11 +371,11 @@ class ModalBoxClass {
             const lastElement = focusable[focusable.length - 1];
 
             if (event.shiftKey) {
-                if (document.activeElement === firstElement || !modal.contains(document.activeElement)) {
+                if (this.document.activeElement === firstElement || !modal.contains(this.document.activeElement)) {
                     event.preventDefault();
                     lastElement.focus();
                 }
-            } else if (document.activeElement === lastElement) {
+            } else if (this.document.activeElement === lastElement) {
                 event.preventDefault();
                 firstElement.focus();
             }
@@ -387,7 +409,7 @@ class ModalBoxClass {
             }
         };
         instance.focusInHandler = focusInHandler;
-        document.addEventListener('focusin', focusInHandler, true);
+        this.document.addEventListener('focusin', focusInHandler, true);
 
         // ESC
         const escHandler = (e) => {
@@ -401,14 +423,14 @@ class ModalBoxClass {
             }
         };
         instance.escHandler = escHandler;
-        document.addEventListener('keydown', escHandler);
+        this.document.addEventListener('keydown', escHandler);
 
         // В стек (для модал в модале)
         this.boxes.push(instance);
 
         const focusable = this._getFocusableElements(modal);
         const initialFocusTarget = focusable[0] || modal;
-        setTimeout(() => {
+        (this.window?.setTimeout || setTimeout)(() => {
             initialFocusTarget.focus();
         }, 10);
     }
@@ -433,23 +455,83 @@ class ModalBoxClass {
     close(returnValue) {
         this._closeInstance(this.getCurrent(), returnValue);
     }
+
+    _showLoader(container) {
+        if (!container) {
+            return;
+        }
+
+        const loaderFn = this.window && typeof this.window.showLoader === 'function'
+            ? this.window.showLoader
+            : null;
+
+        if (loaderFn) {
+            loaderFn.call(this.window, container);
+            return;
+        }
+
+        if (!this.document) {
+            return;
+        }
+
+        if (!container.querySelector('.global-loader')) {
+            const loader = this.document.createElement('div');
+            loader.className = 'global-loader d-flex justify-content-center align-items-center position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75';
+            loader.style.zIndex = 9999;
+            loader.innerHTML = `
+                <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            `;
+
+            const style = this.window?.getComputedStyle ? this.window.getComputedStyle(container) : null;
+            if (style && (style.position === 'static' || !style.position)) {
+                container.style.position = 'relative';
+            }
+
+            container.appendChild(loader);
+        }
+    }
+
+    _hideLoader(container) {
+        if (!container) {
+            return;
+        }
+
+        const loaderFn = this.window && typeof this.window.hideLoader === 'function'
+            ? this.window.hideLoader
+            : null;
+
+        if (loaderFn) {
+            loaderFn.call(this.window, container);
+            return;
+        }
+
+        const loader = container.querySelector('.global-loader');
+        if (loader) {
+            loader.remove();
+        }
+    }
 }
 
-// Singleton-глобал (window.top — если есть)
-const topWindow = globalScope?.top || globalScope;
-const ModalBox = (topWindow && topWindow.ModalBox instanceof ModalBoxClass)
-    ? topWindow.ModalBox
-    : new ModalBoxClass();
+const modalHostWindow = topWindow || globalScope;
+const ModalBox = (modalHostWindow && modalHostWindow.ModalBox instanceof ModalBoxClass)
+    ? modalHostWindow.ModalBox
+    : new ModalBoxClass(modalHostWindow);
 
-if (topWindow && topWindow.ModalBox !== ModalBox) {
-    topWindow.ModalBox = ModalBox;
+if (modalHostWindow && modalHostWindow.ModalBox !== ModalBox) {
+    modalHostWindow.ModalBox = ModalBox;
+}
+
+if (globalScope && globalScope !== modalHostWindow) {
+    globalScope.ModalBox = ModalBox;
 }
 
 // DOM ready init
-if (!ModalBox.initialized) {
-    if (typeof document !== 'undefined' && document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => ModalBox.init());
-    } else if (typeof document !== 'undefined') {
+if (ModalBox.document && !ModalBox.initialized) {
+    if (ModalBox.document.readyState === 'loading') {
+        ModalBox.document.addEventListener('DOMContentLoaded', () => ModalBox.init());
+    } else {
         ModalBox.init();
     }
 }
