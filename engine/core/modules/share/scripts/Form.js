@@ -10,8 +10,16 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
+let CKEDITOR = globalScope?.CKEDITOR;
 const FileAPI = globalScope?.FileAPI;
+
+function getCKEditorInstance() {
+    if (!CKEDITOR && globalScope?.CKEDITOR) {
+        CKEDITOR = globalScope.CKEDITOR;
+    }
+
+    return CKEDITOR;
+}
 
 /**
  * @file Contain the description of the next classes:
@@ -2003,7 +2011,13 @@ class FormRichEditor {
         this.form = form;
 
         try {
-            this.editor = CKEDITOR.replace(this.textarea.id);
+            const ckeditor = getCKEditorInstance();
+            if (!ckeditor) {
+                console.warn('CKEditor is not loaded. Rich editor cannot be initialized.');
+                return;
+            }
+
+            this.editor = ckeditor.replace(this.textarea.id);
             this.editor.editorId = this.textarea.id;
             this.editor.singleTemplate = this.form.singlePath;
         } catch (e) {
@@ -2015,12 +2029,18 @@ class FormRichEditor {
      * CKEditor initialization (однократная на проект)
      */
     setupEditors() {
+        const ckeditor = getCKEditorInstance();
+        if (!ckeditor) {
+            console.warn('CKEditor config is unavailable. Skipping editor setup.');
+            return;
+        }
+
         if (!FormRichEditor.ckeditor_init) {
-            CKEDITOR.config.versionCheck = false;
-            CKEDITOR.config.extraPlugins = 'energineimage,energinefile';
-            CKEDITOR.config.removePlugins = 'exportpdf';
-            CKEDITOR.config.allowedContent = true;
-            CKEDITOR.config.toolbar = [
+            ckeditor.config.versionCheck = false;
+            ckeditor.config.extraPlugins = 'energineimage,energinefile';
+            ckeditor.config.removePlugins = 'exportpdf';
+            ckeditor.config.allowedContent = true;
+            ckeditor.config.toolbar = [
                 { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
                 { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
                 { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
@@ -2045,8 +2065,8 @@ class FormRichEditor {
                     });
                 });
             }
-            CKEDITOR.stylesSet.add('energine', styles);
-            CKEDITOR.config.stylesSet = 'energine';
+            ckeditor.stylesSet.add('energine', styles);
+            ckeditor.config.stylesSet = 'energine';
 
             FormRichEditor.ckeditor_init = true;
         }
