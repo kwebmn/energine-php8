@@ -2,6 +2,8 @@
 <configuration>
     <state name="main">
         <javascript>
+            <library path="jquery.min" loader="classic"/>
+            <library path="jstree/jstree.min" loader="classic"/>
             <!--<behavior name="GridManager"/>-->
             <behavior name="FiltersTreeEditor"/>
         </javascript>
@@ -32,6 +34,7 @@
             <pattern>/add/</pattern>
         </uri_patterns>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
@@ -52,6 +55,7 @@
             <pattern>/[int]/edit/</pattern>
         </uri_patterns>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
@@ -120,6 +124,7 @@
             <pattern>/[int]/</pattern>
         </uri_patterns>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>

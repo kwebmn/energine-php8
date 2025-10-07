@@ -3,7 +3,7 @@
 ## Module topology and loading rules
 - Page XML now lists every JavaScript asset under a `<library>` node with a `loader` hint so templates can keep global vendors (`loader="classic"`) while switching Energine bundles to modules (`loader="module"`).【F:engine/core/modules/share/gears/Document.class.php†L269-L293】
 - `document.xslt` emits `<script type="module">` tags for Energine runtime and feature bundles while leaving legacy globals untouched, preserving the existing per-file inclusion order.【F:engine/core/modules/share/transformers/document.xslt†L262-L304】【F:engine/core/modules/share/transformers/document.xslt†L382-L402】
-- Continue storing application modules under `{$STATIC_URL}scripts/` using one file per feature; imports should remain relative within that tree so `system.jsmap.php` stays in sync with module edges resolved by the setup rebuild tasks.【F:engine/core/modules/share/transformers/document.xslt†L262-L402】【F:engine/setup/Setup.class.php†L516-L569】
+- Continue storing application modules under `{$STATIC_URL}scripts/` using one file per feature; keep imports relative within that tree so native module resolution works without additional tooling.【F:engine/core/modules/share/transformers/document.xslt†L262-L402】
 
 ## Energine.js module contract
 - The runtime exports serialization helpers, the task queue, and loader utilities alongside the singleton state object that replaces the legacy global.【F:engine/core/modules/share/scripts/Energine.js†L1-L214】
@@ -21,7 +21,7 @@
 1. Add your module under `engine/*/modules/scripts/` or `site/default/modules/scripts/` and export explicit APIs (named exports for helpers, default export for primary class if needed).
 2. Import shared runtime helpers from `{$STATIC_URL}scripts/Energine.js` or other module files instead of referencing globals; ensure vendor globals like `window.jQuery` are passed in as parameters if required.
 3. Update the relevant component template so it queues behaviour constructors after bootstrap, mirroring the existing `START_ENERGINE_JS` pattern when wiring DOM hooks.【F:engine/core/modules/share/transformers/document.xslt†L291-L372】
-4. Run the setup rebuild command to refresh `system.jsmap.php`, ensuring dependency edges align with new `import` statements.【F:engine/setup/Setup.class.php†L516-L569】
+4. Update the component’s `<javascript>` block to list any required classic vendors via `<library loader="classic">…</library>` so the server includes them alongside your new module.【F:engine/core/modules/share/gears/Document.class.php†L248-L360】
 5. Document the module’s exports and expected bootstrap hook in the component README or relevant spec so future updates keep imports stable.
 
 ## Team enablement cheat sheet
@@ -43,6 +43,6 @@
 
 ## Roadmap: Vite integration
 1. **Dev server proxy:** Reuse the existing `<library loader>` metadata to decide which assets Vite should serve via its dev server, keeping vendor globals on the PHP side while pointing module entries at `http://localhost:5173`.【F:engine/core/modules/share/gears/Document.class.php†L269-L293】
-2. **Module graph ingestion:** Extend the setup tooling that already parses `import` specifiers when rebuilding `system.jsmap.php` so it can output a Vite manifest or feed the dependency graph into Vite’s `optimizeDeps`.【F:engine/setup/Setup.class.php†L516-L569】
+2. **Module graph ingestion:** Extend setup tooling to scan component XML and module imports directly, producing a manifest that Vite (or another bundler) can consume for dependency optimisation without relying on a PHP-generated map.【F:engine/core/modules/share/gears/Document.class.php†L248-L360】
 3. **Build output wiring:** Mirror the `type="module"` script emission in `document.xslt`, swapping the static `.js` URLs for Vite’s hashed bundle names in production while leaving the loader hints intact for vendors.【F:engine/core/modules/share/transformers/document.xslt†L262-L402】
 4. **Progressive adoption:** Pilot a single page bundle under Vite to validate hot-module reloading against the Energine bootstrap contract before migrating the remaining entries; once stable, replace manual asset injection with Vite’s generated HTML snippets using the same START_ENERGINE_JS hook.

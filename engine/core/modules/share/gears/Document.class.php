@@ -246,48 +246,18 @@ final class Document extends DBWorker implements IDocument
         }
 
         // Javascript dependencies
-        $jsmap_file = HTDOCS_DIR . '/system.jsmap.php';
-        if (file_exists($jsmap_file)) {
-            $jsmap = include $jsmap_file;
-            $includes = [];
-
-            $xpath = new DOMXPath($this->doc);
-            $behaviors = $xpath->query('//javascript/behavior');
-            if ($behaviors && $behaviors->length) {
-                foreach ($behaviors as $node) {
-                    /** @var DOMElement $node */
-                    $path = $node->getAttribute('path');
-                    if ($path && substr($path, -1) !== '/') {
-                        $path .= '/';
-                    }
-                    $cls = ($path ? $path : '') . $node->getAttribute('name');
-                    $this->createJavascriptDependencies([$cls], $jsmap, $includes);
-                }
-            }
-
+        $includes = $this->collectJavascriptIncludes();
+        if (!empty($includes)) {
             $jsNode = $this->doc->createElement('javascript');
-            foreach ($includes as $js) {
+            foreach ($includes as $path => $loader) {
                 $lib = $this->doc->createElement('library');
-                $lib->setAttribute('path', (string)$js);
-                $lib->setAttribute('loader', $this->isGlobalLibrary((string)$js) ? 'classic' : 'module');
+                $lib->setAttribute('path', (string)$path);
+                if ($loader) {
+                    $lib->setAttribute('loader', (string)$loader);
+                }
                 $jsNode->appendChild($lib);
             }
             $root->appendChild($jsNode);
-        }
-    }
-
-    /**
-     * Create unique flat array of connected .js-files and their dependencies.
-     */
-    protected function createJavascriptDependencies(array $dependencies, array $jsmap, array &$js_includes): void
-    {
-        foreach ($dependencies as $dep) {
-            if (isset($jsmap[$dep])) {
-                $this->createJavascriptDependencies((array)$jsmap[$dep], $jsmap, $js_includes);
-            }
-            if (!in_array($dep, $js_includes, true)) {
-                $js_includes[] = $dep;
-            }
         }
     }
 
@@ -319,6 +289,86 @@ final class Document extends DBWorker implements IDocument
         }
 
         return false;
+    }
+
+    /**
+     * Build a list of JavaScript libraries declared in component configuration.
+     *
+     * @return array<string,string> [path => loader]
+     */
+    protected function collectJavascriptIncludes(): array
+    {
+        $xpath = new DOMXPath($this->doc);
+        $includes = [];
+        $libraries = $xpath->query('//component/javascript/library');
+
+        if ($libraries && $libraries->length) {
+            /** @var DOMElement $library */
+            foreach ($libraries as $library) {
+                $path = trim((string)$library->getAttribute('path'));
+                if (!$path) {
+                    $path = trim((string)$library->textContent);
+                }
+                if ($path === '') {
+                    continue;
+                }
+
+                $normalizedPath = $this->normalizeLibraryPath($path);
+                if ($normalizedPath === '') {
+                    continue;
+                }
+
+                $loaderAttr = strtolower((string)$library->getAttribute('loader'));
+                $loader = $loaderAttr !== '' ? $loaderAttr : ($this->isGlobalLibrary($normalizedPath) ? 'classic' : 'module');
+
+                if (!array_key_exists($normalizedPath, $includes)) {
+                    $includes[$normalizedPath] = $loader;
+                } elseif ($loader === 'classic') {
+                    $includes[$normalizedPath] = 'classic';
+                }
+            }
+        }
+
+        $behaviors = $xpath->query('//component/javascript/behavior');
+        if ($behaviors && $behaviors->length) {
+            /** @var DOMElement $behavior */
+            foreach ($behaviors as $behavior) {
+                $name = trim((string)$behavior->getAttribute('name'));
+                if ($name === '') {
+                    continue;
+                }
+
+                $path = trim((string)$behavior->getAttribute('path'));
+                if ($path !== '' && substr($path, -1) !== '/') {
+                    $path .= '/';
+                }
+
+                $fullPath = $this->normalizeLibraryPath($path . $name);
+                if ($fullPath === '') {
+                    continue;
+                }
+
+                if (!array_key_exists($fullPath, $includes)) {
+                    $includes[$fullPath] = $this->isGlobalLibrary($fullPath) ? 'classic' : 'module';
+                }
+            }
+        }
+
+        return $includes;
+    }
+
+    protected function normalizeLibraryPath(string $path): string
+    {
+        $path = trim($path);
+        if ($path === '') {
+            return '';
+        }
+
+        if (preg_match('#^(?:[a-z]+:)?//#i', $path)) {
+            return $path;
+        }
+
+        return preg_replace('/\.(?:m|c)?js$/i', '', $path);
     }
 
     /**

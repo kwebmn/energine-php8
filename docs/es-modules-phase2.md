@@ -1,7 +1,7 @@
 # ES Modules Migration – Phase 2 Design
 
 ## 1. Modularity strategy
-- **One module per legacy script:** keep the existing `system.jsmap.php` dependency graph and continue emitting a `<script type="module" src="…">` tag for every entry so that module boundaries remain aligned with the current PHP/XSLT assembly logic.【F:system.jsmap.php†L1-L73】【F:engine/core/modules/share/transformers/document.xslt†L141-L211】
+- **One module per legacy script:** continue emitting a `<script type="module" src="…">` tag for every behaviour entry so module boundaries stay aligned with the current PHP/XSLT assembly logic. Classic vendors are declared explicitly in component XML via `<javascript><library loader="classic">…</library></javascript>`, removing the need for the legacy `system.jsmap.php`.【F:engine/core/modules/share/transformers/document.xslt†L141-L211】
 - **Deterministic ordering without globals:** rely on native ESM resolution instead of the implicit global load order; every converted file replaces `window.*` lookups with explicit `import` statements that mirror the dependencies enumerated in the map.
 - **Server integration:** reuse the same relative URLs under `{$STATIC_URL}scripts/…` while updating the XSLT template to set `type="module"`, ensuring the HTTP server continues serving `text/javascript` (see Phase 1 infrastructure note) without restructuring directories.【F:engine/core/modules/share/transformers/document.xslt†L141-L211】
 

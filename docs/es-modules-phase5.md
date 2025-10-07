@@ -1,12 +1,11 @@
 # ES Modules Migration – Phase 5 Checklist
 
 ## Configuration review
-- `system.jsmap.php` remains the authoritative dependency graph for Energine-managed bundles; the entries continue to use the historical `scripts/{path}.js` layout so runtime loaders can tag vendor bundles as classic scripts while emitting modules for first-party code.【F:system.jsmap.php†L1-L66】【F:engine/core/modules/share/gears/Document.class.php†L257-L307】
+- `<javascript>` blocks inside `*.component.xml` are now the single source of truth: behaviours list their module entry points, while classic vendors are enumerated through `<library loader="classic">…</library>` so the runtime can tag them accordingly. `system.jsmap.php` has been removed from the workflow.【F:engine/core/modules/share/gears/Document.class.php†L248-L360】
 
 ## Build & tooling updates
-- Updated both setup console entry points to read dependency edges from either legacy `ScriptLoader.load()` calls or modern `import` statements, normalise module specifiers against `HTDOCS_DIR/scripts`, and ignore external URLs or non-JS assets when regenerating `system.jsmap.php`. This keeps the CLI utility usable during the ES module rollout without breaking older code that still relies on `ScriptLoader` declarations.【F:setup/Setup.class.php†L1138-L1211】【F:engine/setup/Setup.class.php†L1132-L1205】
-- Added helper resolvers to safely resolve relative and bare module specifiers to file-based keys so the generated map stays compatible with the server-side loader logic.【F:setup/Setup.class.php†L1197-L1211】【F:engine/setup/Setup.class.php†L1191-L1205】
+- Both setup console entry points now treat the legacy script-map command as a no-op that merely removes any leftover `system.jsmap.php` file, preventing stale dependency data from reappearing.【F:setup/Setup.class.php†L320-L343】【F:engine/setup/Setup.class.php†L315-L338】
 
 ## Follow-up actions
-- Once all first-party scripts stop using `ScriptLoader.load`, the generator can drop the legacy branch and rely solely on static `import` analysis.
-- Consider wiring the generator into a CI hook so configuration drift (missing or renamed files) is caught before deployment.
+- Audit remaining documentation and automation that referenced `system.jsmap.php` to ensure teams use component XML as the canonical configuration surface.
+- Consider adding lightweight validation (e.g. lint rule or setup check) to flag behaviours that rely on classic vendors without declaring the corresponding `<library>` node.

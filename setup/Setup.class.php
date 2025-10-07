@@ -324,7 +324,7 @@ final class Setup {
      * - checks connection to database
      * - updates table @c share_sites
      * - generate symlinks
-     * - generate file dependency to JavaScript classes
+     * - removes legacy JavaScript dependency map
      */
     private function installAction() {
         $this->checkDBConnection();
@@ -1112,180 +1112,22 @@ final class Setup {
     }
 
     /**
-     * Recursive iterate throw all files and directories in the folder @c "scripts" and store the result into @c $result argument.
-     *
-     * @param string $directory Directory.
-     * @param array $result Reference to the result.
-     */
-    private function iterateScripts($directory, &$result) {
-
-        $iterator = new DirectoryIterator($directory);
-
-        foreach ($iterator as $fileinfo) {
-            if ($fileinfo->isFile() && !$fileinfo->isDot() && $fileinfo->getExtension() == 'js') {
-                $class = str_replace(array(HTDOCS_DIR . '/scripts/', '.js'), '', $directory . DIRECTORY_SEPARATOR . $fileinfo->getFilename());
-                $result[$class] = $directory . DIRECTORY_SEPARATOR . $fileinfo->getFilename();
-            }
-        }
-
-        foreach ($iterator as $fileinfo) {
-            if ($fileinfo->isDir() && !$fileinfo->isDot()) {
-                $this->iterateScripts($fileinfo->getPathname(), $result);
-            }
-        }
-    }
-
-    /**
-     * Parse inclusions in <tt>ScriptLoader.load()</tt>
-     *
-     * @param string $script Full name of JavaScript-file
-     * @return array
-     */
-    private function parseScriptLoader($script) {
-        $result = array();
-
-        $data = file_get_contents($script);
-        if ($data === false) {
-            return $result;
-        }
-
-        $directory = dirname($script);
-
-        if (preg_match_all('/ScriptLoader\.load\(([^)]+)\)/m', $data, $legacyMatches)) {
-            foreach ($legacyMatches[1] as $arguments) {
-                $parts = preg_split('/\s*,\s*/', (string)$arguments, -1, PREG_SPLIT_NO_EMPTY);
-                foreach ($parts as $part) {
-                    $candidate = trim($part, " \t\n\r\0\x0B'\"");
-                    if ($candidate === '') {
-                        continue;
-                    }
-                    $normalized = $this->normalizeModuleSpecifier($candidate, $directory, true);
-                    if ($normalized !== null) {
-                        $result[] = $normalized;
-                    }
-                }
-            }
-        }
-
-        if (preg_match_all('/import\s+(?:[^\'";]*?\s+from\s+)?[\'\"]([^\'\"]+)[\'\"]/m', $data, $importMatches)) {
-            foreach ($importMatches[1] as $specifier) {
-                $normalized = $this->normalizeModuleSpecifier($specifier, $directory, false);
-                if ($normalized !== null) {
-                    $result[] = $normalized;
-                }
-            }
-        }
-
-        if (preg_match_all('/import\(\s*[\'\"]([^\'\"]+)[\'\"]\s*\)/m', $data, $dynamicMatches)) {
-            foreach ($dynamicMatches[1] as $specifier) {
-                $normalized = $this->normalizeModuleSpecifier($specifier, $directory, false);
-                if ($normalized !== null) {
-                    $result[] = $normalized;
-                }
-            }
-        }
-
-        if ($result) {
-            $result = array_values(array_unique($result));
-        }
-
-        return $result;
-    }
-
-    private function normalizeModuleSpecifier($specifier, $currentDir, $allowFallback) {
-        $specifier = trim((string)$specifier);
-        if ($specifier === '') {
-            return null;
-        }
-
-        if (preg_match('#^(?:https?:|data:|//|#)#', $specifier)) {
-            return null;
-        }
-
-        if (!preg_match('#^[./A-Za-z0-9_-][A-Za-z0-9_.-/]*$#', $specifier)) {
-            return null;
-        }
-
-        $base = HTDOCS_DIR . '/scripts';
-        $candidates = array();
-
-        if ($specifier[0] === '.') {
-            $candidates[] = $this->resolveImportPath($currentDir . '/' . $specifier);
-        } elseif ($specifier[0] === '/') {
-            $candidates[] = $this->resolveImportPath($base . $specifier);
-        } else {
-            $candidates[] = $this->resolveImportPath($base . '/' . $specifier);
-        }
-
-        foreach ($candidates as $candidate) {
-            if ($candidate && is_file($candidate)) {
-                return str_replace(array($base . '/', '.js'), '', $candidate);
-            }
-        }
-
-        if (!$allowFallback) {
-            return null;
-        }
-
-        if (preg_match('/\.(css|json|wasm)$/i', $specifier)) {
-            return null;
-        }
-
-        $normalized = preg_replace('#^(\./|\.\./)+#', '', $specifier);
-        $normalized = ltrim((string)$normalized, '/');
-        if (str_ends_with($normalized, '.js')) {
-            $normalized = substr($normalized, 0, -3);
-        }
-
-        return $normalized !== '' ? $normalized : null;
-    }
-
-    private function resolveImportPath($path) {
-        $candidates = array($path);
-        if (!str_ends_with($path, '.js')) {
-            $candidates[] = $path . '.js';
-        }
-
-        foreach ($candidates as $candidate) {
-            $real = realpath($candidate);
-            if ($real !== false && str_starts_with($real, HTDOCS_DIR . '/scripts/')) {
-                return $real;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Write an array of dependencies into @c "system.jsmap.php"
-     *
-     * @param array $deps Dependencies.
-     */
-    private function writeScriptMap($deps) {
-        file_put_contents(HTDOCS_DIR . '/system.jsmap.php', '<?php return ' . var_export($deps, true) . ';');
-    }
-
-    /**
-     * Create file @c "system.jsmap.php" with dependencies for JavaScript classes.
+     * Legacy helper: previously generated system.jsmap.php.
+     * Now it simply removes the obsolete dependency map if it still exists.
      */
     private function scriptMapAction() {
+        $this->title("Удаляем устаревшую карту зависимостей JavaScript");
 
-        $this->title("Создание карты зависимости Javascript классов");
-
-        $files = array();
-        $this->iterateScripts(HTDOCS_DIR . '/scripts', $files);
-
-        $result = array();
-
-        foreach ($files as $class => $file) {
-            $deps = $this->parseScriptLoader($file);
-            if ($deps) {
-                $class_dir = str_replace(array(HTDOCS_DIR . '/scripts/', '.js'), '', $file);
-                $result[$class_dir] = $deps;
-                $this->text($class_dir . ' --> ' . implode(', ', $deps));
-            }
+        $mapFile = HTDOCS_DIR . '/system.jsmap.php';
+        if (!file_exists($mapFile)) {
+            $this->text('Файл system.jsmap.php не найден — дополнительных действий не требуется.');
+            return;
         }
 
-        $this->writeScriptMap($result);
+        if (@unlink($mapFile)) {
+            $this->text('Файл system.jsmap.php удалён.');
+        } else {
+            $this->text('Не удалось удалить system.jsmap.php. Удалите файл вручную.');
+        }
     }
 }

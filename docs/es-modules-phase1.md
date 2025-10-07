@@ -13,11 +13,11 @@
 - **site/modules/default/scripts/** – public-facing bundle with Bootstrap and SweetAlert2 binaries plus an empty `default.js` placeholder (current integration keeps vendor libraries as globals).【F:site/modules/default/transformers/energine.xslt†L61-L88】
 
 ### 1.3 Third-party bundles distributed with the project
-- **engine/core/modules/share/scripts/ckeditor/**, **codemirror/**, **fancytree/**, **FileAPI/**, **jstree/**, and `jquery.min.js` – vendor sources kept as global scripts and referenced through the dependency map. These remain untouched during the ES-module migration and continue to expose their historical globals (`CKEDITOR`, `CodeMirror`, `jQuery`, etc.).【3db03a†L12-L110】【935dbc†L1-L120】
+- **engine/core/modules/share/scripts/ckeditor/**, **codemirror/**, **fancytree/**, **FileAPI/**, **jstree/**, and `jquery.min.js` – vendor sources kept as global scripts and now referenced directly from component XML via `<javascript><library loader="classic">…</library></javascript>`. These remain untouched during the ES-module migration and continue to expose their historical globals (`CKEDITOR`, `CodeMirror`, `jQuery`, etc.).【3db03a†L12-L110】【935dbc†L1-L120】
 
 ## 2. Dependency overview
 
-Dependencies are declared through `ScriptLoader.load(...)` calls and the global dependency table in `system.jsmap.php`, which the server uses to resolve load order. Key relationships:
+Dependencies are declared through component configuration (`*.component.xml`) by listing `behavior` entries alongside explicit `<library>` nodes for any classic bundles. ES modules resolve their own imports at runtime, so no global `system.jsmap.php` is required. Key relationships:
 
 | Script | Provides | Declared dependencies | Additional global usage |
 | --- | --- | --- | --- |
@@ -51,10 +51,10 @@ Dependencies are declared through `ScriptLoader.load(...)` calls and the global 
 | `TemplateWizard.js` | `window.TemplateWizard` | `GridManager` | Calls `ModalBox`, jQuery `$`, and relies on `Energine.base` global path settings.【F:engine/core/modules/wizard/scripts/TemplateWizard.js†L1-L32】 |
 | Legacy auto scripts | `Test`, `TestFeed`, etc. | Implicit MooTools globals | Depend on `Class` and `$mt` from the removed MooTools bundle; need special handling during migration.【F:engine/core/modules/auto/scripts/Test.js†L1-L7】【F:engine/core/modules/auto/scripts/TestFeed.js†L1-L7】 |
 
-`system.jsmap.php` aggregates these dependencies so that `<javascript/behavior>` nodes can be expanded into actual script URLs during page assembly.【F:system.jsmap.php†L1-L73】
+Historically `system.jsmap.php` aggregated these dependencies so that `<javascript/behavior>` nodes could be expanded into actual script URLs during page assembly. This role is now handled directly by component XML `<javascript>` declarations together with the module runtime.
 
 ## 3. Script inclusion and initialization flow
-- `engine/core/modules/share/gears/Document.class.php` collects `<javascript/behavior>` declarations from component XML, resolves dependencies via `system.jsmap.php`, and outputs a `<javascript>` block with `<library path="...">` nodes in dependency order.【F:engine/core/modules/share/gears/Document.class.php†L242-L278】
+- `engine/core/modules/share/gears/Document.class.php` collects `<javascript/behavior>` declarations from component XML, expands classic `<library>` nodes, and outputs a `<javascript>` block with `<library path="...">` nodes — tagging vendor assets with `loader="classic"` and leaving module entries to rely on native `import` resolution.【F:engine/core/modules/share/gears/Document.class.php†L248-L360】
 - `engine/core/modules/share/transformers/document.xslt` converts each `<library>` entry into `<script src="{$STATIC_URL}scripts/{path}.js">`, injects runtime variables onto `window`, and schedules `Energine.run` on `DOMContentLoaded`. This template also calls `START_ENERGINE_JS`, which configures the `Energine` global before loading component scripts.【F:engine/core/modules/share/transformers/document.xslt†L142-L214】【F:engine/core/modules/share/transformers/document.xslt†L244-L260】
 - The public theme (`site/modules/default/transformers/energine.xslt`) pulls in vendor bundles (`bootstrap.bundle.min.js`, `sweetalert2.min.js`) ahead of the legacy `START_ENERGINE_JS` hook and the generic `scripts/default/default.js`. This establishes the baseline globals (`bootstrap`, `Swal`, etc.) expected by Energine scripts.【F:site/modules/default/transformers/energine.xslt†L52-L88】
 
@@ -63,7 +63,7 @@ The following names are read from `window` by templates or cross-frame integrati
 - `ScriptLoader`, `Energine`, and `safeConsoleError` (core runtime, used by every component and by XSLT templates for task queues and logging).【F:engine/core/modules/share/scripts/Energine.js†L1-L236】【F:engine/core/modules/share/transformers/document.xslt†L154-L214】
 - `ModalBox` (singleton stored on `window.top`, used to open modals from multiple scripts).【F:engine/core/modules/share/scripts/ModalBox.js†L164-L208】
 - `Toolbar` and derived constructors (`FeedToolbar`, `PageToolbar`, etc.), referenced by name inside toolbar XML definitions and initialised via dynamically generated `new <behavior>()` calls in XSLT.【F:engine/core/modules/share/scripts/Toolbar.js†L1-L196】【F:engine/core/modules/share/transformers/document.xslt†L174-L210】
-- `GridManager` family (`GridManager`, `SiteManager`, `TagEditor`, etc.) because component XML enumerates behaviours like `GridManager`/`SiteManager` in `javascript/behavior` nodes resolved at runtime.【F:system.jsmap.php†L1-L73】【F:engine/core/modules/share/transformers/document.xslt†L174-L210】
+- `GridManager` family (`GridManager`, `SiteManager`, `TagEditor`, etc.) continues to be declared as behaviours in component XML; their ES modules import dependencies directly so runtime only needs to enqueue the entry behaviour script while classic vendors are listed separately via `<library>`.【F:engine/core/modules/share/transformers/document.xslt†L174-L210】
 - CKEditor, FileAPI, jsTree, jQuery, Bootstrap, SweetAlert2 – shipped as vendor globals and consumed directly (`CKEDITOR`, `$`, `Swal`, `bootstrap`).【F:engine/core/modules/share/scripts/Form.js†L1-L64】【F:engine/core/modules/share/scripts/DivManager.js†L1-L60】【F:engine/core/modules/share/scripts/TemplateWizard.js†L21-L32】
 
 ## 5. HTML attribute hooks
