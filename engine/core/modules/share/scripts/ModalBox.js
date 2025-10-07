@@ -515,9 +515,26 @@ class ModalBoxClass {
 }
 
 const modalHostWindow = topWindow || globalScope;
-const ModalBox = (modalHostWindow && modalHostWindow.ModalBox instanceof ModalBoxClass)
+const MODAL_BOX_SINGLETON_KEY = '__energineModalBox__';
+
+const existingModalBox = modalHostWindow && modalHostWindow.ModalBox
     ? modalHostWindow.ModalBox
+    : null;
+
+const isCompatibleModal = (instance) => (
+    !!instance
+    && typeof instance === 'object'
+    && typeof instance.open === 'function'
+    && typeof instance.close === 'function'
+    && typeof instance.getCurrent === 'function'
+    && instance.window === modalHostWindow
+);
+
+const ModalBox = isCompatibleModal(existingModalBox)
+    ? existingModalBox
     : new ModalBoxClass(modalHostWindow);
+
+ModalBox[MODAL_BOX_SINGLETON_KEY] = true;
 
 if (modalHostWindow && modalHostWindow.ModalBox !== ModalBox) {
     modalHostWindow.ModalBox = ModalBox;
