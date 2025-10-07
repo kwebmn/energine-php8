@@ -23,4 +23,4 @@ tmp/
 /templates/
 /uploads/
 node_modules/
-/system.jsmap.php
+system.jsmap.php
