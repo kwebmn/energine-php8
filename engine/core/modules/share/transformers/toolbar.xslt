@@ -177,26 +177,28 @@
 
         <script type="module">
             import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
+            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
             queueTask(() => {
-            componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
+                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
+                componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
                 test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
                 select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
                 <xsl:apply-templates />
-            if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
-            var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
-                content = holder.querySelector('[data-pane-part="body"]');
-            if (content &amp;&amp; parseInt(document.body.clientWidth, 10) &lt;= 680) {
-                var tToolbar = holder.querySelector('[data-pane-part="header"]'),
-                    bToolbar = holder.querySelector('[data-pane-part="footer"]'),
-                    contentHeight = document.body.clientHeight;
-                if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
-                if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;
-                <!--content.setStyles({
-                    height: contentHeight,
-                    position: 'static'
-                });-->
-            }
-        });
+                if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
+                var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
+                    content = holder.querySelector('[data-pane-part="body"]');
+                if (content &amp;&amp; parseInt(document.body.clientWidth, 10) &lt;= 680) {
+                    var tToolbar = holder.querySelector('[data-pane-part="header"]'),
+                        bToolbar = holder.querySelector('[data-pane-part="footer"]'),
+                        contentHeight = document.body.clientHeight;
+                    if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
+                    if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;
+                    <!--content.setStyles({
+                        height: contentHeight,
+                        position: 'static'
+                    });-->
+                }
+            });
         </script>
     </xsl:template>    
     

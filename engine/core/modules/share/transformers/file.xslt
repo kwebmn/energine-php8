@@ -58,7 +58,9 @@
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
         <script type="module">
             import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
+            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
             queueTask(() => {
+                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
                 componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>');
                     <xsl:apply-templates/>
                     if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
