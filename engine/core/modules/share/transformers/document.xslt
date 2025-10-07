@@ -310,46 +310,97 @@
             const Energine = attachToWindow(window, runtime);
 
             const componentToolbars = window.componentToolbars = [];
+            const behaviorModuleCache = new Map();
+            const staticBase = (Energine.static || '<xsl:value-of select="$STATIC_URL"/>').replace(/\/?$/, '/');
+            const scriptsBaseUrl = `${staticBase}scripts/`;
+            const normalizeBehaviorPath = (value) => value ? (value.endsWith('/') ? value : `${value}/`) : '';
+            const formatBehaviorContext = (path, name) => `${normalizeBehaviorPath(path)}${name}`;
 
-            <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
-                <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]">
-                    globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] = globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] || null;
-                </xsl:for-each>
-            </xsl:if>
+            async function loadBehaviorConstructor(name, path = '') {
+                const normalizedPath = normalizeBehaviorPath(path);
+                const cacheKey = `${normalizedPath}${name}`;
+                if (behaviorModuleCache.has(cacheKey)) {
+                    return behaviorModuleCache.get(cacheKey);
+                }
 
-            <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                Energine.addTask(function () {
-             <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
-            const pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
-            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>
-            ]<xsl:if
-                test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
+                const moduleUrl = `${scriptsBaseUrl}${cacheKey}.js`;
+                try {
+                    const module = await import(moduleUrl);
+                    const ctor = module?.default || module?.[name] || globalThis?.[name];
+                    if (typeof ctor !== 'function') {
+                        throw new Error(`Module "${cacheKey}" did not export a constructor.`);
+                    }
+                    behaviorModuleCache.set(cacheKey, ctor);
+                    return ctor;
+                } catch (error) {
+                    behaviorModuleCache.delete(cacheKey);
+                    throw new Error(`Failed to load behavior "${cacheKey}": ${error.message || error}`);
+                }
+            }
 
-                });
-            </xsl:if>
+            const behaviorQueue = [
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
                 <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
-                if (document.getElementById('<xsl:value-of select="$objectID"/>')) {
-                    try {
-                         globalThis['<xsl:value-of select="$objectID"/>'] = new <xsl:value-of select="@name"/>(document.getElementById('<xsl:value-of select="$objectID"/>'));
+                {
+                    id: '<xsl:value-of select="$objectID"/>',
+                    name: '<xsl:value-of select="@name"/>',
+                    path: '<xsl:value-of select="@path"/>'
+                }<xsl:if test="position()!=last()">,</xsl:if>
+            </xsl:for-each>
+            ];
+
+            const initialiseBehaviors = async () => {
+                for (const item of behaviorQueue) {
+                    if (!item || !item.id) {
+                        continue;
                     }
-                    catch (e) {
-                        safeConsoleError(e);
+
+                    const targetElement = document.getElementById(item.id);
+                    if (!targetElement) {
+                        continue;
+                    }
+
+                    try {
+                        const BehaviorCtor = await loadBehaviorConstructor(item.name, item.path);
+                        globalThis[item.id] = new BehaviorCtor(targetElement);
+                    } catch (error) {
+                        safeConsoleError(error, formatBehaviorContext(item.path, item.name));
                     }
                 }
-            </xsl:for-each>
-            <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
+
+                <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
                 <xsl:if test="position()=1">
                     <xsl:variable name="objectID" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
                     try {
-                    globalThis['<xsl:value-of select="$objectID"/>'] = new PageEditor();
-                    }
-                    catch (e) {
-                    safeConsoleError(e);
+                        const PageEditorCtor = await loadBehaviorConstructor('PageEditor', '<xsl:value-of select="$COMPONENTS[javascript/behavior[@name='PageEditor']]/javascript/behavior/@path"/>');
+                        globalThis['<xsl:value-of select="$objectID"/>'] = new PageEditorCtor();
+                    } catch (error) {
+                        safeConsoleError(error, formatBehaviorContext('<xsl:value-of select="$COMPONENTS[javascript/behavior[@name='PageEditor']]/javascript/behavior/@path"/>', 'PageEditor'));
                     }
                 </xsl:if>
+                </xsl:if>
+            };
+
+            initialiseBehaviors().catch((error) => safeConsoleError(error, 'BehaviorBootstrap'));
+
+            <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
+            <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
+            loadBehaviorConstructor('<xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>', '<xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@path"/>')
+                .then((ToolbarCtor) => {
+                    Energine.addTask(function () {
+                        try {
+                            const pageToolbar = new ToolbarCtor('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template"/>', <xsl:value-of select="$ID"/>, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
+            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
+                                { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if>
+            </xsl:for-each>
+                            ]<xsl:if test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
+                            componentToolbars.push(pageToolbar);
+                        } catch (error) {
+                            safeConsoleError(error, formatBehaviorContext('<xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@path"/>', '<xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>'));
+                        }
+                    });
+                })
+                .catch((error) => safeConsoleError(error, formatBehaviorContext('<xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@path"/>', '<xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>')));
             </xsl:if>
 
             document.addEventListener('DOMContentLoaded', () => Energine.run());
