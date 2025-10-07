@@ -249,9 +249,7 @@ class BlockEditor {
                     if (!async) {
                         hideLoader();
                     }
-                },
-                // async (true по умолчанию, но явно укажем)
-                async
+                }
             );
         }
     }
