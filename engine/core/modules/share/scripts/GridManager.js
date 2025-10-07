@@ -1,4 +1,20 @@
-ScriptLoader.load('TabPane', 'PageList', 'Toolbar',  'ModalBox');
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const ScriptLoader = globalScope?.ScriptLoader;
+if (ScriptLoader && typeof ScriptLoader.load === 'function') {
+    ScriptLoader.load('TabPane', 'PageList', 'Toolbar', 'ModalBox');
+}
+
+const Energine = globalScope?.Energine || {};
+const TabPane = globalScope?.TabPane;
+const PageList = globalScope?.PageList;
+const Toolbar = globalScope?.Toolbar;
+const showLoader = globalScope?.showLoader || (() => {});
+const hideLoader = globalScope?.hideLoader || (() => {});
+const $ = globalScope?.jQuery || globalScope?.$;
+const getModalBox = () => globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 class Grid {
     /**
      * @param {HTMLElement|string} element
@@ -1908,17 +1924,17 @@ class GridManager {
 
     // --- Actions ---
     view() {
-        ModalBox.open({ url: `${this.singlePath}${this.grid.getSelectedRecordKey()}` });
+        getModalBox()?.open({ url: `${this.singlePath}${this.grid.getSelectedRecordKey()}` });
     }
     add() {
-        ModalBox.open({
+        getModalBox()?.open({
             url: `${this.singlePath}add/`,
             onClose: this.processAfterCloseAction.bind(this)
         });
     }
     edit(id) {
         if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
-        ModalBox.open({
+        getModalBox()?.open({
             url: `${this.singlePath}${id}/edit`,
             onClose: this.processAfterCloseAction.bind(this)
         });
@@ -1926,7 +1942,7 @@ class GridManager {
     move(id) {
         if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         this.setMvElementId(id);
-        ModalBox.open({
+        getModalBox()?.open({
             url: `${this.singlePath}move/${id}`,
             onClose: this.processAfterCloseAction.bind(this)
         });
@@ -1949,7 +1965,8 @@ class GridManager {
             null,
             () => {
                 hideLoader();
-                ModalBox.setReturnValue(true);
+                const modalBox = getModalBox();
+                modalBox?.setReturnValue(true);
                 this.close();
             },
             () => hideLoader(),
@@ -1997,11 +2014,12 @@ class GridManager {
         }
     }
     use() {
-        ModalBox.setReturnValue(this.grid.getSelectedRecord());
-        ModalBox.close();
+        const modalBox = getModalBox();
+        modalBox?.setReturnValue(this.grid.getSelectedRecord());
+        modalBox?.close();
     }
     close() {
-        ModalBox.close();
+        getModalBox()?.close();
     }
     up() {
         const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
@@ -2256,6 +2274,7 @@ class Filter {
 }
 
 // Привязка к глобальному пространству
+GridManager.Grid = Grid;
 GridManager.Filter = Filter;
 
 
@@ -2424,7 +2443,25 @@ class QueryControls {
     }
 }
 // Привязка к глобальному пространству
+Filter.QueryControls = QueryControls;
 GridManager.Filter.QueryControls = QueryControls;
+
+export { Grid, GridManager, Filter, QueryControls };
+export default GridManager;
+
+export function attachGridManagerGlobals(target = globalScope) {
+    if (!target) {
+        return { GridManager, Grid, Filter, QueryControls };
+    }
+
+    target.Grid = Grid;
+    target.GridManager = GridManager;
+    target.Filter = Filter;
+
+    return { GridManager, Grid, Filter, QueryControls };
+}
+
+attachGridManagerGlobals();
 
 document.addEventListener('DOMContentLoaded', function () {
     /**
