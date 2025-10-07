@@ -113,6 +113,10 @@
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>
+        <!-- <xsl:if test="//property[@name='single']">
+           <script type="text/javascript" src="scripts/jquery.min.js"></script>
+       </xsl:if> -->
+
         <script type="text/javascript">
             (function (global) {
                 if (global.__energineBridge) {
@@ -266,9 +270,9 @@
 <!--            <xsl:call-template name="START_ENERGINE_JS" />-->
 <!--        </xsl:if>-->
 
-<!--        <xsl:if test="//property[@name='single']">-->
-<!--            <script type="text/javascript" src="scripts/jquery.min.js"></script>-->
-<!--        </xsl:if>-->
+       <!-- <xsl:if test="//property[@name='single']">
+           <script type="text/javascript" src="scripts/jquery.min.js"></script>
+       </xsl:if> -->
 
     </xsl:template>
 
