@@ -13,12 +13,106 @@ const globalScope = typeof window !== 'undefined'
 let CKEDITOR = globalScope?.CKEDITOR;
 const FileAPI = globalScope?.FileAPI;
 
+const CKEDITOR_SCRIPT_ATTRIBUTE = 'data-energine-ckeditor';
+const CKEDITOR_SCRIPT_READY_ATTRIBUTE = 'data-energine-ckeditor-ready';
+const CKEDITOR_SCRIPT_URL = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
+    ? new URL('./ckeditor/ckeditor.js', import.meta.url).href
+    : null;
+
+let ckeditorLoadPromise = null;
+
 function getCKEditorInstance() {
     if (!CKEDITOR && globalScope?.CKEDITOR) {
         CKEDITOR = globalScope.CKEDITOR;
     }
 
     return CKEDITOR;
+}
+
+function loadCKEditor() {
+    const existingInstance = getCKEditorInstance();
+    if (existingInstance) {
+        return Promise.resolve(existingInstance);
+    }
+
+    if (!globalScope || !globalScope.document || !CKEDITOR_SCRIPT_URL) {
+        return Promise.resolve(null);
+    }
+
+    if (!ckeditorLoadPromise) {
+        ckeditorLoadPromise = new Promise((resolve, reject) => {
+            const doc = globalScope.document;
+
+            const finalize = () => {
+                const instance = getCKEditorInstance();
+                if (instance) {
+                    resolve(instance);
+                } else {
+                    reject(new Error('CKEditor global is undefined after script load.'));
+                }
+            };
+
+            const handleError = () => {
+                reject(new Error(`Failed to load CKEditor script from ${CKEDITOR_SCRIPT_URL}`));
+            };
+
+            let script = doc.querySelector(`script[src="${CKEDITOR_SCRIPT_URL}"]`);
+            if (!script) {
+                script = doc.createElement('script');
+                script.type = 'text/javascript';
+                script.src = CKEDITOR_SCRIPT_URL;
+                script.setAttribute(CKEDITOR_SCRIPT_ATTRIBUTE, 'true');
+
+                const onLoad = () => {
+                    script.setAttribute(CKEDITOR_SCRIPT_READY_ATTRIBUTE, 'true');
+                    script.removeEventListener('load', onLoad);
+                    script.removeEventListener('error', onError);
+                    finalize();
+                };
+                const onError = () => {
+                    script.removeEventListener('load', onLoad);
+                    script.removeEventListener('error', onError);
+                    handleError();
+                };
+
+                script.addEventListener('load', onLoad, { once: true });
+                script.addEventListener('error', onError, { once: true });
+
+                doc.head.appendChild(script);
+                return;
+            }
+
+            const onLoad = () => {
+                script.setAttribute(CKEDITOR_SCRIPT_READY_ATTRIBUTE, 'true');
+                script.removeEventListener('load', onLoad);
+                script.removeEventListener('error', onError);
+                finalize();
+            };
+            const onError = () => {
+                script.removeEventListener('load', onLoad);
+                script.removeEventListener('error', onError);
+                handleError();
+            };
+
+            script.addEventListener('load', onLoad, { once: true });
+            script.addEventListener('error', onError, { once: true });
+
+            if (script.getAttribute(CKEDITOR_SCRIPT_READY_ATTRIBUTE) === 'true'
+                || script.readyState === 'complete'
+                || script.readyState === 'loaded') {
+                onLoad();
+            }
+        }).catch((error) => {
+            ckeditorLoadPromise = null;
+            console.error(error);
+            return null;
+        });
+    }
+
+    return ckeditorLoadPromise.then(() => getCKEditorInstance()).catch((error) => {
+        console.error(error);
+        return null;
+    });
 }
 
 /**
@@ -2002,80 +2096,107 @@ class FormRichEditor {
      * @param {Form} form
      */
     constructor(textarea, form) {
-        this.setupEditors();
-
         this.textarea = (typeof textarea === 'string')
             ? document.getElementById(textarea) || document.querySelector(textarea)
             : textarea;
 
         this.form = form;
+        this.editor = null;
+        this.editorPromise = null;
 
-        try {
-            const ckeditor = getCKEditorInstance();
-            if (!ckeditor) {
-                console.warn('CKEditor is not loaded. Rich editor cannot be initialized.');
-                return;
-            }
+        this.editorPromise = this.setupEditors()
+            .then((ckeditor) => {
+                if (!ckeditor) {
+                    console.warn('CKEditor could not be loaded. Rich editor cannot be initialized.');
+                    return null;
+                }
 
-            this.editor = ckeditor.replace(this.textarea.id);
-            this.editor.editorId = this.textarea.id;
-            this.editor.singleTemplate = this.form.singlePath;
-        } catch (e) {
-            console.warn(e);
-        }
+                if (!this.textarea) {
+                    console.warn('Rich editor textarea element was not found.');
+                    return null;
+                }
+
+                if (!this.textarea.id) {
+                    console.warn('Rich editor textarea requires an "id" attribute.');
+                    return null;
+                }
+
+                const instance = ckeditor.replace(this.textarea.id);
+                instance.editorId = this.textarea.id;
+                instance.singleTemplate = this.form.singlePath;
+
+                this.editor = instance;
+                return instance;
+            })
+            .catch((error) => {
+                console.warn(error);
+                return null;
+            });
     }
 
     /**
      * CKEditor initialization (однократная на проект)
      */
     setupEditors() {
-        const ckeditor = getCKEditorInstance();
-        if (!ckeditor) {
-            console.warn('CKEditor config is unavailable. Skipping editor setup.');
-            return;
-        }
+        return loadCKEditor()
+            .then((ckeditor) => {
+                if (!ckeditor) {
+                    console.warn('CKEditor config is unavailable. Skipping editor setup.');
+                    return null;
+                }
 
-        if (!FormRichEditor.ckeditor_init) {
-            ckeditor.config.versionCheck = false;
-            ckeditor.config.extraPlugins = 'energineimage,energinefile';
-            ckeditor.config.removePlugins = 'exportpdf';
-            ckeditor.config.allowedContent = true;
-            ckeditor.config.toolbar = [
-                { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
-                { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-                { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-                { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-                { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-                { name: 'tools', items: [ 'ShowBlocks' ] },
-                '/',
-                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-                { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-                { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-                { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-            ];
+                if (!FormRichEditor.ckeditor_init) {
+                    ckeditor.config.versionCheck = false;
+                    ckeditor.config.extraPlugins = 'energineimage,energinefile';
+                    ckeditor.config.removePlugins = 'exportpdf';
+                    ckeditor.config.allowedContent = true;
+                    ckeditor.config.toolbar = [
+                        { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
+                        { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
+                        { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
+                        { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
+                        { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
+                        { name: 'tools', items: [ 'ShowBlocks' ] },
+                        '/',
+                        { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
+                        { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
+                        { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
+                        { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
+                    ];
 
-            // Стили для wysiwyg
-            let styles = [];
-            if (window['wysiwyg_styles']) {
-                Object.values(window['wysiwyg_styles']).forEach(style => {
-                    styles.push({
-                        name: style['caption'],
-                        element: style['element'],
-                        attributes: { 'class': style['class'] }
-                    });
-                });
-            }
-            ckeditor.stylesSet.add('energine', styles);
-            ckeditor.config.stylesSet = 'energine';
+                    // Стили для wysiwyg
+                    let styles = [];
+                    if (window['wysiwyg_styles']) {
+                        Object.values(window['wysiwyg_styles']).forEach(style => {
+                            styles.push({
+                                name: style['caption'],
+                                element: style['element'],
+                                attributes: { 'class': style['class'] }
+                            });
+                        });
+                    }
+                    ckeditor.stylesSet.add('energine', styles);
+                    ckeditor.config.stylesSet = 'energine';
 
-            FormRichEditor.ckeditor_init = true;
-        }
+                    FormRichEditor.ckeditor_init = true;
+                }
+
+                return ckeditor;
+            })
+            .catch((error) => {
+                console.warn(error);
+                return null;
+            });
     }
 
     /**
      * Сохраняет текст редактора обратно в textarea перед submit
      */
     onSaveForm() {
+        if (!this.editor || typeof this.editor.getData !== 'function') {
+            return;
+        }
+
         try {
             const data = this.editor.getData();
             this.textarea.value = data;
