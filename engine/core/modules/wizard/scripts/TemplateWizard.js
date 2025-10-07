@@ -1,6 +1,6 @@
-import Energine from './Energine.js';
-import GridManager from './GridManager.js';
-import ModalBox from './ModalBox.js';
+import Energine from '../../share/scripts/Energine.js';
+import GridManager from '../../share/scripts/GridManager.js';
+import ModalBox from '../../share/scripts/ModalBox.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window

@@ -1,6 +1,6 @@
-import Energine from './Energine.js';
-import Toolbar from './Toolbar.js';
-import ModalBox from './ModalBox.js';
+import Energine from '../../share/scripts/Energine.js';
+import Toolbar from '../../share/scripts/Toolbar.js';
+import ModalBox from '../../share/scripts/ModalBox.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window

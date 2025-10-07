@@ -1,4 +1,4 @@
-import Form from './Form.js';
+import Form from '../../share/scripts/Form.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window

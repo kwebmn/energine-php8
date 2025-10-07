@@ -1,5 +1,5 @@
-import Energine from './Energine.js';
-import ValidForm from './ValidForm.js';
+import Energine from '../../share/scripts/Energine.js';
+import ValidForm from '../../share/scripts/ValidForm.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window

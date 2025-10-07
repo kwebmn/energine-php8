@@ -12,7 +12,6 @@ const globalScope = typeof window !== 'undefined'
 
 const CKEDITOR = globalScope?.CKEDITOR;
 const FileAPI = globalScope?.FileAPI;
-const $ = globalScope?.jQuery || globalScope?.$;
 
 /**
  * @file Contain the description of the next classes:

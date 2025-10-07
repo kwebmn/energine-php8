@@ -17,6 +17,32 @@
     <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
     <xsl:variable name="RESIZER_URL"><xsl:value-of select="$BASE/@resizer"/></xsl:variable>
     <xsl:variable name="MAIN_SITE"><xsl:value-of select="$DOC_PROPS[@name='base']/@default"/><xsl:value-of select="$LANG_ABBR"/></xsl:variable>
+    <xsl:variable name="SCRIPTS_BASE">
+        <xsl:choose>
+            <xsl:when test="$DOC_PROPS[@name='scripts_base'] != ''">
+                <xsl:value-of select="$DOC_PROPS[@name='scripts_base']"/>
+            </xsl:when>
+            <xsl:otherwise>scripts/</xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="ENERGINE_SRC_VALUE">
+        <xsl:choose>
+            <xsl:when test="$DOC_PROPS[@name='energine_script'] != ''">
+                <xsl:value-of select="$DOC_PROPS[@name='energine_script']"/>
+            </xsl:when>
+            <xsl:otherwise>scripts/Energine.js</xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="ENERGINE_URL">
+        <xsl:choose>
+            <xsl:when test="contains($ENERGINE_SRC_VALUE, '://') or starts-with($ENERGINE_SRC_VALUE, '//')">
+                <xsl:value-of select="$ENERGINE_SRC_VALUE"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="concat($STATIC_URL, $ENERGINE_SRC_VALUE)"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
 
     <!--@deprecated-->
     <!--Оставлено для обратной совместимости, сейчас рекомендуется определять обработчик рута в модуле сайта и взывать рутовый шаблон в режиме head-->
@@ -263,7 +289,9 @@
                 });
             })(window.__energineBridge || null);
         </script>
-        <script type="module" src="{$STATIC_URL}scripts/Energine.js"></script>
+        <script type="module">
+            <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
+        </script>
 <!--        <xsl:apply-templates select="." mode="og"/>-->
 
 <!--        <xsl:if test="$DOC_PROPS[@name='single'] or $DOC_PROPS[@name='is_user'] > 0">-->
@@ -294,7 +322,7 @@
         <xsl:apply-templates select="document/translations"/>
         <script type="module">
             // NOTE: downstream Energine modules must import helpers from this entrypoint instead of relying on globals.
-            import { bootEnergine, attachToWindow, createConfigFromProps, safeConsoleError } from "<xsl:value-of select="$STATIC_URL"/>scripts/Energine.js";
+            import { bootEnergine, attachToWindow, createConfigFromProps, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
 
             const config = createConfigFromProps({
             <xsl:if test="document/@debug=1">debug: true,</xsl:if>
@@ -384,7 +412,7 @@
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="/document/translations[translation[@component=//component[@editable]/@name]]">
         <script type="module">
-            import { stageTranslations } from "<xsl:value-of select="$STATIC_URL"/>scripts/Energine.js";
+            import { stageTranslations } from "<xsl:value-of select="$ENERGINE_URL"/>";
             stageTranslations(<xsl:value-of select="/document/translations/@json" />);
         </script>
     </xsl:template>
@@ -396,12 +424,36 @@
     <xsl:template match="/document//javascript/variable"/>
 
     <xsl:template match="/document/javascript/library" mode="head">
+        <xsl:variable name="rawSrc">
+            <xsl:choose>
+                <xsl:when test="string-length(@src) &gt; 0">
+                    <xsl:value-of select="@src"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat('scripts/', @path, '.js')"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="fullSrc">
+            <xsl:choose>
+                <xsl:when test="contains($rawSrc, '://') or starts-with($rawSrc, '//')">
+                    <xsl:value-of select="$rawSrc"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat($STATIC_URL, $rawSrc)"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <xsl:choose>
             <xsl:when test="@loader='classic'">
-                <script type="text/javascript" src="{$STATIC_URL}scripts/{@path}.js"></script>
+                <script type="text/javascript">
+                    <xsl:attribute name="src"><xsl:value-of select="$fullSrc"/></xsl:attribute>
+                </script>
             </xsl:when>
             <xsl:otherwise>
-                <script type="module" src="{$STATIC_URL}scripts/{@path}.js"></script>
+                <script type="module">
+                    <xsl:attribute name="src"><xsl:value-of select="$fullSrc"/></xsl:attribute>
+                </script>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:template>

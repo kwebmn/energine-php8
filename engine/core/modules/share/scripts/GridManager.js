@@ -14,7 +14,6 @@ const PageList = PageListModule || globalScope?.PageList;
 const Toolbar = ToolbarModule || globalScope?.Toolbar;
 const showLoader = showLoaderFn || globalScope?.showLoader || (() => {});
 const hideLoader = hideLoaderFn || globalScope?.hideLoader || (() => {});
-const $ = globalScope?.jQuery || globalScope?.$;
 const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 class Grid {
     /**

@@ -2,6 +2,7 @@
 <configuration>
     <state name="main">
         <javascript>
+            <library path="jquery.min" loader="classic"/>
             <behavior name="TemplateWizard"/>
         </javascript>
         <fields>

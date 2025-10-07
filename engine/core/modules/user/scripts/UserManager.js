@@ -1,4 +1,4 @@
-import GridManager from './GridManager.js';
+import GridManager from '../../share/scripts/GridManager.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
