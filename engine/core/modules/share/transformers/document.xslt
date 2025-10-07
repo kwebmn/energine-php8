@@ -143,155 +143,6 @@
            <script type="text/javascript" src="scripts/jquery.min.js"></script>
        </xsl:if> -->
 
-        <script type="text/javascript">
-            (function (global) {
-                if (global.__energineBridge) {
-                    return;
-                }
-
-                const pending = {
-                    config: {},
-                    tasks: [],
-                    translations: {},
-                };
-                let runtime = null;
-
-                const methodNames = ['request', 'cancelEvent', 'resize', 'confirmBox', 'alertBox', 'noticeBox', 'loadCSS', 'run', 'createDatePicker', 'createDateTimePicker'];
-
-                const translationFacade = {
-                    get(constant) {
-                        if (runtime &amp;&amp; runtime.translations) {
-                            return runtime.translations.get(constant);
-                        }
-                        return Object.prototype.hasOwnProperty.call(pending.translations, constant)
-                            ? pending.translations[constant]
-                            : null;
-                    },
-                    set(constant, value) {
-                        if (runtime &amp;&amp; runtime.translations) {
-                            runtime.translations.set(constant, value);
-                        } else {
-                            pending.translations[constant] = value;
-                        }
-                    },
-                    extend(values) {
-                        if (runtime &amp;&amp; runtime.translations) {
-                            runtime.translations.extend(values);
-                        } else {
-                            Object.assign(pending.translations, values);
-                        }
-                    }
-                };
-
-                function queueTask(task, priority = 5) {
-                    if (typeof task !== 'function') {
-                        return;
-                    }
-
-                    if (runtime) {
-                        runtime.addTask(task, priority);
-                    } else {
-                        pending.tasks.push({ task, priority });
-                    }
-                }
-
-                function extendTranslations(values) {
-                    if (!values || typeof values !== 'object') {
-                        return;
-                    }
-
-                    translationFacade.extend(values);
-                }
-
-                function setRuntime(instance) {
-                    runtime = instance;
-                    Object.assign(runtime, pending.config);
-                    if (runtime.translations &amp;&amp; Object.keys(pending.translations).length) {
-                        runtime.translations.extend(pending.translations);
-                        pending.translations = {};
-                    }
-                    if (pending.tasks.length) {
-                        pending.tasks.forEach(({ task, priority }) => runtime.addTask(task, priority));
-                        pending.tasks = [];
-                    }
-                }
-
-                const api = new Proxy({}, {
-                    get(_, prop) {
-                        if (prop === '__setRuntime') {
-                            return setRuntime;
-                        }
-                        if (prop === 'translations') {
-                            return translationFacade;
-                        }
-                        if (prop === 'addTask') {
-                            return queueTask;
-                        }
-                        if (prop === 'tasks') {
-                            if (runtime) {
-                                return runtime.tasks;
-                            }
-                            return pending.tasks;
-                        }
-                        if (runtime) {
-                            const value = runtime[prop];
-                            return typeof value === 'function' ? value.bind(runtime) : value;
-                        }
-                        if (methodNames.includes(prop)) {
-                            return function (...args) {
-                                if (!runtime || typeof runtime[prop] !== 'function') {
-                                    throw new Error('Energine runtime is not ready yet');
-                                }
-                                return runtime[prop](...args);
-                            };
-                        }
-                        if (Object.prototype.hasOwnProperty.call(pending.config, prop)) {
-                            return pending.config[prop];
-                        }
-                        return undefined;
-                    },
-                    set(_, prop, value) {
-                        if (prop === 'translations') {
-                            translationFacade.extend(value);
-                            return true;
-                        }
-                        if (runtime) {
-                            runtime[prop] = value;
-                        } else {
-                            pending.config[prop] = value;
-                        }
-                        return true;
-                    }
-                });
-
-                global.Energine = api;
-                global.ScriptLoader = global.ScriptLoader || { load() {} };
-                global.__energineBridge = {
-                    setRuntime,
-                    pendingConfig: pending.config,
-                    queueTask,
-                    extendTranslations,
-                };
-            })(window);
-        </script>
-        <script type="text/javascript">
-            (function (bridge) {
-                const target = bridge &amp;&amp; bridge.pendingConfig ? bridge.pendingConfig : (window.Energine || {});
-                Object.assign(target, {
-                <xsl:if test="document/@debug=1">debug: true,</xsl:if>
-                base: '<xsl:value-of select="$BASE"/>',
-                static: '<xsl:value-of select="$STATIC_URL"/>',
-                resizer: '<xsl:value-of select="$RESIZER_URL"/>',
-                media: '<xsl:value-of select="$MEDIA_URL"/>',
-                root: '<xsl:value-of select="$MAIN_SITE"/>',
-                lang: '<xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/>',
-                singleMode: <xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/>
-                });
-            })(window.__energineBridge || null);
-        </script>
-        <script type="module">
-            <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
-        </script>
 <!--        <xsl:apply-templates select="." mode="og"/>-->
 
 <!--        <xsl:if test="$DOC_PROPS[@name='single'] or $DOC_PROPS[@name='is_user'] > 0">-->
@@ -317,23 +168,32 @@
         <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
+        <script type="module">
+            <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
+            <xsl:if test="document/@debug=1">
+                <xsl:attribute name="data-debug">true</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-base"><xsl:value-of select="$BASE"/></xsl:attribute>
+            <xsl:attribute name="data-static"><xsl:value-of select="$STATIC_URL"/></xsl:attribute>
+            <xsl:attribute name="data-resizer"><xsl:value-of select="$RESIZER_URL"/></xsl:attribute>
+            <xsl:attribute name="data-media"><xsl:value-of select="$MEDIA_URL"/></xsl:attribute>
+            <xsl:attribute name="data-root"><xsl:value-of select="$MAIN_SITE"/></xsl:attribute>
+            <xsl:attribute name="data-lang"><xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/></xsl:attribute>
+            <xsl:attribute name="data-single-mode">
+                <xsl:choose>
+                    <xsl:when test="boolean($DOC_PROPS[@name='single'])">true</xsl:when>
+                    <xsl:otherwise>false</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+        </script>
         <xsl:apply-templates select="/document/javascript/library" mode="head"/>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="module">
             // NOTE: downstream Energine modules must import helpers from this entrypoint instead of relying on globals.
-            import { bootEnergine, attachToWindow, createConfigFromProps, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
+            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
 
-            const config = createConfigFromProps({
-            <xsl:if test="document/@debug=1">debug: true,</xsl:if>
-            base: '<xsl:value-of select="$BASE"/>',
-            static: '<xsl:value-of select="$STATIC_URL"/>',
-            resizer: '<xsl:value-of select="$RESIZER_URL"/>',
-            media: '<xsl:value-of select="$MEDIA_URL"/>',
-            root: '<xsl:value-of select="$MAIN_SITE"/>',
-            lang: '<xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/>',
-            singleMode: <xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/>
-            });
+            const config = createConfigFromScriptDataset();
 
             const runtime = bootEnergine(config);
             if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {
