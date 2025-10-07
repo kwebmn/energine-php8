@@ -249,7 +249,9 @@ final class Document extends DBWorker implements IDocument
         $includes = $this->collectJavascriptIncludes();
         if (!empty($includes)) {
             $jsNode = $this->doc->createElement('javascript');
-            foreach ($includes as $path => $loader) {
+            foreach ($includes as $entry) {
+                $path = $entry['path'];
+                $loader = $entry['loader'];
                 $lib = $this->doc->createElement('library');
                 $lib->setAttribute('path', (string)$path);
                 if ($loader) {
@@ -294,13 +296,36 @@ final class Document extends DBWorker implements IDocument
     /**
      * Build a list of JavaScript libraries declared in component configuration.
      *
-     * @return array<string,string> [path => loader]
+     * @return array<int,array{path:string,loader:string|null}>
      */
     protected function collectJavascriptIncludes(): array
     {
         $xpath = new DOMXPath($this->doc);
-        $includes = [];
+        $classicIncludes = [];
+        $moduleIncludes = [];
+        $seenClassic = [];
+        $seenModule = [];
         $libraries = $xpath->query('//component/javascript/library');
+
+        $classicDepsByBehavior = [
+            'Form' => ['ckeditor/ckeditor'],
+            'DivForm' => ['ckeditor/ckeditor'],
+            'AttachmentEditor' => ['FileAPI/FileAPI'],
+            'FileRepoForm' => ['FileAPI/FileAPI'],
+            'FileRepository' => ['FileAPI/FileAPI'],
+            'DivManager' => ['jquery.min', 'jstree/jstree'],
+            'DivTree' => ['jquery.min', 'jstree/jstree'],
+            'DivSidebar' => ['jquery.min', 'jstree/jstree'],
+            'FiltersTreeEditor' => ['jquery.min', 'jstree/jstree.min'],
+        ];
+
+        $pushClassic = static function (string $path) use (&$classicIncludes, &$seenClassic): void {
+            if (isset($seenClassic[$path])) {
+                return;
+            }
+            $classicIncludes[] = ['path' => $path, 'loader' => 'classic'];
+            $seenClassic[$path] = true;
+        };
 
         if ($libraries && $libraries->length) {
             /** @var DOMElement $library */
@@ -321,10 +346,13 @@ final class Document extends DBWorker implements IDocument
                 $loaderAttr = strtolower((string)$library->getAttribute('loader'));
                 $loader = $loaderAttr !== '' ? $loaderAttr : ($this->isGlobalLibrary($normalizedPath) ? 'classic' : 'module');
 
-                if (!array_key_exists($normalizedPath, $includes)) {
-                    $includes[$normalizedPath] = $loader;
-                } elseif ($loader === 'classic') {
-                    $includes[$normalizedPath] = 'classic';
+                if ($loader === 'classic') {
+                    $pushClassic($normalizedPath);
+                } else {
+                    if (!isset($seenClassic[$normalizedPath]) && !isset($seenModule[$normalizedPath])) {
+                        $moduleIncludes[] = ['path' => $normalizedPath, 'loader' => $loader];
+                        $seenModule[$normalizedPath] = true;
+                    }
                 }
             }
         }
@@ -348,13 +376,25 @@ final class Document extends DBWorker implements IDocument
                     continue;
                 }
 
-                if (!array_key_exists($fullPath, $includes)) {
-                    $includes[$fullPath] = $this->isGlobalLibrary($fullPath) ? 'classic' : 'module';
+                $loader = $this->isGlobalLibrary($fullPath) ? 'classic' : 'module';
+                if (isset($classicDepsByBehavior[$name])) {
+                    foreach ($classicDepsByBehavior[$name] as $dep) {
+                        $pushClassic($dep);
+                    }
+                }
+
+                if ($loader === 'classic') {
+                    $pushClassic($fullPath);
+                } else {
+                    if (!isset($seenModule[$fullPath])) {
+                        $moduleIncludes[] = ['path' => $fullPath, 'loader' => 'module'];
+                        $seenModule[$fullPath] = true;
+                    }
                 }
             }
         }
 
-        return $includes;
+        return array_merge($classicIncludes, $moduleIncludes);
     }
 
     protected function normalizeLibraryPath(string $path): string

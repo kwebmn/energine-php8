@@ -1,12 +1,8 @@
+import GridManager from './GridManager.js';
+
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const GridManager = globalScope?.GridManager;
-
-if (!GridManager) {
-    throw new Error('UserManager requires GridManager to be loaded before it executes.');
-}
 
 /**
  * UserManager (ES6 version)

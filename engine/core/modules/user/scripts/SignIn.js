@@ -1,4 +1,4 @@
-import Energine from '../../share/scripts/Energine.js';
+import Energine from './Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
