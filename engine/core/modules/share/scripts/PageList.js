@@ -1,3 +1,7 @@
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
 class PageList extends EventTarget {
     /**
      * @param {Object} [options]
@@ -185,4 +189,18 @@ class PageList extends EventTarget {
     }
 
     // Подключение CSS
+}
+
+export { PageList };
+export default PageList;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return PageList;
     }
+
+    target.PageList = PageList;
+    return PageList;
+}
+
+attachToWindow();

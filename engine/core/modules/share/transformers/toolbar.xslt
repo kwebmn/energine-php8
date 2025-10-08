@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding="UTF-8"?>
-<xsl:stylesheet 
-    version="1.0" 
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+<xsl:stylesheet
+    version="1.0"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
 
     <!-- Шаблоны панели управления -->
@@ -175,28 +175,34 @@
     <!-- Панель управления для формы -->
     <xsl:template match="toolbar[parent::component[@exttype='grid']]">
 
-        <script type="text/javascript">
-<!--            document.addEventListener('DOMContentLoaded', function(){-->
-            Energine.addTask(function(){
-            componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
+        <script type="module">
+            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
+            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
+            queueTask(() => {
+                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
+                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
+                componentToolbars[componentId] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
                 test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
                 select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
                 <xsl:apply-templates />
-            if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
-            var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
-                content = holder.querySelector('[data-pane-part="body"]');
-            if (content <xsl:text disable-output-escaping="yes">&amp;&amp;</xsl:text> parseInt(document.body.clientWidth) <xsl:text disable-output-escaping="yes">&lt;</xsl:text>= 680) {
-                var tToolbar = holder.querySelector('[data-pane-part="header"]'),
-                    bToolbar = holder.querySelector('[data-pane-part="footer"]'),
-                    contentHeight = document.body.clientHeight;
-                if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
-                if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;
-                <!--content.setStyles({
-                    height: contentHeight,
-                    position: 'static'
-                });-->
-            }
-        });
+                const componentInstance = globalThis[componentId];
+                if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
+                    componentInstance.attachToolbar(componentToolbars[componentId]);
+                }
+                var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
+                    content = holder.querySelector('[data-pane-part="body"]');
+                if (content &amp;&amp; parseInt(document.body.clientWidth, 10) &lt;= 680) {
+                    var tToolbar = holder.querySelector('[data-pane-part="header"]'),
+                        bToolbar = holder.querySelector('[data-pane-part="footer"]'),
+                        contentHeight = document.body.clientHeight;
+                    if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
+                    if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;
+                    <!--content.setStyles({
+                        height: contentHeight,
+                        position: 'static'
+                    });-->
+                }
+            });
         </script>
     </xsl:template>    
     

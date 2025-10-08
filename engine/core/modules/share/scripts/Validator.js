@@ -4,6 +4,10 @@
  * @version 2.0.0
  */
 
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
 class Validator {
     /**
      * @param {HTMLFormElement|string} form - форма (DOM-элемент или id)
@@ -66,7 +70,7 @@ class Validator {
      */
     scrollToElement(field) {
         // Если есть .e-mainframe — внутри неё, иначе окно
-        const context = document.querySelector('.e-mainframe') || window;
+        const context = document.querySelector('.e-mainframe') || globalScope;
         // Старый scroll — просто к полю
         field.scrollIntoView({ behavior: "smooth", block: "center" });
         setTimeout(() => {
@@ -141,5 +145,16 @@ class Validator {
     }
 }
 
-// Для совместимости
-window.Validator = Validator;
+export { Validator };
+export default Validator;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return Validator;
+    }
+
+    target.Validator = Validator;
+    return Validator;
+}
+
+attachToWindow();

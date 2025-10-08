@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xsl:stylesheet 
-    version="1.0" 
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+<xsl:stylesheet
+    version="1.0"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 
     xmlns:set="http://exslt.org/sets"
     extension-element-prefixes="set">
@@ -55,12 +55,9 @@
             <xsl:call-template name="BUILD_GRID"/>
             <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
-                <script type="text/javascript">
-                    <!--<xsl:for-each select="$TRANSLATION[@component=$NAME]">
-                        Energine.translations.set('<xsl:value-of select="@const"/>', '<xsl:value-of select="."/>');
-                    </xsl:for-each>-->
-<!--		            Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);-->
-                    document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
+                <script type="module">
+                    import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
+                    stageTranslations(<xsl:value-of select="/document/translations/@json" />);
                 </script>
             </xsl:if>
         </div>
@@ -68,10 +65,10 @@
     
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="document/translations[translation[@component=//component[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name]]">
-            <script type="text/javascript">
-<!--                Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);-->
-                document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
-            </script>
+        <script type="module">
+            import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
+            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+        </script>
 
     </xsl:template>
 
@@ -199,10 +196,10 @@
                                         </div>
                                     </div>
                                     <div class="col-auto ms-lg-auto d-flex gap-2">
-                                        <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" data-action="apply-filter">
+                                        <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2" data-action="apply-filter">
                                             <xsl:value-of select="ancestor::component/filter/@apply"/>
                                         </button>
-                                        <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" data-action="reset-filter">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2" data-action="reset-filter">
                                             <xsl:value-of select="ancestor::component/filter/@reset"/>
                                         </button>
                                     </div>

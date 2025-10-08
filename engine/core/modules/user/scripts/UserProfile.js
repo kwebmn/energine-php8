@@ -1,16 +1,30 @@
+import Energine from '../../share/scripts/Energine.js';
+import ValidForm from '../../share/scripts/ValidForm.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const $ = globalScope?.jQuery || globalScope?.$;
+
 /**
  * UserProfile (ES6 version)
  * @extends ValidForm
  */
-class UserProfile  {
+class UserProfile extends ValidForm {
     /**
      * @param {HTMLElement|string} element
      */
     constructor(element) {
-        // singlePath
-        this.componentElement = (typeof element === 'string')
+        if (!$) {
+            throw new Error('UserProfile requires jQuery to be available globally.');
+        }
+
+        const elementRef = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
+        super(elementRef);
+        this.componentElement = elementRef;
         // Получаем путь для сохранения
         this.url = this.componentElement.getAttribute('single_template');
 
@@ -34,5 +48,16 @@ class UserProfile  {
 
 }
 
-// Глобальная привязка, если нужно
-window.UserProfile = UserProfile;
+export { UserProfile };
+export default UserProfile;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return UserProfile;
+    }
+
+    target.UserProfile = UserProfile;
+    return UserProfile;
+}
+
+attachToWindow();

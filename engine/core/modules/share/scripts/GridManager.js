@@ -1,4 +1,20 @@
-ScriptLoader.load('TabPane', 'PageList', 'Toolbar',  'ModalBox');
+import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn } from './Energine.js';
+import TabPaneModule from './TabPane.js';
+import ToolbarModule from './Toolbar.js';
+import ModalBoxModule from './ModalBox.js';
+import PageListModule from './PageList.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const Energine = EnergineModule || globalScope?.Energine || {};
+const TabPane = TabPaneModule || globalScope?.TabPane;
+const PageList = PageListModule || globalScope?.PageList;
+const Toolbar = ToolbarModule || globalScope?.Toolbar;
+const showLoader = showLoaderFn || globalScope?.showLoader || (() => {});
+const hideLoader = hideLoaderFn || globalScope?.hideLoader || (() => {});
+const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 class Grid {
     /**
      * @param {HTMLElement|string} element
@@ -1606,15 +1622,6 @@ class GridManager {
             this.toolbar.bindTo(this);
         }
 
-        if (Array.isArray(this.toolbar.controls)) {
-            this.toolbar.controls.forEach(control => {
-                const element = control && control.element;
-                if (element && element.classList && element.classList.contains('btn-sm')) {
-                    element.classList.remove('btn-sm');
-                }
-            });
-        }
-
         this.setupSelectionControls();
     }
 
@@ -1908,17 +1915,17 @@ class GridManager {
 
     // --- Actions ---
     view() {
-        ModalBox.open({ url: `${this.singlePath}${this.grid.getSelectedRecordKey()}` });
+        getModalBox()?.open({ url: `${this.singlePath}${this.grid.getSelectedRecordKey()}` });
     }
     add() {
-        ModalBox.open({
+        getModalBox()?.open({
             url: `${this.singlePath}add/`,
             onClose: this.processAfterCloseAction.bind(this)
         });
     }
     edit(id) {
         if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
-        ModalBox.open({
+        getModalBox()?.open({
             url: `${this.singlePath}${id}/edit`,
             onClose: this.processAfterCloseAction.bind(this)
         });
@@ -1926,7 +1933,7 @@ class GridManager {
     move(id) {
         if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         this.setMvElementId(id);
-        ModalBox.open({
+        getModalBox()?.open({
             url: `${this.singlePath}move/${id}`,
             onClose: this.processAfterCloseAction.bind(this)
         });
@@ -1949,7 +1956,8 @@ class GridManager {
             null,
             () => {
                 hideLoader();
-                ModalBox.setReturnValue(true);
+                const modalBox = getModalBox();
+                modalBox?.setReturnValue(true);
                 this.close();
             },
             () => hideLoader(),
@@ -1997,11 +2005,12 @@ class GridManager {
         }
     }
     use() {
-        ModalBox.setReturnValue(this.grid.getSelectedRecord());
-        ModalBox.close();
+        const modalBox = getModalBox();
+        modalBox?.setReturnValue(this.grid.getSelectedRecord());
+        modalBox?.close();
     }
     close() {
-        ModalBox.close();
+        getModalBox()?.close();
     }
     up() {
         const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
@@ -2256,6 +2265,7 @@ class Filter {
 }
 
 // Привязка к глобальному пространству
+GridManager.Grid = Grid;
 GridManager.Filter = Filter;
 
 
@@ -2424,7 +2434,25 @@ class QueryControls {
     }
 }
 // Привязка к глобальному пространству
+Filter.QueryControls = QueryControls;
 GridManager.Filter.QueryControls = QueryControls;
+
+export { Grid, GridManager, Filter, QueryControls };
+export default GridManager;
+
+export function attachGridManagerGlobals(target = globalScope) {
+    if (!target) {
+        return { GridManager, Grid, Filter, QueryControls };
+    }
+
+    target.Grid = Grid;
+    target.GridManager = GridManager;
+    target.Filter = Filter;
+
+    return { GridManager, Grid, Filter, QueryControls };
+}
+
+attachGridManagerGlobals();
 
 document.addEventListener('DOMContentLoaded', function () {
     /**

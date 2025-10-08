@@ -1,3 +1,9 @@
+import Energine from '../../share/scripts/Energine.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
 class SignIn {
   constructor(element) {
     // element может быть селектором или DOM-узлом
@@ -98,7 +104,9 @@ class SignIn {
         const redirect = isLogout
           ? `/${Energine.lang}/`
           : `/${Energine.lang}/${result.redirect}`;
-        document.location.href = redirect;
+        if (globalScope?.location) {
+          globalScope.location.href = redirect;
+        }
       });
     } else {
       const fieldName = result?.field ?? '';
@@ -177,6 +185,20 @@ class SignIn {
     alert.classList.remove('d-none');
   }
 }
+
+export { SignIn };
+export default SignIn;
+
+export function attachToWindow(target = globalScope) {
+  if (!target) {
+    return SignIn;
+  }
+
+  target.SignIn = SignIn;
+  return SignIn;
+}
+
+attachToWindow();
 
 // Пример использования:
 // new SignIn('#sign-in-component');

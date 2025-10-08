@@ -1,6 +1,9 @@
-ScriptLoader.load('Form', 'ModalBox');
+import Energine from './Energine.js';
+import Form from './Form.js';
 
-// Подключения: Form и ModalBox должны быть подключены как ES6-модули
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class DivForm extends Form {
     constructor(element) {
@@ -180,5 +183,16 @@ Object.assign(DivForm.prototype, {
     showTree: Form.Label.showTree
 });
 
-// Для совместимости
-window.DivForm = DivForm;
+export { DivForm };
+export default DivForm;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return DivForm;
+    }
+
+    target.DivForm = DivForm;
+    return DivForm;
+}
+
+attachToWindow();

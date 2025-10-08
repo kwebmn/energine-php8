@@ -1,7 +1,17 @@
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const documentRef = globalScope?.document;
+
 class Cookie {
     // Получить значение cookie по имени
     static read(name) {
-        const matches = document.cookie.match(
+        if (!documentRef) {
+            return undefined;
+        }
+
+        const matches = documentRef.cookie.match(
             new RegExp(
                 '(?:^|; )' +
                 name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') +
@@ -36,7 +46,9 @@ class Cookie {
         if (options.secure) {
             updatedCookie += "; secure";
         }
-        document.cookie = updatedCookie;
+        if (documentRef) {
+            documentRef.cookie = updatedCookie;
+        }
     }
 
     // Удалить cookie
@@ -45,7 +57,16 @@ class Cookie {
     }
 }
 
-// Пример использования:
-// Cookie.write('test', '123', { duration: 1 });
-// const val = Cookie.read('test');
-// Cookie.remove('test');
+export { Cookie };
+export default Cookie;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return Cookie;
+    }
+
+    target.Cookie = Cookie;
+    return Cookie;
+}
+
+attachToWindow();
