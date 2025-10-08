@@ -1,3 +1,7 @@
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
 class TabPane {
     static count = 1;
     static assignID() {
@@ -286,3 +290,17 @@ class TabPane {
         document.head.appendChild(link);
     }
 }
+
+export { TabPane };
+export default TabPane;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return TabPane;
+    }
+
+    target.TabPane = TabPane;
+    return TabPane;
+}
+
+attachToWindow();

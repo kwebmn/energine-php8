@@ -1,4 +1,12 @@
-ScriptLoader.load('Form', 'FileAPI/FileAPI');
+import Energine from './Energine.js';
+import Form from './Form.js';
+import ModalBox from './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const FileAPI = globalScope?.FileAPI;
 
 // FileRepoForm.js
 
@@ -6,8 +14,10 @@ class FileRepoForm extends Form {
     constructor(el) {
         super(el);
 
-        FileAPI.staticPath = Energine.base + 'scripts/FileAPI/';
-        FileAPI.debug = false;
+        if (FileAPI) {
+            FileAPI.staticPath = Energine.base + 'scripts/FileAPI/';
+            FileAPI.debug = false;
+        }
 
         this.componentElement = typeof el === 'string' ? document.getElementById(el) : el;
 
@@ -42,7 +52,7 @@ class FileRepoForm extends Form {
     // Превью для thumb-инпутов
     showThumbPreview(evt) {
         const el = evt.target;
-        const files = FileAPI.getFiles(evt);
+        const files = FileAPI?.getFiles ? FileAPI.getFiles(evt) : [];
 
         for (const file of files) {
             if (/^image\//.test(file.type)) {
@@ -80,6 +90,10 @@ class FileRepoForm extends Form {
         const f = {};
         f[field_name] = files;
 
+        if (!FileAPI?.upload) {
+            return undefined;
+        }
+
         return FileAPI.upload({
             url: this.singlePath + 'upload-temp/?json',
             data: {
@@ -88,12 +102,16 @@ class FileRepoForm extends Form {
             },
             files: f,
             prepare: (file, options) => {
-                options.data[FileAPI.uid()] = 1;
+                if (FileAPI?.uid) {
+                    options.data[FileAPI.uid()] = 1;
+                }
             },
             filecomplete: (err, xhr, file) => {
                 if (!err) {
                     try {
-                        const result = FileAPI.parseJSON(xhr.responseText);
+                        const result = FileAPI?.parseJSON
+                            ? FileAPI.parseJSON(xhr.responseText)
+                            : JSON.parse(xhr.responseText);
                         if (result && !result.error) {
                             response_callback(result);
                         }
@@ -118,7 +136,7 @@ class FileRepoForm extends Form {
             });
         }
 
-        const files = FileAPI.getFiles(evt);
+        const files = FileAPI?.getFiles ? FileAPI.getFiles(evt) : [];
         const enableTab = this.tabPane && this.tabPane.enableTab ? this.tabPane.enableTab.bind(this.tabPane, 1) : () => {};
         const generatePreviews = this.generatePreviews.bind(this);
 
@@ -169,5 +187,16 @@ class FileRepoForm extends Form {
     }
 }
 
-// Привязка к глобальному пространству (если нужно)
-// window.FileRepoForm = FileRepoForm;
+export { FileRepoForm };
+export default FileRepoForm;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return FileRepoForm;
+    }
+
+    target.FileRepoForm = FileRepoForm;
+    return FileRepoForm;
+}
+
+attachToWindow();

@@ -1,4 +1,10 @@
-ScriptLoader.load('ckeditor/ckeditor', 'ModalBox');
+import Energine, { showLoader, hideLoader } from './Energine.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const CKEDITOR = globalScope?.CKEDITOR;
 
 function applyEditorOutline(area, editor) {
     if (!area) {
@@ -23,6 +29,10 @@ class PageEditor {
     editors = [];
 
     constructor() {
+        if (!CKEDITOR) {
+            throw new Error('PageEditor requires CKEditor to be loaded globally.');
+        }
+
         CKEDITOR.config.versionCheck = false;
         CKEDITOR.disableAutoInline = true;
         CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,energineimage,energinefile';
@@ -239,17 +249,26 @@ class BlockEditor {
                     if (!async) {
                         hideLoader();
                     }
-                },
-                // async (true по умолчанию, но явно укажем)
-                async
+                }
             );
         }
     }
 }
 
-// Чтобы было как PageEditor.BlockEditor (экспортируйте, если надо)
-if (typeof window.PageEditor === 'undefined') {
-    window.PageEditor = {};
+PageEditor.BlockEditor = BlockEditor;
+
+export { PageEditor, BlockEditor };
+export default PageEditor;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return PageEditor;
+    }
+
+    target.PageEditor = PageEditor;
+    target.PageEditor.BlockEditor = BlockEditor;
+    return PageEditor;
 }
-window.PageEditor.BlockEditor = BlockEditor;
+
+attachToWindow();
 ;

@@ -13,8 +13,8 @@
             <head>
 
                 <xsl:apply-templates select="." mode="head"/>
-                <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-                <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+                
+                <meta name="viewport" content="width=device-width, initial-scale=1" /> 
                 
                 <!--Href lang-->
                 <xsl:for-each select="//component[@name='langSwitcher']/recordset/record">
@@ -64,23 +64,25 @@
 
                 <xsl:if test="not(//property[@name='single'])">
                     <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
-                    <script defer="defer" type="text/javascript" src="scripts/default/sweetalert2.min.js"></script>
-                    <!-- SweetAlert2 -->
-                    <link href="stylesheets/default/sweetalert2.css" rel="stylesheet"/>
                 </xsl:if>
 
 <!--                <xsl:if test="not($DOC_PROPS[@name='single']) and $DOC_PROPS[@name='is_user'] = '0'">-->
 <!--                    <xsl:call-template name="START_ENERGINE_JS" />-->
 <!--                </xsl:if>-->
                 <xsl:call-template name="START_ENERGINE_JS" />
+                <!-- Subsequent project scripts must import Energine helpers from the module entrypoint. -->
 
 
+                <!-- <xsl:if test="//property[@name='single']">
+                    <script type="text/javascript" src="scripts/jquery.min.js"></script>
+                    <script type="text/javascript" src="scripts/jstree/jstree.min.js"></script>
+                </xsl:if> -->
 <!--                <script type="text/javascript" src="scripts/default/jquery.min.js"></script>-->
                 <!--<script type="text/javascript" src="scripts/jstree/jstree.min.js"></script>-->
 <!--                <script type="text/javascript">-->
 <!--                    jQuery.noConflict();-->
 <!--                </script>-->
-                <script defer="defer" type="text/javascript" src="scripts/default/default.js"></script>
+                <script type="module" src="scripts/default/default.js"></script>
             </body>
         </html>
     </xsl:template>

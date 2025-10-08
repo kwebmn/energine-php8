@@ -462,6 +462,28 @@ abstract class DataSet extends Component
         if (($config = $this->getConfig()->getCurrentStateConfig()) && $config->javascript) {
             $result = $this->doc->createElement('javascript');
 
+            foreach ($config->javascript->library as $value) {
+                $libraryNode = $this->doc->createElement('library');
+
+                $path = isset($value['path']) ? (string)$value['path'] : (string)$value;
+                $path = trim($path);
+                if ($path !== '') {
+                    $libraryNode->setAttribute('path', $path);
+                }
+
+                if (isset($value['loader']) && (string)$value['loader'] !== '') {
+                    $libraryNode->setAttribute('loader', (string)$value['loader']);
+                }
+                if (isset($value['module']) && (string)$value['module'] !== '') {
+                    $libraryNode->setAttribute('module', (string)$value['module']);
+                }
+                if (isset($value['src']) && (string)$value['src'] !== '') {
+                    $libraryNode->setAttribute('src', (string)$value['src']);
+                }
+
+                $result->appendChild($libraryNode);
+            }
+
             foreach ($config->javascript->behavior as $value) {
                 $JSObjectXML = $this->doc->createElement('behavior');
 

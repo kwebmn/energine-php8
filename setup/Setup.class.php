@@ -324,7 +324,7 @@ final class Setup {
      * - checks connection to database
      * - updates table @c share_sites
      * - generate symlinks
-     * - generate file dependency to JavaScript classes
+     * - removes legacy JavaScript dependency map
      */
     private function installAction() {
         $this->checkDBConnection();
@@ -1112,81 +1112,22 @@ final class Setup {
     }
 
     /**
-     * Recursive iterate throw all files and directories in the folder @c "scripts" and store the result into @c $result argument.
-     *
-     * @param string $directory Directory.
-     * @param array $result Reference to the result.
-     */
-    private function iterateScripts($directory, &$result) {
-
-        $iterator = new DirectoryIterator($directory);
-
-        foreach ($iterator as $fileinfo) {
-            if ($fileinfo->isFile() && !$fileinfo->isDot() && $fileinfo->getExtension() == 'js') {
-                $class = str_replace(array(HTDOCS_DIR . '/scripts/', '.js'), '', $directory . DIRECTORY_SEPARATOR . $fileinfo->getFilename());
-                $result[$class] = $directory . DIRECTORY_SEPARATOR . $fileinfo->getFilename();
-            }
-        }
-
-        foreach ($iterator as $fileinfo) {
-            if ($fileinfo->isDir() && !$fileinfo->isDot()) {
-                $this->iterateScripts($fileinfo->getPathname(), $result);
-            }
-        }
-    }
-
-    /**
-     * Parse inclusions in <tt>ScriptLoader.load()</tt>
-     *
-     * @param string $script Full name of JavaScript-file
-     * @return array
-     */
-    private function parseScriptLoader($script) {
-        $result = array();
-
-        $data = file_get_contents($script);
-        $r = array();
-        if (preg_match_all('/ScriptLoader\.load\((([\s,]{1,})?((?:\'|")([a-zA-Z\/.-]{1,})(?:\'|")){1,}([\s,]{1,})?){1,}\)/', $data, $r)) {
-            $s = str_replace(array('ScriptLoader.load', '(', ')', "\r", "\n"), '', (string)$r[0][0]);
-            $classes = array_map(function ($el) {
-                return str_replace(array('\'', '"',',', ' '), '', $el);
-            }, explode(',', $s));
-            $result = $classes;
-        }
-
-        return $result;
-    }
-
-    /**
-     * Write an array of dependencies into @c "system.jsmap.php"
-     *
-     * @param array $deps Dependencies.
-     */
-    private function writeScriptMap($deps) {
-        file_put_contents(HTDOCS_DIR . '/system.jsmap.php', '<?php return ' . var_export($deps, true) . ';');
-    }
-
-    /**
-     * Create file @c "system.jsmap.php" with dependencies for JavaScript classes.
+     * Legacy helper: previously generated system.jsmap.php.
+     * Now it simply removes the obsolete dependency map if it still exists.
      */
     private function scriptMapAction() {
+        $this->title("Удаляем устаревшую карту зависимостей JavaScript");
 
-        $this->title("Создание карты зависимости Javascript классов");
-
-        $files = array();
-        $this->iterateScripts(HTDOCS_DIR . '/scripts', $files);
-
-        $result = array();
-
-        foreach ($files as $class => $file) {
-            $deps = $this->parseScriptLoader($file);
-            if ($deps) {
-                $class_dir = str_replace(array(HTDOCS_DIR . '/scripts/', '.js'), '', $file);
-                $result[$class_dir] = $deps;
-                $this->text($class_dir . ' --> ' . implode(', ', $deps));
-            }
+        $mapFile = HTDOCS_DIR . '/system.jsmap.php';
+        if (!file_exists($mapFile)) {
+            $this->text('Файл system.jsmap.php не найден — дополнительных действий не требуется.');
+            return;
         }
 
-        $this->writeScriptMap($result);
+        if (@unlink($mapFile)) {
+            $this->text('Файл system.jsmap.php удалён.');
+        } else {
+            $this->text('Не удалось удалить system.jsmap.php. Удалите файл вручную.');
+        }
     }
 }

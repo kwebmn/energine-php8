@@ -17,6 +17,33 @@
     <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
     <xsl:variable name="RESIZER_URL"><xsl:value-of select="$BASE/@resizer"/></xsl:variable>
     <xsl:variable name="MAIN_SITE"><xsl:value-of select="$DOC_PROPS[@name='base']/@default"/><xsl:value-of select="$LANG_ABBR"/></xsl:variable>
+    <xsl:variable name="SCRIPTS_BASE">
+        <xsl:choose>
+            <xsl:when test="$DOC_PROPS[@name='scripts_base'] != ''">
+                <xsl:value-of select="$DOC_PROPS[@name='scripts_base']"/>
+            </xsl:when>
+            <xsl:otherwise>scripts/</xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="ENERGINE_SRC_VALUE">
+        <xsl:choose>
+            <xsl:when test="$DOC_PROPS[@name='energine_script'] != ''">
+                <xsl:value-of select="$DOC_PROPS[@name='energine_script']"/>
+            </xsl:when>
+            <xsl:otherwise>scripts/Energine.js</xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="ENERGINE_URL">
+        <xsl:choose>
+            <xsl:when test="contains($ENERGINE_SRC_VALUE, '://') or starts-with($ENERGINE_SRC_VALUE, '//')">
+                <xsl:value-of select="$ENERGINE_SRC_VALUE"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="concat($STATIC_URL, $ENERGINE_SRC_VALUE)"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:key name="js-library" match="javascript/library" use="concat(@loader,'|',@src,'|',@path)"/>
 
     <!--@deprecated-->
     <!--Оставлено для обратной совместимости, сейчас рекомендуется определять обработчик рута в модуле сайта и взывать рутовый шаблон в режиме head-->
@@ -113,16 +140,19 @@
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>
-        <script type="text/javascript"  src="{$STATIC_URL}scripts/Energine.js"></script>
+        <!-- <xsl:if test="//property[@name='single']">
+           <script type="text/javascript" src="scripts/jquery.min.js"></script>
+       </xsl:if> -->
+
 <!--        <xsl:apply-templates select="." mode="og"/>-->
 
 <!--        <xsl:if test="$DOC_PROPS[@name='single'] or $DOC_PROPS[@name='is_user'] > 0">-->
 <!--            <xsl:call-template name="START_ENERGINE_JS" />-->
 <!--        </xsl:if>-->
 
-<!--        <xsl:if test="//property[@name='single']">-->
-<!--            <script type="text/javascript" src="scripts/jquery.min.js"></script>-->
-<!--        </xsl:if>-->
+       <!-- <xsl:if test="//property[@name='single']">
+           <script type="text/javascript" src="scripts/jquery.min.js"></script>
+       </xsl:if> -->
 
     </xsl:template>
 
@@ -138,46 +168,70 @@
 <!--        <link href="assets/minified.css" rel="stylesheet" />-->
         <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
-        <script type="text/javascript">
-            Object.assign(Energine, {
-            <xsl:if test="document/@debug=1">'debug' :true,</xsl:if>
-            'base' : '<xsl:value-of select="$BASE"/>',
-            'static' : '<xsl:value-of select="$STATIC_URL"/>',
-            'resizer' : '<xsl:value-of select="$RESIZER_URL"/>',
-            'media' : '<xsl:value-of select="$MEDIA_URL"/>',
-            'root' : '<xsl:value-of select="$MAIN_SITE"/>',
-            'lang' : '<xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/>',
-            'singleMode':<xsl:value-of select="boolean($DOC_PROPS[@name='single'])"/>
-            });
-        </script>
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
-        <xsl:apply-templates select="/document/javascript/library" mode="head"/>
+        <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+            <xsl:apply-templates select="." mode="head"/>
+        </xsl:for-each>
+        <script type="module">
+            <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
+            <xsl:if test="document/@debug=1">
+                <xsl:attribute name="data-debug">true</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-base"><xsl:value-of select="$BASE"/></xsl:attribute>
+            <xsl:attribute name="data-static"><xsl:value-of select="$STATIC_URL"/></xsl:attribute>
+            <xsl:attribute name="data-resizer"><xsl:value-of select="$RESIZER_URL"/></xsl:attribute>
+            <xsl:attribute name="data-media"><xsl:value-of select="$MEDIA_URL"/></xsl:attribute>
+            <xsl:attribute name="data-root"><xsl:value-of select="$MAIN_SITE"/></xsl:attribute>
+            <xsl:attribute name="data-lang"><xsl:value-of select="$DOC_PROPS[@name='lang']/@real_abbr"/></xsl:attribute>
+            <xsl:attribute name="data-single-mode">
+                <xsl:choose>
+                    <xsl:when test="boolean($DOC_PROPS[@name='single'])">true</xsl:when>
+                    <xsl:otherwise>false</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+        </script>
+        <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+            <xsl:apply-templates select="." mode="head"/>
+        </xsl:for-each>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
-        <script type="text/javascript">
-            var componentToolbars = [];
+        <script type="module">
+            // NOTE: downstream Energine modules must import helpers from this entrypoint instead of relying on globals.
+            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
+
+            const config = createConfigFromScriptDataset();
+
+            const runtime = bootEnergine(config);
+            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {
+                window.__energineBridge.setRuntime(runtime);
+            }
+            const Energine = attachToWindow(window, runtime);
+
+            const componentToolbars = window.componentToolbars = [];
+
             <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
-                var <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]"><xsl:value-of select="generate-id(../recordset)"/><xsl:if test="position() != last()">,</xsl:if></xsl:for-each>;
+                <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]">
+                    globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] = globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] || null;
+                </xsl:for-each>
             </xsl:if>
 
             <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                Energine.addTask( function(){
+                Energine.addTask(function () {
              <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
-            var pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
+            const pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
             <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
                 { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>
             ]<xsl:if
                 test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
                 select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
 
-                }
-            );
+                });
             </xsl:if>
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
                 <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
-                if(document.getElementById('<xsl:value-of select="$objectID"/>')){
+                if (document.getElementById('<xsl:value-of select="$objectID"/>')) {
                     try {
-                         <xsl:value-of select="$objectID"/> = new <xsl:value-of select="@name"/>(document.getElementById('<xsl:value-of select="$objectID"/>'));
+                         globalThis['<xsl:value-of select="$objectID"/>'] = new <xsl:value-of select="@name"/>(document.getElementById('<xsl:value-of select="$objectID"/>'));
                     }
                     catch (e) {
                         safeConsoleError(e);
@@ -188,7 +242,7 @@
                 <xsl:if test="position()=1">
                     <xsl:variable name="objectID" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
                     try {
-                    <xsl:value-of select="$objectID"/> = new PageEditor();
+                    globalThis['<xsl:value-of select="$objectID"/>'] = new PageEditor();
                     }
                     catch (e) {
                     safeConsoleError(e);
@@ -196,18 +250,7 @@
                 </xsl:if>
             </xsl:if>
 
-
-<!--            if (window.delayStart)-->
-<!--                for (const func of window.delayStart) {-->
-<!--                    func();-->
-<!--                }-->
-<!--            };-->
-<!--            Energine.addTask(startEnergine);-->
-<!--            document.addEventListener('DOMContentLoaded', startEnergine);-->
-            document.addEventListener('DOMContentLoaded', Energine.run);
-
-
-
+            document.addEventListener('DOMContentLoaded', () => Energine.run());
         </script>
 
         <xsl:if test="not(//property[@name='single'])">
@@ -234,9 +277,10 @@
     
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="/document/translations[translation[@component=//component[@editable]/@name]]">
-            <script type="text/javascript">
-                document.addEventListener('DOMContentLoaded', function() {Energine.translations.extend(<xsl:value-of select="/document/translations/@json" />);});
-            </script>
+        <script type="module">
+            import { stageTranslations } from "<xsl:value-of select="$ENERGINE_URL"/>";
+            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+        </script>
     </xsl:template>
 
     <xsl:template match="/document/javascript"/>
@@ -246,7 +290,38 @@
     <xsl:template match="/document//javascript/variable"/>
 
     <xsl:template match="/document/javascript/library" mode="head">
-        <script type="text/javascript" src="{$STATIC_URL}scripts/{@path}.js"/>
+        <xsl:variable name="rawSrc">
+            <xsl:choose>
+                <xsl:when test="string-length(@src) &gt; 0">
+                    <xsl:value-of select="@src"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat('scripts/', @path, '.js')"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="fullSrc">
+            <xsl:choose>
+                <xsl:when test="contains($rawSrc, '://') or starts-with($rawSrc, '//')">
+                    <xsl:value-of select="$rawSrc"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat($STATIC_URL, $rawSrc)"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:choose>
+            <xsl:when test="@loader='classic'">
+                <script type="text/javascript">
+                    <xsl:attribute name="src"><xsl:value-of select="$fullSrc"/></xsl:attribute>
+                </script>
+            </xsl:when>
+            <xsl:otherwise>
+                <script type="module">
+                    <xsl:attribute name="src"><xsl:value-of select="$fullSrc"/></xsl:attribute>
+                </script>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
 
     <xsl:template match="/document//javascript/variable" mode="head">

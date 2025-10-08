@@ -1,4 +1,12 @@
-ScriptLoader.load('GridManager', 'FileAPI/FileAPI');
+import Energine from './Energine.js';
+import GridManager from './GridManager.js';
+import ModalBox from './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const FileAPI = globalScope?.FileAPI;
 
 /**
  * AttachmentEditor
@@ -18,7 +26,7 @@ class AttachmentEditor extends GridManager {
         // Drag & Drop + FileAPI
         this.repository = this;
 
-        FileAPI.event.dnd(
+        FileAPI?.event?.dnd(
             document,
             () => {},
             (files) => {
@@ -57,10 +65,10 @@ class AttachmentEditor extends GridManager {
             }
         );
 
-        FileAPI.event.on(document, 'dragleave', () => {
+        FileAPI?.event?.on?.(document, 'dragleave', () => {
             this.element.style.opacity = '1';
         });
-        FileAPI.event.on(document, 'dragover', () => {
+        FileAPI?.event?.on?.(document, 'dragover', () => {
             this.element.style.opacity = '0.5';
         });
 
@@ -226,5 +234,16 @@ class AttachmentEditor extends GridManager {
     }
 }
 
-// Привязка глобально, если требуется:
-window.AttachmentEditor = AttachmentEditor;
+export { AttachmentEditor };
+export default AttachmentEditor;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return AttachmentEditor;
+    }
+
+    target.AttachmentEditor = AttachmentEditor;
+    return AttachmentEditor;
+}
+
+attachToWindow();

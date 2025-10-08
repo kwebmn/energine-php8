@@ -1,4 +1,8 @@
-ScriptLoader.load('Validator');
+import Validator from './Validator.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 /**
  * ValidForm (ES6 version)
@@ -43,5 +47,16 @@ class ValidForm {
     }
 }
 
-// Глобальная привязка (если требуется)
-window.ValidForm = ValidForm;
+export { ValidForm };
+export default ValidForm;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return ValidForm;
+    }
+
+    target.ValidForm = ValidForm;
+    return ValidForm;
+}
+
+attachToWindow();

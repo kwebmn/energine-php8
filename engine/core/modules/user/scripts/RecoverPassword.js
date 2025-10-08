@@ -1,3 +1,9 @@
+import Energine from '../../share/scripts/Energine.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
 class RecoverPassword {
     constructor(element) {
         // element — это или селектор, или DOM-элемент
@@ -10,57 +16,93 @@ class RecoverPassword {
         this.path = this.componentElement.getAttribute('template');
 
         // Ссылка на this (для вложенных функций, если не использовать стрелочные)
-        const self = this;
+        this.bindFormHandlers();
+    }
 
-        $('#recover_form').submit(function () {
-            $.post(
-                `${Energine.lang}/${self.singlePath}check`,
-                {
-                    email: $('#email').val()
-                },
-                function (result) {
-                    if (result.result) {
-                        Swal.fire({
-                            title: result.message,
-                            icon: "success",
-                        }).then(() => {
-                            document.location.href = `/${Energine.lang}/login/`;
-                        });
-                    } else {
-                        Swal.fire({
-                            title: result.message,
-                            icon: "error",
-                        });
-                    }
-                },
-                'json'
-            );
-            return false;
-        });
+    bindFormHandlers() {
+        const recoverForm = document.getElementById('recover_form');
+        if (recoverForm) {
+            recoverForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const emailInput = recoverForm.querySelector('#email');
+                const payload = new URLSearchParams({
+                    email: emailInput ? emailInput.value : ''
+                });
 
-        $('#recover_form2').submit(function () {
-            const data = $(this).serialize();
-            $.post(
-                `${Energine.lang}/${self.singlePath}change`,
-                data,
-                function (result) {
-                    if (result.result) {
-                        Swal.fire({
-                            title: result.message,
-                            icon: "success",
-                        }).then(() => {
-                            document.location.href = `/${Energine.lang}/login/`;
-                        });
-                    } else {
-                        Swal.fire({
-                            title: result.message,
-                            icon: "error",
-                        });
-                    }
-                },
-                'json'
-            );
-            return false;
-        });
+                this.submitJson(`${Energine.lang}/${this.singlePath}check`, payload)
+                    .then(this.handleResponse.bind(this));
+            });
+        }
+
+        const recoverForm2 = document.getElementById('recover_form2');
+        if (recoverForm2) {
+            recoverForm2.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const formData = new FormData(recoverForm2);
+                const payload = new URLSearchParams();
+                formData.forEach((value, key) => {
+                    payload.append(key, String(value));
+                });
+
+                this.submitJson(`${Energine.lang}/${this.singlePath}change`, payload)
+                    .then(this.handleResponse.bind(this));
+            });
+        }
+    }
+
+    submitJson(url, payload) {
+        return fetch(`/${url}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'Accept': 'application/json'
+            },
+            body: payload.toString()
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .catch((error) => {
+                console.error('RecoverPassword request failed', error);
+                return { result: false, message: 'Unexpected error occurred.' };
+            });
+    }
+
+    handleResponse(result) {
+        if (result.result) {
+            const redirect = () => {
+                globalScope.location.href = `/${Energine.lang}/login/`;
+            };
+            if (typeof Energine.noticeBox === 'function') {
+                Energine.noticeBox(result.message, 'success', redirect);
+            } else {
+                alert(result.message);
+                redirect();
+            }
+            return;
+        }
+
+        if (typeof Energine.alertBox === 'function') {
+            Energine.alertBox(result.message);
+        } else {
+            alert(result.message);
+        }
     }
 }
+
+export { RecoverPassword };
+export default RecoverPassword;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return RecoverPassword;
+    }
+
+    target.RecoverPassword = RecoverPassword;
+    return RecoverPassword;
+}
+
+attachToWindow();

@@ -1,4 +1,13 @@
-ScriptLoader.load('GridManager', 'Cookie', 'FileAPI/FileAPI');
+import Energine from './Energine.js';
+import GridManager, { Grid } from './GridManager.js';
+import Cookie from './Cookie.js';
+import ModalBox from './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const FileAPI = globalScope?.FileAPI;
 
 // Глобальное имя cookie для файла
 const FILE_COOKIE_NAME = 'NRGNFRPID';
@@ -89,7 +98,7 @@ class GridWithPopImage extends Grid {
                         image.style.border = '1px solid transparent';
 
                         if (record[fieldName]) {
-                            image.src = (window.Energine.resizer || '') + 'w60-h45/' + record[fieldName];
+                            image.src = ((Energine?.resizer) || '') + 'w60-h45/' + record[fieldName];
                         } else {
                             appendIcon(record['upl_internal_type']);
                             break;
@@ -251,8 +260,11 @@ class FileRepository extends GridManager {
         this.progressBar = progressBar;
         this.progressText = progressText;
 
-        window.repository = this; // В старом коде для FileAPI.callback-ов
-        FileAPI.event.dnd(
+        if (globalScope) {
+            globalScope.repository = this; // В старом коде для FileAPI.callback-ов
+        }
+
+        FileAPI?.event?.dnd?.(
             document,
             function(){},
             files => {
@@ -277,8 +289,8 @@ class FileRepository extends GridManager {
                 });
             }
         );
-        FileAPI.event.on(document, 'dragleave', () => { this.element.style.opacity = '1'; });
-        FileAPI.event.on(document, 'dragover', () => { this.element.style.opacity = '0.5'; });
+        FileAPI?.event?.on?.(document, 'dragleave', () => { this.element.style.opacity = '1'; });
+        FileAPI?.event?.on?.(document, 'dragover', () => { this.element.style.opacity = '0.5'; });
     }
 
     // --- Событие двойного клика (открытие элемента) ---
@@ -470,7 +482,9 @@ class FileRepository extends GridManager {
     }
 
     xhrFileUpload(field_name, files, response_callback) {
-        window.repository = this;
+        if (globalScope) {
+            globalScope.repository = this;
+        }
         this.progressBar.style.display = 'block';
         this.progressBar.style.width = '0%';
         this.progressText.style.display = 'block';
@@ -480,6 +494,10 @@ class FileRepository extends GridManager {
 
         let f = {};
         f[field_name] = files;
+        if (!FileAPI?.upload) {
+            return undefined;
+        }
+
         return FileAPI.upload({
             url: `${this.singlePath}upload-temp/?json`,
             data: {
@@ -488,7 +506,9 @@ class FileRepository extends GridManager {
             },
             files: f,
             prepare: function (file, options) {
-                options.data[FileAPI.uid()] = 1;
+                if (FileAPI?.uid) {
+                    options.data[FileAPI.uid()] = 1;
+                }
             },
             beforeupload: function () { },
             upload: function () { },
@@ -497,7 +517,9 @@ class FileRepository extends GridManager {
             filecomplete: function (err, xhr, file) {
                 if (!err) {
                     try {
-                        let result = FileAPI.parseJSON(xhr.responseText);
+                        let result = FileAPI?.parseJSON
+                            ? FileAPI.parseJSON(xhr.responseText)
+                            : JSON.parse(xhr.responseText);
                         if (result && !result.error) {
                             response_callback(result);
                         }
@@ -560,7 +582,19 @@ class PathList {
     }
 }
 
-// Привязки к window, если требуется:
-window.GridWithPopImage = GridWithPopImage;
-window.FileRepository = FileRepository;
-window.PathList = PathList;
+export { GridWithPopImage, FileRepository, PathList };
+export default FileRepository;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return FileRepository;
+    }
+
+    target.GridWithPopImage = GridWithPopImage;
+    target.FileRepository = FileRepository;
+    target.PathList = PathList;
+
+    return FileRepository;
+}
+
+attachToWindow();

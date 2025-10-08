@@ -2,6 +2,7 @@
 <configuration>
     <state name="main">
         <javascript>
+            <library path="jquery.min" loader="classic"/>
             <behavior name="TemplateWizard"/>
         </javascript>
         <fields>
@@ -56,6 +57,7 @@
             <field name="sg_is_filter"></field>
         </fields>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
@@ -76,6 +78,7 @@
             <pattern>/[int]/edit/</pattern>
         </uri_patterns>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <fields>
@@ -136,6 +139,7 @@
             <pattern>/[int]/</pattern>
         </uri_patterns>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>

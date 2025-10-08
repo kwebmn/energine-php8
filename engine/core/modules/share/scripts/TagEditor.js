@@ -1,4 +1,10 @@
-ScriptLoader.load('GridManager');
+import Energine, { showLoader, hideLoader } from './Energine.js';
+import GridManager from './GridManager.js';
+import ModalBox from './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 /**
  * Tag editor.
  * @extends GridManager
@@ -103,3 +109,17 @@ class TagEditor extends GridManager {
         }
     }
 }
+
+export { TagEditor };
+export default TagEditor;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return TagEditor;
+    }
+
+    target.TagEditor = TagEditor;
+    return TagEditor;
+}
+
+attachToWindow();

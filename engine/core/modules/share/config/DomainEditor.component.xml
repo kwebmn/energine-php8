@@ -3,6 +3,7 @@
 
     <state name="main">
         <javascript>
+            <library path="jquery.min" loader="classic"/>
             <behavior name="GridManager"/>
         </javascript>
         <toolbar>
@@ -17,6 +18,7 @@
             <pattern>/add/</pattern>
         </uri_patterns>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
@@ -39,6 +41,7 @@
             <pattern>/[int]/edit/</pattern>
         </uri_patterns>
         <javascript>
+            <library path="ckeditor/ckeditor" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
