@@ -1622,15 +1622,6 @@ class GridManager {
             this.toolbar.bindTo(this);
         }
 
-        if (Array.isArray(this.toolbar.controls)) {
-            this.toolbar.controls.forEach(control => {
-                const element = control && control.element;
-                if (element && element.classList && element.classList.contains('btn-sm')) {
-                    element.classList.remove('btn-sm');
-                }
-            });
-        }
-
         this.setupSelectionControls();
     }
 

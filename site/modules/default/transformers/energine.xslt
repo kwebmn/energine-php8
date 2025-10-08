@@ -13,8 +13,8 @@
             <head>
 
                 <xsl:apply-templates select="." mode="head"/>
-                <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-                <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+                
+                <meta name="viewport" content="width=device-width, initial-scale=1" /> 
                 
                 <!--Href lang-->
                 <xsl:for-each select="//component[@name='langSwitcher']/recordset/record">

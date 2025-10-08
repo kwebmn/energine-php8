@@ -196,10 +196,10 @@
                                         </div>
                                     </div>
                                     <div class="col-auto ms-lg-auto d-flex gap-2">
-                                        <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" data-action="apply-filter">
+                                        <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2" data-action="apply-filter">
                                             <xsl:value-of select="ancestor::component/filter/@apply"/>
                                         </button>
-                                        <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" data-action="reset-filter">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2" data-action="reset-filter">
                                             <xsl:value-of select="ancestor::component/filter/@reset"/>
                                         </button>
                                     </div>
