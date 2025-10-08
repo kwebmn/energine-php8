@@ -43,6 +43,7 @@
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
+    <xsl:key name="js-library" match="javascript/library" use="concat(@loader,'|',@src,'|',@path)"/>
 
     <!--@deprecated-->
     <!--Оставлено для обратной совместимости, сейчас рекомендуется определять обработчик рута в модуле сайта и взывать рутовый шаблон в режиме head-->
@@ -168,6 +169,9 @@
         <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
+        <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+            <xsl:apply-templates select="." mode="head"/>
+        </xsl:for-each>
         <script type="module">
             <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
             <xsl:if test="document/@debug=1">
@@ -186,7 +190,9 @@
                 </xsl:choose>
             </xsl:attribute>
         </script>
-        <xsl:apply-templates select="/document/javascript/library" mode="head"/>
+        <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+            <xsl:apply-templates select="." mode="head"/>
+        </xsl:for-each>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="module">
