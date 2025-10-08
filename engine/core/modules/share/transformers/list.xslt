@@ -209,104 +209,78 @@
                                 </xsl:if>
                             </div>
                         </xsl:if>
-                        <div class="grid-head border border-light-subtle border-bottom-0 bg-body flex-shrink-0" data-grid-role="head" data-grid-section="head">
-                            <div class="table-responsive" data-grid-section="head-inner">
-                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="head">
-                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
-                                    </xsl:if>
-                                    <colgroup>
-                                        <xsl:choose>
-                                            <xsl:when test="ancestor::component[@sample='FileRepository']">
-                                                <col id="col_11" style="width:12%"/>
-                                                <col id="col_12" style="width:30%"/>
-                                                <col id="col_13" style="width:28%"/>
-                                                <col id="col_14" style="width:30%"/>
-                                            </xsl:when>
-                                            <xsl:otherwise>
-                                                <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
-                                                    <col id="col_{position()}"/>
-                                                </xsl:for-each>
-                                            </xsl:otherwise>
-                                        </xsl:choose>
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
+                        <div class="grid-head grid-body grid-table-wrapper table-responsive border border-light-subtle bg-body flex-grow-1 overflow-y-auto" data-grid-role="head" data-grid-section="body" style="min-height: 0;">
+                            <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="table">
+                                <xsl:if test="ancestor::component[@sample='FileRepository']">
+                                    <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
+                                </xsl:if>
+                                <colgroup>
+                                    <xsl:choose>
+                                        <xsl:when test="ancestor::component[@sample='FileRepository']">
+                                            <col id="col_11" style="width:12%"/>
+                                            <col id="col_12" style="width:30%"/>
+                                            <col id="col_13" style="width:28%"/>
+                                            <col id="col_14" style="width:30%"/>
+                                        </xsl:when>
+                                        <xsl:otherwise>
                                             <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
-                                                <th id="col_{position()}">
-                                                    <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
-                                                    <xsl:for-each select="@*[name()!='name' and name()!='title' and name()!='class' and name()!='style']">
-                                                        <xsl:attribute name="{name()}"><xsl:value-of select="."/></xsl:attribute>
-                                                    </xsl:for-each>
-                                                    <xsl:attribute name="class">
-                                                        <xsl:value-of select="normalize-space(concat(@class, ' text-center align-middle fw-semibold'))"/>
-                                                    </xsl:attribute>
-                                                    <xsl:attribute name="style">
-                                                        <xsl:value-of select="normalize-space(concat(@style, '; cursor: pointer; min-height: 48px; height: 48px;'))"/>
-                                                    </xsl:attribute>
-                                                    <xsl:value-of select="@title"/>
-                                                </th>
+                                                <col id="col_{position()}"/>
                                             </xsl:for-each>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="grid-body grid-table-wrapper border border-light-subtle border-top-0 bg-body flex-grow-1 overflow-auto" data-grid-role="body" data-grid-section="body" style="min-height: 0;">
-                            <div class="table-responsive" data-grid-section="body-inner">
-                                <table class="table table-bordered table-hover table-striped table-sm mb-0 align-middle" data-role="grid-table" data-grid-part="body">
-                                    <xsl:if test="ancestor::component[@sample='FileRepository']">
-                                        <xsl:attribute name="data-fixed-columns">true</xsl:attribute>
-                                    </xsl:if>
-                                    <colgroup>
-                                        <xsl:choose>
-                                            <xsl:when test="ancestor::component[@sample='FileRepository']">
-                                                <col id="col_11" style="width:12%"/>
-                                                <col id="col_12" style="width:30%"/>
-                                                <col id="col_13" style="width:28%"/>
-                                                <col id="col_14" style="width:30%"/>
-                                            </xsl:when>
-                                            <xsl:otherwise>
-                                                <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
-                                                    <col id="col_{position()}"/>
+                                        </xsl:otherwise>
+                                    </xsl:choose>
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
+                                            <th id="col_{position()}">
+                                                <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
+                                                <xsl:for-each select="@*[name()!='name' and name()!='title' and name()!='class' and name()!='style']">
+                                                    <xsl:attribute name="{name()}"><xsl:value-of select="."/></xsl:attribute>
                                                 </xsl:for-each>
-                                            </xsl:otherwise>
-                                        </xsl:choose>
-                                    </colgroup>
-                                    <tbody>
-                                        <xsl:choose>
-                                            <xsl:when test="recordset/record">
-                                                <xsl:for-each select="recordset/record">
-                                                    <xsl:variable name="CURRENT_RECORD" select="."/>
-                                                    <tr>
-                                                        <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
-                                                            <xsl:variable name="FIELD_NAME" select="@name"/>
-                                                            <xsl:variable name="FIELD_VALUE" select="$CURRENT_RECORD/field[@name=$FIELD_NAME]"/>
-                                                            <td class="align-middle text-break py-2">
-                                                                <xsl:choose>
-                                                                    <xsl:when test="$FIELD_VALUE">
-                                                                        <xsl:apply-templates select="$FIELD_VALUE"/>
-                                                                    </xsl:when>
-                                                                    <xsl:otherwise>
-                                                                        <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
-                                                                    </xsl:otherwise>
-                                                                </xsl:choose>
-                                                            </td>
-                                                        </xsl:for-each>
-                                                    </tr>
-                                                </xsl:for-each>
-                                            </xsl:when>
-                                            <xsl:otherwise>
+                                                <xsl:attribute name="class">
+                                                    <xsl:value-of select="normalize-space(concat(@class, ' text-center align-middle fw-semibold position-relative'))"/>
+                                                </xsl:attribute>
+                                                <xsl:attribute name="style">
+                                                    <xsl:value-of select="normalize-space(concat(@style, '; cursor: pointer; min-height: 48px; height: 48px;'))"/>
+                                                </xsl:attribute>
+                                                <xsl:value-of select="@title"/>
+                                            </th>
+                                        </xsl:for-each>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <xsl:choose>
+                                        <xsl:when test="recordset/record">
+                                            <xsl:for-each select="recordset/record">
+                                                <xsl:variable name="CURRENT_RECORD" select="."/>
                                                 <tr>
-                                                    <td class="text-center py-4" colspan="{count($FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID])}">
-                                                        <span class="text-muted">No data</span>
-                                                    </td>
+                                                    <xsl:for-each select="$FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID]">
+                                                        <xsl:variable name="FIELD_NAME" select="@name"/>
+                                                        <xsl:variable name="FIELD_VALUE" select="$CURRENT_RECORD/field[@name=$FIELD_NAME]"/>
+                                                        <td class="align-middle text-break py-2">
+                                                            <xsl:choose>
+                                                                <xsl:when test="$FIELD_VALUE">
+                                                                    <xsl:apply-templates select="$FIELD_VALUE"/>
+                                                                </xsl:when>
+                                                                <xsl:otherwise>
+                                                                    <xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
+                                                                </xsl:otherwise>
+                                                            </xsl:choose>
+                                                        </td>
+                                                    </xsl:for-each>
                                                 </tr>
-                                            </xsl:otherwise>
-                                        </xsl:choose>
-                                    </tbody>
-                                </table>
-                            </div>
+                                            </xsl:for-each>
+                                        </xsl:when>
+                                        <xsl:otherwise>
+                                            <tr>
+                                                <td class="text-center py-4" colspan="{count($FIELDS[@type!='hidden'][not(@language) or @language = $LANG_ID])}">
+                                                    <span class="text-muted">No data</span>
+                                                </td>
+                                            </tr>
+                                        </xsl:otherwise>
+                                    </xsl:choose>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

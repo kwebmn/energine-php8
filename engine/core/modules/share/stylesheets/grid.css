@@ -13,3 +13,14 @@
 .grid-row-selected:hover td {
     background-color: var(--grid-selected-hover-bg, var(--bs-primary-bg, #c6ddff)) !important;
 }
+
+.grid-table-wrapper.table-responsive {
+    position: relative;
+}
+
+.grid-table-wrapper.table-responsive table[data-grid-part="table"] thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--grid-head-bg, var(--bs-body-bg, #fff));
+}

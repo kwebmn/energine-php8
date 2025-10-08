@@ -900,8 +900,28 @@ class Grid {
             const headCols = Array.from(gridHeadContainer.querySelectorAll('col'));
             const bodyCols = Array.from(this.table.querySelectorAll('col'));
 
-            const ScrollBarWidth = 16;
-            gridHeadContainer.style.paddingRight = ScrollBarWidth + 'px';
+            const scrollContainer = this.gridBodyScrollElement
+                || this.gridContainer
+                || (this.table ? this.table.parentElement : null);
+            let scrollBarWidth = 0;
+            if (scrollContainer) {
+                const offsetWidth = scrollContainer.offsetWidth || 0;
+                const clientWidth = scrollContainer.clientWidth || 0;
+                const calculated = offsetWidth - clientWidth;
+                if (Number.isFinite(calculated) && calculated > 0) {
+                    scrollBarWidth = Math.round(calculated);
+                }
+            }
+            if (this.gridHeadScrollContainer && this.gridHeadScrollContainer !== gridHeadContainer) {
+                gridHeadContainer.style.removeProperty('padding-right');
+                this.gridHeadScrollContainer.style.paddingRight = scrollBarWidth > 0
+                    ? scrollBarWidth + 'px'
+                    : '';
+            } else {
+                gridHeadContainer.style.paddingRight = scrollBarWidth > 0
+                    ? scrollBarWidth + 'px'
+                    : '';
+            }
 
             if (!fixedColumns) {
                 let headers = tds.map(td => td.offsetWidth);
