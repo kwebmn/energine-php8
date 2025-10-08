@@ -64,9 +64,6 @@
 
                 <xsl:if test="not(//property[@name='single'])">
                     <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
-                    <script defer="defer" type="text/javascript" src="scripts/default/sweetalert2.min.js"></script>
-                    <!-- SweetAlert2 -->
-                    <link href="stylesheets/default/sweetalert2.css" rel="stylesheet"/>
                 </xsl:if>
 
 <!--                <xsl:if test="not($DOC_PROPS[@name='single']) and $DOC_PROPS[@name='is_user'] = '0'">-->
