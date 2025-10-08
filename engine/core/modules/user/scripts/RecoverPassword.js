@@ -4,8 +4,6 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const Swal = globalScope?.Swal;
-
 class RecoverPassword {
     constructor(element) {
         // element — это или селектор, или DOM-элемент
@@ -75,17 +73,22 @@ class RecoverPassword {
 
     handleResponse(result) {
         if (result.result) {
-            Swal?.fire({
-                title: result.message,
-                icon: 'success'
-            })?.then?.(() => {
+            const redirect = () => {
                 globalScope.location.href = `/${Energine.lang}/login/`;
-            });
+            };
+            if (typeof Energine.noticeBox === 'function') {
+                Energine.noticeBox(result.message, 'success', redirect);
+            } else {
+                alert(result.message);
+                redirect();
+            }
+            return;
+        }
+
+        if (typeof Energine.alertBox === 'function') {
+            Energine.alertBox(result.message);
         } else {
-            Swal?.fire({
-                title: result.message,
-                icon: 'error'
-            });
+            alert(result.message);
         }
     }
 }
