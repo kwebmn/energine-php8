@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xsl:stylesheet 
-    version="1.0" 
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+<xsl:stylesheet
+    version="1.0"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
-    
+
     <!-- компонент ImageManager (редактор изображения при вставке в текстовый блок, выводится в модальное окно) -->
     <!--
     or descendant::field[@type='pfile']
@@ -56,11 +56,20 @@
     </xsl:template>
     
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
-        <script type="text/javascript">
-            Energine.addTask(function(){
-                componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>'] = new Toolbar('<xsl:value-of select="@name"/>');
+        <script type="module">
+            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
+            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
+            queueTask(() => {
+                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
+                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
+                componentToolbars[componentId] = new Toolbar(
+                    '<xsl:value-of select="@name"/>'
+                );
                     <xsl:apply-templates/>
-                    if(<xsl:value-of select="generate-id(../recordset)"/>)<xsl:value-of select="generate-id(../recordset)"/>.attachToolbar(componentToolbars['<xsl:value-of select="generate-id(../recordset)"/>']);
+                    const componentInstance = globalThis[componentId];
+                    if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
+                        componentInstance.attachToolbar(componentToolbars[componentId]);
+                    }
             });
         </script>
         <!--

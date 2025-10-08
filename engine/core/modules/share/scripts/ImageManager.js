@@ -1,4 +1,10 @@
-ScriptLoader.load('Form', 'ModalBox');
+import Energine from './Energine.js';
+import Form from './Form.js';
+import ModalBox from './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 // ImageManager.js
 
@@ -132,5 +138,16 @@ class ImageManager extends Form {
     }
 }
 
-// Если нужна глобальная привязка:
-window.ImageManager = ImageManager;
+export { ImageManager };
+export default ImageManager;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return ImageManager;
+    }
+
+    target.ImageManager = ImageManager;
+    return ImageManager;
+}
+
+attachToWindow();

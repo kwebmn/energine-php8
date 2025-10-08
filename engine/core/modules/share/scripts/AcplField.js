@@ -12,6 +12,10 @@
  * @version 1.0.1
  */
 
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
 /**
  * Words — работа с разделёнными строками.
  */
@@ -537,5 +541,20 @@ class AcplField {
     }
 }
 
-// Для совместимости:
-window.AcplField = AcplField;
+export { Words, ActiveList, DropBoxList, AcplField };
+export default AcplField;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return AcplField;
+    }
+
+    target.Words = Words;
+    target.ActiveList = ActiveList;
+    target.DropBoxList = DropBoxList;
+    target.AcplField = AcplField;
+
+    return AcplField;
+}
+
+attachToWindow();

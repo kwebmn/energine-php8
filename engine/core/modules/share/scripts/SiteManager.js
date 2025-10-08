@@ -1,4 +1,10 @@
-ScriptLoader.load('GridManager');
+import Energine from './Energine.js';
+import GridManager from './GridManager.js';
+import ModalBox from './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 /**
  * Site manager.
@@ -45,6 +51,23 @@ class SiteManager extends GridManager {
      * @public
      */
     go() {
-        window.top.location.href = `${this.singlePath}goto/${this.grid.getSelectedRecordKey()}/`;
+        const targetWindow = globalScope?.top || globalScope;
+        if (targetWindow?.location) {
+            targetWindow.location.href = `${this.singlePath}goto/${this.grid.getSelectedRecordKey()}/`;
+        }
     }
 }
+
+export { SiteManager };
+export default SiteManager;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return SiteManager;
+    }
+
+    target.SiteManager = SiteManager;
+    return SiteManager;
+}
+
+attachToWindow();

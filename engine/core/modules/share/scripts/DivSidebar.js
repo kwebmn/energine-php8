@@ -1,4 +1,13 @@
-ScriptLoader.load('DivManager', 'jquery.min', 'jstree/jstree');
+import Energine, { showLoader } from './Energine.js';
+import DivManager from './DivManager.js';
+import './ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const $ = globalScope?.jQuery || globalScope?.$;
+const ModalBox = globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 
 class DivSidebar extends DivManager {
     /**
@@ -55,7 +64,7 @@ class DivSidebar extends DivManager {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
                                 let url = urlSingle +  'add/' + obj.id + '/';
-                                ModalBox.open({
+                                ModalBox?.open({
                                     url,
                                     onClose: function() {
                                         tmpEl.loadTree();
@@ -69,7 +78,7 @@ class DivSidebar extends DivManager {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
                                 let url = urlSingle +   obj.id + '/edit/';
-                                ModalBox.open({
+                                ModalBox?.open({
                                     url,
                                     onClose: function() {
                                         tmpEl.loadTree();;
@@ -202,3 +211,17 @@ class DivSidebar extends DivManager {
         }
     }
 }
+
+export { DivSidebar };
+export default DivSidebar;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return DivSidebar;
+    }
+
+    target.DivSidebar = DivSidebar;
+    return DivSidebar;
+}
+
+attachToWindow();

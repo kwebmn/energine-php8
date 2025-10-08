@@ -1,4 +1,8 @@
-ScriptLoader.load('GridManager');
+import GridManager from '../../share/scripts/GridManager.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 /**
  * UserManager (ES6 version)
@@ -26,10 +30,24 @@ class UserManager extends GridManager {
             () => this.loadPage(this.pageList.currentPage)
         );
         setTimeout(() => {
-            window.top.location.href = '/my/';
+            const targetWindow = globalScope?.top || globalScope;
+            if (targetWindow?.location) {
+                targetWindow.location.href = '/my/';
+            }
         }, 1000);
     }
 }
 
-// Глобальная привязка, если требуется
-window.UserManager = UserManager;
+export { UserManager };
+export default UserManager;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return UserManager;
+    }
+
+    target.UserManager = UserManager;
+    return UserManager;
+}
+
+attachToWindow();

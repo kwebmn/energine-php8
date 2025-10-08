@@ -1,4 +1,12 @@
-ScriptLoader.load('GridManager');
+import Energine from '../../share/scripts/Energine.js';
+import GridManager from '../../share/scripts/GridManager.js';
+import ModalBox from '../../share/scripts/ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
+const $ = globalScope?.jQuery || globalScope?.$;
 /**
  * TemplateWizard (ES6 version)
  * @extends GridManager
@@ -8,6 +16,10 @@ class TemplateWizard extends GridManager {
      * @param {HTMLElement|string} element
      */
     constructor(element) {
+        if (!$) {
+            throw new Error('TemplateWizard requires jQuery to be available globally.');
+        }
+
         super(element);
     }
 
@@ -29,7 +41,7 @@ class TemplateWizard extends GridManager {
      * Открыть builder для выбранного шаблона
      */
     builder() {
-        if (confirm('Are you sure?')) {
+        if (globalScope?.confirm?.('Are you sure?')) {
             ModalBox.open({
                 url: `${this.singlePath}build/${this.grid.getSelectedRecordKey()}/`,
                 onClose: this.processAfterCloseAction.bind(this)
@@ -39,5 +51,16 @@ class TemplateWizard extends GridManager {
     }
 }
 
-// Глобально, если требуется
-window.TemplateWizard = TemplateWizard;
+export { TemplateWizard };
+export default TemplateWizard;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return TemplateWizard;
+    }
+
+    target.TemplateWizard = TemplateWizard;
+    return TemplateWizard;
+}
+
+attachToWindow();

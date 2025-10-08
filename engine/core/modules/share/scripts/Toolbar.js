@@ -1,3 +1,7 @@
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+
 class Toolbar {
     constructor(toolbarName, props = {}) {
         this.name = toolbarName;
@@ -841,5 +845,16 @@ class Toolbar {
     };
 }
 
-// Экспортируем в window
-window.Toolbar = Toolbar;
+export { Toolbar };
+export default Toolbar;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return Toolbar;
+    }
+
+    target.Toolbar = Toolbar;
+    return Toolbar;
+}
+
+attachToWindow();

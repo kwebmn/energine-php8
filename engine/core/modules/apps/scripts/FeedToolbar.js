@@ -1,4 +1,10 @@
-ScriptLoader.load('Toolbar', 'ModalBox');
+import Energine from '../../share/scripts/Energine.js';
+import Toolbar from '../../share/scripts/Toolbar.js';
+import ModalBox from '../../share/scripts/ModalBox.js';
+
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class FeedToolbar extends Toolbar {
     // Сохраняем request для совместимости
@@ -46,7 +52,9 @@ class FeedToolbar extends Toolbar {
         }
         if (Container.dispose) Container.dispose();
 
-        window.feedToolbar = this;
+        if (globalScope) {
+            globalScope.feedToolbar = this;
+        }
         this.container = Container;
         this.previous = false;
 
@@ -120,7 +128,7 @@ class FeedToolbar extends Toolbar {
 
     del() {
         const MSG_CONFIRM_DELETE = (Energine.translations?.get('MSG_CONFIRM_DELETE]')) || 'Do you really want to delete selected record?';
-        if (window.confirm(MSG_CONFIRM_DELETE)) {
+        if (globalScope?.confirm?.(MSG_CONFIRM_DELETE)) {
             Energine.request(this.singlePath + this.selected + '/delete/', null, this._reload.bind(this));
         }
     }
@@ -208,5 +216,16 @@ class FeedToolbar extends Toolbar {
     }
 }
 
-// Пример использования:
-// const toolbar = new FeedToolbar(container);
+export { FeedToolbar };
+export default FeedToolbar;
+
+export function attachToWindow(target = globalScope) {
+    if (!target) {
+        return FeedToolbar;
+    }
+
+    target.FeedToolbar = FeedToolbar;
+    return FeedToolbar;
+}
+
+attachToWindow();
