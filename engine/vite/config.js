@@ -23,12 +23,13 @@ export default defineConfig({
       },
       output: {
         format: 'es',
-        inlineDynamicImports: true,
         entryFileNames: (chunk) => ({
           'energine.vendor':   'energine.vendor.js',
           'energine':          'energine.js',
           'energine.extended': 'energine.extended.js',
         }[chunk.name] ?? '[name].js'),
+        chunkFileNames: '[name].js',
+        manualChunks: () => undefined,
         assetFileNames: (info) => {
           const n = (info.name || '').toLowerCase();
           if (n.endsWith('.css'))                         return '[name][extname]';
