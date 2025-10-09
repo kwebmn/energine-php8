@@ -1,12 +1,15 @@
 import Energine from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
+import {
+    bindDragAndDrop,
+    createUploadUid,
+    uploadFiles
+} from './nativeFileHelpers.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const FileAPI = globalScope?.FileAPI;
 
 /**
  * AttachmentEditor
@@ -23,13 +26,14 @@ class AttachmentEditor extends GridManager {
         this.quick_upload_pid = this.element.getAttribute('quick_upload_pid');
         this.quick_upload_enabled = this.element.getAttribute('quick_upload_enabled');
 
-        // Drag & Drop + FileAPI
+        // Drag & Drop
         this.repository = this;
 
-        FileAPI?.event?.dnd(
-            document,
-            () => {},
-            (files) => {
+        bindDragAndDrop(document, {
+            onDrop: (files) => {
+                if (!files.length) {
+                    return;
+                }
                 const r = this.grid.getSelectedRecord();
                 const currentPID = r ? r.upl_pid : this.quick_upload_pid;
 
@@ -37,7 +41,6 @@ class AttachmentEditor extends GridManager {
                     'uploader',
                     files,
                     (uploadResult) => {
-
                         if (!uploadResult.error) {
                             Energine.request(
                                 `${this.singlePath}file-library/save/`,
@@ -57,19 +60,16 @@ class AttachmentEditor extends GridManager {
                                 }
                             );
                         }
-
                     },
                     currentPID
                 );
-
+            },
+            onDragEnter: () => {
+                this.element.style.opacity = '0.5';
+            },
+            onDragLeave: () => {
+                this.element.style.opacity = '1';
             }
-        );
-
-        FileAPI?.event?.on?.(document, 'dragleave', () => {
-            this.element.style.opacity = '1';
-        });
-        FileAPI?.event?.on?.(document, 'dragover', () => {
-            this.element.style.opacity = '0.5';
         });
 
         // Прогрессбар
@@ -184,49 +184,62 @@ class AttachmentEditor extends GridManager {
     }
 
     /**
-     * Загрузка файла через FileAPI
+     * Загрузка файла нативными средствами
      * @param {string} field_name
-     * @param {*} files
-     * @param {*} response_callback
-     * @param {*} currentPID
+     * @param {File[]|FileList} files
+     * @param {Function} response_callback
+     * @param {string|number} currentPID
      * @returns {*}
      */
     xhrFileUpload(field_name, files, response_callback, currentPID) {
         this.progressBar.style.display = 'block';
+        if (this.progressText) {
+            this.progressText.style.display = 'block';
+            this.progressText.innerText = '0%';
+        }
 
-        const f = {};
-        f[field_name] = files;
-
-        return FileAPI.upload({
+        return uploadFiles({
             url: `${this.singlePath}file-library/upload-temp/?json`,
+            fieldName: field_name,
+            files,
             data: {
                 key: field_name,
                 pid: currentPID
             },
-            files: f,
-            prepare: function (file, options) {
-                options.data[FileAPI.uid()] = 1;
+            onPrepare: (file, options) => {
+                options.data[createUploadUid()] = 1;
             },
-            filecomplete: (err, xhr, file) => {
-                if (!err) {
-                    try {
-                        const result = FileAPI.parseJSON(xhr.responseText);
-                        if (result && !result.error) {
-                            response_callback(result);
-                        }
-                    } catch (er) {
-                        // Handle JSON parse error
+            onFileComplete: (err, xhr) => {
+                if (err) {
+                    return;
+                }
+                try {
+                    const result = JSON.parse(xhr.responseText || 'null');
+                    if (result && !result.error) {
+                        response_callback(result);
                     }
+                } catch (er) {
+                    // Handle JSON parse error
                 }
             },
-            progress: (evt, file) => {
-                this.progressBar.style.width = (evt.loaded / evt.total * 100) + '%';
+            onProgress: (evt) => {
+                const loaded = typeof evt.loaded === 'number' ? evt.loaded : 0;
+                const total = typeof evt.total === 'number' && evt.total > 0 ? evt.total : Math.max(loaded, 1);
+                const percent = Math.min(100, Math.round((loaded / total) * 100));
+                this.progressBar.style.width = `${percent}%`;
+                if (this.progressText) {
+                    this.progressText.innerText = `${percent}%`;
+                }
             },
-            complete: (err, xhr) => {
+            onComplete: () => {
                 setTimeout(() => {
                     this.element.style.opacity = '1';
                     this.progressBar.style.display = 'none';
                     this.progressBar.style.width = '0%';
+                    if (this.progressText) {
+                        this.progressText.style.display = 'none';
+                        this.progressText.innerText = '0%';
+                    }
                     this.loadPage(1);
                 }, 500);
             }

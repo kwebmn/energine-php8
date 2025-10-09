@@ -1,8 +1,6 @@
 import './styles/extended-vendor.css';
 
 import 'engine/core/modules/share/scripts/ckeditor/ckeditor.js';
-import 'engine/core/modules/share/scripts/FileAPI/FileAPI.js';
-import 'engine/core/modules/share/scripts/FileAPI/jquery.fileapi.min.js';
 import 'engine/core/modules/share/scripts/jstree/jstree.js';
 import 'engine/core/modules/share/scripts/jstree/jstree.min.js';
 import 'engine/core/modules/share/scripts/codemirror/lib/codemirror.js';
