@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build": "node engine/vite/build.mjs"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

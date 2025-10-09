@@ -14,6 +14,26 @@
 	<xsl:variable name="LANG_ABBR" select="$DOC_PROPS[@name='lang']/@abbr"/>
 	<xsl:variable name="NBSP"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></xsl:variable>
     <xsl:variable name="STATIC_URL"><xsl:value-of select="$BASE/@static"/></xsl:variable>
+    <xsl:variable name="ASSETS_BASE">
+        <xsl:choose>
+            <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
+                <xsl:value-of select="concat($STATIC_URL, 'assets/')"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="concat($STATIC_URL, '/assets/')"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="CKEDITOR_BASE">
+        <xsl:choose>
+            <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
+                <xsl:value-of select="concat($STATIC_URL, 'scripts/ckeditor/')"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="concat($STATIC_URL, '/scripts/ckeditor/')"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
     <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
     <xsl:variable name="RESIZER_URL"><xsl:value-of select="$BASE/@resizer"/></xsl:variable>
     <xsl:variable name="MAIN_SITE"><xsl:value-of select="$DOC_PROPS[@name='base']/@default"/><xsl:value-of select="$LANG_ABBR"/></xsl:variable>
@@ -27,6 +47,9 @@
     </xsl:variable>
     <xsl:variable name="ENERGINE_SRC_VALUE">
         <xsl:choose>
+            <xsl:when test="/document/@debug = '0'">
+                <xsl:value-of select="concat($ASSETS_BASE, 'energine.js')"/>
+            </xsl:when>
             <xsl:when test="$DOC_PROPS[@name='energine_script'] != ''">
                 <xsl:value-of select="$DOC_PROPS[@name='energine_script']"/>
             </xsl:when>
@@ -136,7 +159,25 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="keywords" content="{$DOC_PROPS[@name='keywords']}"/>
         <meta name="description" content="{$DOC_PROPS[@name='description']}"/>
-        <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet" />
+        <xsl:if test="/document/@debug = '0'">
+            <!-- CSS -->
+            <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.vendor.css')}"/>
+            <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.css')}"/>
+            <xsl:if test="//property[@name='is_user'] = '1'">
+                <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.css')}"/>
+            </xsl:if>
+
+            <!-- JS -->
+            <script>
+                <xsl:text>window.CKEDITOR_BASEPATH = '</xsl:text>
+                <xsl:value-of select="$CKEDITOR_BASE"/>
+                <xsl:text>';</xsl:text>
+            </script>
+            <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
+        </xsl:if>
+        <xsl:if test="not(/document/@debug = '0')">
+            <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet" />
+        </xsl:if>
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>
@@ -169,9 +210,11 @@
         <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
-        <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
-            <xsl:apply-templates select="." mode="head"/>
-        </xsl:for-each>
+        <xsl:if test="/document/@debug != '0'">
+            <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+                <xsl:apply-templates select="." mode="head"/>
+            </xsl:for-each>
+        </xsl:if>
         <script type="module">
             <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
             <xsl:if test="document/@debug=1">
@@ -190,13 +233,17 @@
                 </xsl:choose>
             </xsl:attribute>
         </script>
-        <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
-            <xsl:apply-templates select="." mode="head"/>
-        </xsl:for-each>
+        <xsl:if test="/document/@debug != '0'">
+            <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+                <xsl:apply-templates select="." mode="head"/>
+            </xsl:for-each>
+        </xsl:if>
+        <xsl:if test="/document/@debug = '0' and //property[@name='is_user'] = '1'">
+            <script type="module" src="{concat($ASSETS_BASE, 'energine.extended.js')}"></script>
+        </xsl:if>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
-        <script type="module">
-            // NOTE: downstream Energine modules must import helpers from this entrypoint instead of relying on globals.
+        <script type="module">            
             import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
 
             const config = createConfigFromScriptDataset();

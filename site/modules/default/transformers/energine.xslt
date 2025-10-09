@@ -50,20 +50,21 @@
             <body>
                 <xsl:apply-templates select="document"/>
 
-                <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
                 <xsl:if test="not(//property[@name='single'])">
-                    <!-- Font Awesome -->
-                    <!--                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"  rel="stylesheet" />-->
-
                     <!-- Google Fonts -->
                     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&amp;display=swap" rel="stylesheet"
                     />
-
-                    <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
                 </xsl:if>
 
-                <xsl:if test="not(//property[@name='single'])">
-                    <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
+                <xsl:if test="/document/@debug != '0'">
+                    <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
+                    <xsl:if test="not(//property[@name='single'])">
+                        <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
+                    </xsl:if>
+
+                    <xsl:if test="not(//property[@name='single'])">
+                        <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
+                    </xsl:if>
                 </xsl:if>
 
 <!--                <xsl:if test="not($DOC_PROPS[@name='single']) and $DOC_PROPS[@name='is_user'] = '0'">-->
@@ -82,7 +83,9 @@
 <!--                <script type="text/javascript">-->
 <!--                    jQuery.noConflict();-->
 <!--                </script>-->
-                <script type="module" src="scripts/default/default.js"></script>
+                <xsl:if test="/document/@debug != '0'">
+                    <script type="module" src="scripts/default/default.js"></script>
+                </xsl:if>
             </body>
         </html>
     </xsl:template>
