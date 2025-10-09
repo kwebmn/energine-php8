@@ -276,7 +276,9 @@ class FileRepository extends GridManager {
                 if (!record) {
                     return;
                 }
-                const currentPID = record.upl_pid;
+                const targetPID = (typeof record.upl_pid !== 'undefined' && record.upl_pid !== null && record.upl_pid !== '')
+                    ? record.upl_pid
+                    : (this.currentPID || 0);
                 this.xhrFileUpload('uploader', files, (uploadResult) => {
                     if (!uploadResult.error) {
                         Energine.request(
@@ -284,7 +286,7 @@ class FileRepository extends GridManager {
                             {
                                 'componentAction': 'add',
                                 'share_uploads[upl_id]': '',
-                                'share_uploads[upl_pid]': currentPID,
+                                'share_uploads[upl_pid]': targetPID,
                                 'share_uploads[upl_path]': uploadResult.tmp_name,
                                 'share_uploads[upl_title]': uploadResult.name,
                                 'share_uploads[upl_name]': uploadResult.name,
@@ -293,7 +295,7 @@ class FileRepository extends GridManager {
                             function(data){}
                         );
                     }
-                });
+                }, targetPID);
             },
             onDragEnter: () => {
                 this.element.style.opacity = '0.5';
@@ -492,12 +494,13 @@ class FileRepository extends GridManager {
         return postBody;
     }
 
-    xhrFileUpload(field_name, files, response_callback) {
+    xhrFileUpload(field_name, files, response_callback, pidOverride) {
         if (globalScope) {
             globalScope.repository = this;
         }
         const record = this.grid.getSelectedRecord();
-        if (!record) {
+        const hasOverridePID = typeof pidOverride !== 'undefined' && pidOverride !== null && pidOverride !== '';
+        if (!record && !hasOverridePID) {
             return undefined;
         }
 
@@ -508,13 +511,19 @@ class FileRepository extends GridManager {
             this.progressText.innerText = '0%';
         }
 
+        const targetPID = (typeof pidOverride !== 'undefined' && pidOverride !== null && pidOverride !== '')
+            ? pidOverride
+            : (((record && typeof record.upl_pid !== 'undefined' && record.upl_pid !== null && record.upl_pid !== ''))
+                ? record.upl_pid
+                : (this.currentPID || 0));
+
         return uploadFiles({
             url: `${this.singlePath}upload-temp/?json`,
             fieldName: field_name,
             files,
             data: {
                 'key': field_name,
-                'pid': record.upl_id
+                'pid': targetPID
             },
             onPrepare: (file, options) => {
                 options.data[createUploadUid()] = 1;
