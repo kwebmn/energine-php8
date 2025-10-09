@@ -36,7 +36,7 @@ The pattern ensures every module owns the decision to publish globals, avoiding 
   Modules import from this shim instead of touching `window` directly, improving discoverability and simplifying future replacements. Legacy vendor scripts continue to load beforehand via the existing theme template.【F:site/modules/default/transformers/energine.xslt†L52-L88】
 - Provide dedicated wrappers when module-level setup is needed:
   - `ckeditor/index.js` exports `initCKEditor(element, config)` that asserts `CKEDITOR` is available, bridges promise-based initialisation, and re-exports `CKEDITOR` for advanced consumers.
-  - `fileapi/index.js`, `jstree/index.js`, etc., expose the expected globals (`FileAPI`, `jstree`) to match current usage while offering typed helper functions where beneficial.
+  - `jstree/index.js`, etc., expose the expected globals (`jstree`) to match current usage while offering typed helper functions where beneficial.
 - For modules that must run without the vendor present (e.g. SweetAlert2 fallback in `Energine.confirmBox`), continue checking `typeof Swal === 'undefined'` after importing `Swal` from the shim to keep behaviour unchanged.【F:engine/core/modules/share/scripts/Energine.js†L134-L179】
 
 ## 5. CKEditor and other library initialisation

@@ -2,7 +2,6 @@
 <configuration>
     <state name="main">
         <javascript>
-            <library path="FileAPI/FileAPI" loader="classic"/>
             <behavior name="AttachmentEditor"/>
         </javascript>
         <toolbar>

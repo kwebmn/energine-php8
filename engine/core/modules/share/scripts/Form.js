@@ -11,7 +11,6 @@ const globalScope = typeof window !== 'undefined'
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 const CKEDITOR = globalScope?.CKEDITOR;
-const FileAPI = globalScope?.FileAPI;
 
 /**
  * @file Contain the description of the next classes:

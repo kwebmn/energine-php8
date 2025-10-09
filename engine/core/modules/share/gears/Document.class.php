@@ -286,7 +286,6 @@ final class Document extends DBWorker implements IDocument
     {
         $classicPrefixes = [
             'ckeditor/',
-            'FileAPI/',
             'jstree/',
             'codemirror/',
             'fancytree/',
