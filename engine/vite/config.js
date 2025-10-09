@@ -16,13 +16,15 @@ export default defineConfig({
     cssCodeSplit: true,
     manifest: false,
     rollupOptions: {
+      treeshake: false,
       input: {
         'energine.vendor':   path.resolve(projectRoot, 'engine/vite/entries/energine.vendor.entry.js'),
         'energine':          path.resolve(projectRoot, 'engine/vite/entries/energine.entry.js'),
         'energine.extended': path.resolve(projectRoot, 'engine/vite/entries/energine.extended.entry.js'),
       },
       output: {
-        format: 'es',
+        format: 'iife',
+        manualChunks: undefined,
         entryFileNames: (chunk) => ({
           'energine.vendor':   'energine.vendor.js',
           'energine':          'energine.js',

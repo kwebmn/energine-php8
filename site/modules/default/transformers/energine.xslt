@@ -80,9 +80,9 @@
                 <xsl:if test="$DEBUG_FLAG = '0'">
                     <!-- JS -->
                     <script src="/assets/energine.vendor.js" defer="defer"></script>
-                    <script type="module" src="/assets/energine.js"></script>
+                    <script src="/assets/energine.js" defer="defer"></script>
                     <xsl:if test="$IS_USER &gt; 0">
-                        <script type="module" src="/assets/energine.extended.js"></script>
+                        <script src="/assets/energine.extended.js" defer="defer"></script>
                     </xsl:if>
                 </xsl:if>
 
