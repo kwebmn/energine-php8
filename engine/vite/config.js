@@ -20,6 +20,7 @@ export const createBuildConfig = (name, entry, emptyOutDir = false) =>
     defineConfig({
         root: rootDir,
         publicDir: false,
+        base: './',
         resolve: {
             alias: {
                 engine: engineDir,

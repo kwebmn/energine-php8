@@ -22,6 +22,7 @@ for (let index = 0; index < targets.length; index += 1) {
     await build({
         root: rootDir,
         publicDir: false,
+        base: './',
         resolve: {
             alias: {
                 engine: engineDir,
