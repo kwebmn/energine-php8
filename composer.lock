@@ -4,40 +4,69 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ea5b70ef7dceb74c8c00d4cde86c8626",
+    "content-hash": "ee8455016b110da8c0797cea8716f0eb",
     "packages": [
         {
             "name": "ckeditor/ckeditor",
-            "version": "4.24.0",
+            "version": "4.22.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/ckeditor/ckeditor4.git",
-                "reference": "4.24.0"
+                "url": "https://github.com/ckeditor/ckeditor4-releases.git",
+                "reference": "0d51138b0a258165ac09724e8f5cda67cf9126a3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ckeditor/ckeditor4/zipball/4.24.0",
-                "reference": "4.24.0",
+                "url": "https://api.github.com/repos/ckeditor/ckeditor4-releases/zipball/0d51138b0a258165ac09724e8f5cda67cf9126a3",
+                "reference": "0d51138b0a258165ac09724e8f5cda67cf9126a3",
                 "shasum": ""
-            },
-            "require": {
-                "php": ">=5.6"
             },
             "type": "library",
             "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "GPL-2.0-or-later",
-                "LGPL-2.1-or-later",
-                "MPL-1.1"
+                "GPL-2.0+",
+                "LGPL-2.1+",
+                "MPL-1.1+"
             ],
-            "description": "CKEditor 4 - a browser WYSIWYG editor.",
+            "authors": [
+                {
+                    "name": "CKSource",
+                    "homepage": "https://cksource.com"
+                }
+            ],
+            "description": "JavaScript WYSIWYG web text editor.",
             "homepage": "https://ckeditor.com/ckeditor-4/",
             "keywords": [
-                "ckeditor",
+                "CKEditor",
+                "ckeditor4",
                 "editor",
+                "fckeditor",
+                "html",
+                "javascript",
+                "richtext",
+                "text",
                 "wysiwyg"
             ],
-            "time": "2024-03-15T00:00:00+00:00"
+            "support": {
+                "forum": "https://stackoverflow.com/tags/ckeditor",
+                "issues": "https://github.com/ckeditor/ckeditor4/issues",
+                "source": "https://github.com/ckeditor/ckeditor4",
+                "wiki": "https://ckeditor.com/docs/ckeditor4/latest/"
+            },
+            "time": "2023-06-30T13:35:30+00:00"
+        },
+        {
+            "name": "codemirror/codemirror5",
+            "version": "5.65.20",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/codemirror/codemirror5.git",
+                "reference": "5.65.20"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://github.com/codemirror/codemirror5/archive/refs/tags/5.65.20.zip"
+            },
+            "type": "library"
         },
         {
             "name": "doctrine/dbal",

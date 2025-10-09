@@ -25,7 +25,8 @@
 
     "twbs/bootstrap": "^5.3",
     "fortawesome/font-awesome": "^7.1",
-    "ckeditor/ckeditor": "^4.24"
+    "ckeditor/ckeditor": "4.22.1",
+    "codemirror/codemirror5": "^5.65"
   },
 
   "autoload": {
@@ -44,6 +45,24 @@
     "optimize-autoloader": true,
     "apcu-autoloader": true
   },
+  "repositories": [
+    {
+      "type": "package",
+      "package": {
+        "name": "codemirror/codemirror5",
+        "version": "5.65.20",
+        "dist": {
+          "url": "https://github.com/codemirror/codemirror5/archive/refs/tags/5.65.20.zip",
+          "type": "zip"
+        },
+        "source": {
+          "url": "https://github.com/codemirror/codemirror5.git",
+          "type": "git",
+          "reference": "5.65.20"
+        }
+      }
+    }
+  ],
   "minimum-stability": "stable",
   "prefer-stable": true,
   "require-dev": {
