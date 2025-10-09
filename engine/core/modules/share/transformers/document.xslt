@@ -159,10 +159,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="keywords" content="{$DOC_PROPS[@name='keywords']}"/>
         <meta name="description" content="{$DOC_PROPS[@name='description']}"/>
+        <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.css')}"/>
+        <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.vendor.css')}"/>
         <xsl:if test="/document/@debug = '0'">
             <!-- CSS -->
-            <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.vendor.css')}"/>
-            <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.css')}"/>
+            
+            
             <xsl:if test="//property[@name='is_user'] = '1'">
                 <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.vendor.css')}"/>
                 <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.css')}"/>
@@ -174,45 +176,22 @@
                 <xsl:value-of select="$CKEDITOR_BASE"/>
                 <xsl:text>';</xsl:text>
             </script>
-            <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
+            
             <xsl:if test="//property[@name='is_user'] = '1'">
                 <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
             </xsl:if>
         </xsl:if>
-        <xsl:if test="not(/document/@debug = '0')">
-            <link href="site/modules/default/stylesheets/bootstrap.min.css" rel="stylesheet" />
-        </xsl:if>
+        
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
-        </xsl:if>
-        <!-- <xsl:if test="//property[@name='single']">
-           <script type="text/javascript" src="scripts/jquery.min.js"></script>
-       </xsl:if> -->
+        </xsl:if>        
+       <!-- <xsl:apply-templates select="." mode="og"/> -->
 
-<!--        <xsl:apply-templates select="." mode="og"/>-->
-
-<!--        <xsl:if test="$DOC_PROPS[@name='single'] or $DOC_PROPS[@name='is_user'] > 0">-->
-<!--            <xsl:call-template name="START_ENERGINE_JS" />-->
-<!--        </xsl:if>-->
-
-       <!-- <xsl:if test="//property[@name='single']">
-           <script type="text/javascript" src="scripts/jquery.min.js"></script>
-       </xsl:if> -->
 
     </xsl:template>
 
     <xsl:template name="START_ENERGINE_JS">
-<!--        <xsl:choose>-->
-<!--            <xsl:when test="document/@debug=1">-->
-<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.js"></script>-->
-<!--            </xsl:when>-->
-<!--            <xsl:otherwise>-->
-<!--                <script type="text/javascript" src="{$STATIC_URL}scripts/mootools.min.js"></script>-->
-<!--            </xsl:otherwise>-->
-<!--        </xsl:choose>-->
-<!--        <link href="assets/minified.css" rel="stylesheet" />-->
-        <!-- <script type="text/javascript" src="assets/minified.js" /> -->
-
+        <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
         <xsl:if test="/document/@debug != '0'">
             <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
@@ -363,7 +342,7 @@
         </xsl:variable>
         <xsl:choose>
             <xsl:when test="@loader='classic'">
-                <script type="text/javascript">
+                <script defer="defer" type="text/javascript">
                     <xsl:attribute name="src"><xsl:value-of select="$fullSrc"/></xsl:attribute>
                 </script>
             </xsl:when>
