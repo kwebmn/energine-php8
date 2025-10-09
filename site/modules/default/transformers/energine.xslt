@@ -29,7 +29,16 @@
             	    </xsl:choose>
                 </xsl:for-each>
 
-                <xsl:if test="not(//property[@name='single'])">
+                <xsl:if test="$debug = 0">
+                    <!-- CSS -->
+                    <link rel="stylesheet" href="/assets/energine.vendor.css"/>
+                    <link rel="stylesheet" href="/assets/energine.css"/>
+                    <xsl:if test="$user/isAdmin = 1">
+                        <link rel="stylesheet" href="/assets/energine.extended.css"/>
+                    </xsl:if>
+                </xsl:if>
+
+                <xsl:if test="$debug != 0 and not(//property[@name='single'])">
                     <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet"/>
                 </xsl:if>
 
@@ -50,7 +59,10 @@
             <body>
                 <xsl:apply-templates select="document"/>
 
-                <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
+                <xsl:if test="$debug != 0">
+                    <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
+                </xsl:if>
+
                 <xsl:if test="not(//property[@name='single'])">
                     <!-- Font Awesome -->
                     <!--                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"  rel="stylesheet" />-->
@@ -59,10 +71,21 @@
                     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&amp;display=swap" rel="stylesheet"
                     />
 
-                    <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
+                    <xsl:if test="$debug != 0">
+                        <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
+                    </xsl:if>
                 </xsl:if>
 
-                <xsl:if test="not(//property[@name='single'])">
+                <xsl:if test="$debug = 0">
+                    <!-- JS -->
+                    <script type="module" src="/assets/energine.vendor.js"></script>
+                    <script type="module" src="/assets/energine.js"></script>
+                    <xsl:if test="$user/isAdmin = 1">
+                        <script type="module" src="/assets/energine.extended.js"></script>
+                    </xsl:if>
+                </xsl:if>
+
+                <xsl:if test="$debug != 0 and not(//property[@name='single'])">
                     <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
                 </xsl:if>
 
@@ -82,7 +105,9 @@
 <!--                <script type="text/javascript">-->
 <!--                    jQuery.noConflict();-->
 <!--                </script>-->
-                <script type="module" src="scripts/default/default.js"></script>
+                <xsl:if test="$debug != 0">
+                    <script type="module" src="scripts/default/default.js"></script>
+                </xsl:if>
             </body>
         </html>
     </xsl:template>

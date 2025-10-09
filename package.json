@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build:js": "vite build --config engine/vite/config.js"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
