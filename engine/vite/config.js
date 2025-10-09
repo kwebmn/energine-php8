@@ -8,6 +8,12 @@ export const outputDir = resolve(repoRoot, 'assets');
 export const engineDir = resolve(repoRoot, 'engine');
 export const siteDir = resolve(repoRoot, 'site');
 export const vendorDir = resolve(repoRoot, 'vendor');
+export const scriptsDir = resolve(repoRoot, 'scripts');
+
+export const ckeditorSourceDir = resolve(vendorDir, 'ckeditor', 'ckeditor');
+export const ckeditorTargetDir = resolve(scriptsDir, 'ckeditor');
+export const ckeditorCustomPluginsDir = resolve(engineDir, 'core/modules/share/scripts/ckeditor-plugins');
+export const ckeditorCustomPlugins = [ 'energinefile', 'energineimage', 'energinevideo' ];
 
 export const buildTargets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },

@@ -1,23 +1,25 @@
 import { build } from 'vite';
 import { resolve } from 'node:path';
+import { mkdir, rm, readdir, copyFile, readlink, symlink } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
-const rootDir = resolve(process.cwd(), 'engine/vite');
-const repoRoot = resolve(rootDir, '..', '..');
-const entriesDir = resolve(rootDir, 'entries');
-const outputDir = resolve(repoRoot, 'assets');
-const engineDir = resolve(repoRoot, 'engine');
-const siteDir = resolve(repoRoot, 'site');
-const vendorDir = resolve(repoRoot, 'vendor');
+import {
+    rootDir,
+    entriesDir,
+    outputDir,
+    engineDir,
+    siteDir,
+    vendorDir,
+    scriptsDir,
+    buildTargets,
+    ckeditorSourceDir,
+    ckeditorTargetDir,
+    ckeditorCustomPluginsDir,
+    ckeditorCustomPlugins,
+} from './config.js';
 
-const targets = [
-    { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
-    { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
-    { name: 'energine', entry: 'energine.entry.js' },
-    { name: 'energine.extended', entry: 'energine.extended.entry.js' },
-];
-
-for (let index = 0; index < targets.length; index += 1) {
-    const { name, entry } = targets[index];
+for (let index = 0; index < buildTargets.length; index += 1) {
+    const { name, entry } = buildTargets[index];
     const isVendor = name === 'energine.vendor' || name === 'energine.extended.vendor';
     await build({
         root: rootDir,
@@ -59,3 +61,48 @@ for (let index = 0; index < targets.length; index += 1) {
         },
     });
 }
+
+async function copyDirectory(source, destination) {
+    const entries = await readdir(source, { withFileTypes: true });
+    await mkdir(destination, { recursive: true });
+
+    for (const entry of entries) {
+        const sourcePath = resolve(source, entry.name);
+        const destinationPath = resolve(destination, entry.name);
+
+        if (entry.isDirectory()) {
+            await copyDirectory(sourcePath, destinationPath);
+        } else if (entry.isSymbolicLink()) {
+            const linkTarget = await readlink(sourcePath);
+            await symlink(linkTarget, destinationPath);
+        } else {
+            await copyFile(sourcePath, destinationPath);
+        }
+    }
+}
+
+async function copyCkeditorAssets() {
+    if (!existsSync(ckeditorSourceDir)) {
+        throw new Error(`CKEditor sources were not found at "${ckeditorSourceDir}". Run "composer install" first.`);
+    }
+
+    await rm(ckeditorTargetDir, { recursive: true, force: true });
+    await mkdir(scriptsDir, { recursive: true });
+    await copyDirectory(ckeditorSourceDir, ckeditorTargetDir);
+
+    if (!existsSync(ckeditorCustomPluginsDir)) {
+        return;
+    }
+
+    for (const plugin of ckeditorCustomPlugins) {
+        const pluginSource = resolve(ckeditorCustomPluginsDir, plugin);
+        if (!existsSync(pluginSource)) {
+            continue;
+        }
+
+        const pluginDestination = resolve(ckeditorTargetDir, 'plugins', plugin);
+        await copyDirectory(pluginSource, pluginDestination);
+    }
+}
+
+await copyCkeditorAssets();

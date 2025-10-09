@@ -4,8 +4,41 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e1b72ae5cd6435e28f2cf1f559adfc60",
+    "content-hash": "ea5b70ef7dceb74c8c00d4cde86c8626",
     "packages": [
+        {
+            "name": "ckeditor/ckeditor",
+            "version": "4.24.0-lts",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ckeditor/ckeditor4.git",
+                "reference": "4.24.0-lts"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ckeditor/ckeditor4/zipball/4.24.0-lts",
+                "reference": "4.24.0-lts",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.6"
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later",
+                "LGPL-2.1-or-later",
+                "MPL-1.1"
+            ],
+            "description": "CKEditor 4 - a browser WYSIWYG editor.",
+            "homepage": "https://ckeditor.com/ckeditor-4/",
+            "keywords": [
+                "ckeditor",
+                "editor",
+                "wysiwyg"
+            ],
+            "time": "2024-03-15T00:00:00+00:00"
+        },
         {
             "name": "doctrine/dbal",
             "version": "4.3.3",

@@ -24,7 +24,8 @@
     "symfony/http-client": "^7.3",
 
     "twbs/bootstrap": "^5.3",
-    "fortawesome/font-awesome": "^7.1"
+    "fortawesome/font-awesome": "^7.1",
+    "ckeditor/ckeditor": "^4.24"
   },
 
   "autoload": {

@@ -1,6 +1,6 @@
 import './styles/extended-vendor.css';
 
-import 'engine/core/modules/share/scripts/ckeditor/ckeditor.js';
+import 'vendor/ckeditor/ckeditor/ckeditor.js';
 import 'engine/core/modules/share/scripts/jstree/jstree.js';
 import 'engine/core/modules/share/scripts/jstree/jstree.min.js';
 import 'engine/core/modules/share/scripts/codemirror/lib/codemirror.js';
