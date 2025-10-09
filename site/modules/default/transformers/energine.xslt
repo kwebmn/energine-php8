@@ -2,9 +2,10 @@
 <xsl:stylesheet
     version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-
-
 >
+
+    <xsl:param name="debug" select="1"/>
+    <xsl:param name="user" select="/document/user"/>
 
     <!--Собственно отсюда и пляшем-->
     <!--Здесь можно сколько угодно дописывать, главное вызвать обработчки рута в моде head?в котором сосредоточены все команды необходимые для корректного формирования страницы-->
