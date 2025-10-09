@@ -4,8 +4,8 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 >
 
-    <xsl:param name="debug" select="1"/>
-    <xsl:param name="user" select="/document/user"/>
+    <xsl:variable name="DEBUG_FLAG" select="normalize-space(/document/@debug)"/>
+    <xsl:variable name="IS_USER" select="number(//property[@name='is_user'])"/>
 
     <!--Собственно отсюда и пляшем-->
     <!--Здесь можно сколько угодно дописывать, главное вызвать обработчки рута в моде head?в котором сосредоточены все команды необходимые для корректного формирования страницы-->
@@ -30,16 +30,16 @@
             	    </xsl:choose>
                 </xsl:for-each>
 
-                <xsl:if test="$debug = 0">
+                <xsl:if test="$DEBUG_FLAG = '0'">
                     <!-- CSS -->
                     <link rel="stylesheet" href="/assets/energine.vendor.css"/>
                     <link rel="stylesheet" href="/assets/energine.css"/>
-                    <xsl:if test="$user/isAdmin = 1">
+                    <xsl:if test="$IS_USER &gt; 0">
                         <link rel="stylesheet" href="/assets/energine.extended.css"/>
                     </xsl:if>
                 </xsl:if>
 
-                <xsl:if test="$debug != 0 and not(//property[@name='single'])">
+                <xsl:if test="$DEBUG_FLAG != '0' and not(//property[@name='single'])">
                     <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet"/>
                 </xsl:if>
 
@@ -60,7 +60,7 @@
             <body>
                 <xsl:apply-templates select="document"/>
 
-                <xsl:if test="$debug != 0">
+                <xsl:if test="$DEBUG_FLAG != '0'">
                     <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
                 </xsl:if>
 
@@ -72,21 +72,21 @@
                     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&amp;display=swap" rel="stylesheet"
                     />
 
-                    <xsl:if test="$debug != 0">
+                    <xsl:if test="$DEBUG_FLAG != '0'">
                         <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
                     </xsl:if>
                 </xsl:if>
 
-                <xsl:if test="$debug = 0">
+                <xsl:if test="$DEBUG_FLAG = '0'">
                     <!-- JS -->
                     <script type="module" src="/assets/energine.vendor.js"></script>
                     <script type="module" src="/assets/energine.js"></script>
-                    <xsl:if test="$user/isAdmin = 1">
+                    <xsl:if test="$IS_USER &gt; 0">
                         <script type="module" src="/assets/energine.extended.js"></script>
                     </xsl:if>
                 </xsl:if>
 
-                <xsl:if test="$debug != 0 and not(//property[@name='single'])">
+                <xsl:if test="$DEBUG_FLAG != '0' and not(//property[@name='single'])">
                     <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
                 </xsl:if>
 
@@ -106,7 +106,7 @@
 <!--                <script type="text/javascript">-->
 <!--                    jQuery.noConflict();-->
 <!--                </script>-->
-                <xsl:if test="$debug != 0">
+                <xsl:if test="$DEBUG_FLAG != '0'">
                     <script type="module" src="scripts/default/default.js"></script>
                 </xsl:if>
             </body>
