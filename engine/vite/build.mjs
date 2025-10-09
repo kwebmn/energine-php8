@@ -16,9 +16,18 @@ import {
     ckeditorTargetDir,
     ckeditorCustomPluginsDir,
     ckeditorCustomPlugins,
-    codemirrorSourceDir,
+    codemirrorResolvedDir,
     codemirrorTargetDir,
+    formatCodemirrorSourceHints,
+    requireCodemirrorSourceDir,
 } from './config.mjs';
+
+if (!codemirrorResolvedDir) {
+    const expectedPaths = formatCodemirrorSourceHints();
+    throw new Error(`CodeMirror sources were not found in any of the expected locations:\n${expectedPaths}`);
+}
+
+const codemirrorSourceDir = requireCodemirrorSourceDir();
 
 for (let index = 0; index < buildTargets.length; index += 1) {
     const { name, entry } = buildTargets[index];
@@ -33,7 +42,7 @@ for (let index = 0; index < buildTargets.length; index += 1) {
                 site: siteDir,
                 vendor: vendorDir,
                 scripts: scriptsDir,
-                codemirror: codemirrorSourceDir,
+                codemirror: codemirrorResolvedDir,
             },
         },
         build: {
@@ -110,10 +119,6 @@ async function copyCkeditorAssets() {
 }
 
 async function copyCodemirrorAssets() {
-    if (!existsSync(codemirrorSourceDir)) {
-        throw new Error(`CodeMirror sources were not found at "${codemirrorSourceDir}". Run "composer install" first.`);
-    }
-
     await rm(codemirrorTargetDir, { recursive: true, force: true });
     await mkdir(scriptsDir, { recursive: true });
     await copyDirectory(codemirrorSourceDir, codemirrorTargetDir);

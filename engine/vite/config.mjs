@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -18,6 +19,25 @@ export const ckeditorTargetDir = resolve(scriptsDir, 'ckeditor');
 export const ckeditorCustomPluginsDir = resolve(engineDir, 'core/modules/share/scripts/ckeditor-plugins');
 export const ckeditorCustomPlugins = [ 'codemirror', 'energinefile', 'energineimage', 'energinevideo' ];
 export const codemirrorSourceDir = resolve(vendorDir, 'codemirror', 'codemirror5');
+export const codemirrorNodeModulesDir = resolve(repoRoot, 'node_modules', 'codemirror');
+export const codemirrorSourceCandidates = [
+    { path: codemirrorSourceDir, hint: 'composer install' },
+    { path: codemirrorNodeModulesDir, hint: 'npm install' },
+];
+export const codemirrorResolvedDir = codemirrorSourceCandidates.find(({ path }) => existsSync(path))?.path;
+export const formatCodemirrorSourceHints = () =>
+    codemirrorSourceCandidates
+        .map(({ path, hint }) => `- ${path} (run "${hint}")`)
+        .join('\n');
+
+export const requireCodemirrorSourceDir = () => {
+    if (!codemirrorResolvedDir) {
+        const expectedPaths = formatCodemirrorSourceHints();
+        throw new Error(`CodeMirror sources were not found in any of the expected locations:\n${expectedPaths}`);
+    }
+
+    return codemirrorResolvedDir;
+};
 export const codemirrorTargetDir = resolve(scriptsDir, 'codemirror');
 
 export const buildTargets = [
@@ -38,7 +58,7 @@ export const createBuildConfig = (name, entry, emptyOutDir = false) =>
                 site: siteDir,
                 vendor: vendorDir,
                 scripts: scriptsDir,
-                codemirror: codemirrorSourceDir,
+                codemirror: requireCodemirrorSourceDir(),
             },
         },
         build: {

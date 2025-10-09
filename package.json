@@ -2,6 +2,9 @@
   "scripts": {
     "build": "node engine/vite/build.mjs"
   },
+  "dependencies": {
+    "codemirror": "^5.65.16"
+  },
   "devDependencies": {
     "vite": "^5.0.0"
   }
