@@ -35,7 +35,7 @@
                         rel="stylesheet"
                 />
                 <link
-                        href="stylesheets/default/bootstrap.min.css"
+                        href="site/modules/default/stylesheets/bootstrap.min.css"
                         rel="stylesheet"
                 />
         	</head>
@@ -74,7 +74,7 @@
 
                 <script
                         type="text/javascript"
-                        src="scripts/default/bootstrap.bundle.min.js"
+                        src="site/modules/default/scripts/bootstrap.bundle.min.js"
                         defer="defer"
                 ></script>
         	</body>

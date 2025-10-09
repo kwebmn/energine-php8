@@ -30,7 +30,7 @@
                 </xsl:for-each>
 
                 <xsl:if test="not(//property[@name='single'])">
-                    <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet"/>
+                    <link href="site/modules/default/stylesheets/bootstrap.min.css" rel="stylesheet"/>
                 </xsl:if>
 
 
@@ -57,13 +57,13 @@
                 </xsl:if>
 
                 <xsl:if test="/document/@debug != '0'">
-                    <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
+                    <link href="site/modules/default/stylesheets/awesome.min.css"  rel="stylesheet" />
                     <xsl:if test="not(//property[@name='single'])">
-                        <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
+                        <link href="site/modules/default/stylesheets/default.css" rel="stylesheet" type="text/css" media="all"/>
                     </xsl:if>
 
                     <xsl:if test="not(//property[@name='single'])">
-                        <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
+                        <script defer="defer" type="text/javascript" src="site/modules/default/scripts/bootstrap.bundle.min.js"></script>
                     </xsl:if>
                 </xsl:if>
 
@@ -84,7 +84,7 @@
 <!--                    jQuery.noConflict();-->
 <!--                </script>-->
                 <xsl:if test="/document/@debug != '0'">
-                    <script type="module" src="scripts/default/default.js"></script>
+                    <script type="module" src="site/modules/default/scripts/default.js"></script>
                 </xsl:if>
             </body>
         </html>

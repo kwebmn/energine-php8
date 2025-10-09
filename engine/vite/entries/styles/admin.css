@@ -1,6 +1,3 @@
-@import '../../../../stylesheets/form.css';
-@import '../../../../stylesheets/grid.css';
-@import '../../../../stylesheets/feedtoolbar.css';
-@import '../../../../scripts/jstree/themes/default/style.min.css';
-@import '../../../../scripts/codemirror/lib/codemirror.css';
-@import '../../../../scripts/codemirror/theme/elegant.css';
+@import 'engine/core/modules/share/stylesheets/form.css';
+@import 'engine/core/modules/share/stylesheets/grid.css';
+@import 'engine/core/modules/apps/stylesheets/feedtoolbar.css';

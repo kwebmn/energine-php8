@@ -164,6 +164,7 @@
             <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.vendor.css')}"/>
             <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.css')}"/>
             <xsl:if test="//property[@name='is_user'] = '1'">
+                <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.vendor.css')}"/>
                 <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.css')}"/>
             </xsl:if>
 
@@ -174,9 +175,12 @@
                 <xsl:text>';</xsl:text>
             </script>
             <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
+            <xsl:if test="//property[@name='is_user'] = '1'">
+                <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
+            </xsl:if>
         </xsl:if>
         <xsl:if test="not(/document/@debug = '0')">
-            <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet" />
+            <link href="site/modules/default/stylesheets/bootstrap.min.css" rel="stylesheet" />
         </xsl:if>
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>

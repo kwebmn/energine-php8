@@ -2,21 +2,31 @@ import { build } from 'vite';
 import { resolve } from 'node:path';
 
 const rootDir = resolve(process.cwd(), 'engine/vite');
+const repoRoot = resolve(rootDir, '..', '..');
 const entriesDir = resolve(rootDir, 'entries');
-const outputDir = resolve(rootDir, '../../assets');
+const outputDir = resolve(repoRoot, 'assets');
+const engineDir = resolve(repoRoot, 'engine');
+const siteDir = resolve(repoRoot, 'site');
 
 const targets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
+    { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
 
 for (let index = 0; index < targets.length; index += 1) {
     const { name, entry } = targets[index];
-    const isVendor = name === 'energine.vendor';
+    const isVendor = name === 'energine.vendor' || name === 'energine.extended.vendor';
     await build({
         root: rootDir,
         publicDir: false,
+        resolve: {
+            alias: {
+                engine: engineDir,
+                site: siteDir,
+            },
+        },
         build: {
             outDir: outputDir,
             emptyOutDir: index === 0,

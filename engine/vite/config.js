@@ -2,11 +2,15 @@ import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 
 export const rootDir = __dirname;
+export const repoRoot = resolve(rootDir, '..', '..');
 export const entriesDir = resolve(rootDir, 'entries');
-export const outputDir = resolve(rootDir, '../../assets');
+export const outputDir = resolve(repoRoot, 'assets');
+export const engineDir = resolve(repoRoot, 'engine');
+export const siteDir = resolve(repoRoot, 'site');
 
 export const buildTargets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
+    { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
@@ -15,6 +19,12 @@ export const createBuildConfig = (name, entry, emptyOutDir = false) =>
     defineConfig({
         root: rootDir,
         publicDir: false,
+        resolve: {
+            alias: {
+                engine: engineDir,
+                site: siteDir,
+            },
+        },
         build: {
             outDir: outputDir,
             emptyOutDir,
