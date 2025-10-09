@@ -20,11 +20,15 @@ export const ckeditorCustomPluginsDir = resolve(engineDir, 'core/modules/share/s
 export const ckeditorCustomPlugins = [ 'codemirror', 'energinefile', 'energineimage', 'energinevideo' ];
 export const codemirrorSourceDir = resolve(vendorDir, 'codemirror', 'codemirror5');
 export const codemirrorNodeModulesDir = resolve(repoRoot, 'node_modules', 'codemirror');
+const codemirrorRequiredEntry = 'lib/codemirror.js';
 export const codemirrorSourceCandidates = [
     { path: codemirrorSourceDir, hint: 'composer install' },
     { path: codemirrorNodeModulesDir, hint: 'npm install' },
 ];
-export const codemirrorResolvedDir = codemirrorSourceCandidates.find(({ path }) => existsSync(path))?.path;
+const hasCodemirrorRequiredEntry = (basePath) =>
+    existsSync(resolve(basePath, codemirrorRequiredEntry));
+export const codemirrorResolvedDir =
+    codemirrorSourceCandidates.find(({ path }) => hasCodemirrorRequiredEntry(path))?.path;
 export const formatCodemirrorSourceHints = () =>
     codemirrorSourceCandidates
         .map(({ path, hint }) => `- ${path} (run "${hint}")`)
@@ -33,7 +37,10 @@ export const formatCodemirrorSourceHints = () =>
 export const requireCodemirrorSourceDir = () => {
     if (!codemirrorResolvedDir) {
         const expectedPaths = formatCodemirrorSourceHints();
-        throw new Error(`CodeMirror sources were not found in any of the expected locations:\n${expectedPaths}`);
+        throw new Error(
+            `CodeMirror sources were not found in any of the expected locations. ` +
+            `Each location must contain "${codemirrorRequiredEntry}".\n${expectedPaths}`,
+        );
     }
 
     return codemirrorResolvedDir;
