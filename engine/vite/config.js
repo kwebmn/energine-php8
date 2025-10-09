@@ -28,8 +28,6 @@ export default defineConfig({
           'energine':          'energine.js',
           'energine.extended': 'energine.extended.js',
         }[chunk.name] ?? '[name].js'),
-        chunkFileNames: '[name].js',
-        manualChunks: () => undefined,
         assetFileNames: (info) => {
           const n = (info.name || '').toLowerCase();
           if (n.endsWith('.css'))                         return '[name][extname]';
