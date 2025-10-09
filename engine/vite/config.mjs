@@ -18,11 +18,13 @@ export const ckeditorSourceDir = resolve(vendorDir, 'ckeditor', 'ckeditor');
 export const ckeditorTargetDir = resolve(scriptsDir, 'ckeditor');
 export const ckeditorCustomPluginsDir = resolve(engineDir, 'core/modules/share/scripts/ckeditor-plugins');
 export const ckeditorCustomPlugins = [ 'codemirror', 'energinefile', 'energineimage', 'energinevideo' ];
-export const codemirrorSourceDir = resolve(vendorDir, 'codemirror', 'codemirror5');
+export const codemirrorComposerModernDir = resolve(vendorDir, 'codemirror', 'codemirror5');
+export const codemirrorComposerLegacyDir = resolve(vendorDir, 'codemirror', 'codemirror');
 export const codemirrorNodeModulesDir = resolve(repoRoot, 'node_modules', 'codemirror');
 const codemirrorRequiredEntry = 'lib/codemirror.js';
 export const codemirrorSourceCandidates = [
-    { path: codemirrorSourceDir, hint: 'composer install' },
+    { path: codemirrorComposerModernDir, hint: 'composer install (codemirror/codemirror5)' },
+    { path: codemirrorComposerLegacyDir, hint: 'composer install (codemirror/codemirror)' },
     { path: codemirrorNodeModulesDir, hint: 'npm install' },
 ];
 const hasCodemirrorRequiredEntry = (basePath) =>
