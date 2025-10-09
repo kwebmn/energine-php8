@@ -52,7 +52,6 @@
                 </xsl:if>
 
                 <xsl:if test="/document/@debug != '0'">
-                    <link href="site/modules/default/stylesheets/awesome.min.css"  rel="stylesheet" />
                     <xsl:if test="not(//property[@name='single'])">
                         <link href="site/modules/default/stylesheets/default.css" rel="stylesheet" type="text/css" media="all"/>
                     </xsl:if>
