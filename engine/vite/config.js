@@ -7,6 +7,7 @@ export const entriesDir = resolve(rootDir, 'entries');
 export const outputDir = resolve(repoRoot, 'assets');
 export const engineDir = resolve(repoRoot, 'engine');
 export const siteDir = resolve(repoRoot, 'site');
+export const vendorDir = resolve(repoRoot, 'vendor');
 
 export const buildTargets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
@@ -23,6 +24,7 @@ export const createBuildConfig = (name, entry, emptyOutDir = false) =>
             alias: {
                 engine: engineDir,
                 site: siteDir,
+                vendor: vendorDir,
             },
         },
         build: {

@@ -21,7 +21,9 @@
     "ezyang/htmlpurifier": "^4.18",
     "symfony/mailer": "^7.3",
     "symfony/mime": "^7.3",
-    "symfony/http-client": "^7.3"
+    "symfony/http-client": "^7.3",
+
+    "twbs/bootstrap": "^5.3.3"
   },
 
   "autoload": {

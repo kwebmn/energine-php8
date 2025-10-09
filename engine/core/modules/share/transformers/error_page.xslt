@@ -16,6 +16,16 @@
     <xsl:variable name="STATIC_URL" select="$BASE"/>
     <xsl:variable name="FOLDER">default</xsl:variable>
     <xsl:variable name="LANG_ABBR" select="/document/properties/property[@name='lang']/@abbr"/>
+    <xsl:variable name="ASSETS_BASE">
+        <xsl:choose>
+            <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
+                <xsl:value-of select="concat($STATIC_URL, 'assets/')"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="concat($STATIC_URL, '/assets/')"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
     <xsl:variable name="IN_DEBUG_MODE"><xsl:value-of select="/document/@debug"/></xsl:variable>
 
     <xsl:template match="/document">
@@ -35,7 +45,7 @@
                         rel="stylesheet"
                 />
                 <link
-                        href="site/modules/default/stylesheets/bootstrap.min.css"
+                        href="{concat($ASSETS_BASE, 'energine.vendor.css')}"
                         rel="stylesheet"
                 />
         	</head>
@@ -74,7 +84,7 @@
 
                 <script
                         type="text/javascript"
-                        src="site/modules/default/scripts/bootstrap.bundle.min.js"
+                        src="{concat($ASSETS_BASE, 'energine.vendor.js')}"
                         defer="defer"
                 ></script>
         	</body>
