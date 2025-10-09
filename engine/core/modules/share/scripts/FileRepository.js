@@ -272,13 +272,7 @@ class FileRepository extends GridManager {
                 if (!files.length) {
                     return;
                 }
-                const record = this.grid.getSelectedRecord();
-                if (!record) {
-                    return;
-                }
-                const targetPID = (typeof record.upl_pid !== 'undefined' && record.upl_pid !== null && record.upl_pid !== '')
-                    ? record.upl_pid
-                    : (this.currentPID || 0);
+                const targetPID = this.resolveTargetPID({ preferSelectedFolder: true });
                 this.xhrFileUpload('uploader', files, (uploadResult) => {
                     if (!uploadResult.error) {
                         Energine.request(
@@ -427,29 +421,28 @@ class FileRepository extends GridManager {
     }
 
     add() {
-        let pid = this.grid.getSelectedRecord().upl_pid;
-        if (pid) pid += '/';
+        const targetPID = this.resolveTargetPID();
+        const pidSegment = this.buildPidSegment(targetPID);
         ModalBox.open({
-            url: `${this.singlePath}${pid}add/`,
+            url: `${this.singlePath}${pidSegment}add/`,
             onClose: this.processAfterCloseAction.bind(this)
         });
     }
 
     addMulti() {
-        let pid = this.grid.getSelectedRecord().upl_pid;
-        if (pid) pid += '/';
+        const targetPID = this.resolveTargetPID();
+        const pidSegment = this.buildPidSegment(targetPID);
         ModalBox.open({
-            url: `${this.singlePath}${pid}addMulti/`,
+            url: `${this.singlePath}${pidSegment}addMulti/`,
             onClose: this.processAfterCloseAction.bind(this)
         });
     }
 
     addDir() {
-        let pid = this.grid.getSelectedRecord().upl_pid;
-        console.log(pid);
-        if (pid) pid += '/';
+        const targetPID = this.resolveTargetPID();
+        const pidSegment = this.buildPidSegment(targetPID);
         ModalBox.open({
-            url: `${this.singlePath}${pid}add-dir/`,
+            url: `${this.singlePath}${pidSegment}add-dir/`,
             onClose: (response) => {
                 if (response && response.result) {
                     this.currentPID = response.data;
@@ -462,9 +455,10 @@ class FileRepository extends GridManager {
     }
 
     uploadZip(data) {
+        const targetPID = this.resolveTargetPID();
         Energine.request(
             `${this.singlePath}upload-zip`,
-            `PID=${this.grid.getSelectedRecord().upl_pid}&data=${encodeURIComponent(data.result)}`,
+            `PID=${targetPID}&data=${encodeURIComponent(data.result)}`,
             response => { console.log(response); }
         );
     }
@@ -499,10 +493,7 @@ class FileRepository extends GridManager {
             globalScope.repository = this;
         }
         const record = this.grid.getSelectedRecord();
-        const hasOverridePID = typeof pidOverride !== 'undefined' && pidOverride !== null && pidOverride !== '';
-        if (!record && !hasOverridePID) {
-            return undefined;
-        }
+        const targetPID = this.resolveTargetPID({ pidOverride, record });
 
         this.progressBar.style.display = 'block';
         this.progressBar.style.width = '0%';
@@ -510,12 +501,6 @@ class FileRepository extends GridManager {
             this.progressText.style.display = 'block';
             this.progressText.innerText = '0%';
         }
-
-        const targetPID = (typeof pidOverride !== 'undefined' && pidOverride !== null && pidOverride !== '')
-            ? pidOverride
-            : (((record && typeof record.upl_pid !== 'undefined' && record.upl_pid !== null && record.upl_pid !== ''))
-                ? record.upl_pid
-                : (this.currentPID || 0));
 
         return uploadFiles({
             url: `${this.singlePath}upload-temp/?json`,
@@ -563,6 +548,44 @@ class FileRepository extends GridManager {
                 }, 500);
             }
         });
+    }
+
+    resolveTargetPID({ pidOverride, record, preferSelectedFolder = false } = {}) {
+        if (typeof pidOverride !== 'undefined' && pidOverride !== null && pidOverride !== '') {
+            return pidOverride;
+        }
+
+        const selectedRecord = record || this.grid.getSelectedRecord();
+        if (preferSelectedFolder && selectedRecord &&
+            (selectedRecord.upl_internal_type === 'folder' || selectedRecord.upl_internal_type === 'repo') &&
+            typeof selectedRecord.upl_id !== 'undefined' && selectedRecord.upl_id !== null && selectedRecord.upl_id !== '') {
+            return selectedRecord.upl_id;
+        }
+        if (selectedRecord && typeof selectedRecord.upl_pid !== 'undefined' && selectedRecord.upl_pid !== null && selectedRecord.upl_pid !== '') {
+            return selectedRecord.upl_pid;
+        }
+
+        if (typeof this.currentPID !== 'undefined' && this.currentPID !== null && this.currentPID !== '') {
+            return this.currentPID;
+        }
+
+        if (this.currentPID === 0) {
+            return 0;
+        }
+
+        return '';
+    }
+
+    buildPidSegment(pid) {
+        if (pid === '' || pid === null || typeof pid === 'undefined') {
+            return '';
+        }
+
+        if (pid === 0 || pid === '0') {
+            return '';
+        }
+
+        return `${pid}/`;
     }
 }
 
