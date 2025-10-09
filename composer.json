@@ -23,8 +23,8 @@
     "symfony/mime": "^7.3",
     "symfony/http-client": "^7.3",
 
-    "twbs/bootstrap": "^5.3.3",
-    "fortawesome/font-awesome": "^6.6"
+    "twbs/bootstrap": "^5.3",
+    "fortawesome/font-awesome": "^7.1"
   },
 
   "autoload": {
