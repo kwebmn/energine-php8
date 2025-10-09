@@ -355,6 +355,25 @@ class FileRepository extends GridManager {
             this.initialized = true;
         }
         if (!result.data) result.data = [];
+        const breadcrumbs = result.breadcrumbs || {};
+        const breadcrumbIds = Object.keys(breadcrumbs);
+        if (breadcrumbIds.length) {
+            const lastBreadcrumbId = breadcrumbIds[breadcrumbIds.length - 1];
+            if (lastBreadcrumbId !== '' && lastBreadcrumbId !== null && typeof lastBreadcrumbId !== 'undefined') {
+                const normalizedBreadcrumbId = String(lastBreadcrumbId).trim();
+                if (normalizedBreadcrumbId && normalizedBreadcrumbId !== '0') {
+                    this.currentPID = normalizedBreadcrumbId;
+                }
+            }
+        }
+
+        if (!this.currentPID) {
+            const cookiePID = Cookie.read(FILE_COOKIE_NAME);
+            if (cookiePID && cookiePID !== '0') {
+                this.currentPID = cookiePID;
+            }
+        }
+
         if (this.currentPID) {
             Cookie.write(FILE_COOKIE_NAME, this.currentPID, { path: (new URL(Energine.base)).pathname, duration: 1 });
         }
@@ -571,6 +590,11 @@ class FileRepository extends GridManager {
 
         if (this.currentPID === 0) {
             return 0;
+        }
+
+        const cookiePID = Cookie.read(FILE_COOKIE_NAME);
+        if (cookiePID && cookiePID !== '0') {
+            return cookiePID;
         }
 
         return '';
