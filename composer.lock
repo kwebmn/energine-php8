@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "ckeditor/ckeditor",
-            "version": "4.24.0-lts",
+            "version": "4.24.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ckeditor/ckeditor4.git",
-                "reference": "4.24.0-lts"
+                "reference": "4.24.0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ckeditor/ckeditor4/zipball/4.24.0-lts",
-                "reference": "4.24.0-lts",
+                "url": "https://api.github.com/repos/ckeditor/ckeditor4/zipball/4.24.0",
+                "reference": "4.24.0",
                 "shasum": ""
             },
             "require": {
