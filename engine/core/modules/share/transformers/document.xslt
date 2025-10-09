@@ -5,6 +5,7 @@
 
     >
     <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
+    <xsl:variable name="DOC_DEBUG" select="normalize-space(/document/@debug)"/>
     <xsl:variable name="COMPONENTS" select="//component[@name][@module]"/>
     <xsl:variable name="TRANSLATION" select="/document/translations/translation"/>
     <xsl:variable name="ID" select="$DOC_PROPS[@name='ID']"/>
@@ -169,9 +170,11 @@
         <!-- <script type="text/javascript" src="assets/minified.js" /> -->
 
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
-        <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
-            <xsl:apply-templates select="." mode="head"/>
-        </xsl:for-each>
+        <xsl:if test="$DOC_DEBUG != '0'">
+            <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+                <xsl:apply-templates select="." mode="head"/>
+            </xsl:for-each>
+        </xsl:if>
         <script type="module">
             <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
             <xsl:if test="document/@debug=1">
@@ -190,9 +193,11 @@
                 </xsl:choose>
             </xsl:attribute>
         </script>
-        <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
-            <xsl:apply-templates select="." mode="head"/>
-        </xsl:for-each>
+        <xsl:if test="$DOC_DEBUG != '0'">
+            <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
+                <xsl:apply-templates select="." mode="head"/>
+            </xsl:for-each>
+        </xsl:if>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="module">
