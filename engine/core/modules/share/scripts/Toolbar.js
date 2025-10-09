@@ -127,7 +127,7 @@ class Toolbar {
 
     static hasBootstrapStyles() {
         return (typeof document !== 'undefined') &&
-            !!document.querySelector('link[href*="bootstrap.min.css"]');
+            !!document.querySelector('link[href*="bootstrap.min.css"], link[href*="energine.vendor.css"]');
     }
 
     static hasBootstrapScript() {
@@ -135,7 +135,7 @@ class Toolbar {
             return true;
         }
         return (typeof document !== 'undefined') &&
-            !!document.querySelector('script[src*="bootstrap.bundle.min.js"]');
+            !!document.querySelector('script[src*="bootstrap.bundle.min.js"], script[src*="energine.vendor.js"]');
     }
 
     static createBootstrapTooltip(element, config = {}) {

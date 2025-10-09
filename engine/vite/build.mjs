@@ -7,6 +7,7 @@ const entriesDir = resolve(rootDir, 'entries');
 const outputDir = resolve(repoRoot, 'assets');
 const engineDir = resolve(repoRoot, 'engine');
 const siteDir = resolve(repoRoot, 'site');
+const vendorDir = resolve(repoRoot, 'vendor');
 
 const targets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
@@ -25,6 +26,7 @@ for (let index = 0; index < targets.length; index += 1) {
             alias: {
                 engine: engineDir,
                 site: siteDir,
+                vendor: vendorDir,
             },
         },
         build: {

@@ -10,4 +10,4 @@ if (typeof window !== 'undefined') {
     }
 }
 
-import 'engine/core/modules/share/scripts/bootstrap.bundle.min.js';
+import 'vendor/twbs/bootstrap/dist/js/bootstrap.bundle.min.js';
