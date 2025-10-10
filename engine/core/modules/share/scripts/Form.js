@@ -357,9 +357,13 @@ class Form {
 
         // CodeMirror
         this.codeEditors = [];
-        this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
-            this.codeEditors.push(createCodeEditor(textarea));
-        });
+        const codeEditorTextareas = this.form.querySelectorAll('[data-role="code-editor"]');
+        if (codeEditorTextareas.length > 0) {
+            Form.loadCSS('styles/code-editor.css');
+            codeEditorTextareas.forEach(textarea => {
+                this.codeEditors.push(createCodeEditor(textarea));
+            });
+        }
 
         // Acpl поля
         this.form.querySelectorAll('[data-role="acpl"]').forEach(el => {
