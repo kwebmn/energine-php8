@@ -5,6 +5,7 @@ import Validator from './Validator.js';
 import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
+import createCodeEditor from './createCodeEditor.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -357,14 +358,7 @@ class Form {
         // CodeMirror
         this.codeEditors = [];
         this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
-            this.codeEditors.push(
-                CodeMirror.fromTextArea(textarea, {
-                    mode: "text/html",
-                    tabMode: "indent",
-                    lineNumbers: true,
-                    theme: 'elegant'
-                })
-            );
+            this.codeEditors.push(createCodeEditor(textarea));
         });
 
         // Acpl поля
