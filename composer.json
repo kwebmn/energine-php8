@@ -33,6 +33,18 @@
           }
         }
       }
+    },
+    {
+      "type": "package",
+      "package": {
+        "name": "codemirror/codemirror",
+        "version": "5.65.16",
+        "type": "library",
+        "dist": {
+          "type": "tar",
+          "url": "https://registry.npmjs.org/codemirror/-/codemirror-5.65.16.tgz"
+        }
+      }
     }
   ],
 
@@ -61,7 +73,8 @@
     "twbs/bootstrap": "^5.3",
     "fortawesome/font-awesome": "^7.1",
     "components/jquery": "^3.7",
-    "components/jstree": "^3.3"
+    "components/jstree": "^3.3",
+    "codemirror/codemirror": "^5.65"
   },
 
   "autoload": {

@@ -11,6 +11,7 @@ const globalScope = typeof window !== 'undefined'
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 const CKEDITOR = globalScope?.CKEDITOR;
+const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
  * @file Contain the description of the next classes:
@@ -356,16 +357,19 @@ class Form {
 
         // CodeMirror
         this.codeEditors = [];
-        this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
-            this.codeEditors.push(
-                CodeMirror.fromTextArea(textarea, {
-                    mode: "text/html",
-                    tabMode: "indent",
-                    lineNumbers: true,
-                    theme: 'elegant'
-                })
-            );
-        });
+        const codeMirror = getCodeMirror();
+        if (codeMirror) {
+            this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
+                this.codeEditors.push(
+                    codeMirror.fromTextArea(textarea, {
+                        mode: "text/html",
+                        tabMode: "indent",
+                        lineNumbers: true,
+                        theme: 'elegant'
+                    })
+                );
+            });
+        }
 
         // Acpl поля
         this.form.querySelectorAll('[data-role="acpl"]').forEach(el => {
