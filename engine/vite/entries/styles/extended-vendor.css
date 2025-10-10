@@ -1,3 +1,4 @@
-@import 'engine/core/modules/share/scripts/jstree/themes/default/style.min.css';
+@import 'vendor/components/jstree/themes/default/style.min.css';
+@import 'vendor/components/jstree/themes/default-dark/style.min.css';
 @import 'engine/core/modules/share/scripts/codemirror/lib/codemirror.css';
 @import 'engine/core/modules/share/scripts/codemirror/theme/elegant.css';

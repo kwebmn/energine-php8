@@ -4,8 +4,120 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e1b72ae5cd6435e28f2cf1f559adfc60",
+    "content-hash": "b6e1bef1522307ac391d00a8be0ddfaf",
     "packages": [
+        {
+            "name": "components/jquery",
+            "version": "3.7.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/components/jquery.git",
+                "reference": "3.7.1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/components/jquery/zipball/3.7.1",
+                "reference": "3.7.1",
+                "shasum": ""
+            },
+            "type": "component",
+            "extra": {
+                "component": {
+                    "name": "jquery",
+                    "files": [
+                        "jquery.js",
+                        "jquery.min.js",
+                        "jquery.min.map",
+                        "jquery.slim.js",
+                        "jquery.slim.min.js",
+                        "jquery.slim.min.map"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "John Resig",
+                    "homepage": "https://jquery.com/"
+                },
+                {
+                    "name": "The jQuery Foundation"
+                }
+            ],
+            "description": "jQuery JavaScript Library",
+            "homepage": "https://jquery.com/",
+            "keywords": [
+                "javascript",
+                "jquery",
+                "library"
+            ],
+            "support": {
+                "issues": "https://github.com/components/jquery/issues",
+                "source": "https://github.com/components/jquery/tree/3.7.1"
+            },
+            "time": "2023-08-28T00:00:00+00:00"
+        },
+        {
+            "name": "components/jstree",
+            "version": "3.3.16",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/components/jstree.git",
+                "reference": "3.3.16"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/components/jstree/zipball/3.3.16",
+                "reference": "3.3.16",
+                "shasum": ""
+            },
+            "type": "component",
+            "extra": {
+                "component": {
+                    "name": "jstree",
+                    "files": [
+                        "jstree.js",
+                        "jstree.min.js",
+                        "jstree.min.js.map",
+                        "themes/default/style.css",
+                        "themes/default/style.min.css",
+                        "themes/default-dark/style.css",
+                        "themes/default-dark/style.min.css",
+                        "themes/default/32px.png",
+                        "themes/default/40px.png",
+                        "themes/default/throbber.gif",
+                        "themes/default-dark/32px.png",
+                        "themes/default-dark/40px.png",
+                        "themes/default-dark/throbber.gif"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ivan Bozhanov",
+                    "homepage": "https://www.jstree.com/"
+                }
+            ],
+            "description": "jsTree jquery tree plugin packaged as a Composer component",
+            "homepage": "https://www.jstree.com/",
+            "keywords": [
+                "component",
+                "jquery",
+                "tree"
+            ],
+            "support": {
+                "issues": "https://github.com/components/jstree/issues",
+                "source": "https://github.com/components/jstree/tree/3.3.16"
+            },
+            "time": "2021-04-12T00:00:00+00:00"
+        },
         {
             "name": "doctrine/dbal",
             "version": "4.3.3",

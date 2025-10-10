@@ -24,7 +24,9 @@
     "symfony/http-client": "^7.3",
 
     "twbs/bootstrap": "^5.3",
-    "fortawesome/font-awesome": "^7.1"
+    "fortawesome/font-awesome": "^7.1",
+    "components/jquery": "^3.7",
+    "components/jstree": "^3.3"
   },
 
   "autoload": {

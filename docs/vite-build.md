@@ -61,8 +61,8 @@
 
 Каждый entry-файл описывает конкретный слой интерфейса и импортирует собственный CSS:
 
-- **`energine.vendor.entry.js`** – минимальный набор для всех пользователей: jQuery и Bootstrap. Следит за тем, чтобы глобальные `window.$` и `window.jQuery` были заданы даже при модульной загрузке, а сам Bootstrap импортируется из `vendor/twbs/bootstrap` после `composer install`.
-- **`energine.extended.vendor.entry.js`** – подборка тяжёлых библиотек, необходимых только авторизованным (CKEditor, jsTree, CodeMirror и т.д.).
+- **`energine.vendor.entry.js`** – минимальный набор для всех пользователей: Bootstrap JS/CSS из `vendor/twbs/bootstrap`, установленного через `composer install`.
+- **`energine.extended.vendor.entry.js`** – подборка тяжёлых библиотек, необходимых только авторизованным (CKEditor, jsTree, CodeMirror и т.д.). И jQuery, и jsTree подключаются из Composer-пакетов, а в репозитории остаются только лёгкие заглушки для режима отладки.
 - **`energine.entry.js`** – основной модуль Energine, слой аутентификации гостя (`SignIn`, `RecoverPassword`) и сценарии публичного сайта (`site/modules/default/scripts/default.js`). Экспортирует API Energine как модуль.
 - **`energine.extended.entry.js`** – весь административный функционал: GridManager, Form, Toolbar, PageEditor, SiteManager, контролы для автотеста и т.д.
 
@@ -76,7 +76,7 @@
 
 | Имя файла | Назначение | Где подключается |
 | --- | --- | --- |
-| `energine.vendor.js` / `energine.vendor.css` | Базовые вендорные зависимости (jQuery, Bootstrap CSS). Нужны всем пользователям. | `engine/core/modules/share/transformers/document.xslt` — подключаются без условий в продакшене. |
+| `energine.vendor.js` / `energine.vendor.css` | Базовые вендорные зависимости (Bootstrap). Нужны всем пользователям. | `engine/core/modules/share/transformers/document.xslt` — подключаются без условий в продакшене. |
 | `energine.extended.vendor.js` / `energine.extended.vendor.css` | Административные сторонние библиотеки: редактор, файловый API, дерево, CodeMirror. Загружаются только для пользователей с `is_user = 1`. | Там же, в `document.xslt`, внутри условия по авторизации. |
 | `energine.js` / `energine.css` | Публичный модуль Energine и базовая тема. JS-файл грузится как модуль и содержит `bootEnergine`, CSS — общие стили сайта. | `document.xslt` (JS — в `<script type="module">`, CSS — линк всегда). |
 | `energine.extended.js` / `energine.extended.css` | Логика админ-интерфейса (grid, формы, тулбары) и дополнительные стили интерфейса управления сайтом. | Подключаются только при входе пользователя (`is_user = 1`). |
