@@ -4,15 +4,15 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "68272e2fd66b50225908bd64a6408d2b",
+    "content-hash": "01320101efa0cb80160d1c6843478d6b",
     "packages": [
         {
             "name": "components/codemirror",
-            "version": "4.2.1",
+            "version": "5.65.16",
             "dist": {
                 "type": "zip",
-                "url": "https://github.com/codemirror/CodeMirror/archive/refs/tags/4.2.1.zip",
-                "reference": "4.2.1",
+                "url": "https://github.com/codemirror/CodeMirror/archive/refs/tags/5.65.16.zip",
+                "reference": "5.65.16",
                 "shasum": ""
             },
             "type": "library",

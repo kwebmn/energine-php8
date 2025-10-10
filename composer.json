@@ -38,11 +38,11 @@
       "type": "package",
       "package": {
         "name": "components/codemirror",
-        "version": "4.2.1",
+        "version": "5.65.16",
         "type": "library",
         "dist": {
           "type": "zip",
-          "url": "https://github.com/codemirror/CodeMirror/archive/refs/tags/4.2.1.zip"
+          "url": "https://github.com/codemirror/CodeMirror/archive/refs/tags/5.65.16.zip"
         }
       }
     }
@@ -74,7 +74,7 @@
     "fortawesome/font-awesome": "^7.1",
     "components/jquery": "^3.7",
     "components/jstree": "^3.3",
-    "components/codemirror": "4.2.1"
+    "components/codemirror": "5.65.16"
   },
 
   "autoload": {
