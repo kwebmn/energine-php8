@@ -165,21 +165,19 @@
             <!-- CSS -->
             
             
-            <xsl:if test="//property[@name='is_user'] = '1'">
-                <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.vendor.css')}"/>
-                <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.css')}"/>
-            </xsl:if>
+            
 
             <!-- JS -->
-            <script>
-                <xsl:text>window.CKEDITOR_BASEPATH = '</xsl:text>
-                <xsl:value-of select="$CKEDITOR_BASE"/>
-                <xsl:text>';</xsl:text>
-            </script>
             
-            <xsl:if test="//property[@name='is_user'] = '1'">
+            
+            <!-- <xsl:if test="//property[@name='is_user'] = '1'">
+                <script>
+                    <xsl:text>window.CKEDITOR_BASEPATH = '</xsl:text>
+                    <xsl:value-of select="$CKEDITOR_BASE"/>
+                    <xsl:text>';</xsl:text>
+                </script>
                 <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
-            </xsl:if>
+            </xsl:if> -->
         </xsl:if>
         
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
@@ -191,7 +189,19 @@
     </xsl:template>
 
     <xsl:template name="START_ENERGINE_JS">
+        <xsl:if test="//property[@name='is_user'] = '1'">
+                <script>
+                    <xsl:text>window.CKEDITOR_BASEPATH = '</xsl:text>
+                    <xsl:value-of select="$CKEDITOR_BASE"/>
+                    <xsl:text>';</xsl:text>
+                </script>
+                <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
+            </xsl:if>
         <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
+        <xsl:if test="//property[@name='is_user'] = '1'">
+            <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.vendor.css')}"/>
+            <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.css')}"/>
+        </xsl:if>
         <xsl:apply-templates select="/document//javascript/variable" mode="head"/>
         <xsl:if test="/document/@debug != '0'">
             <xsl:for-each select="//javascript/library[@loader='classic'][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
