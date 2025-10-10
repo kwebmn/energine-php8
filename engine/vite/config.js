@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 
 export const rootDir = __dirname;
 export const repoRoot = resolve(rootDir, '..', '..');
@@ -8,6 +9,23 @@ export const outputDir = resolve(repoRoot, 'assets');
 export const engineDir = resolve(repoRoot, 'engine');
 export const siteDir = resolve(repoRoot, 'site');
 export const vendorDir = resolve(repoRoot, 'vendor');
+
+const resolveCodemirrorDir = () => {
+    const baseDir = resolve(vendorDir, 'components', 'codemirror');
+    const directLib = resolve(baseDir, 'lib');
+    if (existsSync(directLib)) {
+        return baseDir;
+    }
+
+    const packagedDir = resolve(baseDir, 'package');
+    if (existsSync(resolve(packagedDir, 'lib'))) {
+        return packagedDir;
+    }
+
+    return baseDir;
+};
+
+const codemirrorDir = resolveCodemirrorDir();
 
 export const buildTargets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
@@ -26,6 +44,7 @@ export const createBuildConfig = (name, entry, emptyOutDir = false) =>
                 engine: engineDir,
                 site: siteDir,
                 vendor: vendorDir,
+                'engine/core/modules/share/scripts/codemirror': codemirrorDir,
             },
         },
         build: {
