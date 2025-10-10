@@ -6,11 +6,18 @@ import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
 
+import 'vendor/codemirror/codemirror/lib/codemirror.js';
+import 'vendor/codemirror/codemirror/mode/xml/xml.js';
+import 'vendor/codemirror/codemirror/mode/javascript/javascript.js';
+import 'vendor/codemirror/codemirror/mode/css/css.js';
+import 'vendor/codemirror/codemirror/mode/htmlmixed/htmlmixed.js';
+
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 const CKEDITOR = globalScope?.CKEDITOR;
+const CodeMirror = globalScope?.CodeMirror;
 
 /**
  * @file Contain the description of the next classes:
@@ -356,16 +363,18 @@ class Form {
 
         // CodeMirror
         this.codeEditors = [];
-        this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
-            this.codeEditors.push(
-                CodeMirror.fromTextArea(textarea, {
-                    mode: "text/html",
-                    tabMode: "indent",
-                    lineNumbers: true,
-                    theme: 'elegant'
-                })
-            );
-        });
+        if (CodeMirror) {
+            this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
+                this.codeEditors.push(
+                    CodeMirror.fromTextArea(textarea, {
+                        mode: "text/html",
+                        tabMode: "indent",
+                        lineNumbers: true,
+                        theme: 'elegant'
+                    })
+                );
+            });
+        }
 
         // Acpl поля
         this.form.querySelectorAll('[data-role="acpl"]').forEach(el => {

@@ -257,10 +257,10 @@
 
 
     <!--<xsl:template match="field[@name='smap_content_xml'][ancestor::component[@type='form' and @exttype='grid']]">
-        <link rel="stylesheet" href="scripts/codemirror/lib/codemirror.css" />
-        <script type="text/javascript" src="scripts/codemirror/lib/codemirror.js"></script>
-        <script type="text/javascript" src="scripts/codemirror/mode/xml/xml.js"></script>
-        <link rel="stylesheet" href="scripts/codemirror/theme/default.css" />
+        <link rel="stylesheet" href="vendor/codemirror/codemirror/lib/codemirror.css" />
+        <script type="text/javascript" src="vendor/codemirror/codemirror/lib/codemirror.js"></script>
+        <script type="text/javascript" src="vendor/codemirror/codemirror/mode/xml/xml.js"></script>
+        <link rel="stylesheet" href="vendor/codemirror/codemirror/theme/default.css" />
 
         <div>
             <xsl:attribute name="class">field clearfix<xsl:choose>
