@@ -4,14 +4,14 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "16e7de1666162c0586590bc5104de45b",
+    "content-hash": "68272e2fd66b50225908bd64a6408d2b",
     "packages": [
         {
             "name": "components/codemirror",
             "version": "4.2.1",
             "dist": {
-                "type": "tar",
-                "url": "https://registry.npmjs.org/codemirror/-/codemirror-4.2.1.tgz",
+                "type": "zip",
+                "url": "https://github.com/codemirror/CodeMirror/archive/refs/tags/4.2.1.zip",
                 "reference": "4.2.1",
                 "shasum": ""
             },

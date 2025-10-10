@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 
 export const rootDir = __dirname;
 export const repoRoot = resolve(rootDir, '..', '..');
@@ -20,6 +20,19 @@ const resolveCodemirrorDir = () => {
     const packagedDir = resolve(baseDir, 'package');
     if (existsSync(resolve(packagedDir, 'lib'))) {
         return packagedDir;
+    }
+
+    try {
+        const nestedLib = readdirSync(baseDir, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => resolve(baseDir, entry.name))
+            .find((dir) => existsSync(resolve(dir, 'lib')));
+
+        if (nestedLib) {
+            return nestedLib;
+        }
+    } catch {
+        // Directory may not exist yet during fresh installs; fall through to baseDir.
     }
 
     return baseDir;
