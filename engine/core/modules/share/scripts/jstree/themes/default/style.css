@@ -2,6 +2,7 @@
  * Legacy stub for the jsTree default theme.
  *
  * The real styles are bundled by Vite from the Composer package
- * `components/jstree` as part of the extended vendor CSS. The original
+ * `components/jstree` (pulled into `vendor/components/jstree/dist`)
+ * as part of the extended vendor CSS. The original
  * upstream files are no longer stored in this repository.
  */

@@ -2,5 +2,6 @@
  * Legacy stub for the jsTree default-dark theme.
  *
  * The actual styles are pulled into the extended vendor bundle from the
- * Composer package `components/jstree`.
+ * Composer package `components/jstree` installed at
+ * `vendor/components/jstree/dist`.
  */

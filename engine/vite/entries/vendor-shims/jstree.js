@@ -1,4 +1,4 @@
-import 'vendor/components/jstree/jstree.js';
+import 'vendor/components/jstree/dist/jstree.js';
 
 export const ensureJsTreeGlobals = () => {
     if (typeof window === 'undefined') {

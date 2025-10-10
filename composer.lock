@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b6e1bef1522307ac391d00a8be0ddfaf",
+    "content-hash": "de92e6d586652089d0c04d0ee614fad6",
     "packages": [
         {
             "name": "components/jquery",
@@ -63,14 +63,9 @@
         {
             "name": "components/jstree",
             "version": "3.3.16",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/components/jstree.git",
-                "reference": "3.3.16"
-            },
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/components/jstree/zipball/3.3.16",
+                "type": "tar",
+                "url": "https://registry.npmjs.org/jstree/-/jstree-3.3.16.tgz",
                 "reference": "3.3.16",
                 "shasum": ""
             },
@@ -79,19 +74,19 @@
                 "component": {
                     "name": "jstree",
                     "files": [
-                        "jstree.js",
-                        "jstree.min.js",
-                        "jstree.min.js.map",
-                        "themes/default/style.css",
-                        "themes/default/style.min.css",
-                        "themes/default-dark/style.css",
-                        "themes/default-dark/style.min.css",
-                        "themes/default/32px.png",
-                        "themes/default/40px.png",
-                        "themes/default/throbber.gif",
-                        "themes/default-dark/32px.png",
-                        "themes/default-dark/40px.png",
-                        "themes/default-dark/throbber.gif"
+                        "dist/jstree.js",
+                        "dist/jstree.min.js",
+                        "dist/jstree.min.js.map",
+                        "dist/themes/default/style.css",
+                        "dist/themes/default/style.min.css",
+                        "dist/themes/default-dark/style.css",
+                        "dist/themes/default-dark/style.min.css",
+                        "dist/themes/default/32px.png",
+                        "dist/themes/default/40px.png",
+                        "dist/themes/default/throbber.gif",
+                        "dist/themes/default-dark/32px.png",
+                        "dist/themes/default-dark/40px.png",
+                        "dist/themes/default-dark/throbber.gif"
                     ]
                 }
             },

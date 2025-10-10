@@ -62,7 +62,7 @@
 Каждый entry-файл описывает конкретный слой интерфейса и импортирует собственный CSS:
 
 - **`energine.vendor.entry.js`** – минимальный набор для всех пользователей: Bootstrap JS/CSS из `vendor/twbs/bootstrap`, установленного через `composer install`.
-- **`energine.extended.vendor.entry.js`** – подборка тяжёлых библиотек, необходимых только авторизованным (CKEditor, jsTree, CodeMirror и т.д.). И jQuery, и jsTree подключаются из Composer-пакетов, а в репозитории остаются только лёгкие заглушки для режима отладки.
+- **`energine.extended.vendor.entry.js`** – подборка тяжёлых библиотек, необходимых только авторизованным (CKEditor, jsTree, CodeMirror и т.д.). И jQuery, и jsTree подключаются из Composer-пакетов, а в репозитории остаются только лёгкие заглушки для режима отладки. jsTree устанавливается из npm-архива через Composer и импортируется из `vendor/components/jstree/dist`.
 - **`energine.entry.js`** – основной модуль Energine, слой аутентификации гостя (`SignIn`, `RecoverPassword`) и сценарии публичного сайта (`site/modules/default/scripts/default.js`). Экспортирует API Energine как модуль.
 - **`energine.extended.entry.js`** – весь административный функционал: GridManager, Form, Toolbar, PageEditor, SiteManager, контролы для автотеста и т.д.
 

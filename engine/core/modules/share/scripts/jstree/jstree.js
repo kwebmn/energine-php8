@@ -3,7 +3,8 @@
  *
  * See `jstree.min.js` in the same directory for details. The real
  * implementation lives in the Vite vendor bundle and is sourced from the
- * Composer package `components/jstree`.
+ * Composer package `components/jstree` (imported from
+ * `vendor/components/jstree/dist`).
  */
 (function () {
     if (typeof window === 'undefined') {
