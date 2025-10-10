@@ -342,7 +342,7 @@
         </xsl:variable>
         <xsl:choose>
             <xsl:when test="@loader='classic'">
-                <script defer="defer" type="text/javascript">
+                <script defer="defer" type="text/javascript">                
                     <xsl:attribute name="src"><xsl:value-of select="$fullSrc"/></xsl:attribute>
                 </script>
             </xsl:when>
