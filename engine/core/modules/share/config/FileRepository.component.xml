@@ -16,7 +16,6 @@
             <field name="upl_publication_date"/>
         </filter>
         <javascript>
-            <library path="FileAPI/FileAPI" loader="classic"/>
             <behavior name="FileRepository"/>
         </javascript>
         <uri_patterns>
@@ -68,7 +67,6 @@
             <field name="upl_title"/>
         </fields>
         <javascript>
-            <library path="FileAPI/FileAPI" loader="classic"/>
             <behavior name="FileRepoForm"/>
         </javascript>
         <toolbar>
@@ -83,7 +81,6 @@
             <pattern>/[pid]/add/</pattern>
         </uri_patterns>
         <javascript>
-            <library path="FileAPI/FileAPI" loader="classic"/>
             <behavior name="FileRepoForm"/>
         </javascript>
         <fields>
@@ -114,7 +111,6 @@
             <pattern>/[int]/edit/</pattern>
         </uri_patterns>
         <javascript>
-            <library path="FileAPI/FileAPI" loader="classic"/>
             <behavior name="FileRepoForm"/>
         </javascript>
         <fields>

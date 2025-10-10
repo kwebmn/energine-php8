@@ -2,12 +2,15 @@ import Energine from './Energine.js';
 import GridManager, { Grid } from './GridManager.js';
 import Cookie from './Cookie.js';
 import ModalBox from './ModalBox.js';
+import {
+    bindDragAndDrop,
+    createUploadUid,
+    uploadFiles
+} from './nativeFileHelpers.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const FileAPI = globalScope?.FileAPI;
 
 // Глобальное имя cookie для файла
 const FILE_COOKIE_NAME = 'NRGNFRPID';
@@ -261,36 +264,40 @@ class FileRepository extends GridManager {
         this.progressText = progressText;
 
         if (globalScope) {
-            globalScope.repository = this; // В старом коде для FileAPI.callback-ов
+            globalScope.repository = this; // Сохраняем ссылку для совместимости со старыми FileAPI callback-ами
         }
 
-        FileAPI?.event?.dnd?.(
-            document,
-            function(){},
-            files => {
-                let r = this.grid.getSelectedRecord();
-                let currentPID = r.upl_pid;
-                this.xhrFileUpload('uploader', files, (r) => {
-                    if (!r.error) {
+        bindDragAndDrop(document, {
+            onDrop: (files) => {
+                if (!files.length) {
+                    return;
+                }
+                const targetPID = this.resolveTargetPID({ preferSelectedFolder: true });
+                this.xhrFileUpload('uploader', files, (uploadResult) => {
+                    if (!uploadResult.error) {
                         Energine.request(
                             this.singlePath + 'save',
                             {
                                 'componentAction': 'add',
                                 'share_uploads[upl_id]': '',
-                                'share_uploads[upl_pid]': currentPID,
-                                'share_uploads[upl_path]': r.tmp_name,
-                                'share_uploads[upl_title]': r.name,
-                                'share_uploads[upl_name]': r.name,
-                                'share_uploads[upl_filename]': r.name
+                                'share_uploads[upl_pid]': targetPID,
+                                'share_uploads[upl_path]': uploadResult.tmp_name,
+                                'share_uploads[upl_title]': uploadResult.name,
+                                'share_uploads[upl_name]': uploadResult.name,
+                                'share_uploads[upl_filename]': uploadResult.name
                             },
                             function(data){}
                         );
                     }
-                });
+                }, targetPID);
+            },
+            onDragEnter: () => {
+                this.element.style.opacity = '0.5';
+            },
+            onDragLeave: () => {
+                this.element.style.opacity = '1';
             }
-        );
-        FileAPI?.event?.on?.(document, 'dragleave', () => { this.element.style.opacity = '1'; });
-        FileAPI?.event?.on?.(document, 'dragover', () => { this.element.style.opacity = '0.5'; });
+        });
     }
 
     // --- Событие двойного клика (открытие элемента) ---
@@ -348,6 +355,25 @@ class FileRepository extends GridManager {
             this.initialized = true;
         }
         if (!result.data) result.data = [];
+        const breadcrumbs = result.breadcrumbs || {};
+        const breadcrumbIds = Object.keys(breadcrumbs);
+        if (breadcrumbIds.length) {
+            const lastBreadcrumbId = breadcrumbIds[breadcrumbIds.length - 1];
+            if (lastBreadcrumbId !== '' && lastBreadcrumbId !== null && typeof lastBreadcrumbId !== 'undefined') {
+                const normalizedBreadcrumbId = String(lastBreadcrumbId).trim();
+                if (normalizedBreadcrumbId && normalizedBreadcrumbId !== '0') {
+                    this.currentPID = normalizedBreadcrumbId;
+                }
+            }
+        }
+
+        if (!this.currentPID) {
+            const cookiePID = Cookie.read(FILE_COOKIE_NAME);
+            if (cookiePID && cookiePID !== '0') {
+                this.currentPID = cookiePID;
+            }
+        }
+
         if (this.currentPID) {
             Cookie.write(FILE_COOKIE_NAME, this.currentPID, { path: (new URL(Energine.base)).pathname, duration: 1 });
         }
@@ -414,29 +440,28 @@ class FileRepository extends GridManager {
     }
 
     add() {
-        let pid = this.grid.getSelectedRecord().upl_pid;
-        if (pid) pid += '/';
+        const targetPID = this.resolveTargetPID();
+        const pidSegment = this.buildPidSegment(targetPID);
         ModalBox.open({
-            url: `${this.singlePath}${pid}add/`,
+            url: `${this.singlePath}${pidSegment}add/`,
             onClose: this.processAfterCloseAction.bind(this)
         });
     }
 
     addMulti() {
-        let pid = this.grid.getSelectedRecord().upl_pid;
-        if (pid) pid += '/';
+        const targetPID = this.resolveTargetPID();
+        const pidSegment = this.buildPidSegment(targetPID);
         ModalBox.open({
-            url: `${this.singlePath}${pid}addMulti/`,
+            url: `${this.singlePath}${pidSegment}addMulti/`,
             onClose: this.processAfterCloseAction.bind(this)
         });
     }
 
     addDir() {
-        let pid = this.grid.getSelectedRecord().upl_pid;
-        console.log(pid);
-        if (pid) pid += '/';
+        const targetPID = this.resolveTargetPID();
+        const pidSegment = this.buildPidSegment(targetPID);
         ModalBox.open({
-            url: `${this.singlePath}${pid}add-dir/`,
+            url: `${this.singlePath}${pidSegment}add-dir/`,
             onClose: (response) => {
                 if (response && response.result) {
                     this.currentPID = response.data;
@@ -449,9 +474,10 @@ class FileRepository extends GridManager {
     }
 
     uploadZip(data) {
+        const targetPID = this.resolveTargetPID();
         Energine.request(
             `${this.singlePath}upload-zip`,
-            `PID=${this.grid.getSelectedRecord().upl_pid}&data=${encodeURIComponent(data.result)}`,
+            `PID=${targetPID}&data=${encodeURIComponent(data.result)}`,
             response => { console.log(response); }
         );
     }
@@ -481,67 +507,109 @@ class FileRepository extends GridManager {
         return postBody;
     }
 
-    xhrFileUpload(field_name, files, response_callback) {
+    xhrFileUpload(field_name, files, response_callback, pidOverride) {
         if (globalScope) {
             globalScope.repository = this;
         }
+        const record = this.grid.getSelectedRecord();
+        const targetPID = this.resolveTargetPID({ pidOverride, record });
+
         this.progressBar.style.display = 'block';
         this.progressBar.style.width = '0%';
-        this.progressText.style.display = 'block';
-        this.progressText.innerText = '0%';
-        const r = this.grid.getSelectedRecord();
-        const currentPID = r.upl_id;
-
-        let f = {};
-        f[field_name] = files;
-        if (!FileAPI?.upload) {
-            return undefined;
+        if (this.progressText) {
+            this.progressText.style.display = 'block';
+            this.progressText.innerText = '0%';
         }
 
-        return FileAPI.upload({
+        return uploadFiles({
             url: `${this.singlePath}upload-temp/?json`,
+            fieldName: field_name,
+            files,
             data: {
                 'key': field_name,
-                'pid': currentPID
+                'pid': targetPID
             },
-            files: f,
-            prepare: function (file, options) {
-                if (FileAPI?.uid) {
-                    options.data[FileAPI.uid()] = 1;
+            onPrepare: (file, options) => {
+                options.data[createUploadUid()] = 1;
+            },
+            onFileComplete: (err, xhr) => {
+                if (err) {
+                    return;
+                }
+                try {
+                    const result = JSON.parse(xhr.responseText || 'null');
+                    if (result && !result.error) {
+                        response_callback(result);
+                    }
+                } catch (er) {
+                    // ignore parse errors
                 }
             },
-            beforeupload: function () { },
-            upload: function () { },
-            fileupload: function (file, xhr) { },
-            fileprogress: function (evt, file) { },
-            filecomplete: function (err, xhr, file) {
-                if (!err) {
-                    try {
-                        let result = FileAPI?.parseJSON
-                            ? FileAPI.parseJSON(xhr.responseText)
-                            : JSON.parse(xhr.responseText);
-                        if (result && !result.error) {
-                            response_callback(result);
-                        }
-                    } catch (er) { }
+            onProgress: (evt) => {
+                const loaded = typeof evt.loaded === 'number' ? evt.loaded : 0;
+                const total = typeof evt.total === 'number' && evt.total > 0 ? evt.total : Math.max(loaded, 1);
+                const percent = Math.min(100, Math.round((loaded / total) * 100));
+                this.progressBar.style.width = `${percent}%`;
+                if (this.progressText) {
+                    this.progressText.innerText = `${percent}%`;
                 }
             },
-            progress: (evt, file) => {
-                let percent = Math.round(evt.loaded / evt.total * 100);
-                this.progressBar.style.width = percent + '%';
-                this.progressText.innerText = percent + '%';
-            },
-            complete: (err, xhr) => {
+            onComplete: () => {
                 setTimeout(() => {
                     this.element.style.opacity = '1';
                     this.progressBar.style.display = 'none';
                     this.progressBar.style.width = '0%';
-                    this.progressText.style.display = 'none';
-                    this.progressText.innerText = '0%';
+                    if (this.progressText) {
+                        this.progressText.style.display = 'none';
+                        this.progressText.innerText = '0%';
+                    }
                     this.loadPage(1);
                 }, 500);
             }
         });
+    }
+
+    resolveTargetPID({ pidOverride, record, preferSelectedFolder = false } = {}) {
+        if (typeof pidOverride !== 'undefined' && pidOverride !== null && pidOverride !== '') {
+            return pidOverride;
+        }
+
+        const selectedRecord = record || this.grid.getSelectedRecord();
+        if (preferSelectedFolder && selectedRecord &&
+            (selectedRecord.upl_internal_type === 'folder' || selectedRecord.upl_internal_type === 'repo') &&
+            typeof selectedRecord.upl_id !== 'undefined' && selectedRecord.upl_id !== null && selectedRecord.upl_id !== '') {
+            return selectedRecord.upl_id;
+        }
+        if (selectedRecord && typeof selectedRecord.upl_pid !== 'undefined' && selectedRecord.upl_pid !== null && selectedRecord.upl_pid !== '') {
+            return selectedRecord.upl_pid;
+        }
+
+        if (typeof this.currentPID !== 'undefined' && this.currentPID !== null && this.currentPID !== '') {
+            return this.currentPID;
+        }
+
+        if (this.currentPID === 0) {
+            return 0;
+        }
+
+        const cookiePID = Cookie.read(FILE_COOKIE_NAME);
+        if (cookiePID && cookiePID !== '0') {
+            return cookiePID;
+        }
+
+        return '';
+    }
+
+    buildPidSegment(pid) {
+        if (pid === '' || pid === null || typeof pid === 'undefined') {
+            return '';
+        }
+
+        if (pid === 0 || pid === '0') {
+            return '';
+        }
+
+        return `${pid}/`;
     }
 }
 

@@ -29,11 +29,6 @@
             	    </xsl:choose>
                 </xsl:for-each>
 
-                <xsl:if test="not(//property[@name='single'])">
-                    <link href="stylesheets/default/bootstrap.min.css" rel="stylesheet"/>
-                </xsl:if>
-
-
                 <xsl:if test="string-length(//property[@name='canonical']) > 0">
                     <link rel="canonical" href="{//property[@name='canonical']}"/>
                 </xsl:if>
@@ -50,39 +45,25 @@
             <body>
                 <xsl:apply-templates select="document"/>
 
-                <link href="stylesheets/default/awesome.min.css"  rel="stylesheet" />
                 <xsl:if test="not(//property[@name='single'])">
-                    <!-- Font Awesome -->
-                    <!--                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"  rel="stylesheet" />-->
-
                     <!-- Google Fonts -->
                     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&amp;display=swap" rel="stylesheet"
                     />
-
-                    <link href="stylesheets/default/default.css" rel="stylesheet" type="text/css" media="all"/>
                 </xsl:if>
 
-                <xsl:if test="not(//property[@name='single'])">
-                    <script defer="defer" type="text/javascript" src="scripts/default/bootstrap.bundle.min.js"></script>
+                <xsl:if test="/document/@debug != '0'">
+                    <xsl:if test="not(//property[@name='single'])">
+                        <link href="site/modules/default/stylesheets/default.css" rel="stylesheet" type="text/css" media="all"/>
+                    </xsl:if>
+
                 </xsl:if>
 
-<!--                <xsl:if test="not($DOC_PROPS[@name='single']) and $DOC_PROPS[@name='is_user'] = '0'">-->
-<!--                    <xsl:call-template name="START_ENERGINE_JS" />-->
-<!--                </xsl:if>-->
+
                 <xsl:call-template name="START_ENERGINE_JS" />
-                <!-- Subsequent project scripts must import Energine helpers from the module entrypoint. -->
 
-
-                <!-- <xsl:if test="//property[@name='single']">
-                    <script type="text/javascript" src="scripts/jquery.min.js"></script>
-                    <script type="text/javascript" src="scripts/jstree/jstree.min.js"></script>
-                </xsl:if> -->
-<!--                <script type="text/javascript" src="scripts/default/jquery.min.js"></script>-->
-                <!--<script type="text/javascript" src="scripts/jstree/jstree.min.js"></script>-->
-<!--                <script type="text/javascript">-->
-<!--                    jQuery.noConflict();-->
-<!--                </script>-->
-                <script type="module" src="scripts/default/default.js"></script>
+                <xsl:if test="/document/@debug != '0'">
+                    <script type="module" src="site/modules/default/scripts/default.js"></script>
+                </xsl:if>
             </body>
         </html>
     </xsl:template>

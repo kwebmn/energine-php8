@@ -1,23 +1,21 @@
 import Energine from './Energine.js';
 import Form from './Form.js';
 import ModalBox from './ModalBox.js';
+import {
+    createUploadUid,
+    getFilesFromEvent,
+    uploadFiles
+} from './nativeFileHelpers.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const FileAPI = globalScope?.FileAPI;
 
 // FileRepoForm.js
 
 class FileRepoForm extends Form {
     constructor(el) {
         super(el);
-
-        if (FileAPI) {
-            FileAPI.staticPath = Energine.base + 'scripts/FileAPI/';
-            FileAPI.debug = false;
-        }
 
         this.componentElement = typeof el === 'string' ? document.getElementById(el) : el;
 
@@ -52,25 +50,23 @@ class FileRepoForm extends Form {
     // Превью для thumb-инпутов
     showThumbPreview(evt) {
         const el = evt.target;
-        const files = FileAPI?.getFiles ? FileAPI.getFiles(evt) : [];
+        const files = getFilesFromEvent(evt);
 
-        for (const file of files) {
-            if (/^image\//.test(file.type)) {
-                this.xhrFileUpload(el.id, files, (response) => {
-                    const previewSelector = el.getAttribute('preview');
-                    const dataSelector = el.getAttribute('data');
-                    const previewElement = previewSelector ? document.getElementById(previewSelector) : null;
-                    const dataElement = dataSelector ? document.getElementById(dataSelector) : null;
+        files.filter(file => /^image\//.test(file.type)).forEach((file) => {
+            this.xhrFileUpload(el.id, [file], (response) => {
+                const previewSelector = el.getAttribute('preview');
+                const dataSelector = el.getAttribute('data');
+                const previewElement = previewSelector ? document.getElementById(previewSelector) : null;
+                const dataElement = dataSelector ? document.getElementById(dataSelector) : null;
 
-                    if (previewElement) {
-                        Form.showImagePreview(previewElement, Energine.base + 'resizer/w0-h0/' + response.tmp_name);
-                    }
-                    if (dataElement) {
-                        dataElement.value = response.tmp_name;
-                    }
-                });
-            }
-        }
+                if (previewElement) {
+                    Form.showImagePreview(previewElement, Energine.base + 'resizer/w0-h0/' + response.tmp_name);
+                }
+                if (dataElement) {
+                    dataElement.value = response.tmp_name;
+                }
+            });
+        });
     }
 
     // Генерация превьюшек для всех thumbs
@@ -85,39 +81,32 @@ class FileRepoForm extends Form {
         }
     }
 
-    // Загрузка файла через FileAPI.upload
+    // Загрузка файла нативными средствами
     xhrFileUpload(field_name, files, response_callback) {
-        const f = {};
-        f[field_name] = files;
+        const pid = document.getElementById('upl_pid')?.value || '';
 
-        if (!FileAPI?.upload) {
-            return undefined;
-        }
-
-        return FileAPI.upload({
-            url: this.singlePath + 'upload-temp/?json',
+        return uploadFiles({
+            url: `${this.singlePath}upload-temp/?json`,
+            fieldName: field_name,
+            files,
             data: {
                 key: field_name,
-                pid: document.getElementById('upl_pid')?.value || ''
+                pid
             },
-            files: f,
-            prepare: (file, options) => {
-                if (FileAPI?.uid) {
-                    options.data[FileAPI.uid()] = 1;
+            onPrepare: (file, options) => {
+                options.data[createUploadUid()] = 1;
+            },
+            onFileComplete: (err, xhr) => {
+                if (err) {
+                    return;
                 }
-            },
-            filecomplete: (err, xhr, file) => {
-                if (!err) {
-                    try {
-                        const result = FileAPI?.parseJSON
-                            ? FileAPI.parseJSON(xhr.responseText)
-                            : JSON.parse(xhr.responseText);
-                        if (result && !result.error) {
-                            response_callback(result);
-                        }
-                    } catch (er) {
-                        // Ошибка парсинга
+                try {
+                    const result = JSON.parse(xhr.responseText || 'null');
+                    if (result && !result.error) {
+                        response_callback(result);
                     }
+                } catch (er) {
+                    // Ошибка парсинга
                 }
             }
         });
@@ -136,12 +125,12 @@ class FileRepoForm extends Form {
             });
         }
 
-        const files = FileAPI?.getFiles ? FileAPI.getFiles(evt) : [];
+        const files = getFilesFromEvent(evt);
         const enableTab = this.tabPane && this.tabPane.enableTab ? this.tabPane.enableTab.bind(this.tabPane, 1) : () => {};
         const generatePreviews = this.generatePreviews.bind(this);
 
-        for (const file of files) {
-            this.xhrFileUpload('uploader', files, (response) => {
+        files.forEach((file) => {
+            this.xhrFileUpload('uploader', [file], (response) => {
                 const uplName = document.getElementById('upl_name');
                 const uplFilename = document.getElementById('upl_filename');
                 const data = document.getElementById('data');
@@ -170,7 +159,7 @@ class FileRepoForm extends Form {
                     Form.showIconPreview(previewElement, iconKey);
                 }
             });
-        }
+        });
     }
 
     // Переопределение buildSaveURL
