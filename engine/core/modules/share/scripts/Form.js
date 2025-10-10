@@ -6,18 +6,12 @@ import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
 
-import 'vendor/codemirror/codemirror/lib/codemirror.js';
-import 'vendor/codemirror/codemirror/mode/xml/xml.js';
-import 'vendor/codemirror/codemirror/mode/javascript/javascript.js';
-import 'vendor/codemirror/codemirror/mode/css/css.js';
-import 'vendor/codemirror/codemirror/mode/htmlmixed/htmlmixed.js';
-
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 const CKEDITOR = globalScope?.CKEDITOR;
-const CodeMirror = globalScope?.CodeMirror;
+const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
  * @file Contain the description of the next classes:
@@ -363,10 +357,11 @@ class Form {
 
         // CodeMirror
         this.codeEditors = [];
-        if (CodeMirror) {
+        const codeMirror = getCodeMirror();
+        if (codeMirror) {
             this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
                 this.codeEditors.push(
-                    CodeMirror.fromTextArea(textarea, {
+                    codeMirror.fromTextArea(textarea, {
                         mode: "text/html",
                         tabMode: "indent",
                         lineNumbers: true,
