@@ -33,6 +33,31 @@
           }
         }
       }
+    },
+    {
+      "type": "package",
+      "package": {
+        "name": "components/codemirror",
+        "version": "5.65.16",
+        "type": "component",
+        "dist": {
+          "type": "tar",
+          "url": "https://registry.npmjs.org/codemirror/-/codemirror-5.65.16.tgz"
+        },
+        "extra": {
+          "component": {
+            "name": "codemirror",
+            "files": [
+              "lib/codemirror.js",
+              "lib/codemirror.css",
+              "addon/",
+              "mode/",
+              "theme/",
+              "LICENSE"
+            ]
+          }
+        }
+      }
     }
   ],
 
@@ -61,7 +86,8 @@
     "twbs/bootstrap": "^5.3",
     "fortawesome/font-awesome": "^7.1",
     "components/jquery": "^3.7",
-    "components/jstree": "^3.3"
+    "components/jstree": "^3.3",
+    "components/codemirror": "^5.65"
   },
 
   "autoload": {

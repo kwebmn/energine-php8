@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "de92e6d586652089d0c04d0ee614fad6",
+    "content-hash": "0955baac56698111c4b2605f0328b44a",
     "packages": [
         {
             "name": "components/jquery",
@@ -112,6 +112,53 @@
                 "source": "https://github.com/components/jstree/tree/3.3.16"
             },
             "time": "2021-04-12T00:00:00+00:00"
+        },
+        {
+            "name": "components/codemirror",
+            "version": "5.65.16",
+            "dist": {
+                "type": "tar",
+                "url": "https://registry.npmjs.org/codemirror/-/codemirror-5.65.16.tgz",
+                "reference": "5.65.16",
+                "shasum": ""
+            },
+            "type": "component",
+            "extra": {
+                "component": {
+                    "name": "codemirror",
+                    "files": [
+                        "lib/codemirror.js",
+                        "lib/codemirror.css",
+                        "addon/",
+                        "mode/",
+                        "theme/",
+                        "LICENSE"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Marijn Haverbeke",
+                    "homepage": "https://codemirror.net"
+                }
+            ],
+            "description": "CodeMirror editor packaged as a Composer component",
+            "homepage": "https://codemirror.net",
+            "keywords": [
+                "code",
+                "component",
+                "editor",
+                "syntax"
+            ],
+            "support": {
+                "issues": "https://github.com/codemirror/CodeMirror/issues",
+                "source": "https://github.com/codemirror/CodeMirror/tree/5.65.16"
+            },
+            "time": "2024-04-23T00:00:00+00:00"
         },
         {
             "name": "doctrine/dbal",
