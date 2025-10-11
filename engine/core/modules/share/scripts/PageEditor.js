@@ -1,263 +1,369 @@
 import Energine, { showLoader, hideLoader } from './Energine.js';
+import ModalBox from './ModalBox.js';
+import './suneditor/loader.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
+const getSunEditor = () => globalScope?.SUNEDITOR;
+const marginProperties = ['margin-left', 'margin-right', 'margin-top', 'margin-bottom'];
+
+function escapeAttribute(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function resolveMediaUrl(path) {
+    if (!path) {
+        return '';
+    }
+
+    if (/^(?:https?:)?\/\//i.test(path)) {
+        return path;
+    }
+
+    return `${Energine.media || ''}${path}`;
+}
 
 function applyEditorOutline(area, editor) {
     if (!area) {
         return;
     }
-    area.style.outline = '1px dashed #f00';
-    area.style.outlineOffset = '2px';
-    if (editor && typeof editor.on === 'function') {
-        editor.on('focus', () => {
-            area.style.outline = '2px dashed #0d0';
-            area.style.outlineOffset = '2px';
-        });
-        editor.on('blur', () => {
-            area.style.outline = '1px dashed #f00';
-            area.style.outlineOffset = '2px';
-        });
+
+    const setOutline = (isActive) => {
+        area.style.outline = isActive ? '2px dashed #0d0' : '1px dashed #f00';
+        area.style.outlineOffset = '2px';
+    };
+
+    setOutline(false);
+
+    const focusTarget = editor?.core?.context?.element?.wysiwyg
+        || editor?.context?.element?.wysiwyg
+        || area;
+
+    if (focusTarget && typeof focusTarget.addEventListener === 'function') {
+        focusTarget.addEventListener('focus', () => setOutline(true));
+        focusTarget.addEventListener('blur', () => setOutline(false));
     }
 }
 
 class PageEditor {
     editorClassName = 'nrgnEditor';
+
     editors = [];
 
     constructor() {
-        if (!CKEDITOR) {
-            throw new Error('PageEditor requires CKEditor to be loaded globally.');
+        this.sunEditorPromise = null;
+        this.SUNEDITOR = null;
+        this.helpers = null;
+        this.styleSet = [];
+
+        this.ensureSunEditor()
+            .then((SUNEDITOR) => {
+                if (!SUNEDITOR) {
+                    throw new Error('PageEditor requires SunEditor to be loaded globally.');
+                }
+
+                this.SUNEDITOR = SUNEDITOR;
+                this.helpers = SUNEDITOR.__energineHelpers || null;
+                this.styleSet = this.collectStyleSet();
+                this.initEditors();
+
+                if (globalScope) {
+                    globalScope.nrgPageEditor = this;
+                }
+            })
+            .catch((error) => {
+                console.error('PageEditor initialisation failed', error);
+            });
+    }
+
+    ensureSunEditor() {
+        if (!this.sunEditorPromise) {
+            const loader = globalScope?.__suneditorLoader?.ready;
+            const resolveInstance = () => getSunEditor();
+
+            this.sunEditorPromise = Promise.resolve(loader ?? resolveInstance())
+                .then((SUNEDITOR) => SUNEDITOR || resolveInstance())
+                .catch((error) => {
+                    console.error('SunEditor loader error', error);
+                    return resolveInstance();
+                });
         }
 
-        CKEDITOR.config.versionCheck = false;
-        CKEDITOR.disableAutoInline = true;
-        CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,energineimage,energinefile';
-        CKEDITOR.config.removePlugins = 'exportpdf';
-        CKEDITOR.config.allowedContent = true;
-        CKEDITOR.config.toolbar = [
-            { name: 'document', groups: [ 'mode' ], items: [ 'Sourcedialog' ] },
-            { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-            { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-            { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-            { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-            { name: 'tools', items: [ 'ShowBlocks' ] },
-            '/',
-            { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-            { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-            { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-            { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-        ];
+        return this.sunEditorPromise;
+    }
 
-        // Стили CKEditor
+    collectStyleSet() {
         const styles = [];
-        if (window['wysiwyg_styles']) {
-            Object.values(window['wysiwyg_styles']).forEach(style => {
+        const registry = globalScope?.wysiwyg_styles;
+
+        if (registry && typeof registry === 'object') {
+            Object.values(registry).forEach((style) => {
+                if (!style || typeof style !== 'object') {
+                    return;
+                }
+
+                const element = style.element || 'span';
+                const className = style.class || '';
+                const caption = style.caption || style.name || element;
+
                 styles.push({
-                    name: style['caption'],
-                    element: style['element'],
-                    attributes: { 'class': style['class'] }
+                    name: caption,
+                    element,
+                    attributes: className ? { class: className } : {},
                 });
             });
         }
-        CKEDITOR.stylesSet.add('energine', styles);
-        CKEDITOR.config.stylesSet = 'energine';
 
-        // Инициализация редакторов для всех областей
-        document.querySelectorAll('.' + this.editorClassName).forEach(element => {
-            this.editors.push(new PageEditor.BlockEditor(element));
-        });
-
-        window.nrgPageEditor = this;
+        return styles;
     }
 
-    // --------- Вложенный BlockEditor ---------
-    static BlockEditor = class {
-        constructor(area) {
-            this.area = area;
-            area.setAttribute('contenteditable', true);
-            this.isActive = false;
-            this.singlePath = area.getAttribute('single_template');
-            this.ID = area.getAttribute('eID') || '';
-            this.num = area.getAttribute('num') || '';
-        this.editor = CKEDITOR.inline(area.id);
-        this.editor.singleTemplate = this.singlePath;
-        this.editor.editorId = area.id;
-        applyEditorOutline(this.area, this.editor);
-            //this.overlay = new Overlay();
-            // Если нужны события blur/focus, можно раскомментировать:
-            /*
-            this.editor.on('blur', () => {
-                area.classList.remove('activeEditor');
-                this.save();
-            });
-            this.editor.on('focus', () => {
-                area.classList.add('activeEditor');
-            });
-            */
-
+    initEditors() {
+        if (!this.SUNEDITOR) {
+            return;
         }
 
-        /**
-         * Сохраняет данные блока.
-         * @param {boolean} [async = true] Асинхронно или нет
-         * @param {function} [onSuccess] Колбэк после сохранения
-         */
-        save(async = true, onSuccess = undefined) {
-            if (this.editor.checkDirty()) {
-                if (!async) showLoader();
-
-                let data = 'data=' + encodeURIComponent(this.editor.getData());
-                if (this.ID) data += '&ID=' + this.ID;
-                if (this.num) data += '&num=' + this.num;
-
-                fetch(this.singlePath + 'save-text', {
-                    method: 'POST',
-                    body: data,
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                })
-                    .then(response => response.text())
-                    .then(response => {
-                        // this.editor.setData(response); // убрано как в оригинале
-                        if (onSuccess) onSuccess.call(this);
-                        if (this.editor.resetDirty) this.editor.resetDirty();
-                        if (!async) this.overlay.hide();
-                    });
-            }
-        }
+        const areas = document.querySelectorAll(`.${this.editorClassName}`);
+        areas.forEach((area) => {
+            const editor = new PageEditorBlock(area, this);
+            this.editors.push(editor);
+        });
     }
 }
-/**
- * Block editor.
- *
- * @constructor
- * @param pageEditor
- * @param area
- */
-class BlockEditor {
-    /**
-     * @param {HTMLElement} area - Area element.
-     */
-    constructor(area) {
-        /**
-         * Area element.
-         * @type {HTMLElement}
-         */
+
+class PageEditorBlock {
+    constructor(area, pageEditor) {
         this.area = area;
-        this.area.setAttribute('contenteditable', 'true');
+        this.pageEditor = pageEditor;
+        this.singlePath = area.getAttribute('single_template') || '';
+        this.ID = area.getAttribute('eID') || '';
+        this.num = area.getAttribute('num') || '';
+        this.isDirty = false;
 
-        /**
-         * Defines whether the editor is active.
-         * @type {boolean}
-         */
-        this.isActive = false;
+        if (!this.area.id) {
+            this.area.id = `suneditor-area-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        }
 
-        /**
-         * Single path.
-         * @type {string}
-         */
-        this.singlePath = this.area.getAttribute('single_template');
-
-        /**
-         * Block editor ID.
-         * @type {string}
-         */
-        this.ID = this.area.getAttribute('eID') || '';
-
-        /**
-         * Text block ID.
-         * @type {string}
-         */
-        this.num = this.area.getAttribute('num') || '';
-
-        /**
-         * Editor.
-         * @type {CKEDITOR}
-         */
-        this.editor = CKEDITOR.inline(this.area.id);
-        this.editor.singleTemplate = this.area.getAttribute('single_template');
-        this.editor.editorId = this.area.id;
+        this.editor = this.createEditorInstance();
         applyEditorOutline(this.area, this.editor);
-
-        /**
-         * Overlay.
-         * @type {Overlay}
-         */
-        //this.overlay = new Overlay();
-
-        // События CKEditor (закомментировано, как в оригинале)
-        /*
-        this.editor.on('blur', () => {
-            // console.log(this.area);
-            this.area.classList.remove('activeEditor');
-            this.save();
-        });
-        this.editor.on('focus', () => {
-            // console.log(this.area);
-            this.area.classList.add('activeEditor');
-        });
-        */
+        this.registerCustomisations();
+        this.bindChangeTracking();
     }
 
-    /**
-     * Save.
-     *
-     * @public
-     * @param {boolean} [async=true] - Defines whether the request be asynchronous or not.
-     * @param {function} [onSuccess=undefined] - User defined function that is called after success saving
-     */
-    save(async = true, onSuccess) {
-        if (this.editor.checkDirty()) {
-            if (!async) {
-                showLoader();
-            }
+    createEditorInstance() {
+        const options = {
+            mode: 'inline',
+            minHeight: 120,
+            buttonList: [
+                ['undo', 'redo'],
+                ['font', 'fontSize', 'formatBlock'],
+                ['bold', 'underline', 'italic', 'strike', 'removeFormat'],
+                ['fontColor', 'hiliteColor'],
+                ['list', 'align', 'outdent', 'indent'],
+                ['link', 'table', 'image', 'video'],
+                ['showBlocks', 'codeView'],
+            ],
+            katex: globalScope?.katex,
+            resizingBar: false,
+            charCounter: true,
+            defaultTag: 'p',
+        };
 
-            // Формируем объект данных для Energine.request
-            const params = {
-                data: this.editor.getData(),
-            };
-            if (this.ID) {
-                params.ID = this.ID;
-            }
-            if (this.num) {
-                params.num = this.num;
-            }
+        const editor = this.pageEditor.SUNEDITOR.create(this.area, options);
+        editor.editorId = this.area.id;
+        editor.singleTemplate = this.singlePath;
+        return editor;
+    }
 
-            // Вызов Energine.request
-            Energine.request(
-                this.singlePath + 'save-text',
-                params,
-                (response) => {
-                    // onSuccess как в оригинале
-                    if (onSuccess) onSuccess.call(this, response);
-                    this.editor.resetDirty && this.editor.resetDirty();
-                    if (!async) {
-                        hideLoader();
-                    }
-                },
-                // onUserError
-                () => {
-                    if (!async) {
-                        hideLoader();
-                    }
-                },
-                // onServerError
-                () => {
-                    if (!async) {
-                        hideLoader();
-                    }
-                }
-            );
+    registerCustomisations() {
+        const helpers = this.pageEditor.helpers;
+
+        if (!helpers) {
+            return;
         }
+
+        if (this.pageEditor.styleSet.length > 0) {
+            helpers.applyStyleSet(this.editor, this.pageEditor.styleSet);
+        }
+
+        helpers.registerImageButton(this.editor, {
+            title: 'Медиа-библиотека: изображение',
+            group: 'insert',
+            onClick: () => this.openImageLibrary(),
+        });
+
+        helpers.registerFileButton(this.editor, {
+            title: 'Медиа-библиотека: файл',
+            group: 'insert',
+            onClick: () => this.openFileLibrary(),
+        });
+    }
+
+    bindChangeTracking() {
+        const wysiwyg = this.editor?.core?.context?.element?.wysiwyg
+            || this.editor?.context?.element?.wysiwyg
+            || this.area;
+
+        if (wysiwyg && typeof wysiwyg.addEventListener === 'function') {
+            wysiwyg.addEventListener('input', () => {
+                this.isDirty = true;
+            });
+        }
+    }
+
+    openImageLibrary() {
+        if (!ModalBox || !this.singlePath) {
+            return;
+        }
+
+        ModalBox.open({
+            url: `${this.singlePath}file-library/`,
+            onClose: (imageData) => {
+                if (!imageData) {
+                    return;
+                }
+
+                ModalBox.open({
+                    url: `${this.singlePath}imagemanager`,
+                    extraData: imageData,
+                    onClose: (image) => {
+                        if (!image) {
+                            return;
+                        }
+
+                        this.insertImageMarkup(image);
+                    },
+                });
+            },
+        });
+    }
+
+    openFileLibrary() {
+        if (!ModalBox || !this.singlePath) {
+            return;
+        }
+
+        ModalBox.open({
+            url: `${this.singlePath}file-library`,
+            onClose: (fileData) => {
+                if (!fileData) {
+                    return;
+                }
+
+                this.insertFileLink(fileData);
+            },
+        });
+    }
+
+    insertImageMarkup(image) {
+        if (!image || !this.editor || typeof this.editor.insertHTML !== 'function') {
+            return;
+        }
+
+        const filename = resolveMediaUrl(image.filename || '');
+
+        const styleParts = marginProperties
+            .filter((marginProp) => Number(image[marginProp]) !== 0 && image[marginProp] !== null && image[marginProp] !== undefined)
+            .map((marginProp) => `${marginProp}:${Number(image[marginProp])}px`);
+
+        const styleAttr = styleParts.length > 0 ? ` style="${escapeAttribute(styleParts.join(';'))}"` : '';
+        const width = image.width ? ` width="${escapeAttribute(image.width)}"` : '';
+        const height = image.height ? ` height="${escapeAttribute(image.height)}"` : '';
+        const align = image.align ? ` align="${escapeAttribute(image.align)}"` : '';
+        const alt = ` alt="${escapeAttribute(image.alt || '')}"`;
+
+        const html = `<img src="${escapeAttribute(filename)}"${width}${height}${align}${alt} border="0"${styleAttr}>`;
+        this.editor.insertHTML(html);
+        this.isDirty = true;
+    }
+
+    insertFileLink(fileData) {
+        if (!fileData || !this.editor || typeof this.editor.insertHTML !== 'function') {
+            return;
+        }
+
+        const filename = resolveMediaUrl(fileData.upl_path || fileData.path || '');
+        if (!filename) {
+            return;
+        }
+
+        let linkText = '';
+        try {
+            const selected = this.editor.getSelectedText ? this.editor.getSelectedText() : '';
+            linkText = selected || fileData.upl_title || fileData.title || fileData.name || filename;
+        } catch (e) {
+            linkText = fileData.upl_title || fileData.title || fileData.name || filename;
+        }
+
+        const html = `<a href="${escapeAttribute(filename)}">${escapeHtml(linkText)}</a>`;
+        this.editor.insertHTML(html);
+        this.isDirty = true;
+    }
+
+    save(async = true, onSuccess) {
+        if (!this.isDirty) {
+            if (typeof onSuccess === 'function') {
+                onSuccess.call(this);
+            }
+            return;
+        }
+
+        if (!async) {
+            showLoader();
+        }
+
+        const params = {
+            data: this.editor.getContents(),
+        };
+
+        if (this.ID) {
+            params.ID = this.ID;
+        }
+        if (this.num) {
+            params.num = this.num;
+        }
+
+        Energine.request(
+            `${this.singlePath}save-text`,
+            params,
+            (response) => {
+                this.isDirty = false;
+                if (typeof onSuccess === 'function') {
+                    onSuccess.call(this, response);
+                }
+                if (!async) {
+                    hideLoader();
+                }
+            },
+            () => {
+                if (!async) {
+                    hideLoader();
+                }
+            },
+            () => {
+                if (!async) {
+                    hideLoader();
+                }
+            },
+        );
     }
 }
 
-PageEditor.BlockEditor = BlockEditor;
+PageEditor.BlockEditor = PageEditorBlock;
 
-export { PageEditor, BlockEditor };
+export { PageEditor, PageEditorBlock as BlockEditor };
 export default PageEditor;
 
 export function attachToWindow(target = globalScope) {
@@ -266,9 +372,8 @@ export function attachToWindow(target = globalScope) {
     }
 
     target.PageEditor = PageEditor;
-    target.PageEditor.BlockEditor = BlockEditor;
+    target.PageEditor.BlockEditor = PageEditorBlock;
     return PageEditor;
 }
 
 attachToWindow();
-;

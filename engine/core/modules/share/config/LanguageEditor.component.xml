@@ -41,7 +41,7 @@
                 <field name="lang_default"/>
             </fields>
             <javascript>
-                <library path="ckeditor/ckeditor" loader="classic"/>
+                <library path="suneditor/loader" loader="classic"/>
                 <behavior name="Form"/>
             </javascript>
             <toolbar>
@@ -60,7 +60,7 @@
                 <field name="lang_default"/>
             </fields>
             <javascript>
-                <library path="ckeditor/ckeditor" loader="classic"/>
+                <library path="suneditor/loader" loader="classic"/>
                 <behavior name="Form"/>
             </javascript>
             <toolbar>

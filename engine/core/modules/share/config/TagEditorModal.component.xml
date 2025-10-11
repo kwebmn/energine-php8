@@ -32,7 +32,7 @@
             <field name="tag_name"/>
         </fields>
         <javascript>
-            <library path="ckeditor/ckeditor" loader="classic"/>
+            <library path="suneditor/loader" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
@@ -49,7 +49,7 @@
             <field name="tag_name"/>
         </fields>
         <javascript>
-            <library path="ckeditor/ckeditor" loader="classic"/>
+            <library path="suneditor/loader" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>

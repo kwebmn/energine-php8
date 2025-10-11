@@ -91,7 +91,7 @@
             <field name="smap_meta_description"/>
         </fields>
         <javascript>
-            <library path="ckeditor/ckeditor" loader="classic"/>
+            <library path="suneditor/loader" loader="classic"/>
             <behavior name="DivForm"/>
         </javascript>
         <toolbar>
@@ -130,7 +130,7 @@
             <field name="smap_meta_description"/>
         </fields>
         <javascript>
-            <library path="ckeditor/ckeditor" loader="classic"/>
+            <library path="suneditor/loader" loader="classic"/>
             <behavior name="DivForm"/>
         </javascript>
         <toolbar>

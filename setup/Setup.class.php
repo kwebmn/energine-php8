@@ -1008,7 +1008,7 @@ final class Setup {
                                     &&
                                     (strpos($pi['filename'], 'jwplayer') === false)
                                     &&
-                                    (strpos($pi['dirname'], 'ckeditor') === false)
+                                    (strpos($pi['dirname'], 'suneditor') === false)
                                     &&
                                     (strpos($pi['dirname'], 'codemirror') === false)
                                 ) {

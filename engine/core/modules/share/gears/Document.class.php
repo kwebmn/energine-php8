@@ -285,7 +285,7 @@ final class Document extends DBWorker implements IDocument
     protected function isGlobalLibrary(string $path): bool
     {
         $classicPrefixes = [
-            'ckeditor/',
+            'suneditor/',
             'jstree/',
             'codemirror/',
             'fancytree/',

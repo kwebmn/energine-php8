@@ -5,12 +5,13 @@ import Validator from './Validator.js';
 import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
+import './suneditor/loader.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
+const getSunEditor = () => globalScope?.SUNEDITOR;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
@@ -26,7 +27,7 @@ const getCodeMirror = () => globalScope?.CodeMirror;
  * </ul>
  *
  * @requires Energine
- * @requires ckeditor/ckeditor
+ * @requires suneditor/loader
  * @requires TabPane
  * @requires Toolbar
  * @requires Validator
@@ -1997,74 +1998,266 @@ class FormRichEditor {
      * @param {Form} form
      */
     constructor(textarea, form) {
-        this.setupEditors();
-
         this.textarea = (typeof textarea === 'string')
             ? document.getElementById(textarea) || document.querySelector(textarea)
             : textarea;
 
         this.form = form;
+        this.editor = null;
+        this.editorPromise = null;
 
-        try {
-            this.editor = CKEDITOR.replace(this.textarea.id);
-            this.editor.editorId = this.textarea.id;
-            this.editor.singleTemplate = this.form.singlePath;
-        } catch (e) {
-            console.warn(e);
+        if (!this.textarea) {
+            console.warn('FormRichEditor: textarea element not found');
+            return;
         }
+
+        this.editorPromise = this.setupEditors()
+            .then((SUNEDITOR) => {
+                if (!SUNEDITOR || typeof SUNEDITOR.create !== 'function') {
+                    throw new Error('SunEditor is not available');
+                }
+
+                const instance = SUNEDITOR.create(this.textarea, this.createEditorOptions());
+                instance.editorId = this.textarea.id;
+                instance.singleTemplate = this.form?.singlePath || '';
+
+                this.registerCustomisations(SUNEDITOR, instance);
+
+                this.editor = instance;
+                return instance;
+            })
+            .catch((error) => {
+                console.warn('SunEditor initialisation failed', error);
+                return null;
+            });
     }
 
-    /**
-     * CKEditor initialization (однократная на проект)
-     */
-    setupEditors() {
-        if (!FormRichEditor.ckeditor_init) {
-            CKEDITOR.config.versionCheck = false;
-            CKEDITOR.config.extraPlugins = 'energineimage,energinefile';
-            CKEDITOR.config.removePlugins = 'exportpdf';
-            CKEDITOR.config.allowedContent = true;
-            CKEDITOR.config.toolbar = [
-                { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
-                { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-                { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-                { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-                { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-                { name: 'tools', items: [ 'ShowBlocks' ] },
-                '/',
-                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-                { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-                { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-                { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-            ];
+    static resolveLoaderPromise() {
+        if (!FormRichEditor.sunEditorPromise) {
+            const loader = globalScope?.__suneditorLoader?.ready;
+            const resolveInstance = () => getSunEditor();
 
-            // Стили для wysiwyg
-            let styles = [];
-            if (window['wysiwyg_styles']) {
-                Object.values(window['wysiwyg_styles']).forEach(style => {
-                    styles.push({
-                        name: style['caption'],
-                        element: style['element'],
-                        attributes: { 'class': style['class'] }
-                    });
+            FormRichEditor.sunEditorPromise = Promise.resolve(loader ?? resolveInstance())
+                .then((SUNEDITOR) => SUNEDITOR || resolveInstance())
+                .catch((error) => {
+                    console.error('SunEditor loader error', error);
+                    return resolveInstance();
                 });
-            }
-            CKEDITOR.stylesSet.add('energine', styles);
-            CKEDITOR.config.stylesSet = 'energine';
-
-            FormRichEditor.ckeditor_init = true;
         }
+
+        return FormRichEditor.sunEditorPromise;
+    }
+
+    setupEditors() {
+        return FormRichEditor.resolveLoaderPromise();
+    }
+
+    createEditorOptions() {
+        return {
+            minHeight: 200,
+            buttonList: [
+                ['undo', 'redo'],
+                ['font', 'fontSize', 'formatBlock'],
+                ['bold', 'underline', 'italic', 'strike', 'removeFormat'],
+                ['fontColor', 'hiliteColor'],
+                ['list', 'align', 'outdent', 'indent'],
+                ['link', 'table', 'image', 'video'],
+                ['showBlocks', 'codeView', 'fullScreen'],
+            ],
+            katex: globalScope?.katex,
+            resizingBar: true,
+            charCounter: true,
+            defaultTag: 'p',
+        };
+    }
+
+    registerCustomisations(SUNEDITOR, editor) {
+        const helpers = SUNEDITOR?.__energineHelpers;
+        if (!helpers) {
+            return;
+        }
+
+        const styles = this.collectStyleSet();
+        if (styles.length > 0) {
+            helpers.applyStyleSet(editor, styles);
+        }
+
+        helpers.registerImageButton(editor, {
+            title: 'Медиа-библиотека: изображение',
+            group: 'insert',
+            onClick: () => this.openImageLibrary(),
+        });
+
+        helpers.registerFileButton(editor, {
+            title: 'Медиа-библиотека: файл',
+            group: 'insert',
+            onClick: () => this.openFileLibrary(),
+        });
+    }
+
+    collectStyleSet() {
+        const styles = [];
+        const styleRegistry = globalScope?.wysiwyg_styles;
+
+        if (styleRegistry && typeof styleRegistry === 'object') {
+            Object.values(styleRegistry).forEach((style) => {
+                if (!style || typeof style !== 'object') {
+                    return;
+                }
+
+                const element = style.element || 'span';
+                const className = style.class || '';
+                const caption = style.caption || style.name || element;
+
+                styles.push({
+                    name: caption,
+                    element,
+                    attributes: className ? { class: className } : {},
+                });
+            });
+        }
+
+        return styles;
+    }
+
+    openImageLibrary() {
+        if (!ModalBox || !this.form) {
+            return;
+        }
+
+        const basePath = this.form.singlePath || '';
+
+        ModalBox.open({
+            url: `${basePath}file-library/`,
+            onClose: (imageData) => {
+                if (!imageData) {
+                    return;
+                }
+
+                ModalBox.open({
+                    url: `${basePath}imagemanager`,
+                    extraData: imageData,
+                    onClose: (image) => {
+                        if (!image) {
+                            return;
+                        }
+
+                        this.insertImageMarkup(image);
+                    },
+                });
+            },
+        });
+    }
+
+    openFileLibrary() {
+        if (!ModalBox || !this.form) {
+            return;
+        }
+
+        const basePath = this.form.singlePath || '';
+
+        ModalBox.open({
+            url: `${basePath}file-library`,
+            onClose: (fileData) => {
+                if (!fileData) {
+                    return;
+                }
+
+                this.insertFileLink(fileData);
+            },
+        });
+    }
+
+    insertImageMarkup(image) {
+        if (!image || !this.editor || typeof this.editor.insertHTML !== 'function') {
+            return;
+        }
+
+        let filename = image.filename || '';
+        if (filename && !/^https?:\/\//i.test(filename) && !filename.startsWith('//')) {
+            filename = `${Energine.media || ''}${filename}`;
+        }
+
+        const margins = ['margin-left', 'margin-right', 'margin-top', 'margin-bottom'];
+        const styleParts = margins
+            .filter((marginProp) => Number(image[marginProp]) !== 0 && image[marginProp] !== null && image[marginProp] !== undefined)
+            .map((marginProp) => `${marginProp}:${Number(image[marginProp])}px`);
+
+        const styleAttr = styleParts.length > 0 ? ` style="${FormRichEditor.escapeAttribute(styleParts.join(';'))}"` : '';
+        const width = image.width ? ` width="${FormRichEditor.escapeAttribute(image.width)}"` : '';
+        const height = image.height ? ` height="${FormRichEditor.escapeAttribute(image.height)}"` : '';
+        const align = image.align ? ` align="${FormRichEditor.escapeAttribute(image.align)}"` : '';
+        const alt = ` alt="${FormRichEditor.escapeAttribute(image.alt || '')}"`;
+
+        const html = `<img src="${FormRichEditor.escapeAttribute(filename)}"${width}${height}${align}${alt} border="0"${styleAttr}>`;
+        this.editor.insertHTML(html);
+    }
+
+    insertFileLink(fileData) {
+        if (!fileData || !this.editor || typeof this.editor.insertHTML !== 'function') {
+            return;
+        }
+
+        let filename = fileData.upl_path || fileData.path || '';
+        if (!filename) {
+            return;
+        }
+
+        if (!/^https?:\/\//i.test(filename) && !filename.startsWith('//')) {
+            filename = `${Energine.media || ''}${filename}`;
+        }
+
+        let linkText = '';
+        try {
+            const selected = this.editor.getSelectedText ? this.editor.getSelectedText() : '';
+            linkText = selected || fileData.upl_title || fileData.title || fileData.name || filename;
+        } catch (e) {
+            linkText = fileData.upl_title || fileData.title || fileData.name || filename;
+        }
+
+        const html = `<a href="${FormRichEditor.escapeAttribute(filename)}">${FormRichEditor.escapeHtml(linkText)}</a>`;
+        this.editor.insertHTML(html);
     }
 
     /**
      * Сохраняет текст редактора обратно в textarea перед submit
      */
     onSaveForm() {
-        try {
-            const data = this.editor.getData();
-            this.textarea.value = data;
-        } catch (e) {
-            console.warn(e);
+        if (!this.textarea) {
+            return;
         }
+
+        if (this.editor && typeof this.editor.getContents === 'function') {
+            try {
+                this.textarea.value = this.editor.getContents();
+                return;
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        if (this.editorPromise && typeof this.editorPromise.then === 'function') {
+            this.editorPromise.then((editor) => {
+                if (editor && typeof editor.getContents === 'function') {
+                    this.textarea.value = editor.getContents();
+                }
+            });
+        }
+    }
+
+    static escapeAttribute(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    static escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 }
 

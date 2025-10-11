@@ -165,7 +165,7 @@
     <translation const="ERR_NO_DIV_NAME" component="adminPanel">Необхідно вказати назву розділу для всіх активних мов</translation>
   </translations>
   <javascript>
-    <library path="ckeditor/ckeditor"/>
+    <library path="suneditor/loader"/>
     <library path="TabPane"/>
     <library path="Toolbar"/>
     <library path="Validator"/>

@@ -2,7 +2,7 @@
 <configuration>
 		<state name="main">
 			<javascript>
-                <library path="ckeditor/ckeditor" loader="classic"/>
+                <library path="suneditor/loader" loader="classic"/>
 				<behavior name="PageEditor"/>
 			</javascript>
 <!--			<toolbar>-->

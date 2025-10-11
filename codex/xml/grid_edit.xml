@@ -82,7 +82,7 @@
     <translation const="BTN_QUICK_UPLOAD">Швидке завантаження</translation>
   </translations>
   <javascript>
-    <library path="ckeditor/ckeditor"/>
+    <library path="suneditor/loader"/>
     <library path="TabPane"/>
     <library path="Toolbar"/>
     <library path="Validator"/>

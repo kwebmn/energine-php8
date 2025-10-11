@@ -19,7 +19,7 @@
             <pattern>/add/</pattern>
         </uri_patterns>
         <javascript>
-            <library path="ckeditor/ckeditor" loader="classic"/>
+            <library path="suneditor/loader" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
@@ -40,7 +40,7 @@
             <pattern>/[int]/edit/</pattern>
         </uri_patterns>
         <javascript>
-            <library path="ckeditor/ckeditor" loader="classic"/>
+            <library path="suneditor/loader" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
@@ -79,7 +79,7 @@
             <pattern>/[int]/</pattern>
         </uri_patterns>
         <javascript>
-            <library path="ckeditor/ckeditor" loader="classic"/>
+            <library path="suneditor/loader" loader="classic"/>
             <behavior name="Form"/>
         </javascript>
         <toolbar>
