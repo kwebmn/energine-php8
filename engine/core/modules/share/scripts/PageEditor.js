@@ -228,17 +228,23 @@ class PageEditorBlock {
             return;
         }
 
+        const panel = this.getEditorPanel();
+        const restorePanelZ = PageEditorBlock.raisePanel(panel);
+
         ModalBox.open({
             url: `${this.singlePath}file-library/`,
             onClose: (imageData) => {
+                restorePanelZ();
                 if (!imageData) {
                     return;
                 }
 
+                const restoreManagerZ = PageEditorBlock.raisePanel(panel);
                 ModalBox.open({
                     url: `${this.singlePath}imagemanager`,
                     extraData: imageData,
                     onClose: (image) => {
+                        restoreManagerZ();
                         if (!image) {
                             return;
                         }
@@ -255,9 +261,13 @@ class PageEditorBlock {
             return;
         }
 
+        const panel = this.getEditorPanel();
+        const restorePanelZ = PageEditorBlock.raisePanel(panel);
+
         ModalBox.open({
             url: `${this.singlePath}file-library`,
             onClose: (fileData) => {
+                restorePanelZ();
                 if (!fileData) {
                     return;
                 }
@@ -265,6 +275,42 @@ class PageEditorBlock {
                 this.insertFileLink(fileData);
             },
         });
+    }
+
+    getEditorPanel() {
+        if (this.editor?.wrapper) {
+            return this.editor.wrapper;
+        }
+
+        const origin = this.editor?.core?.context?.element?.originElement || this.area;
+        if (!origin) {
+            return null;
+        }
+
+        if (typeof origin.closest === 'function') {
+            return origin.closest('.se-wrapper') || origin.parentElement || null;
+        }
+
+        return origin.parentElement || null;
+    }
+
+    static raisePanel(panel) {
+        if (!panel) {
+            return () => {};
+        }
+
+        const previous = panel.style.zIndex;
+        panel.dataset.prevZIndex = previous || '';
+        panel.style.zIndex = '1';
+
+        return () => {
+            if (panel.dataset.prevZIndex) {
+                panel.style.zIndex = panel.dataset.prevZIndex;
+            } else {
+                panel.style.removeProperty('z-index');
+            }
+            delete panel.dataset.prevZIndex;
+        };
     }
 
     insertImageMarkup(image) {
