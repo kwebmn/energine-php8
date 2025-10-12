@@ -20,6 +20,11 @@
 * Вынести логику определения `globalScope` и навешивания на `window` в общий helper и переиспользовать его.
 * Рассмотреть модульную загрузку (ESM/UMD) вместо принудительного экспорта в глобальный объект.
 
+### Как сократить количество `attachToWindow`
+1. **Создать единый модуль экспорта.** Вынесите текущую функцию `attachToWindow` в новый файл (например, `engine/core/modules/share/scripts/exportToWindow.js`) и замените все локальные копии на импорт этого helper'а. Это сразу сократит количество объявлений до одного.
+2. **Добавить фабрику регистрации.** Вместо ручного вызова `attachToWindow(ClassName)` в каждом модуле можно подключать новый helper, который принимает карту экспортируемых сущностей. Тогда отдельный скрипт-реестр (например, `engine/core/modules/share/scripts/bootstrap.js`) будет регистрировать их в `window`, а компонентам достаточно экспортировать свои классы.
+3. **Постепенно переводить модули на ESM.** Для новых файлов используйте `export default`/`export` и подключайте их через bundler (Webpack, Rollup, Vite). Для обратной совместимости можно сохранять глобальную регистрацию только в одном месте — в сборке, которая при необходимости делает `window.ClassName = module`. По мере миграции доля ручных `attachToWindow` будет уменьшаться до нуля.
+
 ## Дублирование логики загрузки файлов
 Компоненты управления файлами (`AttachmentEditor`, `FileRepoForm`, `FileRepository`) содержат практически идентичные реализации метода `xhrFileUpload`: настройка прогресс-бара, построение запроса `upload-temp`, обработка JSON-ответа и прогресса. Различия минимальны (дополнительные параметры `pid`). 【F:engine/core/modules/share/scripts/AttachmentEditor.js†L1-L140】【F:engine/core/modules/share/scripts/AttachmentEditor.js†L188-L228】【F:engine/core/modules/share/scripts/FileRepoForm.js†L1-L115】【F:engine/core/modules/share/scripts/FileRepoForm.js†L67-L119】【F:engine/core/modules/share/scripts/FileRepository.js†L1-L120】【F:engine/core/modules/share/scripts/FileRepository.js†L510-L596】
 
