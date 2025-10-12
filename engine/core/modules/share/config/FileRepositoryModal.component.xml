@@ -46,8 +46,8 @@
             <field name="upl_is_flv" type="hidden"/>
         </fields>
         <toolbar>
-            <!--<control id="open" title="BTN_OPEN" icon="fa fa-folder-open" type="button" onclick="open"/>
-            <control id="sep01" type="separator"/>-->
+            <control id="open" title="BTN_OPEN" icon="fa fa-folder-open" type="button" onclick="open"/>
+            <control id="sep01" type="separator"/>
             <control id="add" title="BTN_UPLOAD" icon="fa fa-plus" type="button" onclick="add"/>
             <control id="addDir" title="BTN_ADD_DIR" icon="fa fa-folder" type="button" onclick="addDir"/>
             <control id="edit" title="BTN_EDIT" icon="fa fa-pencil" type="button" onclick="edit"/>
