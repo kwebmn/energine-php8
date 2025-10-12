@@ -13,7 +13,7 @@
 - **site/modules/default/scripts/** – public-facing placeholder (например, пустой `default.js`), тогда как Bootstrap попадает в `assets/energine.vendor.*` через Composer и Vite, не хранясь в репозитории.【F:site/modules/default/transformers/energine.xslt†L61-L88】【F:engine/vite/entries/energine.vendor.entry.js†L1-L14】
 
 ### 1.3 Third-party bundles distributed with the project
-- **engine/core/modules/share/scripts/ckeditor/**, **vendor/codemirror/codemirror/** (Composer-managed), **fancytree/**, **jstree/**, and `jquery.min.js` – vendor sources kept as global scripts and now referenced directly from component XML via `<javascript><library loader="classic">…</library></javascript>`. These remain untouched during the ES-module migration and continue to expose their historical globals (`CKEDITOR`, `CodeMirror`, `jQuery`, etc.).【3db03a†L12-L110】【935dbc†L1-L120】
+- **engine/vite/vendor/ckeditor/** (ядро редактора; кастомные плагины Energine лежат в `engine/core/modules/share/scripts/ckeditor/plugins`), **vendor/codemirror/codemirror/** (Composer-managed), **fancytree/**, **jstree/**, and `jquery.min.js` – vendor sources kept as global scripts and now referenced directly from component XML via `<javascript><library loader="classic">…</library></javascript>`. These remain untouched during the ES-module migration and continue to expose their historical globals (`CKEDITOR`, `CodeMirror`, `jQuery`, etc.).【3db03a†L12-L110】【935dbc†L1-L120】
 
 ## 2. Dependency overview
 

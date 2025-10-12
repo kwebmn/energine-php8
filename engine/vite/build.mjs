@@ -1,5 +1,6 @@
 import { build } from 'vite';
 import { resolve } from 'node:path';
+import { cp, mkdir, rm } from 'node:fs/promises';
 
 const rootDir = resolve(process.cwd(), 'engine/vite');
 const repoRoot = resolve(rootDir, '..', '..');
@@ -15,6 +16,26 @@ const targets = [
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
+
+const ckeditorSourceDir = resolve(rootDir, 'vendor/ckeditor');
+const ckeditorOutputDir = resolve(outputDir, 'scripts/ckeditor');
+const ckeditorCustomPluginsDir = resolve(engineDir, 'core/modules/share/scripts/ckeditor/plugins');
+const ckeditorCustomPlugins = ['energineimage', 'energinefile'];
+
+async function copyCKEditorAssets() {
+    await rm(ckeditorOutputDir, { recursive: true, force: true });
+    await mkdir(ckeditorOutputDir, { recursive: true });
+    await cp(ckeditorSourceDir, ckeditorOutputDir, { recursive: true });
+
+    await mkdir(resolve(ckeditorOutputDir, 'plugins'), { recursive: true });
+
+    await Promise.all(ckeditorCustomPlugins.map(async (pluginName) => {
+        const pluginSource = resolve(ckeditorCustomPluginsDir, pluginName);
+        const pluginTarget = resolve(ckeditorOutputDir, 'plugins', pluginName);
+        await rm(pluginTarget, { recursive: true, force: true });
+        await cp(pluginSource, pluginTarget, { recursive: true });
+    }));
+}
 
 for (let index = 0; index < targets.length; index += 1) {
     const { name, entry } = targets[index];
@@ -59,3 +80,5 @@ for (let index = 0; index < targets.length; index += 1) {
         },
     });
 }
+
+await copyCKEditorAssets();

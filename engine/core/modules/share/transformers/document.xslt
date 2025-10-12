@@ -27,10 +27,10 @@
     <xsl:variable name="CKEDITOR_BASE">
         <xsl:choose>
             <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
-                <xsl:value-of select="concat($STATIC_URL, 'scripts/ckeditor/')"/>
+                <xsl:value-of select="concat($STATIC_URL, 'assets/ckeditor/')"/>
             </xsl:when>
             <xsl:otherwise>
-                <xsl:value-of select="concat($STATIC_URL, '/scripts/ckeditor/')"/>
+                <xsl:value-of select="concat($STATIC_URL, '/assets/ckeditor/')"/>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
