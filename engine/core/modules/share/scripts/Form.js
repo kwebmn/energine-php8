@@ -5,12 +5,12 @@ import Validator from './Validator.js';
 import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
+import { createEnergineSunEditor, markEditorClean } from './suneditorIntegration.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
@@ -1997,61 +1997,36 @@ class FormRichEditor {
      * @param {Form} form
      */
     constructor(textarea, form) {
-        this.setupEditors();
-
         this.textarea = (typeof textarea === 'string')
             ? document.getElementById(textarea) || document.querySelector(textarea)
             : textarea;
 
         this.form = form;
 
+        if (!this.textarea) {
+            console.warn('Form.RichEditor: target textarea was not found.');
+            return;
+        }
         try {
-            this.editor = CKEDITOR.replace(this.textarea.id);
-            this.editor.editorId = this.textarea.id;
-            this.editor.singleTemplate = this.form.singlePath;
+            this.editor = createEnergineSunEditor(this.textarea, {
+                singleTemplate: this.form?.singlePath || '',
+                minHeight: Math.max(this.textarea.offsetHeight || 0, 200),
+            });
+
+            const previousOnChange = this.editor?.onChange;
+            if (this.editor) {
+                this.editor.onChange = (contents, core) => {
+                    if (this.textarea) {
+                        this.textarea.value = contents;
+                    }
+                    if (typeof previousOnChange === 'function') {
+                        previousOnChange(contents, core);
+                    }
+                };
+                markEditorClean(this.editor);
+            }
         } catch (e) {
             console.warn(e);
-        }
-    }
-
-    /**
-     * CKEditor initialization (однократная на проект)
-     */
-    setupEditors() {
-        if (!FormRichEditor.ckeditor_init) {
-            CKEDITOR.config.versionCheck = false;
-            CKEDITOR.config.extraPlugins = 'energineimage,energinefile';
-            CKEDITOR.config.removePlugins = 'exportpdf';
-            CKEDITOR.config.allowedContent = true;
-            CKEDITOR.config.toolbar = [
-                { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
-                { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-                { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-                { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-                { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-                { name: 'tools', items: [ 'ShowBlocks' ] },
-                '/',
-                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-                { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-                { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-                { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-            ];
-
-            // Стили для wysiwyg
-            let styles = [];
-            if (window['wysiwyg_styles']) {
-                Object.values(window['wysiwyg_styles']).forEach(style => {
-                    styles.push({
-                        name: style['caption'],
-                        element: style['element'],
-                        attributes: { 'class': style['class'] }
-                    });
-                });
-            }
-            CKEDITOR.stylesSet.add('energine', styles);
-            CKEDITOR.config.stylesSet = 'energine';
-
-            FormRichEditor.ckeditor_init = true;
         }
     }
 
@@ -2060,8 +2035,10 @@ class FormRichEditor {
      */
     onSaveForm() {
         try {
-            const data = this.editor.getData();
-            this.textarea.value = data;
+            const data = this.editor?.getContents(true) || '';
+            if (this.textarea) {
+                this.textarea.value = data;
+            }
         } catch (e) {
             console.warn(e);
         }

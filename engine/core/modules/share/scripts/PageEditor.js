@@ -1,10 +1,10 @@
 import Energine, { showLoader, hideLoader } from './Energine.js';
+import { createEnergineSunEditor, isEditorDirty, markEditorClean } from './suneditorIntegration.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
 
 function applyEditorOutline(area, editor) {
     if (!area) {
@@ -12,15 +12,24 @@ function applyEditorOutline(area, editor) {
     }
     area.style.outline = '1px dashed #f00';
     area.style.outlineOffset = '2px';
-    if (editor && typeof editor.on === 'function') {
-        editor.on('focus', () => {
+    if (editor) {
+        const previousFocus = editor.onFocus;
+        editor.onFocus = (event, core) => {
             area.style.outline = '2px dashed #0d0';
             area.style.outlineOffset = '2px';
-        });
-        editor.on('blur', () => {
+            if (typeof previousFocus === 'function') {
+                previousFocus(event, core);
+            }
+        };
+
+        const previousBlur = editor.onBlur;
+        editor.onBlur = (event, core) => {
             area.style.outline = '1px dashed #f00';
             area.style.outlineOffset = '2px';
-        });
+            if (typeof previousBlur === 'function') {
+                previousBlur(event, core);
+            }
+        };
     }
 }
 
@@ -29,44 +38,6 @@ class PageEditor {
     editors = [];
 
     constructor() {
-        if (!CKEDITOR) {
-            throw new Error('PageEditor requires CKEditor to be loaded globally.');
-        }
-
-        CKEDITOR.config.versionCheck = false;
-        CKEDITOR.disableAutoInline = true;
-        CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,energineimage,energinefile';
-        CKEDITOR.config.removePlugins = 'exportpdf';
-        CKEDITOR.config.allowedContent = true;
-        CKEDITOR.config.toolbar = [
-            { name: 'document', groups: [ 'mode' ], items: [ 'Sourcedialog' ] },
-            { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-            { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-            { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-            { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-            { name: 'tools', items: [ 'ShowBlocks' ] },
-            '/',
-            { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-            { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-            { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-            { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-        ];
-
-        // Стили CKEditor
-        const styles = [];
-        if (window['wysiwyg_styles']) {
-            Object.values(window['wysiwyg_styles']).forEach(style => {
-                styles.push({
-                    name: style['caption'],
-                    element: style['element'],
-                    attributes: { 'class': style['class'] }
-                });
-            });
-        }
-        CKEDITOR.stylesSet.add('energine', styles);
-        CKEDITOR.config.stylesSet = 'energine';
-
-        // Инициализация редакторов для всех областей
         document.querySelectorAll('.' + this.editorClassName).forEach(element => {
             this.editors.push(new PageEditor.BlockEditor(element));
         });
@@ -83,10 +54,15 @@ class PageEditor {
             this.singlePath = area.getAttribute('single_template');
             this.ID = area.getAttribute('eID') || '';
             this.num = area.getAttribute('num') || '';
-        this.editor = CKEDITOR.inline(area.id);
-        this.editor.singleTemplate = this.singlePath;
-        this.editor.editorId = area.id;
+        this.editor = createEnergineSunEditor(area, {
+            singleTemplate: this.singlePath,
+            mode: 'inline',
+            minHeight: Math.max(area.offsetHeight || 0, 100),
+            height: 'auto',
+            resizingBar: false,
+        });
         applyEditorOutline(this.area, this.editor);
+        markEditorClean(this.editor);
             //this.overlay = new Overlay();
             // Если нужны события blur/focus, можно раскомментировать:
             /*
@@ -107,10 +83,10 @@ class PageEditor {
          * @param {function} [onSuccess] Колбэк после сохранения
          */
         save(async = true, onSuccess = undefined) {
-            if (this.editor.checkDirty()) {
+            if (isEditorDirty(this.editor)) {
                 if (!async) showLoader();
 
-                let data = 'data=' + encodeURIComponent(this.editor.getData());
+                let data = 'data=' + encodeURIComponent(this.editor.getContents(true));
                 if (this.ID) data += '&ID=' + this.ID;
                 if (this.num) data += '&num=' + this.num;
 
@@ -123,8 +99,11 @@ class PageEditor {
                     .then(response => {
                         // this.editor.setData(response); // убрано как в оригинале
                         if (onSuccess) onSuccess.call(this);
-                        if (this.editor.resetDirty) this.editor.resetDirty();
-                        if (!async) this.overlay.hide();
+                        markEditorClean(this.editor);
+                    })
+                    .catch(error => console.error(error))
+                    .finally(() => {
+                        if (!async) hideLoader();
                     });
             }
         }
@@ -175,12 +154,16 @@ class BlockEditor {
 
         /**
          * Editor.
-         * @type {CKEDITOR}
          */
-        this.editor = CKEDITOR.inline(this.area.id);
-        this.editor.singleTemplate = this.area.getAttribute('single_template');
-        this.editor.editorId = this.area.id;
+        this.editor = createEnergineSunEditor(this.area, {
+            singleTemplate: this.singlePath,
+            mode: 'inline',
+            minHeight: Math.max(this.area.offsetHeight || 0, 100),
+            height: 'auto',
+            resizingBar: false,
+        });
         applyEditorOutline(this.area, this.editor);
+        markEditorClean(this.editor);
 
         /**
          * Overlay.
@@ -210,14 +193,14 @@ class BlockEditor {
      * @param {function} [onSuccess=undefined] - User defined function that is called after success saving
      */
     save(async = true, onSuccess) {
-        if (this.editor.checkDirty()) {
+        if (isEditorDirty(this.editor)) {
             if (!async) {
                 showLoader();
             }
 
             // Формируем объект данных для Energine.request
             const params = {
-                data: this.editor.getData(),
+                data: this.editor.getContents(true),
             };
             if (this.ID) {
                 params.ID = this.ID;
@@ -233,7 +216,7 @@ class BlockEditor {
                 (response) => {
                     // onSuccess как в оригинале
                     if (onSuccess) onSuccess.call(this, response);
-                    this.editor.resetDirty && this.editor.resetDirty();
+                    markEditorClean(this.editor);
                     if (!async) {
                         hideLoader();
                     }

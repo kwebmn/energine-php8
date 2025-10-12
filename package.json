@@ -4,5 +4,8 @@
   },
   "devDependencies": {
     "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "suneditor": "^2.47.8"
   }
 }

@@ -1,6 +1,5 @@
 import './styles/extended-vendor.css';
-
-import 'engine/core/modules/share/scripts/ckeditor/ckeditor.js';
+import 'suneditor/dist/css/suneditor.min.css';
 
 import './vendor-shims/jquery.js';
 import './vendor-shims/jstree.js';

@@ -286,6 +286,7 @@ final class Document extends DBWorker implements IDocument
     {
         $classicPrefixes = [
             'ckeditor/',
+            'suneditor/',
             'jstree/',
             'codemirror/',
             'fancytree/',
@@ -301,6 +302,7 @@ final class Document extends DBWorker implements IDocument
             'jquery.min',
             'bootstrap.bundle',
             'bootstrap.bundle.min',
+            'suneditor',
         ];
         foreach ($classicNames as $name) {
             if ($path === $name || strpos($path, $name . '.') === 0) {
