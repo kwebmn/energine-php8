@@ -5,12 +5,14 @@ import Validator from './Validator.js';
 import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
+import suneditor from 'suneditor';
+import plugins from 'suneditor/src/plugins';
+import { createEnerginePlugins } from './suneditor/EnerginePlugins.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
@@ -2004,55 +2006,174 @@ class FormRichEditor {
             : textarea;
 
         this.form = form;
+        this.editor = null;
+        this.isDirty = false;
+
+        if (!this.textarea) {
+            console.warn('Form.RichEditor: textarea element not found');
+            return;
+        }
 
         try {
-            this.editor = CKEDITOR.replace(this.textarea.id);
-            this.editor.editorId = this.textarea.id;
-            this.editor.singleTemplate = this.form.singlePath;
+            const options = this.createEditorOptions();
+            this.editor = suneditor.create(this.textarea, options);
+
+            if (this.editor) {
+                const singleTemplate = this.form?.singlePath || '';
+                this.editor.singleTemplate = singleTemplate;
+                this.editor.editorId = this.textarea.id || null;
+
+                const context = this.editor.getContext?.();
+                if (context) {
+                    context.energine = context.energine || {};
+                    context.energine.singleTemplate = singleTemplate;
+                }
+
+                const markDirty = () => {
+                    this.isDirty = true;
+                };
+
+                this.editor.onChange = markDirty;
+                this.editor.onBlur = () => {
+                    this.textarea.value = this.editor.getContents(false);
+                };
+                this.editor.onKeyUp = markDirty;
+            }
         } catch (e) {
             console.warn(e);
         }
     }
 
-    /**
-     * CKEditor initialization (однократная на проект)
-     */
-    setupEditors() {
-        if (!FormRichEditor.ckeditor_init) {
-            CKEDITOR.config.versionCheck = false;
-            CKEDITOR.config.extraPlugins = 'energineimage,energinefile';
-            CKEDITOR.config.removePlugins = 'exportpdf';
-            CKEDITOR.config.allowedContent = true;
-            CKEDITOR.config.toolbar = [
-                { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
-                { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-                { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-                { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-                { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-                { name: 'tools', items: [ 'ShowBlocks' ] },
-                '/',
-                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-                { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-                { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-                { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-            ];
+    static collectStyles() {
+        const stylesSource = globalScope?.wysiwyg_styles;
+        const blockTags = new Set(['p', 'div', 'blockquote', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
+        const paragraphStyles = [];
+        const textStyles = [];
 
-            // Стили для wysiwyg
-            let styles = [];
-            if (window['wysiwyg_styles']) {
-                Object.values(window['wysiwyg_styles']).forEach(style => {
-                    styles.push({
-                        name: style['caption'],
-                        element: style['element'],
-                        attributes: { 'class': style['class'] }
-                    });
-                });
-            }
-            CKEDITOR.stylesSet.add('energine', styles);
-            CKEDITOR.config.stylesSet = 'energine';
+        if (stylesSource && typeof stylesSource === 'object') {
+            Object.values(stylesSource).forEach((style) => {
+                if (!style) {
+                    return;
+                }
 
-            FormRichEditor.ckeditor_init = true;
+                const element = (style.element || '').toLowerCase();
+                const className = style.class || '';
+                const caption = style.caption || className || element || '';
+                const entryBase = {
+                    name: caption || 'Style'
+                };
+
+                if (className) {
+                    entryBase.class = className;
+                }
+                if (style.style) {
+                    entryBase.style = style.style;
+                }
+
+                if (blockTags.has(element)) {
+                    paragraphStyles.push({ ...entryBase });
+                } else {
+                    textStyles.push({ ...entryBase, tag: element || 'span' });
+                }
+            });
         }
+
+        return { paragraphStyles, textStyles };
+    }
+
+    setupEditors() {
+        if (FormRichEditor.baseOptions) {
+            return;
+        }
+
+        const { paragraphStyles, textStyles } = FormRichEditor.collectStyles();
+        const codeMirrorInstance = getCodeMirror();
+
+        const defaultPlugins = [
+            plugins.blockquote,
+            plugins.align,
+            plugins.font,
+            plugins.fontSize,
+            plugins.fontColor,
+            plugins.hiliteColor,
+            plugins.horizontalRule,
+            plugins.list,
+            plugins.table,
+            plugins.formatBlock,
+            plugins.lineHeight,
+            plugins.template,
+            plugins.paragraphStyle,
+            plugins.textStyle,
+            plugins.link,
+            plugins.image,
+            plugins.video,
+        ];
+
+        const buttonList = [
+            ['undo', 'redo'],
+            ['font', 'fontSize', 'formatBlock', 'paragraphStyle', 'textStyle'],
+            ['bold', 'underline', 'italic', 'strike', 'subscript', 'superscript', 'removeFormat'],
+            ['fontColor', 'hiliteColor', 'align', 'list', 'lineHeight'],
+            ['blockquote', 'horizontalRule', 'table'],
+            ['energineImage', 'energineVideo', 'energineFile', 'link'],
+            ['showBlocks', 'codeView', 'fullScreen']
+        ];
+
+        FormRichEditor.baseOptions = {
+            plugins: [...defaultPlugins, ...createEnerginePlugins()],
+            buttonList,
+            addTagsWhitelist: '*',
+            attributesWhitelist: {
+                all: 'class|style|id|name|width|height|align|border|data-.+',
+                a: 'target|rel|download|class|style'
+            },
+            defaultStyle: 'font-family: inherit; font-size: inherit;',
+            strictMode: false,
+            strictHTMLValidation: false,
+            showPathLabel: true,
+            codeMirror: codeMirrorInstance || undefined,
+            paragraphStyles: paragraphStyles.length ? paragraphStyles : undefined,
+            textStyles: textStyles.length ? textStyles : undefined,
+        };
+    }
+
+    createEditorOptions() {
+        const base = FormRichEditor.baseOptions || {};
+        const textareaValue = this.textarea.value || '';
+        const textareaHeight = Math.max(this.textarea.clientHeight || this.textarea.offsetHeight || 0, 200);
+        const singleTemplate = this.form?.singlePath || '';
+
+        const options = {
+            plugins: base.plugins ? [...base.plugins] : createEnerginePlugins(),
+            buttonList: base.buttonList ? base.buttonList.map((group) => [...group]) : [],
+            addTagsWhitelist: base.addTagsWhitelist || '*',
+            attributesWhitelist: base.attributesWhitelist ? { ...base.attributesWhitelist } : {
+                all: 'class|style|id|name|width|height|align|border|data-.+'
+            },
+            defaultStyle: base.defaultStyle || 'font-family: inherit; font-size: inherit;',
+            strictMode: base.strictMode ?? false,
+            strictHTMLValidation: base.strictHTMLValidation ?? false,
+            showPathLabel: base.showPathLabel ?? true,
+            codeMirror: base.codeMirror,
+            paragraphStyles: base.paragraphStyles ? base.paragraphStyles.map((item) => ({ ...item })) : undefined,
+            textStyles: base.textStyles ? base.textStyles.map((item) => ({ ...item })) : undefined,
+            value: textareaValue,
+            minHeight: textareaHeight,
+            height: 'auto',
+            mode: 'classic',
+            toolbarWidth: 'auto',
+            stickyToolbar: 0,
+            iframe: false,
+            charCounter: false,
+            historyStackDelayTime: 400,
+            imageFileInput: false,
+            videoFileInput: false,
+            energine: {
+                singleTemplate
+            }
+        };
+
+        return options;
     }
 
     /**
@@ -2060,8 +2181,14 @@ class FormRichEditor {
      */
     onSaveForm() {
         try {
-            const data = this.editor.getData();
-            this.textarea.value = data;
+            if (this.editor) {
+                const data = this.editor.getContents(false);
+                this.textarea.value = data;
+                if (typeof this.editor.save === 'function') {
+                    this.editor.save();
+                }
+                this.isDirty = false;
+            }
         } catch (e) {
             console.warn(e);
         }
