@@ -1,10 +1,9 @@
 import Energine, { showLoader, hideLoader } from './Energine.js';
+import loadCKEditor from './ckeditor/loader.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const CKEDITOR = globalScope?.CKEDITOR;
 
 function applyEditorOutline(area, editor) {
     if (!area) {
@@ -29,13 +28,31 @@ class PageEditor {
     editors = [];
 
     constructor() {
-        if (!CKEDITOR) {
-            throw new Error('PageEditor requires CKEditor to be loaded globally.');
-        }
+        this.readyPromise = loadCKEditor()
+            .then((CKEDITOR) => {
+                if (!CKEDITOR) {
+                    throw new Error('PageEditor requires CKEditor to be loaded globally.');
+                }
 
+                PageEditor.configureCKEditor(CKEDITOR);
+
+                document.querySelectorAll(`.${this.editorClassName}`).forEach(element => {
+                    this.editors.push(new PageEditor.BlockEditor(element, CKEDITOR));
+                });
+
+                window.nrgPageEditor = this;
+                return CKEDITOR;
+            })
+            .catch((error) => {
+                console.warn('PageEditor initialization failed', error);
+                return null;
+            });
+    }
+
+    static configureCKEditor(CKEDITOR) {
         CKEDITOR.config.versionCheck = false;
         CKEDITOR.disableAutoInline = true;
-        CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,energineimage,energinefile';
+        CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,colorbutton,font,iframe,energineimage,energinefile';
         CKEDITOR.config.removePlugins = 'exportpdf';
         CKEDITOR.config.allowedContent = true;
         CKEDITOR.config.toolbar = [
@@ -43,7 +60,7 @@ class PageEditor {
             { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
             { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
             { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-            { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
+            { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'Iframe', 'EnergineImage', 'EnergineFile' ] },
             { name: 'tools', items: [ 'ShowBlocks' ] },
             '/',
             { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
@@ -52,7 +69,6 @@ class PageEditor {
             { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
         ];
 
-        // Стили CKEditor
         const styles = [];
         if (window['wysiwyg_styles']) {
             Object.values(window['wysiwyg_styles']).forEach(style => {
@@ -63,30 +79,31 @@ class PageEditor {
                 });
             });
         }
-        CKEDITOR.stylesSet.add('energine', styles);
+        if (!CKEDITOR.stylesSet.registered || !Object.prototype.hasOwnProperty.call(CKEDITOR.stylesSet.registered, 'energine')) {
+            CKEDITOR.stylesSet.add('energine', styles);
+        } else {
+            CKEDITOR.stylesSet.registered.energine = styles;
+        }
         CKEDITOR.config.stylesSet = 'energine';
-
-        // Инициализация редакторов для всех областей
-        document.querySelectorAll('.' + this.editorClassName).forEach(element => {
-            this.editors.push(new PageEditor.BlockEditor(element));
-        });
-
-        window.nrgPageEditor = this;
     }
 
     // --------- Вложенный BlockEditor ---------
     static BlockEditor = class {
-        constructor(area) {
+        constructor(area, CKEDITOR) {
+            PageEditor.configureCKEditor(CKEDITOR);
             this.area = area;
             area.setAttribute('contenteditable', true);
             this.isActive = false;
             this.singlePath = area.getAttribute('single_template');
             this.ID = area.getAttribute('eID') || '';
             this.num = area.getAttribute('num') || '';
-        this.editor = CKEDITOR.inline(area.id);
-        this.editor.singleTemplate = this.singlePath;
-        this.editor.editorId = area.id;
-        applyEditorOutline(this.area, this.editor);
+            if (!area.id) {
+                area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
+            }
+            this.editor = CKEDITOR.inline(area.id);
+            this.editor.singleTemplate = this.singlePath;
+            this.editor.editorId = area.id;
+            applyEditorOutline(this.area, this.editor);
             //this.overlay = new Overlay();
             // Если нужны события blur/focus, можно раскомментировать:
             /*
@@ -106,28 +123,30 @@ class PageEditor {
          * @param {boolean} [async = true] Асинхронно или нет
          * @param {function} [onSuccess] Колбэк после сохранения
          */
-        save(async = true, onSuccess = undefined) {
-            if (this.editor.checkDirty()) {
-                if (!async) showLoader();
-
-                let data = 'data=' + encodeURIComponent(this.editor.getData());
-                if (this.ID) data += '&ID=' + this.ID;
-                if (this.num) data += '&num=' + this.num;
-
-                fetch(this.singlePath + 'save-text', {
-                    method: 'POST',
-                    body: data,
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                })
-                    .then(response => response.text())
-                    .then(response => {
-                        // this.editor.setData(response); // убрано как в оригинале
-                        if (onSuccess) onSuccess.call(this);
-                        if (this.editor.resetDirty) this.editor.resetDirty();
-                        if (!async) this.overlay.hide();
-                    });
-            }
+    save(async = true, onSuccess = undefined) {
+        if (!this.editor || !this.editor.checkDirty()) {
+            return;
         }
+
+        if (!async) showLoader();
+
+        let data = 'data=' + encodeURIComponent(this.editor.getData());
+        if (this.ID) data += '&ID=' + this.ID;
+        if (this.num) data += '&num=' + this.num;
+
+        fetch(this.singlePath + 'save-text', {
+            method: 'POST',
+            body: data,
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        })
+            .then(response => response.text())
+            .then(response => {
+                // this.editor.setData(response); // убрано как в оригинале
+                if (onSuccess) onSuccess.call(this);
+                if (this.editor.resetDirty) this.editor.resetDirty();
+                if (!async) this.overlay.hide();
+            });
+    }
     }
 }
 /**
@@ -177,10 +196,30 @@ class BlockEditor {
          * Editor.
          * @type {CKEDITOR}
          */
-        this.editor = CKEDITOR.inline(this.area.id);
-        this.editor.singleTemplate = this.area.getAttribute('single_template');
-        this.editor.editorId = this.area.id;
-        applyEditorOutline(this.area, this.editor);
+        this.editor = null;
+        this.readyPromise = loadCKEditor()
+            .then((CKEDITOR) => {
+                if (!CKEDITOR) {
+                    throw new Error('BlockEditor requires CKEditor to be loaded.');
+                }
+
+                PageEditor.configureCKEditor(CKEDITOR);
+
+                if (!this.area.id) {
+                    this.area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
+                }
+
+                this.editor = CKEDITOR.inline(this.area.id);
+                this.editor.singleTemplate = this.area.getAttribute('single_template');
+                this.editor.editorId = this.area.id;
+                applyEditorOutline(this.area, this.editor);
+
+                return this.editor;
+            })
+            .catch((error) => {
+                console.warn('BlockEditor initialization failed', error);
+                return null;
+            });
 
         /**
          * Overlay.
@@ -210,48 +249,45 @@ class BlockEditor {
      * @param {function} [onSuccess=undefined] - User defined function that is called after success saving
      */
     save(async = true, onSuccess) {
-        if (this.editor.checkDirty()) {
-            if (!async) {
-                showLoader();
-            }
-
-            // Формируем объект данных для Energine.request
-            const params = {
-                data: this.editor.getData(),
-            };
-            if (this.ID) {
-                params.ID = this.ID;
-            }
-            if (this.num) {
-                params.num = this.num;
-            }
-
-            // Вызов Energine.request
-            Energine.request(
-                this.singlePath + 'save-text',
-                params,
-                (response) => {
-                    // onSuccess как в оригинале
-                    if (onSuccess) onSuccess.call(this, response);
-                    this.editor.resetDirty && this.editor.resetDirty();
-                    if (!async) {
-                        hideLoader();
-                    }
-                },
-                // onUserError
-                () => {
-                    if (!async) {
-                        hideLoader();
-                    }
-                },
-                // onServerError
-                () => {
-                    if (!async) {
-                        hideLoader();
-                    }
-                }
-            );
+        if (!this.editor || !this.editor.checkDirty()) {
+            return;
         }
+
+        if (!async) {
+            showLoader();
+        }
+
+        const params = {
+            data: this.editor.getData(),
+        };
+        if (this.ID) {
+            params.ID = this.ID;
+        }
+        if (this.num) {
+            params.num = this.num;
+        }
+
+        Energine.request(
+            this.singlePath + 'save-text',
+            params,
+            (response) => {
+                if (onSuccess) onSuccess.call(this, response);
+                this.editor.resetDirty && this.editor.resetDirty();
+                if (!async) {
+                    hideLoader();
+                }
+            },
+            () => {
+                if (!async) {
+                    hideLoader();
+                }
+            },
+            () => {
+                if (!async) {
+                    hideLoader();
+                }
+            }
+        );
     }
 }
 

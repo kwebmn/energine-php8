@@ -1,61 +1,66 @@
-﻿CKEDITOR.plugins.add( 'energinefile', {
-    lang: 'en,ru,uk',
-    icons: 'energinefile',
-	init: function( editor ) {
+(function () {
+    if (typeof window === 'undefined' || !window.CKEDITOR) {
+        return;
+    }
 
-		editor.addCommand( 'energinefile', {
-            exec: function(editor) {
-
-                // var panel = $mt('cke_' + editor.editorId);
-                const panel = document.getElementById(editor.name);
-                // var zIndex = panel.getStyle('z-index');
-                // panel.setStyle('z-index', '1');
-                const zIndex = panel.style.zIndex;
-                panel.style.zIndex = '1';
-
-                ModalBox.open({
-                    url: editor.singleTemplate + 'file-library',
-                    onClose: function (data) {
-
-                        if (!data) {
-                            // panel.setStyle('z-index', zIndex);
-                            panel.style.zIndex = '1';
-                            return;
-                        }
-
-                        var filename = data['upl_path'];
-
-                        if (filename.toLowerCase().indexOf('http://') == -1) {
-                            filename = Energine.media + filename;
-                        }
-
-                        var style = new CKEDITOR.style({
-                            element: 'a',
-                            attributes: {
-                                'href': filename
-                            }
-                        });
-                        style.type = CKEDITOR.STYLE_INLINE;
-                        style.apply(editor.document);
-
-                        if(editor.getSelection().getSelectedText() == '') {
-                            editor.insertHtml('<a href = "' + filename + '">' + data['upl_title'] + '</a>');
-                        }
-
-                        // panel.setStyle('z-index', zIndex);
-                        panel.style.zIndex = '1';
+    CKEDITOR.plugins.add('energinefile', {
+        lang: 'en,ru,uk',
+        init: function (editor) {
+            editor.addCommand('energinefile', {
+                exec: function (currentEditor) {
+                    const container = currentEditor.container ? currentEditor.container.$ : null;
+                    if (!container) {
+                        return;
                     }
+
+                    const initialZIndex = container.style.zIndex || '';
+                    container.style.zIndex = '1';
+
+                    const restoreZIndex = () => {
+                        container.style.zIndex = initialZIndex;
+                    };
+
+                    window.ModalBox.open({
+                        url: `${currentEditor.singleTemplate}file-library`,
+                        onClose(data) {
+                            if (!data) {
+                                restoreZIndex();
+                                return;
+                            }
+
+                            let filename = data.upl_path || '';
+                            const lower = filename.toLowerCase();
+                            if (filename && lower.indexOf('http://') === -1 && lower.indexOf('https://') === -1) {
+                                filename = `${window.Energine.media}${filename}`;
+                            }
+
+                            const style = new CKEDITOR.style({
+                                element: 'a',
+                                attributes: { href: filename },
+                            });
+                            style.type = CKEDITOR.STYLE_INLINE;
+                            style.apply(currentEditor.document);
+
+                            if (currentEditor.getSelection().getSelectedText() === '') {
+                                currentEditor.insertHtml(
+                                    `<a href="${filename}">${data.upl_title || filename}</a>`,
+                                );
+                            }
+
+                            restoreZIndex();
+                        },
+                    });
+                },
+            });
+
+            if (editor.ui.addButton) {
+                editor.ui.addButton('EnergineFile', {
+                    label: editor.lang.energinefile.toolbar,
+                    command: 'energinefile',
+                    toolbar: 'insert,10',
+                    icon: 'link',
                 });
-
             }
-        });
-
-		if ( editor.ui.addButton ) {
-			editor.ui.addButton( 'EnergineFile', {
-				label: editor.lang.energinefile.toolbar,
-				command: 'energinefile',
-				toolbar: 'insert,10'
-			});
-		}
-	}
-});
+        },
+    });
+}());

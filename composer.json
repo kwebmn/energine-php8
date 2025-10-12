@@ -74,7 +74,8 @@
     "fortawesome/font-awesome": "^7.1",
     "components/jquery": "^3.7",
     "components/jstree": "^3.3",
-    "codemirror/codemirror": "^5.65"
+    "codemirror/codemirror": "^5.65",
+    "ckeditor/ckeditor": "4.22.1"
   },
 
   "autoload": {

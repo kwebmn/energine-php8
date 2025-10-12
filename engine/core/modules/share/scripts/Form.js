@@ -5,12 +5,12 @@ import Validator from './Validator.js';
 import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
+import loadCKEditor from './ckeditor/loader.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
@@ -1997,44 +1997,69 @@ class FormRichEditor {
      * @param {Form} form
      */
     constructor(textarea, form) {
-        this.setupEditors();
-
         this.textarea = (typeof textarea === 'string')
             ? document.getElementById(textarea) || document.querySelector(textarea)
             : textarea;
 
-        this.form = form;
+        if (!this.textarea) {
+            throw new Error('Form.RichEditor: textarea element not found');
+        }
 
+        if (!this.textarea.id) {
+            Form.ensureControlId(this.textarea);
+        }
+
+        this.form = form;
+        this.editor = null;
+        this.readyPromise = this.initializeEditor();
+    }
+
+    /**
+     * Асинхронная инициализация CKEditor с ленивой загрузкой бандла.
+     * @returns {Promise<CKEDITOR.editor|null>}
+     */
+    async initializeEditor() {
         try {
+            const CKEDITOR = await loadCKEditor();
+            if (!CKEDITOR) {
+                return null;
+            }
+
+            this.setupEditors(CKEDITOR);
+
             this.editor = CKEDITOR.replace(this.textarea.id);
             this.editor.editorId = this.textarea.id;
             this.editor.singleTemplate = this.form.singlePath;
+
+            return this.editor;
         } catch (e) {
-            console.warn(e);
+            console.warn('CKEditor initialization failed', e);
+            return null;
         }
     }
 
     /**
      * CKEditor initialization (однократная на проект)
      */
-    setupEditors() {
+    setupEditors(CKEDITOR) {
         if (!FormRichEditor.ckeditor_init) {
             CKEDITOR.config.versionCheck = false;
-            CKEDITOR.config.extraPlugins = 'energineimage,energinefile';
+            CKEDITOR.config.extraPlugins = 'colorbutton,font,iframe,energineimage,energinefile';
             CKEDITOR.config.removePlugins = 'exportpdf';
             CKEDITOR.config.allowedContent = true;
             CKEDITOR.config.toolbar = [
-                { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
-                { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-                { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
+                { name: 'document', items: [ 'Source' ] },
+                { name: 'clipboard', items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
+                { name: 'editing', items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
+                '/',
+                { name: 'basicstyles', items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', 'RemoveFormat' ] },
+                { name: 'paragraph', items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
                 { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-                { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
+                { name: 'insert', items: [ 'Image', 'Table', 'Iframe', 'EnergineImage', 'EnergineFile' ] },
                 { name: 'tools', items: [ 'ShowBlocks' ] },
                 '/',
-                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-                { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
                 { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-                { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
+                { name: 'colors', items: [ 'TextColor', 'BGColor' ] },
             ];
 
             // Стили для wysiwyg
@@ -2048,7 +2073,11 @@ class FormRichEditor {
                     });
                 });
             }
-            CKEDITOR.stylesSet.add('energine', styles);
+            if (!CKEDITOR.stylesSet.registered || !Object.prototype.hasOwnProperty.call(CKEDITOR.stylesSet.registered, 'energine')) {
+                CKEDITOR.stylesSet.add('energine', styles);
+            } else {
+                CKEDITOR.stylesSet.registered.energine = styles;
+            }
             CKEDITOR.config.stylesSet = 'energine';
 
             FormRichEditor.ckeditor_init = true;
@@ -2060,6 +2089,10 @@ class FormRichEditor {
      */
     onSaveForm() {
         try {
+            if (!this.editor) {
+                return;
+            }
+
             const data = this.editor.getData();
             this.textarea.value = data;
         } catch (e) {

@@ -24,16 +24,6 @@
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
-    <xsl:variable name="CKEDITOR_BASE">
-        <xsl:choose>
-            <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
-                <xsl:value-of select="concat($STATIC_URL, 'scripts/ckeditor/')"/>
-            </xsl:when>
-            <xsl:otherwise>
-                <xsl:value-of select="concat($STATIC_URL, '/scripts/ckeditor/')"/>
-            </xsl:otherwise>
-        </xsl:choose>
-    </xsl:variable>
     <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
     <xsl:variable name="RESIZER_URL"><xsl:value-of select="$BASE/@resizer"/></xsl:variable>
     <xsl:variable name="MAIN_SITE"><xsl:value-of select="$DOC_PROPS[@name='base']/@default"/><xsl:value-of select="$LANG_ABBR"/></xsl:variable>
@@ -161,25 +151,6 @@
         <meta name="description" content="{$DOC_PROPS[@name='description']}"/>
         <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.css')}"/>
         <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.vendor.css')}"/>
-        <xsl:if test="/document/@debug = '0'">
-            <!-- CSS -->
-            
-            
-            
-
-            <!-- JS -->
-            
-            
-            <!-- <xsl:if test="//property[@name='is_user'] = '1'">
-                <script>
-                    <xsl:text>window.CKEDITOR_BASEPATH = '</xsl:text>
-                    <xsl:value-of select="$CKEDITOR_BASE"/>
-                    <xsl:text>';</xsl:text>
-                </script>
-                <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
-            </xsl:if> -->
-        </xsl:if>
-        
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>        
@@ -190,13 +161,8 @@
 
     <xsl:template name="START_ENERGINE_JS">
         <xsl:if test="//property[@name='is_user'] = '1'">
-                <script>
-                    <xsl:text>window.CKEDITOR_BASEPATH = '</xsl:text>
-                    <xsl:value-of select="$CKEDITOR_BASE"/>
-                    <xsl:text>';</xsl:text>
-                </script>
-                <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
-            </xsl:if>
+            <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
+        </xsl:if>
         <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
         <xsl:if test="//property[@name='is_user'] = '1'">
             <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.vendor.css')}"/>
