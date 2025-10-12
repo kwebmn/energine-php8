@@ -1,5 +1,8 @@
 import { build } from 'vite';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
+import { cpSync, existsSync, mkdirSync, rmSync, mkdtempSync, readdirSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
 
 const rootDir = resolve(process.cwd(), 'engine/vite');
 const repoRoot = resolve(rootDir, '..', '..');
@@ -8,10 +11,48 @@ const outputDir = resolve(repoRoot, 'assets');
 const engineDir = resolve(repoRoot, 'engine');
 const siteDir = resolve(repoRoot, 'site');
 const vendorDir = resolve(repoRoot, 'vendor');
+const ckeditorSourceDir = resolve(vendorDir, 'ckeditor', 'ckeditor');
+const ckeditorTargetDir = resolve(outputDir, 'ckeditor');
+const customPluginSources = [
+    {
+        source: resolve(engineDir, 'core/modules/share/scripts/ckeditor/plugins/energinefile'),
+        target: resolve(ckeditorTargetDir, 'plugins/energinefile'),
+    },
+    {
+        source: resolve(engineDir, 'core/modules/share/scripts/ckeditor/plugins/energineimage'),
+        target: resolve(ckeditorTargetDir, 'plugins/energineimage'),
+    },
+];
+
+const CODEMIRROR_PLUGIN_ZIP =
+    'https://download.ckeditor.com/codemirror/releases/codemirror_1.17.7.zip';
+
+const removePhpFiles = (directory) => {
+    if (!existsSync(directory)) {
+        return;
+    }
+    const entries = readdirSync(directory, { withFileTypes: true });
+    entries.forEach((entry) => {
+        const target = resolve(directory, entry.name);
+        if (entry.isDirectory()) {
+            removePhpFiles(target);
+        } else if (entry.isFile() && target.endsWith('.php')) {
+            unlinkSync(target);
+        }
+    });
+};
+
+const removeSamplesDirectory = (directory) => {
+    const samples = resolve(directory, 'samples');
+    if (existsSync(samples)) {
+        rmSync(samples, { recursive: true, force: true });
+    }
+};
 
 const targets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
     { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
+    { name: 'energine.ckeditor', entry: 'energine.ckeditor.entry.js' },
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
@@ -58,4 +99,49 @@ for (let index = 0; index < targets.length; index += 1) {
             },
         },
     });
+}
+
+if (existsSync(ckeditorSourceDir)) {
+    if (existsSync(ckeditorTargetDir)) {
+        rmSync(ckeditorTargetDir, { recursive: true, force: true });
+    }
+    mkdirSync(outputDir, { recursive: true });
+    cpSync(ckeditorSourceDir, ckeditorTargetDir, { recursive: true });
+    removePhpFiles(ckeditorTargetDir);
+    removeSamplesDirectory(ckeditorTargetDir);
+
+    customPluginSources.forEach(({ source, target }) => {
+        if (!existsSync(source)) {
+            return;
+        }
+        if (existsSync(target)) {
+            rmSync(target, { recursive: true, force: true });
+        }
+        mkdirSync(target, { recursive: true });
+        cpSync(source, target, { recursive: true });
+    });
+
+    const codemirrorPluginDir = resolve(ckeditorTargetDir, 'plugins/codemirror');
+    const codemirrorPluginEntry = resolve(codemirrorPluginDir, 'plugin.js');
+    if (!existsSync(codemirrorPluginEntry)) {
+        const tempDir = mkdtempSync(join(tmpdir(), 'ckeditor-codemirror-'));
+        const archivePath = resolve(tempDir, 'codemirror.zip');
+        try {
+            execSync(`curl -fsSL "${CODEMIRROR_PLUGIN_ZIP}" -o "${archivePath}"`, { stdio: 'inherit' });
+            execSync(`unzip -q "${archivePath}" -d "${tempDir}"`, { stdio: 'inherit' });
+            const extractedDir = resolve(tempDir, 'codemirror');
+            if (!existsSync(extractedDir)) {
+                throw new Error('CKEditor codemirror plugin archive did not contain expected directory.');
+            }
+            if (existsSync(codemirrorPluginDir)) {
+                rmSync(codemirrorPluginDir, { recursive: true, force: true });
+            }
+            mkdirSync(codemirrorPluginDir, { recursive: true });
+            cpSync(extractedDir, codemirrorPluginDir, { recursive: true });
+        } catch (error) {
+            console.warn('[build] Unable to download CKEditor codemirror plugin:', error);
+        } finally {
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    }
 }

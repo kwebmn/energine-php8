@@ -12,6 +12,7 @@ export const vendorDir = resolve(repoRoot, 'vendor');
 export const buildTargets = [
     { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
     { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
+    { name: 'energine.ckeditor', entry: 'energine.ckeditor.entry.js' },
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
