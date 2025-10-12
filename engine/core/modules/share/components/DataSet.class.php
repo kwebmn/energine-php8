@@ -780,6 +780,10 @@ abstract class DataSet extends Component
     {
         $aggressive = BaseObject::_getConfigValue('site.aggressive_cleanup', false);
 
+        if (!$aggressive) {
+            return self::stripSiteBase($data);
+        }
+
         // If tidy is available (kept as reference for potential enablement)
         /*
         if (function_exists('tidy_get_output') && $aggressive) {
@@ -807,12 +811,39 @@ abstract class DataSet extends Component
         }
         */
 
-        $purifier = new HTMLPurifier();
+        $config = HTMLPurifier_Config::createDefault();
+        $config->set('Cache.DefinitionImpl', null);
+        $config->set('Attr.EnableID', true);
+        $config->set('Attr.AllowedFrameTargets', ['_blank', '_self', '_parent', '_top']);
+        $config->set('Attr.AllowedRel', ['noopener', 'noreferrer', 'nofollow', 'ugc', 'sponsored']);
+        $config->set('Attr.AllowedClasses', null);
+        $config->set('CSS.Trusted', true);
+        $config->set('CSS.AllowedProperties', null);
+        $config->set('HTML.SafeIframe', true);
+        $config->set('URI.SafeIframeRegexp', '#^(https?:)?//#i');
+        $config->set('URI.AllowedSchemes', [
+            'http' => true,
+            'https' => true,
+            'mailto' => true,
+            'tel' => true,
+            'data' => true,
+        ]);
+
+        $purifier = new HTMLPurifier($config);
         $data = $purifier->purify($data);
 
-        $base = E()->getSiteManager()->getCurrentSite()->base;
-        $data = str_replace((str_contains($data, '%7E') ? str_replace('~', '%7E', $base) : $base), '', $data);
+        $data = self::stripSiteBase($data);
 
         return $data;
+    }
+
+    /**
+     * Remove site base from URLs to keep markup portable.
+     */
+    private static function stripSiteBase(string $data): string
+    {
+        $base = E()->getSiteManager()->getCurrentSite()->base;
+        $encodedBase = str_contains($data, '%7E') ? str_replace('~', '%7E', $base) : $base;
+        return str_replace($encodedBase, '', $data);
     }
 }
