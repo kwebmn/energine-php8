@@ -28,6 +28,18 @@ for (let index = 0; index < targets.length; index += 1) {
                 engine: engineDir,
                 site: siteDir,
                 vendor: vendorDir,
+                'tinymce/plugins/paste/plugin.js': resolve(
+                    engineDir,
+                    'core/modules/share/scripts/tinymce/plugins/stubs/pastePluginStub.js'
+                ),
+                'tinymce/plugins/paste/index.js': resolve(
+                    engineDir,
+                    'core/modules/share/scripts/tinymce/plugins/stubs/pastePluginStub.js'
+                ),
+                'tinymce/plugins/paste': resolve(
+                    engineDir,
+                    'core/modules/share/scripts/tinymce/plugins/stubs/pastePluginStub.js'
+                ),
             },
         },
         build: {
