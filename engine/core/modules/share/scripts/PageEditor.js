@@ -1,10 +1,10 @@
 import Energine, { showLoader, hideLoader } from './Energine.js';
+import RichTextEditor from './RichTextEditor.js';
+import ModalBox from './ModalBox.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const CKEDITOR = globalScope?.CKEDITOR;
 
 function applyEditorOutline(area, editor) {
     if (!area) {
@@ -29,105 +29,28 @@ class PageEditor {
     editors = [];
 
     constructor() {
-        if (!CKEDITOR) {
-            throw new Error('PageEditor requires CKEditor to be loaded globally.');
-        }
+        const customStyles = PageEditor.getCustomStyles();
 
-        CKEDITOR.config.versionCheck = false;
-        CKEDITOR.disableAutoInline = true;
-        CKEDITOR.config.extraPlugins = 'sourcedialog,codemirror,energineimage,energinefile';
-        CKEDITOR.config.removePlugins = 'exportpdf';
-        CKEDITOR.config.allowedContent = true;
-        CKEDITOR.config.toolbar = [
-            { name: 'document', groups: [ 'mode' ], items: [ 'Sourcedialog' ] },
-            { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-            { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-            { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-            { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-            { name: 'tools', items: [ 'ShowBlocks' ] },
-            '/',
-            { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-            { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-            { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-            { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-        ];
-
-        // Стили CKEditor
-        const styles = [];
-        if (window['wysiwyg_styles']) {
-            Object.values(window['wysiwyg_styles']).forEach(style => {
-                styles.push({
-                    name: style['caption'],
-                    element: style['element'],
-                    attributes: { 'class': style['class'] }
-                });
-            });
-        }
-        CKEDITOR.stylesSet.add('energine', styles);
-        CKEDITOR.config.stylesSet = 'energine';
-
-        // Инициализация редакторов для всех областей
         document.querySelectorAll('.' + this.editorClassName).forEach(element => {
-            this.editors.push(new PageEditor.BlockEditor(element));
+            this.editors.push(new BlockEditor(element, { customStyles }));
         });
 
         window.nrgPageEditor = this;
     }
 
-    // --------- Вложенный BlockEditor ---------
-    static BlockEditor = class {
-        constructor(area) {
-            this.area = area;
-            area.setAttribute('contenteditable', true);
-            this.isActive = false;
-            this.singlePath = area.getAttribute('single_template');
-            this.ID = area.getAttribute('eID') || '';
-            this.num = area.getAttribute('num') || '';
-        this.editor = CKEDITOR.inline(area.id);
-        this.editor.singleTemplate = this.singlePath;
-        this.editor.editorId = area.id;
-        applyEditorOutline(this.area, this.editor);
-            //this.overlay = new Overlay();
-            // Если нужны события blur/focus, можно раскомментировать:
-            /*
-            this.editor.on('blur', () => {
-                area.classList.remove('activeEditor');
-                this.save();
+    static getCustomStyles() {
+        const styles = [];
+        if (globalScope && globalScope.wysiwyg_styles) {
+            Object.values(globalScope.wysiwyg_styles).forEach(style => {
+                styles.push({
+                    caption: style['caption'],
+                    element: style['element'],
+                    class: style['class'],
+                    attributes: style['attributes'] || {},
+                });
             });
-            this.editor.on('focus', () => {
-                area.classList.add('activeEditor');
-            });
-            */
-
         }
-
-        /**
-         * Сохраняет данные блока.
-         * @param {boolean} [async = true] Асинхронно или нет
-         * @param {function} [onSuccess] Колбэк после сохранения
-         */
-        save(async = true, onSuccess = undefined) {
-            if (this.editor.checkDirty()) {
-                if (!async) showLoader();
-
-                let data = 'data=' + encodeURIComponent(this.editor.getData());
-                if (this.ID) data += '&ID=' + this.ID;
-                if (this.num) data += '&num=' + this.num;
-
-                fetch(this.singlePath + 'save-text', {
-                    method: 'POST',
-                    body: data,
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                })
-                    .then(response => response.text())
-                    .then(response => {
-                        // this.editor.setData(response); // убрано как в оригинале
-                        if (onSuccess) onSuccess.call(this);
-                        if (this.editor.resetDirty) this.editor.resetDirty();
-                        if (!async) this.overlay.hide();
-                    });
-            }
-        }
+        return styles;
     }
 }
 /**
@@ -140,14 +63,14 @@ class PageEditor {
 class BlockEditor {
     /**
      * @param {HTMLElement} area - Area element.
+     * @param {{ customStyles?: Array }} [options]
      */
-    constructor(area) {
+    constructor(area, options = {}) {
         /**
          * Area element.
          * @type {HTMLElement}
          */
         this.area = area;
-        this.area.setAttribute('contenteditable', 'true');
 
         /**
          * Defines whether the editor is active.
@@ -173,14 +96,28 @@ class BlockEditor {
          */
         this.num = this.area.getAttribute('num') || '';
 
-        /**
-         * Editor.
-         * @type {CKEDITOR}
-         */
-        this.editor = CKEDITOR.inline(this.area.id);
-        this.editor.singleTemplate = this.area.getAttribute('single_template');
-        this.editor.editorId = this.area.id;
+        this.container = document.createElement('div');
+        this.container.className = 'rich-text-editor rich-text-editor--inline';
+        this.area.parentNode.insertBefore(this.container, this.area);
+        this.container.appendChild(this.area);
+
+        this.editor = new RichTextEditor({
+            container: this.container,
+            editableElement: this.area,
+            content: this.area.innerHTML,
+            customStyles: options.customStyles || [],
+            singleTemplate: this.singlePath,
+            openImagePicker: this.handleInsertImage.bind(this),
+            openFilePicker: this.handleInsertFile.bind(this),
+            openVideoPicker: this.handleInsertVideo.bind(this),
+            onUpdate: () => {
+                this._isDirty = true;
+            },
+        });
+
         applyEditorOutline(this.area, this.editor);
+        this._isDirty = false;
+        this.editor.resetDirty();
 
         /**
          * Overlay.
@@ -188,7 +125,7 @@ class BlockEditor {
          */
         //this.overlay = new Overlay();
 
-        // События CKEditor (закомментировано, как в оригинале)
+        // События редактора (закомментировано, как в оригинале)
         /*
         this.editor.on('blur', () => {
             // console.log(this.area);
@@ -210,14 +147,14 @@ class BlockEditor {
      * @param {function} [onSuccess=undefined] - User defined function that is called after success saving
      */
     save(async = true, onSuccess) {
-        if (this.editor.checkDirty()) {
+        if (this.editor && this.editor.isDirty()) {
             if (!async) {
                 showLoader();
             }
 
             // Формируем объект данных для Energine.request
             const params = {
-                data: this.editor.getData(),
+                data: this.editor.getHTML(),
             };
             if (this.ID) {
                 params.ID = this.ID;
@@ -252,6 +189,131 @@ class BlockEditor {
                 }
             );
         }
+    }
+
+    restorePanelZIndex(original) {
+        if (this.container) {
+            this.container.style.zIndex = original || '';
+        }
+    }
+
+    handleInsertImage(editorInstance) {
+        const panel = this.container;
+        const originalZIndex = panel.style.zIndex;
+        panel.style.zIndex = '1';
+
+        ModalBox.open({
+            url: (this.singlePath || '') + 'file-library/',
+            onClose: (imageData) => {
+                if (!imageData) {
+                    this.restorePanelZIndex(originalZIndex);
+                    return;
+                }
+
+                ModalBox.open({
+                    url: (this.singlePath || '') + 'imagemanager',
+                    extraData: imageData,
+                    onClose: (image) => {
+                        this.restorePanelZIndex(originalZIndex);
+                        if (!image) {
+                            return;
+                        }
+
+                        let src = image.filename;
+                        if (src && !src.match(/^https?:\/\//i)) {
+                            src = Energine.media + src;
+                        }
+
+                        const attrs = [];
+                        if (image.width) attrs.push(`width="${image.width}"`);
+                        if (image.height) attrs.push(`height="${image.height}"`);
+                        if (image.align) attrs.push(`align="${image.align}"`);
+                        if (image.alt) attrs.push(`alt="${image.alt}"`);
+                        attrs.push('border="0"');
+
+                        let style = '';
+                        ['margin-left', 'margin-right', 'margin-top', 'margin-bottom'].forEach(prop => {
+                            if (image[prop] && Number(image[prop]) !== 0) {
+                                style += `${prop}:${image[prop]}px;`;
+                            }
+                        });
+
+                        const styleAttr = style ? ` style="${style}"` : '';
+                        const html = `<img src="${src}" ${attrs.join(' ')}${styleAttr} />`;
+                        editorInstance.insertHTML(html);
+                    },
+                });
+            },
+        });
+    }
+
+    handleInsertFile(editorInstance) {
+        const panel = this.container;
+        const originalZIndex = panel.style.zIndex;
+        panel.style.zIndex = '1';
+
+        ModalBox.open({
+            url: (this.singlePath || '') + 'file-library',
+            onClose: (data) => {
+                this.restorePanelZIndex(originalZIndex);
+                if (!data) {
+                    return;
+                }
+
+                let filename = data['upl_path'];
+                if (filename && !filename.match(/^https?:\/\//i)) {
+                    filename = Energine.media + filename;
+                }
+
+                const editor = editorInstance.getEditor();
+                if (!editor) {
+                    return;
+                }
+
+                const { empty } = editor.state.selection;
+                if (empty) {
+                    const title = data['upl_title'] || filename;
+                    editor.chain().focus().insertContent(`<a href="${filename}">${title}</a>`).run();
+                } else {
+                    editor.chain().focus().extendMarkRange('link').setLink({ href: filename }).run();
+                }
+            },
+        });
+    }
+
+    handleInsertVideo(editorInstance) {
+        const panel = this.container;
+        const originalZIndex = panel.style.zIndex;
+        panel.style.zIndex = '1';
+
+        ModalBox.open({
+            url: (this.singlePath || '') + 'file-library/',
+            onClose: (fileInfo) => {
+                if (!fileInfo) {
+                    this.restorePanelZIndex(originalZIndex);
+                    return;
+                }
+
+                if (fileInfo['upl_internal_type'] !== 'video') {
+                    alert(Energine.translations.get('TXT_ERROR_NOT_VIDEO_FILE'));
+                    this.restorePanelZIndex(originalZIndex);
+                    return;
+                }
+
+                ModalBox.open({
+                    url: (this.singlePath || '') + `file-library/${fileInfo['upl_id']}/put-video/`,
+                    onClose: (player) => {
+                        this.restorePanelZIndex(originalZIndex);
+                        if (!player) {
+                            return;
+                        }
+
+                        const iframe = `<iframe src="${Energine.base}single/pageToolBar/embed-player/${fileInfo['upl_id']}/" width="${player.width}" height="${player.height}" frameborder="0"></iframe>`;
+                        editorInstance.insertHTML(iframe);
+                    },
+                });
+            },
+        });
     }
 }
 

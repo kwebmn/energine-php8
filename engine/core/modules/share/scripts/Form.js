@@ -5,12 +5,12 @@ import Validator from './Validator.js';
 import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
+import RichTextEditor from './RichTextEditor.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const CKEDITOR = globalScope?.CKEDITOR;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
@@ -1992,76 +1992,190 @@ Form.Label = {
  * @param {} fallback_ie
  */
 class FormRichEditor {
-    /**
-     * @param {Element|string} textarea - Элемент textarea или селектор
-     * @param {Form} form
-     */
-    constructor(textarea, form) {
-        this.setupEditors();
+    static getCustomStyles() {
+        if (FormRichEditor.cachedStyles) {
+            return FormRichEditor.cachedStyles;
+        }
+        const styles = [];
+        if (globalScope && globalScope.wysiwyg_styles) {
+            Object.values(globalScope.wysiwyg_styles).forEach(style => {
+                styles.push({
+                    caption: style['caption'],
+                    element: style['element'],
+                    class: style['class'],
+                    attributes: style['attributes'] || {},
+                });
+            });
+        }
+        FormRichEditor.cachedStyles = styles;
+        return styles;
+    }
 
+    constructor(textarea, form) {
         this.textarea = (typeof textarea === 'string')
             ? document.getElementById(textarea) || document.querySelector(textarea)
             : textarea;
 
+        if (!this.textarea) {
+            throw new Error('FormRichEditor: textarea element not found');
+        }
+
         this.form = form;
 
-        try {
-            this.editor = CKEDITOR.replace(this.textarea.id);
-            this.editor.editorId = this.textarea.id;
-            this.editor.singleTemplate = this.form.singlePath;
-        } catch (e) {
-            console.warn(e);
+        this.textarea.classList.add('rich-text-editor__source');
+        this.textarea.style.display = 'none';
+
+        this.container = document.createElement('div');
+        this.container.className = 'rich-text-editor rich-text-editor--form';
+        this.textarea.insertAdjacentElement('afterend', this.container);
+
+        const customStyles = FormRichEditor.getCustomStyles();
+
+        this.editor = new RichTextEditor({
+            container: this.container,
+            content: this.textarea.value || '',
+            placeholder: this.textarea.getAttribute('placeholder') || '',
+            customStyles,
+            singleTemplate: this.form?.singlePath || '',
+            openImagePicker: this.handleInsertImage.bind(this),
+            openFilePicker: this.handleInsertFile.bind(this),
+            openVideoPicker: this.handleInsertVideo.bind(this),
+            onUpdate: () => {
+                this.textarea.value = this.editor.getHTML();
+            },
+        });
+
+        this.editor.singleTemplate = this.form?.singlePath || '';
+    }
+
+    restorePanelZIndex(panel, original) {
+        if (panel) {
+            panel.style.zIndex = original || '';
         }
     }
 
-    /**
-     * CKEditor initialization (однократная на проект)
-     */
-    setupEditors() {
-        if (!FormRichEditor.ckeditor_init) {
-            CKEDITOR.config.versionCheck = false;
-            CKEDITOR.config.extraPlugins = 'energineimage,energinefile';
-            CKEDITOR.config.removePlugins = 'exportpdf';
-            CKEDITOR.config.allowedContent = true;
-            CKEDITOR.config.toolbar = [
-                { name: 'document', groups: [ 'mode' ], items: [ 'Source' ] },
-                { name: 'clipboard', groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo' ] },
-                { name: 'editing', groups: [ 'find', 'selection' ], items: [ 'Find', 'Replace', '-', 'SelectAll' ] },
-                { name: 'links', items: [ 'Link', 'Unlink', 'Anchor' ] },
-                { name: 'insert', items: [ 'Image', 'Flash', 'Table', 'EnergineImage', 'EnergineVideo', 'EnergineFile' ] },
-                { name: 'tools', items: [ 'ShowBlocks' ] },
-                '/',
-                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ], items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-                { name: 'paragraph', groups: [ 'list', 'indent', 'align' ], items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-                { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-                { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-            ];
+    handleInsertImage(editorInstance) {
+        const panel = this.container;
+        const originalZIndex = panel.style.zIndex;
+        panel.style.zIndex = '1';
 
-            // Стили для wysiwyg
-            let styles = [];
-            if (window['wysiwyg_styles']) {
-                Object.values(window['wysiwyg_styles']).forEach(style => {
-                    styles.push({
-                        name: style['caption'],
-                        element: style['element'],
-                        attributes: { 'class': style['class'] }
-                    });
+        ModalBox.open({
+            url: (this.form?.singlePath || '') + 'file-library/',
+            onClose: (imageData) => {
+                if (!imageData) {
+                    this.restorePanelZIndex(panel, originalZIndex);
+                    return;
+                }
+
+                ModalBox.open({
+                    url: (this.form?.singlePath || '') + 'imagemanager',
+                    extraData: imageData,
+                    onClose: (image) => {
+                        this.restorePanelZIndex(panel, originalZIndex);
+                        if (!image) {
+                            return;
+                        }
+
+                        let src = image.filename;
+                        if (src && !src.match(/^https?:\/\//i)) {
+                            src = Energine.media + src;
+                        }
+
+                        const attrs = [];
+                        if (image.width) attrs.push(`width="${image.width}"`);
+                        if (image.height) attrs.push(`height="${image.height}"`);
+                        if (image.align) attrs.push(`align="${image.align}"`);
+                        if (image.alt) attrs.push(`alt="${image.alt}"`);
+                        attrs.push('border="0"');
+
+                        let style = '';
+                        ['margin-left', 'margin-right', 'margin-top', 'margin-bottom'].forEach(prop => {
+                            if (image[prop] && Number(image[prop]) !== 0) {
+                                style += `${prop}:${image[prop]}px;`;
+                            }
+                        });
+
+                        const styleAttr = style ? ` style="${style}"` : '';
+                        const html = `<img src="${src}" ${attrs.join(' ')}${styleAttr} />`;
+                        editorInstance.insertHTML(html);
+                    },
                 });
-            }
-            CKEDITOR.stylesSet.add('energine', styles);
-            CKEDITOR.config.stylesSet = 'energine';
-
-            FormRichEditor.ckeditor_init = true;
-        }
+            },
+        });
     }
 
-    /**
-     * Сохраняет текст редактора обратно в textarea перед submit
-     */
+    handleInsertFile(editorInstance) {
+        const panel = this.container;
+        const originalZIndex = panel.style.zIndex;
+        panel.style.zIndex = '1';
+
+        ModalBox.open({
+            url: (this.form?.singlePath || '') + 'file-library',
+            onClose: (data) => {
+                this.restorePanelZIndex(panel, originalZIndex);
+                if (!data) {
+                    return;
+                }
+
+                let filename = data['upl_path'];
+                if (filename && !filename.match(/^https?:\/\//i)) {
+                    filename = Energine.media + filename;
+                }
+
+                const editor = editorInstance.getEditor();
+                if (!editor) {
+                    return;
+                }
+
+                const { empty } = editor.state.selection;
+                if (empty) {
+                    const title = data['upl_title'] || filename;
+                    editor.chain().focus().insertContent(`<a href="${filename}">${title}</a>`).run();
+                } else {
+                    editor.chain().focus().extendMarkRange('link').setLink({ href: filename }).run();
+                }
+            },
+        });
+    }
+
+    handleInsertVideo(editorInstance) {
+        const panel = this.container;
+        const originalZIndex = panel.style.zIndex;
+        panel.style.zIndex = '1';
+
+        ModalBox.open({
+            url: (this.form?.singlePath || '') + 'file-library/',
+            onClose: (fileInfo) => {
+                if (!fileInfo) {
+                    this.restorePanelZIndex(panel, originalZIndex);
+                    return;
+                }
+
+                if (fileInfo['upl_internal_type'] !== 'video') {
+                    alert(Energine.translations.get('TXT_ERROR_NOT_VIDEO_FILE'));
+                    this.restorePanelZIndex(panel, originalZIndex);
+                    return;
+                }
+
+                ModalBox.open({
+                    url: (this.form?.singlePath || '') + `file-library/${fileInfo['upl_id']}/put-video/`,
+                    onClose: (player) => {
+                        this.restorePanelZIndex(panel, originalZIndex);
+                        if (!player) {
+                            return;
+                        }
+
+                        const iframe = `<iframe src="${Energine.base}single/pageToolBar/embed-player/${fileInfo['upl_id']}/" width="${player.width}" height="${player.height}" frameborder="0"></iframe>`;
+                        editorInstance.insertHTML(iframe);
+                    },
+                });
+            },
+        });
+    }
+
     onSaveForm() {
         try {
-            const data = this.editor.getData();
-            this.textarea.value = data;
+            this.textarea.value = this.editor.getHTML();
         } catch (e) {
             console.warn(e);
         }
@@ -2070,6 +2184,7 @@ class FormRichEditor {
 
 // Для обратной совместимости:
 Form.RichEditor = FormRichEditor;
+FormRichEditor.cachedStyles = null;
 
 export { Form };
 export default Form;

@@ -1,0 +1,110 @@
+.rich-text-editor {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.rich-text-editor--inline {
+    margin-bottom: 1rem;
+}
+
+.rich-text-editor--form {
+    margin-top: 0.5rem;
+}
+
+.rich-text-editor__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ced4da;
+}
+
+.rich-text-editor__toolbar-group {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    margin-right: 0.5rem;
+}
+
+.rich-text-editor__toolbar-group:last-child {
+    margin-right: 0;
+}
+
+.rich-text-editor__button {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.4rem;
+    cursor: pointer;
+    color: #495057;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    min-height: 2rem;
+}
+
+.rich-text-editor__button:hover,
+.rich-text-editor__button:focus {
+    background-color: #e9ecef;
+    color: #212529;
+    outline: none;
+}
+
+.rich-text-editor__button.is-active {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.rich-text-editor__select,
+.rich-text-editor__color-input {
+    height: 2rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0 0.25rem;
+    background-color: #fff;
+    color: #495057;
+}
+
+.rich-text-editor__content {
+    min-height: 220px;
+    padding: 0.75rem;
+    line-height: 1.5;
+    outline: none;
+}
+
+.rich-text-editor__content:focus {
+    outline: none;
+}
+
+.rich-text-editor__content p {
+    margin-bottom: 0.75rem;
+}
+
+.rich-text-editor__content ul,
+.rich-text-editor__content ol {
+    padding-left: 1.5rem;
+}
+
+.rich-text-editor__content img {
+    max-width: 100%;
+    height: auto;
+}
+
+.rich-text-editor__content blockquote {
+    border-left: 4px solid #dee2e6;
+    margin: 0 0 1rem;
+    padding-left: 1rem;
+    color: #6c757d;
+}
+
+.rich-text-editor__button .fa-solid,
+.rich-text-editor__button .fa-regular {
+    pointer-events: none;
+}
