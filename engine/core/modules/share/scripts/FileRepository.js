@@ -3,14 +3,11 @@ import GridManager, { Grid } from './GridManager.js';
 import Cookie from './Cookie.js';
 import ModalBox from './ModalBox.js';
 import {
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
     bindDragAndDrop,
     createUploadUid,
     uploadFiles
 } from './nativeFileHelpers.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 // Глобальное имя cookie для файла
 const FILE_COOKIE_NAME = 'NRGNFRPID';
@@ -654,14 +651,11 @@ export { GridWithPopImage, FileRepository, PathList };
 export default FileRepository;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FileRepository;
-    }
-
-    target.GridWithPopImage = GridWithPopImage;
-    target.FileRepository = FileRepository;
-    target.PathList = PathList;
-
+    registerGlobal({
+        GridWithPopImage,
+        FileRepository,
+        PathList,
+    }, target);
     return FileRepository;
 }
 

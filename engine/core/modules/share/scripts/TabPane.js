@@ -1,7 +1,4 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 class TabPane {
     static count = 1;
     static assignID() {
@@ -295,12 +292,7 @@ export { TabPane };
 export default TabPane;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TabPane;
-    }
-
-    target.TabPane = TabPane;
-    return TabPane;
+    return registerGlobal('TabPane', TabPane, target);
 }
 
 attachToWindow();

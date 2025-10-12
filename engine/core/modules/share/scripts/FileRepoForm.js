@@ -2,14 +2,11 @@ import Energine from './Energine.js';
 import Form from './Form.js';
 import ModalBox from './ModalBox.js';
 import {
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
     createUploadUid,
     getFilesFromEvent,
     uploadFiles
 } from './nativeFileHelpers.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 // FileRepoForm.js
 
@@ -180,12 +177,7 @@ export { FileRepoForm };
 export default FileRepoForm;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FileRepoForm;
-    }
-
-    target.FileRepoForm = FileRepoForm;
-    return FileRepoForm;
+    return registerGlobal('FileRepoForm', FileRepoForm, target);
 }
 
 attachToWindow();

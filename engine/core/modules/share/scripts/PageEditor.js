@@ -1,9 +1,6 @@
 import Energine, { showLoader, hideLoader } from './Energine.js';
 import loadCKEditor from './ckeditor/loader.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 function applyEditorOutline(area, editor) {
     if (!area) {
@@ -297,13 +294,7 @@ export { PageEditor, BlockEditor };
 export default PageEditor;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return PageEditor;
-    }
-
-    target.PageEditor = PageEditor;
-    target.PageEditor.BlockEditor = BlockEditor;
-    return PageEditor;
+    return registerGlobal('PageEditor', PageEditor, target);
 }
 
 attachToWindow();

@@ -1,10 +1,7 @@
 import Energine from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 /**
  * Site manager.
@@ -62,12 +59,7 @@ export { SiteManager };
 export default SiteManager;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return SiteManager;
-    }
-
-    target.SiteManager = SiteManager;
-    return SiteManager;
+    return registerGlobal('SiteManager', SiteManager, target);
 }
 
 attachToWindow();

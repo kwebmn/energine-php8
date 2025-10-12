@@ -1,8 +1,5 @@
 import Validator from './Validator.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 /**
  * ValidForm (ES6 version)
@@ -51,12 +48,7 @@ export { ValidForm };
 export default ValidForm;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return ValidForm;
-    }
-
-    target.ValidForm = ValidForm;
-    return ValidForm;
+    return registerGlobal('ValidForm', ValidForm, target);
 }
 
 attachToWindow();

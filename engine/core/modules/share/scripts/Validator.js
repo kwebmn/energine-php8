@@ -1,12 +1,9 @@
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 /**
  * @file Validator — валидация форм, включая работу с паттернами и сообщениями об ошибке.
  * @author Pavel Dubenko (адаптация ES6 — STARTER Teem)
  * @version 2.0.0
  */
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class Validator {
     /**
@@ -149,12 +146,7 @@ export { Validator };
 export default Validator;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Validator;
-    }
-
-    target.Validator = Validator;
-    return Validator;
+    return registerGlobal('Validator', Validator, target);
 }
 
 attachToWindow();

@@ -1,7 +1,4 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 class PageList extends EventTarget {
     /**
      * @param {Object} [options]
@@ -195,12 +192,7 @@ export { PageList };
 export default PageList;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return PageList;
-    }
-
-    target.PageList = PageList;
-    return PageList;
+    return registerGlobal('PageList', PageList, target);
 }
 
 attachToWindow();

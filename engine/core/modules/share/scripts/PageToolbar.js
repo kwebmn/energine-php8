@@ -2,10 +2,7 @@ import Energine from './Energine.js';
 import Toolbar from './Toolbar.js';
 import ModalBox from './ModalBox.js';
 import Cookie from './Cookie.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 class PageToolbar extends Toolbar {
     constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
@@ -650,12 +647,6 @@ export { PageToolbar };
 export default PageToolbar;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return PageToolbar;
-    }
-
-    target.PageToolbar = PageToolbar;
-    return PageToolbar;
+    return registerGlobal('PageToolbar', PageToolbar, target);
 }
-
 attachToWindow();

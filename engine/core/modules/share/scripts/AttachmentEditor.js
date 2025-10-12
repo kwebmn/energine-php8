@@ -2,14 +2,11 @@ import Energine from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
 import {
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
     bindDragAndDrop,
     createUploadUid,
     uploadFiles
 } from './nativeFileHelpers.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 /**
  * AttachmentEditor
@@ -251,12 +248,7 @@ export { AttachmentEditor };
 export default AttachmentEditor;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return AttachmentEditor;
-    }
-
-    target.AttachmentEditor = AttachmentEditor;
-    return AttachmentEditor;
+    return registerGlobal('AttachmentEditor', AttachmentEditor, target);
 }
 
 attachToWindow();

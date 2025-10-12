@@ -3,10 +3,7 @@ import TabPaneModule from './TabPane.js';
 import ToolbarModule from './Toolbar.js';
 import ModalBoxModule from './ModalBox.js';
 import PageListModule from './PageList.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 const Energine = EnergineModule || globalScope?.Energine || {};
 const TabPane = TabPaneModule || globalScope?.TabPane;

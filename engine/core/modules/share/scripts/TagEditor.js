@@ -1,10 +1,8 @@
 import Energine, { showLoader, hideLoader } from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 /**
  * Tag editor.
  * @extends GridManager
@@ -114,12 +112,7 @@ export { TagEditor };
 export default TagEditor;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TagEditor;
-    }
-
-    target.TagEditor = TagEditor;
-    return TagEditor;
+    return registerGlobal('TagEditor', TagEditor, target);
 }
 
 attachToWindow();

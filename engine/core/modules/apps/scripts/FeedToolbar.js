@@ -1,10 +1,7 @@
 import Energine from '../../share/scripts/Energine.js';
 import Toolbar from '../../share/scripts/Toolbar.js';
 import ModalBox from '../../share/scripts/ModalBox.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from '../../share/scripts/exportToWindow.js';
 
 class FeedToolbar extends Toolbar {
     // Сохраняем request для совместимости
@@ -220,12 +217,7 @@ export { FeedToolbar };
 export default FeedToolbar;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FeedToolbar;
-    }
-
-    target.FeedToolbar = FeedToolbar;
-    return FeedToolbar;
+    return registerGlobal('FeedToolbar', FeedToolbar, target);
 }
 
 attachToWindow();

@@ -1,3 +1,4 @@
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 /**
  * @file Contain the description of the next classes:
  * <ul>
@@ -11,10 +12,6 @@
  *
  * @version 1.0.1
  */
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 /**
  * Words — работа с разделёнными строками.
@@ -545,15 +542,12 @@ export { Words, ActiveList, DropBoxList, AcplField };
 export default AcplField;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return AcplField;
-    }
-
-    target.Words = Words;
-    target.ActiveList = ActiveList;
-    target.DropBoxList = DropBoxList;
-    target.AcplField = AcplField;
-
+    registerGlobal({
+        Words,
+        ActiveList,
+        DropBoxList,
+        AcplField,
+    }, target);
     return AcplField;
 }
 

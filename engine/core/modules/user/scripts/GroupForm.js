@@ -1,8 +1,5 @@
 import Form from '../../share/scripts/Form.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from '../../share/scripts/exportToWindow.js';
 
 /**
  * GroupForm (ES6 version)
@@ -78,12 +75,7 @@ export { GroupForm };
 export default GroupForm;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return GroupForm;
-    }
-
-    target.GroupForm = GroupForm;
-    return GroupForm;
+    return registerGlobal('GroupForm', GroupForm, target);
 }
 
 attachToWindow();

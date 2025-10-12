@@ -1,7 +1,4 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 class Toolbar {
     constructor(toolbarName, props = {}) {
         this.name = toolbarName;
@@ -849,12 +846,7 @@ export { Toolbar };
 export default Toolbar;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Toolbar;
-    }
-
-    target.Toolbar = Toolbar;
-    return Toolbar;
+    return registerGlobal('Toolbar', Toolbar, target);
 }
 
 attachToWindow();

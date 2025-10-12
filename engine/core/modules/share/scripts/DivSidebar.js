@@ -1,10 +1,7 @@
 import Energine, { showLoader } from './Energine.js';
 import DivManager from './DivManager.js';
 import './ModalBox.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 const $ = globalScope?.jQuery || globalScope?.$;
 const ModalBox = globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
@@ -216,12 +213,7 @@ export { DivSidebar };
 export default DivSidebar;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivSidebar;
-    }
-
-    target.DivSidebar = DivSidebar;
-    return DivSidebar;
+    return registerGlobal('DivSidebar', DivSidebar, target);
 }
 
 attachToWindow();

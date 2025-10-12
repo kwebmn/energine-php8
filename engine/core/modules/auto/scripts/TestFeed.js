@@ -1,7 +1,4 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
+import { globalScope, attachToWindow as registerGlobal } from '../../share/scripts/exportToWindow.js';
 class TestFeed {
     constructor(element) {
         this.componentElement = typeof element === 'string'
@@ -15,12 +12,7 @@ export { TestFeed };
 export default TestFeed;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TestFeed;
-    }
-
-    target.TestFeed = TestFeed;
-    return TestFeed;
+    return registerGlobal('TestFeed', TestFeed, target);
 }
 
 attachToWindow();

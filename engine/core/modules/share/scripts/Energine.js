@@ -1,7 +1,4 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
+import { globalScope } from './exportToWindow.js';
 const bridgeMethodNames = [
     'request',
     'cancelEvent',

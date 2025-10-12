@@ -1,8 +1,5 @@
 import GridManager from '../../share/scripts/GridManager.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from '../../share/scripts/exportToWindow.js';
 
 /**
  * UserManager (ES6 version)
@@ -42,12 +39,7 @@ export { UserManager };
 export default UserManager;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return UserManager;
-    }
-
-    target.UserManager = UserManager;
-    return UserManager;
+    return registerGlobal('UserManager', UserManager, target);
 }
 
 attachToWindow();

@@ -1,10 +1,7 @@
 import Energine from '../../share/scripts/Energine.js';
 import GridManager from '../../share/scripts/GridManager.js';
 import ModalBox from '../../share/scripts/ModalBox.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from '../../share/scripts/exportToWindow.js';
 
 const $ = globalScope?.jQuery || globalScope?.$;
 /**
@@ -55,12 +52,7 @@ export { TemplateWizard };
 export default TemplateWizard;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TemplateWizard;
-    }
-
-    target.TemplateWizard = TemplateWizard;
-    return TemplateWizard;
+    return registerGlobal('TemplateWizard', TemplateWizard, target);
 }
 
 attachToWindow();

@@ -1,9 +1,6 @@
 import Energine from './Energine.js';
 import Form from './Form.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 class DivForm extends Form {
     constructor(element) {
@@ -187,12 +184,7 @@ export { DivForm };
 export default DivForm;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivForm;
-    }
-
-    target.DivForm = DivForm;
-    return DivForm;
+    return registerGlobal('DivForm', DivForm, target);
 }
 
 attachToWindow();

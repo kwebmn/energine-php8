@@ -1,7 +1,4 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 const documentRef = globalScope?.document;
 
 class Cookie {
@@ -61,12 +58,6 @@ export { Cookie };
 export default Cookie;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Cookie;
-    }
-
-    target.Cookie = Cookie;
-    return Cookie;
+    return registerGlobal('Cookie', Cookie, target);
 }
-
 attachToWindow();

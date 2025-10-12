@@ -1,8 +1,5 @@
+import { globalScope, attachToWindow as registerGlobal } from '../../share/scripts/exportToWindow.js';
 import Energine from '../../share/scripts/Energine.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class SignIn {
   constructor(element) {
@@ -190,14 +187,8 @@ export { SignIn };
 export default SignIn;
 
 export function attachToWindow(target = globalScope) {
-  if (!target) {
-    return SignIn;
-  }
-
-  target.SignIn = SignIn;
-  return SignIn;
+    return registerGlobal('SignIn', SignIn, target);
 }
-
 attachToWindow();
 
 // Пример использования:

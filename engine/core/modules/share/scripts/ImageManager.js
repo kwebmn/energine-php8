@@ -1,10 +1,7 @@
 import Energine from './Energine.js';
 import Form from './Form.js';
 import ModalBox from './ModalBox.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 // ImageManager.js
 
@@ -142,12 +139,7 @@ export { ImageManager };
 export default ImageManager;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return ImageManager;
-    }
-
-    target.ImageManager = ImageManager;
-    return ImageManager;
+    return registerGlobal('ImageManager', ImageManager, target);
 }
 
 attachToWindow();

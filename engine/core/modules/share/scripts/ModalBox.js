@@ -1,7 +1,4 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 const topWindow = globalScope?.top || globalScope;
 
 function ensureComputedSize(targetWindow = topWindow || globalScope) {
@@ -557,12 +554,7 @@ export { ModalBoxClass, ModalBox };
 export default ModalBox;
 
 export function attachToWindow(target = topWindow) {
-    if (!target) {
-        return ModalBox;
-    }
-
-    target.ModalBox = ModalBox;
-    return ModalBox;
+    return registerGlobal('ModalBox', ModalBox, target);
 }
 
 attachToWindow();

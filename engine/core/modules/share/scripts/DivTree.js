@@ -1,8 +1,5 @@
 import DivManager from './DivManager.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 class DivTree extends DivManager {
     /**
@@ -83,12 +80,7 @@ export { DivTree };
 export default DivTree;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivTree;
-    }
-
-    target.DivTree = DivTree;
-    return DivTree;
+    return registerGlobal('DivTree', DivTree, target);
 }
 
 attachToWindow();

@@ -6,10 +6,7 @@ import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
 import loadCKEditor from './ckeditor/loader.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 const getCodeMirror = () => globalScope?.CodeMirror;
 
@@ -2108,12 +2105,7 @@ export { Form };
 export default Form;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Form;
-    }
-
-    target.Form = Form;
-    return Form;
+    return registerGlobal('Form', Form, target);
 }
 
 attachToWindow();

@@ -2,10 +2,7 @@ import Energine, { showLoader, hideLoader } from './Energine.js';
 import TabPane from './TabPane.js';
 import './Toolbar.js';
 import './ModalBox.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from './exportToWindow.js';
 
 const $ = globalScope?.jQuery || globalScope?.$;
 const ModalBox = globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
@@ -356,12 +353,7 @@ export { DivManager };
 export default DivManager;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivManager;
-    }
-
-    target.DivManager = DivManager;
-    return DivManager;
+    return registerGlobal('DivManager', DivManager, target);
 }
 
 attachToWindow();

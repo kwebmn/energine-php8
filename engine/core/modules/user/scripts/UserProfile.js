@@ -1,9 +1,6 @@
 import Energine from '../../share/scripts/Energine.js';
 import ValidForm from '../../share/scripts/ValidForm.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+import { globalScope, attachToWindow as registerGlobal } from '../../share/scripts/exportToWindow.js';
 
 const $ = globalScope?.jQuery || globalScope?.$;
 
@@ -52,12 +49,7 @@ export { UserProfile };
 export default UserProfile;
 
 export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return UserProfile;
-    }
-
-    target.UserProfile = UserProfile;
-    return UserProfile;
+    return registerGlobal('UserProfile', UserProfile, target);
 }
 
 attachToWindow();
