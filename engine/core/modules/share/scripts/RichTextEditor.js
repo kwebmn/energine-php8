@@ -1,15 +1,63 @@
-import { Editor } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
-import Underline from '@tiptap/extension-underline';
-import TextStyle from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
-import TextAlign from '@tiptap/extension-text-align';
-import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
-import Highlight from '@tiptap/extension-highlight';
+const globalScope = typeof window !== 'undefined'
+    ? window
+    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-import '../stylesheets/rich-text-editor.css';
+const REQUIRED_EXPORTS = [
+    'Editor',
+    'StarterKit',
+    'Link',
+    'Underline',
+    'TextStyle',
+    'Color',
+    'TextAlign',
+    'Image',
+    'Placeholder',
+    'Highlight',
+];
+
+let cachedDependencies = null;
+let stylesLoaded = false;
+
+function resolveTiptapDependencies() {
+    if (cachedDependencies) {
+        return cachedDependencies;
+    }
+
+    if (!globalScope) {
+        throw new Error('RichTextEditor requires a browser environment.');
+    }
+
+    const vendorNamespace = globalScope.EnergineVendor && globalScope.EnergineVendor.tiptap;
+    if (vendorNamespace && typeof vendorNamespace === 'object') {
+        const missing = REQUIRED_EXPORTS.filter((key) => !vendorNamespace[key]);
+        if (!missing.length) {
+            cachedDependencies = vendorNamespace;
+            return cachedDependencies;
+        }
+        throw new Error(`RichTextEditor: missing Tiptap exports (${missing.join(', ')}).`);
+    }
+
+    throw new Error('RichTextEditor requires the Tiptap vendor bundle to be loaded before use.');
+}
+
+function ensureStylesLoaded() {
+    if (stylesLoaded || !globalScope || typeof document === 'undefined') {
+        return;
+    }
+
+    const href = 'stylesheets/rich-text-editor.css';
+    if (globalScope.Energine && typeof globalScope.Energine.loadCSS === 'function') {
+        globalScope.Energine.loadCSS(href);
+    } else if (!document.querySelector(`link[data-rich-text-editor="${href}"]`) && !document.querySelector(`link[href="${href}"]`)) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        link.dataset.richTextEditor = href;
+        document.head.appendChild(link);
+    }
+
+    stylesLoaded = true;
+}
 
 const ALIGN_OPTIONS = ['left', 'center', 'right', 'justify'];
 
@@ -36,6 +84,31 @@ class RichTextEditor {
         if (!container) {
             throw new Error('RichTextEditor requires a container element.');
         }
+
+        ensureStylesLoaded();
+
+        let dependencies;
+        try {
+            dependencies = resolveTiptapDependencies();
+        } catch (error) {
+            if (globalScope && globalScope.console && typeof globalScope.console.error === 'function') {
+                globalScope.console.error(error);
+            }
+            throw error;
+        }
+
+        const {
+            Editor,
+            StarterKit,
+            Link,
+            Underline,
+            TextStyle,
+            Color,
+            TextAlign,
+            Image,
+            Placeholder,
+            Highlight,
+        } = dependencies;
 
         this.container = container;
         this.container.classList.add('rich-text-editor');

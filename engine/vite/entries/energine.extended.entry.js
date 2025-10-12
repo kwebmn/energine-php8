@@ -1,4 +1,5 @@
 import './styles/admin.css';
+import 'engine/core/modules/share/stylesheets/rich-text-editor.css';
 
 import 'engine/core/modules/share/scripts/AcplField.js';
 import 'engine/core/modules/share/scripts/AttachmentEditor.js';
