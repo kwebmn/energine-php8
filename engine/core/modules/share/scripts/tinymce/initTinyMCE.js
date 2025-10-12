@@ -10,7 +10,6 @@ import 'tinymce/plugins/autolink/plugin.js';
 import 'tinymce/plugins/charmap/plugin.js';
 import 'tinymce/plugins/code/plugin.js';
 import 'tinymce/plugins/fullscreen/plugin.js';
-import 'tinymce/plugins/help/plugin.js';
 import 'tinymce/plugins/image/plugin.js';
 import 'tinymce/plugins/link/plugin.js';
 import 'tinymce/plugins/lists/plugin.js';
