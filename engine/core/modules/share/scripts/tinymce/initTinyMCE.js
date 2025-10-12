@@ -15,7 +15,6 @@ import 'tinymce/plugins/image/plugin.js';
 import 'tinymce/plugins/link/plugin.js';
 import 'tinymce/plugins/lists/plugin.js';
 import 'tinymce/plugins/media/plugin.js';
-import 'tinymce/plugins/paste/plugin.js';
 import 'tinymce/plugins/searchreplace/plugin.js';
 import 'tinymce/plugins/table/plugin.js';
 import 'tinymce/plugins/visualblocks/plugin.js';

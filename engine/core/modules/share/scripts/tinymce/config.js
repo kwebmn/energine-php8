@@ -16,7 +16,6 @@ const DEFAULT_PLUGINS = [
     'link',
     'lists',
     'media',
-    'paste',
     'searchreplace',
     'table',
     'visualblocks',
@@ -27,7 +26,7 @@ const DEFAULT_PLUGINS = [
 ];
 
 const TOOLBAR_GROUPS = [
-    'code | undo redo | cut copy paste | searchreplace selectall',
+    'code | undo redo | cut copy | searchreplace selectall',
     'link unlink anchor | image media energineimage energinevideo energinefile table | visualblocks',
     'bold italic underline strikethrough subscript superscript removeformat',
     'alignleft aligncenter alignright alignjustify | numlist bullist outdent indent',
