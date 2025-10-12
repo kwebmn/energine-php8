@@ -1,0 +1,28 @@
+# Текущая интеграция CKEditor
+
+## Общие сведения
+- В репозитории поставляется CKEditor 4.22.1 (skin **moono-lisa**) в составе полной сборки builder'а; исходники лежат в `engine/core/modules/share/scripts/ckeditor`.【F:engine/core/modules/share/scripts/ckeditor/ckeditor.js†L1-L8】【F:engine/core/modules/share/scripts/ckeditor/build-config.js†L27-L121】
+- Базовая поставка включает большинство стандартных плагинов CKEditor (clipboard, table, colorbutton и т.п.), что упрощает миграцию на аналогичный набор функций в другой сборке или редакторе.【F:engine/core/modules/share/scripts/ckeditor/build-config.js†L56-L121】
+
+## Инициализация редактора в формах (Form.RichEditor)
+- Класс `Form` ищет в пределах формы все элементы с `data-role="rich-editor"` и заменяет их экземплярами `Form.RichEditor`, поэтому подключение CKEditor привязано к этой дата-атрибуции шаблонов форм.【F:engine/core/modules/share/scripts/Form.js†L332-L372】
+- Перед отправкой формы `Form.save()` принудительно вызывает `onSaveForm()` у всех подключённых rich-редакторов, чтобы синхронизировать HTML из iframe CKEditor обратно в исходное `<textarea>`. Это важно учесть при замене редактора, иначе данные не попадут в запрос.【F:engine/core/modules/share/scripts/Form.js†L620-L639】【F:engine/core/modules/share/scripts/Form.js†L2061-L2068】
+- `Form.RichEditor` однократно (на первой инициализации) настраивает глобальный `CKEDITOR.config`: отключает проверку версии, включает дополнительные плагины `energineimage` и `energinefile`, запрещает `exportpdf`, разрешает произвольный HTML (`allowedContent = true`) и определяет состав тулбара, в котором присутствуют кастомные кнопки `EnergineImage`, `EnergineVideo` и `EnergineFile`.【F:engine/core/modules/share/scripts/Form.js†L1999-L2038】
+- Для стилизации используется динамический набор `CKEDITOR.stylesSet = 'energine'`, формируемый из глобального `window.wysiwyg_styles`. Это место интеграции с корпоративными стилями – при переходе на другой редактор необходимо переосмыслить генерацию аналогичных стилей.【F:engine/core/modules/share/scripts/Form.js†L2040-L2052】
+- Каждый экземпляр хранит путь `singleTemplate`, полученный от формы, и прокидывает его в `editor.singleTemplate`; этим путём пользуются кастомные плагины при открытии модальных окон файловой библиотеки.【F:engine/core/modules/share/scripts/Form.js†L2008-L2012】
+
+## Инлайн-редактор страниц (PageEditor)
+- `PageEditor` работает с блоками `.nrgnEditor` и требует глобального объекта `CKEDITOR`; при старте он отключает автоматическую инлайн-инициализацию, чтобы управлять созданием редакторов вручную.【F:engine/core/modules/share/scripts/PageEditor.js†L27-L47】
+- Конфигурация повторяет общую логику форм: запрещён `exportpdf`, разрешён произвольный HTML, подключены плагины `sourcedialog`, `codemirror`, `energineimage`, `energinefile`, а в тулбар включены фирменные кнопки вставки мультимедиа.【F:engine/core/modules/share/scripts/PageEditor.js†L36-L53】
+- Для каждого блока создаётся `CKEDITOR.inline(...)`; редактор получает `singleTemplate`, `editorId` и визуальное подсвечивание активного блока через `applyEditorOutline`. Эти данные нужны для работы пользовательских диалогов и подсказок редактора.【F:engine/core/modules/share/scripts/PageEditor.js†L69-L99】
+- Сохранение инлайн-редактора реализовано через `fetch` POST-запрос к `singleTemplate + 'save-text'` с передачей ID блока и его номера. Новый редактор должен уметь выдавать HTML и сбрасывать флаг грязности аналогично существующей логике.【F:engine/core/modules/share/scripts/PageEditor.js†L104-L129】
+
+## Кастомные плагины Energine
+- **EnergineImage**: открывает двухшаговый сценарий через `ModalBox`. Сначала запускается файловая библиотека, затем – менеджер изображений; итогом вставляется `<img>` со стилями выравнивания и отступами. Плагин использует `editor.singleTemplate`, `Energine.media` и возвращает z-index панели в исходное состояние.【F:engine/core/modules/share/scripts/ckeditor/plugins/energineimage/plugin.js†L1-L90】
+- **EnergineFile**: выбирает файл через файловую библиотеку и формирует ссылку `<a>`; если текст не выделен, вставляется название файла. Плагин применяет стиль `CKEDITOR.style` и также управляет z-index контейнера редактора.【F:engine/core/modules/share/scripts/ckeditor/plugins/energinefile/plugin.js†L1-L61】
+- **EnergineVideo**: разрешает вставку только видеофайлов (проверка `upl_internal_type`), после чего вызывает дополнительный диалог `put-video` и внедряет `<iframe>` со ссылкой на проигрыватель `embed-player`. Ошибки (например, выбор не видео) обрабатываются через `alert` с переводами Energine.【F:engine/core/modules/share/scripts/ckeditor/plugins/energinevideo/plugin.js†L1-L53】
+
+## Особенности, важные при замене редактора
+- Большая часть логики полагается на глобальные объекты (`CKEDITOR`, `ModalBox`, `Energine.media`, `Energine.base`), поэтому при миграции потребуется слой-адаптер или рефакторинг точек входа, чтобы новый редактор умел работать с теми же зависимостями.
+- Пользовательские плагины открывают URLы вида `singleTemplate + 'file-library/'` и ожидают структуру данных `imageData`, `image`, `fileInfo` – это контракты backend'а, которые нужно будет сохранить или переработать при смене редактора.
+- Поскольку `allowedContent = true`, редактор не фильтрует HTML. При переходе на новый инструмент стоит учесть совместимость с существующим содержимым и правилами очистки.
