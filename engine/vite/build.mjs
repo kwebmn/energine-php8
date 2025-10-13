@@ -76,6 +76,7 @@ for (let index = 0; index < targets.length; index += 1) {
             emptyOutDir: index === 0,
             sourcemap: false,
             cssCodeSplit: false,
+            target: isVendor ? 'es2018' : 'es2022',
             rollupOptions: {
                 preserveEntrySignatures: 'strict',
                 input: resolve(entriesDir, entry),
