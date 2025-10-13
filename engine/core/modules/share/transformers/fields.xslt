@@ -327,6 +327,7 @@
         <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
         <xsl:variable name="NAME_BASE"><xsl:choose><xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when><xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise></xsl:choose></xsl:variable>
         <xsl:variable name="NAME" select="concat($NAME_BASE, '[]')"/>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
         <xsl:variable name="HAS_ERROR" select="boolean(error)"/>
         <div>
             <xsl:for-each select="options/option">
@@ -337,6 +338,9 @@
                             <xsl:text>form-check-input</xsl:text>
                             <xsl:if test="$HAS_ERROR"><xsl:text> is-invalid</xsl:text></xsl:if>
                         </xsl:attribute>
+                        <xsl:if test="$IS_REQUIRED and position()=1">
+                            <xsl:attribute name="required">required</xsl:attribute>
+                        </xsl:if>
                         <xsl:if test="@selected">
                             <xsl:attribute name="checked">checked</xsl:attribute>
                         </xsl:if>
