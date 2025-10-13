@@ -306,6 +306,77 @@ class Form {
             Form.prepareFloatingLabel(control);
             Form.synchronizeInvalidState(control);
         });
+
+        Form.setupRequiredCheckboxGroups(context);
+    }
+
+    static setupRequiredCheckboxGroups(context = document) {
+        const processRoot = (root) => {
+            if (!root || typeof root.querySelectorAll !== 'function') {
+                return;
+            }
+
+            const wrappers = root.querySelectorAll('[data-role="form-field"][data-type="multi"][data-required="true"]');
+            wrappers.forEach((wrapper) => {
+                if (!Form.isElement(wrapper) || wrapper.dataset.multiRequiredInit === '1') {
+                    return;
+                }
+
+                const checkboxes = Array.from(wrapper.querySelectorAll('input[type="checkbox"]'));
+                if (!checkboxes.length) {
+                    wrapper.dataset.multiRequiredInit = '1';
+                    return;
+                }
+
+                const getCandidate = () => {
+                    return checkboxes.find((checkbox) => !checkbox.disabled) || checkboxes[0] || null;
+                };
+
+                const applyState = () => {
+                    const candidate = getCandidate();
+                    const hasChecked = checkboxes.some((checkbox) => checkbox.checked && !checkbox.disabled);
+                    const effectiveCandidate = (candidate && !candidate.disabled) ? candidate : null;
+
+                    checkboxes.forEach((checkbox) => {
+                        if (!effectiveCandidate) {
+                            checkbox.required = false;
+                            checkbox.removeAttribute('aria-required');
+                            checkbox.setCustomValidity('');
+                            return;
+                        }
+
+                        const isCandidate = checkbox === effectiveCandidate;
+                        checkbox.required = isCandidate && !hasChecked;
+                        if (isCandidate && !hasChecked) {
+                            checkbox.setAttribute('aria-required', 'true');
+                        } else {
+                            checkbox.removeAttribute('aria-required');
+                        }
+                        checkbox.setCustomValidity('');
+                    });
+                };
+
+                checkboxes.forEach((checkbox) => {
+                    checkbox.addEventListener('change', applyState);
+                    checkbox.addEventListener('input', applyState);
+                });
+
+                applyState();
+                wrapper.dataset.multiRequiredInit = '1';
+            });
+        };
+
+        if (Form.isNodeCollection(context)) {
+            Array.from(context).forEach((item) => processRoot(item));
+            return;
+        }
+
+        if (typeof context === 'string') {
+            processRoot(context ? document.querySelector(context) : null);
+            return;
+        }
+
+        processRoot(context || document);
     }
 
     request(...args) {
@@ -571,6 +642,7 @@ class Form {
 
         Form.initializeInputs(this.form || this.componentElement);
         Form.applyRequiredHighlights(this.form || this.componentElement);
+        Form.setupRequiredCheckboxGroups(this.form || this.componentElement);
 
     }
 
