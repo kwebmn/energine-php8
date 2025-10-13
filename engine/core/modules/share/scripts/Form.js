@@ -1076,8 +1076,21 @@ class Form {
         wrappers.forEach(wrapper => {
             const controls = wrapper.querySelectorAll('input, textarea, select');
             controls.forEach(control => {
+                if (!control || typeof control.classList === 'undefined') {
+                    return;
+                }
+
                 // Не подсвечиваем отключенные поля
-                if (control.disabled) return;
+                if (control.disabled) {
+                    return;
+                }
+
+                const controlType = (control.getAttribute('type') || control.type || '').toLowerCase();
+                if (controlType === 'checkbox' || controlType === 'radio') {
+                    control.classList.remove('e-required-control');
+                    return;
+                }
+
                 control.classList.add('e-required-control');
             });
         });
