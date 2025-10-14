@@ -161,14 +161,17 @@ final class Response extends BaseObject
         $this->setHeader('X-Accel-Expires', '0');
     }
 
-    /** Финальная отправка (gzip — как в старом коде) */
-    public function commit()
+    /**
+     * Подготовить HttpFoundation-ответ (с учётом gzip-настроек Energine).
+     */
+    public function toHttpFoundationResponse(): SResponse
     {
-        if ($this->resp->getContent() !== $this->body) {
-            $this->resp->setContent($this->body);
-        }
+        $response = clone $this->resp;
 
-        $contents = (string)$this->resp->getContent();
+        $body = $this->body;
+        if ($response->getContent() !== $body) {
+            $response->setContent($body);
+        }
 
         $shouldCompress =
             (bool)BaseObject::_getConfigValue('site.compress')
@@ -177,15 +180,22 @@ final class Response extends BaseObject
             && !(bool)BaseObject::_getConfigValue('site.debug');
 
         if ($shouldCompress) {
-            $this->resp->headers->set('Vary', 'Accept-Encoding');
-            $this->resp->headers->set('Content-Encoding', 'gzip');
-            $contents = gzencode($contents, 6);
-            $this->resp->setContent($contents);
+            $response->headers->set('Vary', 'Accept-Encoding');
+            $response->headers->set('Content-Encoding', 'gzip');
+            $body = gzencode((string)$response->getContent(), 6);
+            $response->setContent($body);
             // при желании можно выставить Content-Length
-            // $this->resp->headers->set('Content-Length', (string)strlen($contents));
+            // $response->headers->set('Content-Length', (string)strlen($body));
         }
 
-        $this->resp->send();
+        return $response;
+    }
+
+    /** Финальная отправка (gzip — как в старом коде) */
+    public function commit()
+    {
+        $response = $this->toHttpFoundationResponse();
+        $response->send();
         session_write_close();
         exit;
     }
