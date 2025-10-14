@@ -17,7 +17,7 @@ export const buildTargets = [
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
 
-export const createBuildConfig = (name, entry, emptyOutDir = false) =>
+export const createBuildConfig = (name, entry, emptyOutDir = false, target = 'es2022') =>
     defineConfig({
         root: rootDir,
         publicDir: false,
@@ -34,6 +34,7 @@ export const createBuildConfig = (name, entry, emptyOutDir = false) =>
             emptyOutDir,
             sourcemap: false,
             cssCodeSplit: false,
+            target,
             rollupOptions: {
                 input: resolve(entriesDir, entry),
                 output: {

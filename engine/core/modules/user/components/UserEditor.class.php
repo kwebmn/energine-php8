@@ -259,17 +259,33 @@ final class UserEditor extends Grid
         $filter = $this->getFilter();
         $id     = (is_array($filter) && !empty($filter)) ? (int)current($filter) : 0;
 
-        if ($this->getType() !== self::COMPONENT_TYPE_LIST && $id > 0) {
-            $f = new Field('group_id');
-            $data->addField($f);
+        if ($this->getType() !== self::COMPONENT_TYPE_LIST) {
+            $selectedGroups = [];
 
-            $rows = $this->dbh->select('user_user_groups', ['group_id'], ['u_id' => $id]);
-            if (is_array($rows)) {
-                $ids = array_keys(convertDBResult($rows, 'group_id', true));
-                $f->addRowData($ids);
-            } else {
-                $f->setData([]);
+            if (!empty($_POST['group_id']) && is_array($_POST['group_id'])) {
+                foreach ($_POST['group_id'] as $groupID) {
+                    $groupID = (int)$groupID;
+                    if ($groupID > 0) {
+                        $selectedGroups[$groupID] = $groupID;
+                    }
+                }
+            } elseif ($id > 0) {
+                $rows = $this->dbh->select('user_user_groups', ['group_id'], ['u_id' => $id]);
+                if (is_array($rows)) {
+                    foreach ($rows as $row) {
+                        if (isset($row['group_id'])) {
+                            $groupID = (int)$row['group_id'];
+                            if ($groupID > 0) {
+                                $selectedGroups[$groupID] = $groupID;
+                            }
+                        }
+                    }
+                }
             }
+
+            $f = new Field('group_id');
+            $f->setData([array_values($selectedGroups)]);
+            $data->addField($f);
         }
 
         return $data;

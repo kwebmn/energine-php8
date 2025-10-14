@@ -68,6 +68,27 @@ final class FileRepository extends Grid implements SampleFileRepository
     }
 
     /**
+     * @inheritDoc
+     */
+    protected function loadDataDescription(): array|false|null
+    {
+        $description = parent::loadDataDescription();
+
+        if (is_array($description)) {
+            // В мульти-язычном репозитории появляются дубликаты полей загрузки/имени
+            // при построении формы. Отключаем для них признак мультиязычности, чтобы
+            // выводился только один набор полей вне зависимости от количества языков.
+            foreach (['upl_path', 'upl_title', 'upl_name', 'upl_filename'] as $singleLanguageField) {
+                if (isset($description[$singleLanguageField]['isMultilanguage'])) {
+                    unset($description[$singleLanguageField]['isMultilanguage']);
+                }
+            }
+        }
+
+        return $description;
+    }
+
+    /**
      * Прокси-метод редактирования: определяет, файл это или директория.
      */
     protected function edit(): void
@@ -219,7 +240,7 @@ final class FileRepository extends Grid implements SampleFileRepository
 
         $data = new Data();
         $f = new Field('upl_pid');
-        $f->setData($uplPID, true);
+        $f->setData($uplPID);
         $data->addField($f);
         $this->setData($data);
 
@@ -485,7 +506,7 @@ final class FileRepository extends Grid implements SampleFileRepository
 
         $data = new Data();
         $f = new Field('upl_pid');
-        $f->setData($uplPID, true);
+        $f->setData($uplPID);
         $data->addField($f);
         $this->setData($data);
 
