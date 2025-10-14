@@ -444,7 +444,7 @@ final class Document extends DBWorker implements IDocument
             return '';
         }
 
-        return $this->sanitizeLibraryKey($path);
+        return self::sanitizeLibraryKey($path);
     }
 
     protected function detectElementModule(DOMElement $element): string
@@ -476,7 +476,7 @@ final class Document extends DBWorker implements IDocument
             return $path;
         }
 
-        $normalized = $this->sanitizeLibraryKey($path);
+        $normalized = self::sanitizeLibraryKey($path);
         if ($normalized === '') {
             return null;
         }
@@ -587,7 +587,7 @@ final class Document extends DBWorker implements IDocument
                 }
                 $relativeInside = str_replace('\\', '/', $relativeInside);
 
-                $key = $this->sanitizeLibraryKey(substr($relativeInside, 0, - (strlen($ext) + 1)));
+                $key = self::sanitizeLibraryKey(substr($relativeInside, 0, - (strlen($ext) + 1)));
                 if ($key === '') {
                     continue;
                 }
@@ -612,7 +612,7 @@ final class Document extends DBWorker implements IDocument
         return $index;
     }
 
-    private function sanitizeLibraryKey(string $path): string
+    private static function sanitizeLibraryKey(string $path): string
     {
         $path = str_replace('\\', '/', $path);
         $path = preg_replace('#/+#', '/', $path);
@@ -960,6 +960,10 @@ final class Document extends DBWorker implements IDocument
                     self::registerTemplateAlias($result, 'templates/' . $relative, $fullPath, $module, $origin);
                     self::registerTemplateAlias($result, 'templates/' . $type . '/' . $relative, $fullPath, $module, $origin);
                     self::registerTemplateAlias($result, 'templates/' . $type . '/' . $fileName, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $module . '/templates/' . $relative, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $module . '/templates/' . $fileName, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $module . '/templates/' . $type . '/' . $relative, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $module . '/templates/' . $type . '/' . $fileName, $fullPath, $module, $origin);
                 }
             }
         }
