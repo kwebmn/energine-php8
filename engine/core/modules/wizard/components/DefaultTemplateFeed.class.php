@@ -2,7 +2,7 @@
 
 class DefaultTemplateFeed extends ExtendedFeed
 {
-    public function __construct($name, $module, array $params = null)
+    public function __construct($name, $module, ?array $params = null)
     {
         parent::__construct($name, $module, $params);
         $this->setTableName('DefaultTemplateTableName');   
