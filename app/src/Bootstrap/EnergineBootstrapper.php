@@ -47,7 +47,7 @@ final class EnergineBootstrapper
             return self::$config;
         }
 
-        $projectRoot = dirname(__DIR__, 2);
+        $projectRoot = self::resolveProjectRoot();
 
         self::includeAutoload($projectRoot);
 
@@ -104,6 +104,48 @@ final class EnergineBootstrapper
         }
 
         return $config;
+    }
+
+    private static function resolveProjectRoot(): string
+    {
+        $candidates = [
+            dirname(__DIR__, 2),
+            getcwd() ?: null,
+            $_SERVER['DOCUMENT_ROOT'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $root = self::probeForConfig($candidate);
+            if ($root !== null) {
+                return $root;
+            }
+        }
+
+        throw new LogicException('Не найден конфигурационный файл system.config.php.');
+    }
+
+    private static function probeForConfig(?string $start): ?string
+    {
+        if ($start === null || $start === '') {
+            return null;
+        }
+
+        $current = realpath($start) ?: $start;
+
+        while ($current !== '' && $current !== DIRECTORY_SEPARATOR) {
+            if (is_file($current . '/system.config.php')) {
+                return $current;
+            }
+
+            $parent = dirname($current);
+            if ($parent === $current) {
+                break;
+            }
+
+            $current = $parent;
+        }
+
+        return null;
     }
 
     /**
