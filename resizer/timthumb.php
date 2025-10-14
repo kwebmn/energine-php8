@@ -246,7 +246,7 @@ class timthumb {
 
 	}
 	protected function haveErrors(){
-		if(sizeof($this->errors) > 0){
+            if(count($this->errors) > 0){
 			return true;
 		}
 		return false;

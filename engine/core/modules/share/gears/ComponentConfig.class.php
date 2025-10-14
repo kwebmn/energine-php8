@@ -180,7 +180,7 @@ class ComponentConfig {
 
         $patterns = array();
         //счетчик приоритета паттерна
-        $weightInc = $maxWeightInc = sizeof($this->config->state);
+        $weightInc = $maxWeightInc = count($this->config->state);
 
         //наша цель расставить приоритеты паттернов состояний
         foreach ($this->config->state as $method) {
@@ -188,7 +188,7 @@ class ComponentConfig {
 
                 $weightInc--;
                 //А это счетчик приоритета внутри набора паттернов
-                $maxPatternPriority = sizeof($method->uri_patterns->pattern) - 1;
+                $maxPatternPriority = count($method->uri_patterns->pattern) - 1;
                 // в результате приоритеты выставлены как нужно
                 foreach ($method->uri_patterns->pattern as $pattern) {
                     $patterns[(string)$pattern] = array(
@@ -221,7 +221,7 @@ class ComponentConfig {
             $matches = array();
 
             if (preg_match($resPattern = "/^$resPattern$/", $path, $matches)) {
-                $useSegments = sizeof(array_filter(explode('/', $pattern)));
+                $useSegments = count(array_filter(explode('/', $pattern)));
                 if ($useSegments) {
                     if (strpos($pattern, '[any]') !== false) {
                         $useSegments--;
@@ -272,7 +272,7 @@ class ComponentConfig {
      */
     public function getCurrentStateParams() {
         $result = false;
-        if ($this->currentState && !$this->isEmpty() && isset($this->currentState->params) && sizeof($this->currentState->params->children())) {
+        if ($this->currentState && !$this->isEmpty() && isset($this->currentState->params) && count($this->currentState->params->children())) {
             $result = array();
             foreach ($this->currentState->params->param as $tagName => $param) {
                 if (($tagName == 'param') && isset($param['name'])) {

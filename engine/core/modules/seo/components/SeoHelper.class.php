@@ -119,7 +119,7 @@ class SeoHelper extends DBWorker
             {
                 $result = false;
                 parse_str($this->table[$url]['get'], $result);
-                if (is_array($result) and sizeof($result))
+                if (is_array($result) and count($result))
                 {
                     $_GET = $result;
                     if ($debug)
@@ -157,7 +157,7 @@ class SeoHelper extends DBWorker
                     )
                 );
 //
-                if (is_array($res) and sizeof($res) > 0 and isset($res[0]['product_segment']) and strlen($res[0]['product_segment']) > 0)
+                if (is_array($res) and count($res) > 0 and isset($res[0]['product_segment']) and strlen($res[0]['product_segment']) > 0)
                 {
                      Header( "HTTP/1.1 301 Moved Permanently" );
                      header('Location: /' . $res[0]['product_segment'], true, 301);
@@ -293,7 +293,7 @@ class SeoHelper extends DBWorker
         );
 
         $result = array();
-        if (is_array($res) and sizeof($res) > 0)
+        if (is_array($res) and count($res) > 0)
         {
 //            stop($res);
             foreach ($res as $key => $row)
@@ -329,7 +329,7 @@ class SeoHelper extends DBWorker
         );
 
         $result = array();
-        if (is_array($res) and sizeof($res) > 0)
+        if (is_array($res) and count($res) > 0)
         {
             foreach ($res as $key => $row)
             {
@@ -368,7 +368,7 @@ class SeoHelper extends DBWorker
 
 
         $result = array();
-        if (is_array($res) and sizeof($res) > 0)
+        if (is_array($res) and count($res) > 0)
         {
             foreach ($res as $key => $row)
             {

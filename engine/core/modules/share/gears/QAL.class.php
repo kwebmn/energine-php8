@@ -135,7 +135,7 @@ final class QAL extends DBA {
                     $buildQueryBody($data, $args);
                     $sqlQuery = $mode.' INTO '.$tableName
                         .' ('.implode(', ', array_keys($data)).')'
-                        .' VALUES ('.implode(', ', array_fill(0, sizeof($data), '%s')).')';
+                        .' VALUES ('.implode(', ', array_fill(0, count($data), '%s')).')';
                 } else {
                     $sqlQuery = 'INSERT INTO '.$tableName.' VALUES ()';
                 }
