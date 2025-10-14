@@ -391,8 +391,9 @@ final class Setup {
      */
     private function collectModuleDirectories() {
         $directories = array();
-        $modulesRoot = HTDOCS_DIR . DIRECTORY_SEPARATOR . MODULES;
-        $this->ensureDirectoryExists($modulesRoot);
+        $modulesRoot = is_dir(HTDOCS_DIR . DIRECTORY_SEPARATOR . MODULES)
+            ? HTDOCS_DIR . DIRECTORY_SEPARATOR . MODULES
+            : null;
 
         if (!empty($this->config['modules']) && is_array($this->config['modules'])) {
             foreach ($this->config['modules'] as $moduleName => $modulePath) {
@@ -421,28 +422,25 @@ final class Setup {
      * @return string|null
      */
     private function resolveModuleDirectory($moduleName, $configuredPath, $modulesRoot) {
-        $publicModulePath = $modulesRoot . DIRECTORY_SEPARATOR . $moduleName;
+        if ($modulesRoot) {
+            $publicModulePath = $modulesRoot . DIRECTORY_SEPARATOR . $moduleName;
 
-        if (is_dir($publicModulePath)) {
-            return $publicModulePath;
-        }
-
-        if (is_link($publicModulePath)) {
-            $linkTarget = $this->resolveSymlinkTarget($publicModulePath);
-            if ($linkTarget && is_dir($linkTarget)) {
+            if (is_dir($publicModulePath)) {
                 return $publicModulePath;
             }
 
-            $this->text('Удаляем битый симлинк ' . $publicModulePath);
-            @unlink($publicModulePath);
+            if (is_link($publicModulePath)) {
+                $linkTarget = $this->resolveSymlinkTarget($publicModulePath);
+                if ($linkTarget && is_dir($linkTarget)) {
+                    return $publicModulePath;
+                }
+
+                $this->text('Удаляем битый симлинк ' . $publicModulePath);
+                @unlink($publicModulePath);
+            }
         }
 
         if ($configuredPath !== '' && is_dir($configuredPath)) {
-            $this->ensureSymlink($configuredPath, $publicModulePath);
-            if (is_dir($publicModulePath) || is_link($publicModulePath)) {
-                return $publicModulePath;
-            }
-
             return $configuredPath;
         }
 
