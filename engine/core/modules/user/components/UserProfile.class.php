@@ -71,8 +71,7 @@ final class UserProfile extends DBDataSet
                     if ($pwd !== $pwd2) {
                         throw new SystemException('MSG_PWD_MISMATCH');
                     }
-                    // Хеш оставляем sha1 для совместимости с существующей БД
-                    $_POST[$this->getTableName()]['u_password'] = sha1($pwd);
+                    $_POST[$this->getTableName()]['u_password'] = User::hashPassword($pwd);
                     unset($_POST[$this->getTableName()]['u_password2']);
                 } else {
                     // Пустые поля — пароль не меняем
