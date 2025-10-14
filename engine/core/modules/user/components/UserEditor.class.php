@@ -36,7 +36,7 @@ final class UserEditor extends Grid
      * @copydoc Grid::saveData
      *
      * - При edit: пустой пароль не изменяет текущий;
-     * - Иначе: шифруем sha1 для совместимости со старой схемой;
+     * - Иначе: хешируем пароль через password_hash;
      * - При add: запрещаем дубль u_name.
      */
     protected function saveData()
@@ -55,9 +55,9 @@ final class UserEditor extends Grid
         ) {
             unset($_POST[$table]['u_password']);
         } else {
-            // Если пароль пришёл — хешируем (совместимость со старой БД)
+            // Если пароль пришёл — хешируем современным способом
             if (isset($_POST[$table]['u_password'])) {
-                $_POST[$table]['u_password'] = sha1((string)$_POST[$table]['u_password']);
+                $_POST[$table]['u_password'] = User::hashPassword((string)$_POST[$table]['u_password']);
             }
         }
 

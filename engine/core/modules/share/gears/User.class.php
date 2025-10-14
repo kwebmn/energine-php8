@@ -103,7 +103,7 @@ class User extends DBWorker
      * Требования:
      *  - все NOT NULL поля без значения по умолчанию (кроме PK) должны быть переданы;
      *  - все уникальные поля не должны конфликтовать;
-     *  - пароль хешируется sha1 (легаси-совместимость).
+     *  - пароль хешируется password_hash (современная схема, с авто-переносом со старой БД).
      *
      * @throws SystemException 'ERR_INSUFFICIENT_DATA'
      * @throws SystemException 'ERR_NOT_UNIQUE_DATA'
@@ -156,15 +156,38 @@ class User extends DBWorker
             }
         }
 
-        // 4) Сохраняем; пароль — sha1 (совместимость со старой БД)
+        // 4) Сохраняем; пароль — password_hash (современная схема хранения)
         $this->info = $data;
-        if (isset($data['u_password'])) {
-            $data['u_password'] = sha1((string)$data['u_password']);
+        if (array_key_exists('u_password', $data)) {
+            $plainPassword = (string)$data['u_password'];
+            $data['u_password'] = self::hashPassword($plainPassword);
+            $this->info['u_password'] = true; // маскируем пароль в info
         }
         $this->id = (int)$this->dbh->modify(QAL::INSERT, self::USER_TABLE_NAME, $data);
 
         // 5) Присвоим дефолтную «пользовательскую» группу
         $this->setGroups([$this->userGroup->getDefaultUserGroup()]);
+    }
+
+    /**
+     * Создаёт безопасный хеш пароля пользователя.
+     */
+    public static function hashPassword(string $password): string
+    {
+        $hash = password_hash(trim($password), PASSWORD_DEFAULT);
+        if ($hash === false) {
+            throw new \RuntimeException('Unable to hash password');
+        }
+
+        return $hash;
+    }
+
+    /**
+     * Определяет, что сохранён хеш старого формата (sha1).
+     */
+    protected static function isLegacyPasswordHash(string $hash): bool
+    {
+        return (bool)preg_match('/^[0-9a-f]{40}$/i', $hash);
     }
 
     /**
