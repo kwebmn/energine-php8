@@ -6,9 +6,7 @@ declare(strict_types=1);
  *
  * - PDO в режиме исключений
  * - Кодировка по умолчанию utf8mb4
- * - Поддержка двух режимов выполнения запросов:
- *     * prepared (database.prepare = 1) — безопасно, через placeholders
- *     * sprintf (database.prepare = 0)  — как раньше через constructQuery()
+ * - Все запросы выполняются через подготовленные выражения
  * - Возвращаемые значения те же:
  *     * selectRequest(): array|true
  *     * modifyRequest(): int|true
@@ -175,7 +173,7 @@ abstract class DBA extends BaseObject
 
     /**
      * Унифицированный запуск SQL.
-     * Учитывает флаг database.prepare
+     * Всегда использует подготовленные выражения.
      *
      * @return bool|PDOStatement
      */
@@ -186,20 +184,12 @@ abstract class DBA extends BaseObject
             return false;
         }
 
-        // prepared-режим
-        if ($this->getConfigValue('database.prepare')) {
-            $stmt = $this->runQuery($args);
-            if ($stmt instanceof PDOStatement) {
-                // фиксируем последний SQL (оригинальный текст без подстановки)
-                $this->lastQuery = $stmt->queryString ?? $request;
-            }
-            return $stmt;
+        $stmt = $this->runQuery($args);
+        if ($stmt instanceof PDOStatement) {
+            $this->lastQuery = $this->interpolateQuery($request, array_slice($args, 1));
         }
 
-        // sprintf-режим (legacy)
-        $sql = $this->constructQuery($args);
-        $this->lastQuery = $sql;
-        return $this->pdo->query($sql);
+        return $stmt;
     }
 
     /**
@@ -342,7 +332,7 @@ abstract class DBA extends BaseObject
     }
 
     /**
-     * Выполнить запрос в prepared-режиме (database.prepare = 1).
+     * Выполнить запрос в prepared-режиме.
      *
      * Аргументы:
      *  - [0] => SQL (может быть с %s, %1$s и т.п. — будут заменены на ?)
@@ -384,6 +374,35 @@ abstract class DBA extends BaseObject
         }
 
         return $stmt;
+    }
+
+    /**
+     * Сформировать текст SQL с подставленными параметрами (для логирования).
+     */
+    private function interpolateQuery(string $query, array $params): string
+    {
+        if ($params === []) {
+            return $query;
+        }
+
+        $quoted = array_map(function ($value) {
+            if ($value === null) {
+                return 'NULL';
+            }
+            return $this->pdo->quote((string)$value);
+        }, $params);
+
+        if (preg_match('~%(?:(\d+)\$)?s~', $query)) {
+            return vsprintf($query, $quoted);
+        }
+
+        if (str_contains($query, '?')) {
+            foreach ($quoted as $replacement) {
+                $query = preg_replace('/\?/', $replacement, $query, 1);
+            }
+        }
+
+        return $query;
     }
 
     /* ===== Удобняшки, используемые выше (оставьте как есть в вашем проекте) =====

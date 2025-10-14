@@ -51,7 +51,7 @@ if (!empty($args)) {
     list($action) = $args;
 
 
-    if(sizeof($args)>1){
+    if(count($args)>1){
         $additionalArgs = $args;
         unset($additionalArgs[0]);
     }

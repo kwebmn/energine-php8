@@ -58,7 +58,7 @@ class DataDescription extends BaseObject implements \Iterator
 
     /**
      * Добавить описание поля.
-     * $location='after' + $targetFDName — вставка после указанного поля (через array_push_after()).
+     * $location='after' + $targetFDName — вставка после указанного поля.
      * По умолчанию — добавить в конец (по ключу).
      */
     public function addFieldDescription(
@@ -73,12 +73,14 @@ class DataDescription extends BaseObject implements \Iterator
             && $targetFDName !== null
             && array_key_exists($targetFDName, $this->fieldDescriptions)
         ) {
-            // ожидается глобальный helper array_push_after(array $arr, array $insert, string $afterKey): array
-            $this->fieldDescriptions = array_push_after(
-                $this->fieldDescriptions,
-                [$name => $fieldDescription],
-                $targetFDName
-            );
+            $result = [];
+            foreach ($this->fieldDescriptions as $key => $value) {
+                $result[$key] = $value;
+                if ($key === $targetFDName) {
+                    $result[$name] = $fieldDescription;
+                }
+            }
+            $this->fieldDescriptions = $result;
         } else {
             $this->fieldDescriptions[$name] = $fieldDescription;
         }

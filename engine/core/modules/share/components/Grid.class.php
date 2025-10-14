@@ -320,7 +320,7 @@ class Grid extends DBDataSet {
         list($fkField, $className) = $this->getStateParams();
         $className = explode('\\', urldecode($className));
 
-        if (sizeof($className) > 1) {
+        if (count($className) > 1) {
             list($module, $class) = $className;
         } else {
             $module = $this->module;
@@ -452,7 +452,7 @@ class Grid extends DBDataSet {
                     } else {
                         // нормализуем FQCN вида Module\Class -> Class
                         $parts = explode('\\', $editorClassName);
-                        $editorClassName = (sizeof($parts) > 1) ? $parts[1] : $parts[0];
+                        $editorClassName = (count($parts) > 1) ? $parts[1] : $parts[0];
 
                         if (!class_exists($editorClassName)) {
                             throw new SystemException('ERR_NO_EDITOR_CLASS', SystemException::ERR_DEVELOPER, $editorClassName);

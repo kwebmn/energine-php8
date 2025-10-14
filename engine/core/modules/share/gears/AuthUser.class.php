@@ -45,33 +45,57 @@ class AuthUser extends User
     /**
      * Аутентификация по логину/паролю.
      *
-     * На вход подаётся "обычный" пароль, внутри считается sha1 (совместимость со старой БД).
-     * Возвращает ID пользователя при успехе либо false при неудаче.
+     * На вход подаётся "обычный" пароль, внутри используется password_hash/password_verify.
+     * Возвращает ID пользователя при успехе либо false при неудаче. Legacy-хеши sha1 автоматически
+     * перехешируются при успешной проверке.
      *
      * @param string $username Логин (u_name)
-     * @param string $password Пароль в открытом виде (будет хэширован sha1)
+     * @param string $password Пароль в открытом виде (будет проверен password_verify)
      * @return int|false
      */
     public static function authenticate(string $username, string $password): int|false
     {
         $username = trim($username);
-        $password = sha1(trim($password)); // легаси-совместимость
+        $password = trim($password);
 
-        // Проверяем совпадение логин/пароль и активность пользователя
-        $id = simplifyDBResult(
-            E()->getDB()->select(
-                'user_users',
-                ['u_id'],
-                [
-                    'u_name'      => $username,
-                    'u_password'  => $password,
-                    'u_is_active' => 1,
-                ]
-            ),
-            'u_id',
-            true
+        $rows = E()->getDB()->select(
+            'user_users',
+            ['u_id', 'u_password'],
+            [
+                'u_name'      => $username,
+                'u_is_active' => 1,
+            ]
         );
 
-        return $id ? (int)$id : false;
+        if (!is_array($rows) || empty($rows)) {
+            return false;
+        }
+
+        $row = array_change_key_case((array)$rows[0], CASE_LOWER);
+        $storedHash = (string)($row['u_password'] ?? '');
+        if ($storedHash === '') {
+            return false;
+        }
+
+        $isValid = password_verify($password, $storedHash);
+        $needsRehash = $isValid && password_needs_rehash($storedHash, PASSWORD_DEFAULT);
+
+        if (!$isValid && self::isLegacyPasswordHash($storedHash)) {
+            $isValid = hash_equals($storedHash, sha1($password));
+            $needsRehash = $isValid; // обязательно обновим легаси-хеш
+        }
+
+        if (!$isValid) {
+            return false;
+        }
+
+        $userID = (int)($row['u_id'] ?? 0);
+
+        if ($needsRehash && $userID > 0) {
+            $newHash = self::hashPassword($password);
+            E()->getDB()->modify(QAL::UPDATE, 'user_users', ['u_password' => $newHash], ['u_id' => $userID]);
+        }
+
+        return $userID ?: false;
     }
 }

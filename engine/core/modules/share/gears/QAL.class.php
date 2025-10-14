@@ -16,7 +16,7 @@
  * - управление транзакциями (`transaction`) и логирование (`maybeLogQuery`).
  *
  * Поведение:
- * - поддерживает подготовленные запросы, если включено `database.prepare`;
+ * - все запросы выполняются через подготовленные выражения;
  * - автоматически логирует медленные запросы через Monolog (порог `database.slow_ms`);
  * - контролирует размер IN-условий, разбивая массивы на батчи по `$maxInChunk`.
  *
@@ -135,7 +135,7 @@ final class QAL extends DBA {
                     $buildQueryBody($data, $args);
                     $sqlQuery = $mode.' INTO '.$tableName
                         .' ('.implode(', ', array_keys($data)).')'
-                        .' VALUES ('.implode(', ', array_fill(0, sizeof($data), '%s')).')';
+                        .' VALUES ('.implode(', ', array_fill(0, count($data), '%s')).')';
                 } else {
                     $sqlQuery = 'INSERT INTO '.$tableName.' VALUES ()';
                 }
@@ -178,9 +178,9 @@ final class QAL extends DBA {
      * @param array<int,mixed>|null $args
      * @return string
      */
-    public function buildWhereCondition($condition, array &$args = null) {
-        // Если включены prepared + $args пришли — используем плейсхолдеры
-        $prepared = $this->getConfigValue('database.prepare') && $args !== null;
+    public function buildWhereCondition($condition, ?array &$args = null) {
+        // Если вызывающий передал массив аргументов — используем плейсхолдеры
+        $prepared = $args !== null;
 
         $build = function($cond) use (&$build, $prepared, &$args) {
             if (empty($cond)) return '';
@@ -496,12 +496,7 @@ final class QAL extends DBA {
         if ($cond !== null) $sql .= $this->buildWhereCondition($cond, $args);
         $sql .= ' LIMIT 1';
 
-        if ($this->getConfigValue('database.prepare')) {
-            array_unshift($args, $sql);
-            $res = call_user_func_array([$this,'selectRequest'], $args);
-        } else {
-            $res = $this->selectRequest($sql);
-        }
+        $res = call_user_func_array([$this,'selectRequest'], array_merge([$sql], $args));
         if ($res === true) return false;
         return !empty($res);
     }
@@ -512,12 +507,7 @@ final class QAL extends DBA {
         $args = [];
         if ($cond !== null) $sql .= $this->buildWhereCondition($cond, $args);
 
-        if ($this->getConfigValue('database.prepare')) {
-            array_unshift($args, $sql);
-            $res = call_user_func_array([$this,'selectRequest'], $args);
-        } else {
-            $res = $this->selectRequest($sql);
-        }
+        $res = call_user_func_array([$this,'selectRequest'], array_merge([$sql], $args));
         if ($res === true) return 0;
         return (int)($res[0]['c'] ?? 0);
     }
@@ -555,15 +545,12 @@ final class QAL extends DBA {
         $t = DBA::getFQTableName($table);
         $cols = array_keys($data);
 
-        $prepared = (bool)$this->getConfigValue('database.prepare');
         $args = [];
-        if ($prepared) {
-            $placeholders = array_fill(0, count($cols), '%s');
-            foreach ($data as $v) $args[] = $v;
-            $values = '('.implode(',', $placeholders).')';
-        } else {
-            $values = '('.implode(',', array_map([$this,'quote'], array_values($data))).')';
+        $placeholders = array_fill(0, count($cols), '%s');
+        foreach ($data as $v) {
+            $args[] = $v;
         }
+        $values = '('.implode(',', $placeholders).')';
 
         if (!$updateOnDup) {
             // по умолчанию обновляем все поля из $data (кроме явных PK — определить трудно без схемы,
@@ -578,20 +565,15 @@ final class QAL extends DBA {
             if (is_string($v) && preg_match('~^VALUES\(.+\)$~i', $v)) {
                 $setParts[] = $c.' = '.$v;
             } else {
-                if ($prepared) { $args[] = $v; $setParts[] = $c.' = %s'; }
-                else { $setParts[] = $c.' = '.$this->quote($v); }
+                $args[] = $v;
+                $setParts[] = $c.' = %s';
             }
         }
 
         $sql = 'INSERT INTO '.$t.' ('.implode(',', $cols).') VALUES '.$values
             .' ON DUPLICATE KEY UPDATE '.implode(', ', $setParts);
 
-        if ($prepared) {
-            array_unshift($args, $sql);
-            $r = call_user_func_array([$this,'modifyRequest'], $args);
-        } else {
-            $r = $this->modifyRequest($sql);
-        }
+        $r = call_user_func_array([$this,'modifyRequest'], array_merge([$sql], $args));
         return (bool)$r;
     }
 
@@ -603,8 +585,6 @@ final class QAL extends DBA {
         if (!$rows) return 0;
         $t = DBA::getFQTableName($table);
         $cols = array_keys(reset($rows));
-        $prepared = (bool)$this->getConfigValue('database.prepare');
-
         $inserted = 0;
         foreach (array_chunk($rows, $chunk) as $batch) {
             $args = [];
@@ -612,20 +592,16 @@ final class QAL extends DBA {
             foreach ($batch as $row) {
                 $vals = [];
                 foreach ($cols as $c) {
-                    if ($prepared) { $args[] = $row[$c]; $vals[] = '%s'; }
-                    else           { $vals[] = $this->quote($row[$c]); }
+                    $args[] = $row[$c];
+                    $vals[] = '%s';
                 }
                 $valuesSqlParts[] = '('.implode(',', $vals).')';
             }
             $sql = 'INSERT INTO '.$t.' ('.implode(',', $cols).') VALUES '.implode(',', $valuesSqlParts);
             $t0 = microtime(true);
-            if ($prepared) {
-                array_unshift($args, $sql);
-                $r = call_user_func_array([$this,'modifyRequest'], $args);
-            } else {
-                $r = $this->modifyRequest($sql);
-            }
-            $this->maybeLogQuery($this->getLastRequest(), $prepared ? $args : [], $t0, (int)$r, true);
+            $execArgs = array_merge([$sql], $args);
+            $r = call_user_func_array([$this,'modifyRequest'], $execArgs);
+            $this->maybeLogQuery($this->getLastRequest(), $execArgs, $t0, (int)$r, true);
             $inserted += (int)$r;
         }
         return $inserted;
@@ -639,8 +615,6 @@ final class QAL extends DBA {
     public function updateMany(string $table, array $rows, string $keyField, int $chunk = 1000): int {
         if (!$rows) return 0;
         $t = DBA::getFQTableName($table);
-        $prepared = (bool)$this->getConfigValue('database.prepare');
-
         $count = 0;
         foreach (array_chunk($rows, $chunk) as $batch) {
             // собрать список обновляемых колонок
@@ -656,18 +630,12 @@ final class QAL extends DBA {
                 $cases = [];
                 foreach ($batch as $r) {
                     if (!array_key_exists($col, $r) || !array_key_exists($keyField, $r)) continue;
-                    if ($prepared) {
-                        $args[] = $r[$keyField];
-                        $args[] = $r[$col];
-                        $cases[] = 'WHEN %s THEN %s';
-                    } else {
-                        $cases[] = 'WHEN '.$this->quote($r[$keyField]).' THEN '.$this->quote($r[$col]);
-                    }
+                    $args[] = $r[$keyField];
+                    $args[] = $r[$col];
+                    $cases[] = 'WHEN %s THEN %s';
                 }
                 if ($cases) {
                     // UPDATE t SET col = CASE key WHEN k1 THEN v1 ... ELSE col END
-                    $keyExpr = $prepared ? '%s' : 'x';
-                    // но keyExpr нам не нужен — мы делаем CASE <keyField> WHEN <value> ...
                     $sets[] = $col.' = CASE '.$keyField.' '.implode(' ', $cases).' ELSE '.$col.' END';
                 }
             }
@@ -684,14 +652,9 @@ final class QAL extends DBA {
             $sql = 'UPDATE '.$t.' SET '.implode(', ', $sets).$where;
 
             $t0 = microtime(true);
-            if ($prepared) {
-                // порядок: сначала аргументы кейсов (у нас их уже накопилось в $args), потом whereArgs
-                $argsAll = array_merge([$sql], $args, $whereArgs);
-                $r = call_user_func_array([$this,'modifyRequest'], $argsAll);
-            } else {
-                $r = $this->modifyRequest($sql);
-            }
-            $this->maybeLogQuery($this->getLastRequest(), [], $t0, (int)$r, true);
+            $execArgs = array_merge([$sql], $args, $whereArgs);
+            $r = call_user_func_array([$this,'modifyRequest'], $execArgs);
+            $this->maybeLogQuery($this->getLastRequest(), $execArgs, $t0, (int)$r, true);
             $count += (int)$r;
         }
         return $count;

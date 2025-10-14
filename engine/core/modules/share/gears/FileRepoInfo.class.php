@@ -51,7 +51,7 @@ class FileRepoInfo extends DBWorker
      *
      * @param string $filename
      * @param bool   $forceReadFromFile Принудительно читать с ФС, игнорируя БД.
-     * @return object stdClass с полями: type, mime, width, height, is_mp4, is_webm, is_flv
+     * @return object stdClass с полями: type, mime, width, height, is_mp4, is_webm, is_flv, ready
      */
     public function analyze(string $filename, bool $forceReadFromFile = false): object
     {
@@ -81,6 +81,7 @@ class FileRepoInfo extends DBWorker
                 'is_flv'  => false,
                 'is_webm' => false,
                 'is_mp4'  => false,
+                'ready'   => false,
             ];
         }
 
@@ -93,6 +94,7 @@ class FileRepoInfo extends DBWorker
             'is_flv'  => false,
             'is_webm' => false,
             'is_mp4'  => false,
+            'ready'   => false,
         ];
 
         // Преобразуем width/height к числам, если пришли строками
@@ -132,6 +134,7 @@ class FileRepoInfo extends DBWorker
             'is_flv'  => false,
             'mime'    => 'unknown/mime-type',
             'type'    => self::META_TYPE_UNKNOWN,
+            'ready'   => false,
         ];
 
         // Временный хотфикc (как в исходнике): окружение без поддержки https://

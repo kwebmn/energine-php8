@@ -699,7 +699,7 @@ final class Setup {
                 if (!file_put_contents($dirName . $transFileName, implode("\r\n", $data))) {
                     throw new Exception('Произошла ошибка при записи в файл: ' . $dirName . $transFileName . '.');
                 }
-                $this->text('Записываем в файл ' . $dirName . $transFileName . ' (' . sizeof($data) . ')');
+                $this->text('Записываем в файл ' . $dirName . $transFileName . ' (' . count($data) . ')');
 
             }
         }
@@ -789,7 +789,7 @@ final class Setup {
                     ($this->config['site']['debug'])?self::MODE_SYMLINK:self::MODE_COPY,
                     implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module, $dir, '*')),
                     implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir)),
-                    sizeof(explode(DIRECTORY_SEPARATOR, $dir)));
+                    count(explode(DIRECTORY_SEPARATOR, $dir)));
 
             }
             $this->linkSite(

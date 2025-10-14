@@ -125,12 +125,12 @@ class RecoverPassword extends DataSet
                 // legacy-поведение — ограничение оставлено пустым
             }
 
-            $_POST['password1'] = sha1((string)$_POST['password1']);
+            $hashedPassword = User::hashPassword((string)$_POST['password1']);
             unset($_POST['password2']);
 
             $user = new User((int)$res[0]['u_id']);
             $user->update([
-                'u_password'      => $_POST['password1'],
+                'u_password'      => $hashedPassword,
                 'u_recovery_code' => null,
                 'u_recovery_date' => false,
             ]);
