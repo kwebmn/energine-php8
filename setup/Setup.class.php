@@ -295,6 +295,38 @@ final class Setup {
     }
 
     /**
+     * Create symlinks for module assets.
+     * It links stylesheets, scripts and images from modules into the project root.
+     */
+    private function linkerAction() {
+        $this->title('Линкуем ресурсы модулей');
+
+        $assetTypes = array('stylesheets', 'scripts', 'images');
+        foreach ($assetTypes as $assetType) {
+            $this->ensureDirectoryExists(HTDOCS_DIR . DIRECTORY_SEPARATOR . $assetType);
+        }
+
+        $moduleDirectories = array();
+        if (!empty($this->config['modules']) && is_array($this->config['modules'])) {
+            $moduleDirectories = array_values($this->config['modules']);
+        }
+
+        foreach (glob(SITE_DIR . '/modules/*', GLOB_ONLYDIR) ?: array() as $siteModulePath) {
+            $moduleDirectories[] = $siteModulePath;
+        }
+
+        foreach ($moduleDirectories as $modulePath) {
+            foreach ($assetTypes as $assetType) {
+                $sourceDir = $modulePath . DIRECTORY_SEPARATOR . $assetType;
+                if (!is_dir($sourceDir)) {
+                    continue;
+                }
+                $this->linkAssetsRecursively($sourceDir, HTDOCS_DIR . DIRECTORY_SEPARATOR . $assetType);
+            }
+        }
+    }
+
+    /**
      * Run full system installation.
      * It:
      * - checks connection to database
@@ -304,7 +336,85 @@ final class Setup {
     private function installAction() {
         $this->checkDBConnection();
         $this->updateSitesTable();
+        $this->linkerAction();
         $this->scriptMapAction();
+    }
+
+    /**
+     * Ensure the directory exists (create recursively if required).
+     *
+     * @param string $directory Directory path.
+     *
+     * @throws Exception 'Не удалось создать директорию: ' . $directory
+     */
+    private function ensureDirectoryExists($directory) {
+        if (is_dir($directory)) {
+            return;
+        }
+
+        if (!@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new Exception('Не удалось создать директорию: ' . $directory);
+        }
+    }
+
+    /**
+     * Recursively link assets from module directory to public directory.
+     *
+     * @param string $sourceDir Source assets directory.
+     * @param string $targetRoot Target root directory for assets of the same type.
+     */
+    private function linkAssetsRecursively($sourceDir, $targetRoot) {
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($sourceDir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $relativePath = substr($item->getPathname(), strlen($sourceDir) + 1);
+            $targetPath = $targetRoot . DIRECTORY_SEPARATOR . $relativePath;
+
+            if ($item->isDir()) {
+                $this->ensureDirectoryExists($targetPath);
+                continue;
+            }
+
+            $this->ensureDirectoryExists(dirname($targetPath));
+            $this->ensureSymlink($item->getPathname(), $targetPath);
+        }
+    }
+
+    /**
+     * Create a symlink if it doesn't exist or points to another location.
+     *
+     * @param string $source Source file path.
+     * @param string $target Target symlink path.
+     */
+    private function ensureSymlink($source, $target) {
+        $sourceRealPath = realpath($source) ?: $source;
+
+        if (is_link($target)) {
+            $currentLink = readlink($target);
+            $currentRealPath = ($currentLink !== false)
+                ? realpath((strpos($currentLink, DIRECTORY_SEPARATOR) === 0)
+                    ? $currentLink
+                    : dirname($target) . DIRECTORY_SEPARATOR . $currentLink)
+                : false;
+
+            if ($currentRealPath === $sourceRealPath) {
+                return;
+            }
+
+            unlink($target);
+        } elseif (file_exists($target)) {
+            $this->text('Пропускаем ' . $target . ' — уже существует и не является симлинком.');
+            return;
+        }
+
+        if (@symlink($sourceRealPath, $target)) {
+            $this->text('Создаём симлинк ' . $target . ' → ' . $sourceRealPath);
+        } else {
+            $this->text('Не удалось создать симлинк ' . $target . ' → ' . $sourceRealPath);
+        }
     }
 
     /**
