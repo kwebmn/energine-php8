@@ -9,7 +9,18 @@ define('CHARSET', 'UTF-8');
 //Минимальная версия РНР
 define('MIN_PHP_VERSION', 5.3);
 
-$projectRoot = realpath(__DIR__ . '/..') ?: dirname(__DIR__);
+$rootCandidates = [
+    realpath(__DIR__ . '/..') ?: dirname(__DIR__),
+    realpath(__DIR__ . '/../..') ?: dirname(dirname(__DIR__)),
+];
+
+$projectRoot = $rootCandidates[0];
+foreach ($rootCandidates as $candidate) {
+    if ($candidate && is_file($candidate . '/system.config.php')) {
+        $projectRoot = $candidate;
+        break;
+    }
+}
 
 if (!defined('HTDOCS_DIR')) {
     define('HTDOCS_DIR', $projectRoot);
