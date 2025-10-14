@@ -274,7 +274,7 @@ return array(
 
     // ====== НОВЫЕ ОПЦИИ ДЛЯ УПРАВЛЕНИЯ СТЕКОМ ================================
 
-    // Пути ядра/сайта (читает bootstrap.php; можно не задавать — будут 'core'/'site')
+    // Пути ядра/сайта (читает App\Bootstrap\EnergineBootstrapper; можно не задавать — будут 'core'/'site')
     'core_rel_dir' => 'core',
     'site_rel_dir' => 'site',
 
