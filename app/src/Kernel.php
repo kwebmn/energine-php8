@@ -1,0 +1,126 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App;
+
+use LogicException;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
+use Throwable;
+
+final class Kernel
+{
+    private bool $bootstrapped = false;
+    private ?\Registry $registry = null;
+
+    public function __construct(
+        private readonly string $environment,
+        private readonly bool $debug
+    ) {
+        ini_set('display_errors', '1');
+        error_reporting(E_ALL);
+    }
+
+    public function handle(Request $request): HttpResponse
+    {
+        if (!$this->bootstrapped) {
+            try {
+                $this->bootstrap();
+            } catch (LogicException $e) {
+                return $this->renderBootstrapFailure($e);
+            }
+        }
+
+        try {
+            return $this->runEnergine($request);
+        } catch (LogicException $e) {
+            return $this->handleAppException($e, 'error');
+        } catch (\SystemException $e) {
+            return $this->handleAppException($e, 'error');
+        } catch (Throwable $e) {
+            return $this->handleAppException($e, 'critical');
+        }
+    }
+
+    public function terminate(Request $request, HttpResponse $response): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+    }
+
+    private function bootstrap(): void
+    {
+        $config = [];
+
+        require __DIR__ . '/../../bootstrap.php';
+
+        $this->registry = \E();
+        $this->bootstrapped = true;
+    }
+
+    private function renderBootstrapFailure(LogicException $e): HttpResponse
+    {
+        return new HttpResponse(
+            $e->getMessage(),
+            HttpResponse::HTTP_INTERNAL_SERVER_ERROR,
+            ['Content-Type' => 'text/plain; charset=utf-8']
+        );
+    }
+
+    private function runEnergine(Request $request): HttpResponse
+    {
+        $registry = $this->registry ?? \E();
+
+        $useTimer = (bool)$registry->getConfigValue('site.useTimer');
+        $start = $useTimer ? hrtime(true) : null;
+
+        \UserSession::start();
+        $registry->getController()->run();
+
+        if ($useTimer && $start !== null) {
+            $elapsedMs = (hrtime(true) - $start) / 1_000_000;
+            $registry->getResponse()->setHeader('X-Timer', sprintf('%.3fms', $elapsedMs));
+        }
+
+        return $registry->getResponse()->toHttpFoundationResponse();
+    }
+
+    private function handleAppException(Throwable $e, string $logLevel): HttpResponse
+    {
+        if ($this->shouldRethrow($e)) {
+            throw $e;
+        }
+
+        if (function_exists('log_exception')) {
+            log_exception($e, $logLevel);
+        }
+
+        return new HttpResponse(
+            'Server error',
+            HttpResponse::HTTP_INTERNAL_SERVER_ERROR,
+            ['Content-Type' => 'text/html; charset=utf-8']
+        );
+    }
+
+    private function shouldRethrow(Throwable $e): bool
+    {
+        $debugFlag = $this->isDebugMode();
+
+        return $debugFlag && class_exists(\Whoops\Run::class);
+    }
+
+    private function isDebugMode(): bool
+    {
+        if (defined('DEBUG') && DEBUG) {
+            return true;
+        }
+
+        if ($this->debug) {
+            return true;
+        }
+
+        return (bool)filter_var(getenv('APP_DEBUG') ?: '0', FILTER_VALIDATE_BOOL);
+    }
+}
