@@ -357,29 +357,45 @@ final class Setup {
      * @param string $targetRoot Target root directory for assets of the same type.
      */
     private function linkAssetsRecursively($sourceDir, $targetRoot) {
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator(
-                $sourceDir,
-                FilesystemIterator::SKIP_DOTS | FilesystemIterator::FOLLOW_SYMLINKS
-            ),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
+        $entries = scandir($sourceDir);
+        if ($entries === false) {
+            $this->text('Пропускаем ' . $sourceDir . ' — не удалось прочитать содержимое каталога.');
+            return;
+        }
 
-        foreach ($iterator as $item) {
-            $relativePath = ltrim($iterator->getSubPathName(), DIRECTORY_SEPARATOR);
-            if ($relativePath === '') {
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
                 continue;
             }
 
-            $targetPath = $targetRoot . DIRECTORY_SEPARATOR . $relativePath;
+            $sourcePath = $sourceDir . DIRECTORY_SEPARATOR . $entry;
+            $targetPath = $targetRoot . DIRECTORY_SEPARATOR . $entry;
 
-            if ($item->isDir()) {
-                $this->ensureDirectoryExists($targetPath);
+            if (is_dir($sourcePath) && !is_link($sourcePath)) {
+                if (!file_exists($targetPath)) {
+                    $this->ensureSymlink($sourcePath, $targetPath);
+                    continue;
+                }
+
+                if (is_link($targetPath)) {
+                    $resolvedTarget = $this->resolveSymlinkTarget($targetPath);
+                    if ($resolvedTarget && realpath($resolvedTarget) === realpath($sourcePath)) {
+                        continue;
+                    }
+
+                    $this->ensureSymlink($sourcePath, $targetPath);
+                    continue;
+                }
+
+                if (is_dir($targetPath)) {
+                    $this->linkAssetsRecursively($sourcePath, $targetPath);
+                    continue;
+                }
+
+                $this->text('Пропускаем ' . $targetPath . ' — путь занят и не является директорией или симлинком.');
                 continue;
             }
 
-            $this->ensureDirectoryExists(dirname($targetPath));
-            $sourcePath = $sourceDir . DIRECTORY_SEPARATOR . $relativePath;
             $this->ensureSymlink($sourcePath, $targetPath);
         }
     }
