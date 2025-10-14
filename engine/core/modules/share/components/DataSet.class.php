@@ -682,7 +682,7 @@ abstract class DataSet extends Component
             'filelibrary',
             'share',
             'FileRepository',
-            ['config' => 'core/modules/share/config/FileRepositorySelect.component.xml']
+            ['config' => 'engine/core/modules/share/config/FileRepositorySelect.component.xml']
         );
 
         $this->fileLibrary->run();
@@ -768,7 +768,7 @@ abstract class DataSet extends Component
         $this->js = $this->buildJS();
 
         E()->getController()->getTransformer()->setFileName(
-            'core/modules/share/transformers/embed_player.xslt',
+            'engine/core/modules/share/transformers/embed_player.xslt',
             true
         );
     }

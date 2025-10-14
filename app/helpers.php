@@ -70,7 +70,7 @@ if (!function_exists('E')) {
         }
 
         throw new \RuntimeException(
-            'Registry недоступен. Проверь classmap в composer.json (core/modules, site/modules, site/kernel).'
+            'Registry недоступен. Проверь classmap в composer.json (engine/core/modules, site/modules, site/kernel).'
         );
     }
 }

@@ -72,7 +72,7 @@ class DefaultTemplateFeedEditor extends ExtendedFeedEditor
     protected function showSmapSelector() {
         $this->request->shiftPath(1);
         $this->divisionEditor = ComponentManager::createBlockFromDescription(
-            ComponentManager::getDescriptionFromFile('core/modules/apps/templates/content/site_div_selector.container.xml'));
+            ComponentManager::getDescriptionFromFile('engine/core/modules/apps/templates/content/site_div_selector.container.xml'));
         $this->divisionEditor->run();
     }
 

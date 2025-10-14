@@ -816,7 +816,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
         $this->request->shiftPath(1);
         $this->siteEditor = $this->document->componentManager
             ->createComponent('siteEditor', 'share', 'SiteEditor', [
-                'config' => 'core/modules/share/config/SiteEditorModal.component.xml'
+                'config' => 'engine/core/modules/share/config/SiteEditorModal.component.xml'
             ]);
         $this->siteEditor->run();
     }
@@ -826,7 +826,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
         $this->request->shiftPath(1);
         $this->fileLibrary = $this->document->componentManager
             ->createComponent('filelibrary', 'share', 'FileRepository', [
-                'config' => 'core/modules/share/config/FileRepositoryModal.component.xml'
+                'config' => 'engine/core/modules/share/config/FileRepositoryModal.component.xml'
             ]);
         $this->fileLibrary->run();
     }

@@ -274,8 +274,8 @@ return array(
 
     // ====== НОВЫЕ ОПЦИИ ДЛЯ УПРАВЛЕНИЯ СТЕКОМ ================================
 
-    // Пути ядра/сайта (читает App\Bootstrap\EnergineBootstrapper; можно не задавать — будут 'core'/'site')
-    'core_rel_dir' => 'core',
+    // Пути ядра/сайта (читает App\Bootstrap\EnergineBootstrapper; можно не задавать — будут 'engine/core'/'site')
+    'core_rel_dir' => 'engine/core',
     'site_rel_dir' => 'site',
 
     // Окружение/ENV (дублирует APP_ENV; влияет на логи/кеш/Twig)

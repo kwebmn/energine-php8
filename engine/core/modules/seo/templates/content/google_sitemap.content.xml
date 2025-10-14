@@ -2,7 +2,7 @@
 <content>
     <component name="googleSitemap" module="seo" class="GoogleSitemap" >
         <params>
-            <param name="config">core/modules/seo/config/GoogleSitemap.component.xml</param>
+            <param name="config">engine/core/modules/seo/config/GoogleSitemap.component.xml</param>
             <param name="active">1</param>
         </params>
     </component>
