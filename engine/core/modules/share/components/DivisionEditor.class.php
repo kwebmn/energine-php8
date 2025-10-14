@@ -468,16 +468,47 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
             }
         }
 
-        $out = [];
-        $dom = new DOMDocument('1.0', 'UTF-8');
-
+        $selectedByPath = [];
         foreach (array_keys($selected) as $key) {
             if (!isset($registry[$key])) {
                 continue;
             }
 
-            $path = $registry[$key]['path'];
-            $relative = $key;
+            $info = $registry[$key];
+            $path = $info['path'];
+
+            if (!isset($selectedByPath[$path])) {
+                $selectedByPath[$path] = ['alias' => $key, 'info' => $info];
+                continue;
+            }
+
+            $preferred = $this->selectPreferredTemplateAlias($selectedByPath[$path]['alias'], $key);
+            if ($preferred === $key) {
+                $selectedByPath[$path] = ['alias' => $preferred, 'info' => $info];
+            }
+        }
+
+        if ($oldValue) {
+            $oldInfo = Document::findTemplate($oldValue, $type);
+            if ($oldInfo) {
+                $path = $oldInfo['path'];
+                if (isset($selectedByPath[$path])) {
+                    $selectedByPath[$path] = ['alias' => $oldValue, 'info' => $oldInfo];
+                }
+            }
+        }
+
+        $finalSelection = [];
+        foreach ($selectedByPath as $entry) {
+            $finalSelection[$entry['alias']] = $entry['info'];
+        }
+
+        $out = [];
+        $dom = new DOMDocument('1.0', 'UTF-8');
+
+        foreach ($finalSelection as $alias => $info) {
+            $path = $info['path'];
+            $relative = $alias;
             [$name, $tp] = explode('.', substr(basename($relative), 0, -4), 2);
             $title = $this->translate(strtoupper($tp . '_' . $name));
 
@@ -497,7 +528,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
         }
 
         // Если старое значение из БД не обнаружено среди вариантов — добавим disabled-опцию
-        if ($oldValue && !isset($selected[$oldValue])) {
+        if ($oldValue && !isset($finalSelection[$oldValue])) {
             $out[] = ['key' => $oldValue, 'value' => $oldValue, 'disabled' => 'disabled'];
         }
 
@@ -508,6 +539,44 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
         );
 
         return $out;
+    }
+
+    /**
+     * Выбираем alias, который будет показан в списке для конкретного шаблона.
+     */
+    private function selectPreferredTemplateAlias(string $current, string $candidate): string
+    {
+        return $this->scoreTemplateAlias($candidate) < $this->scoreTemplateAlias($current)
+            ? $candidate
+            : $current;
+    }
+
+    /**
+     * Чем ниже score — тем «правильнее» alias (модуль/relative > относительные > templates/*).
+     */
+    private function scoreTemplateAlias(string $alias): int
+    {
+        $score = 0;
+        $segments = explode('/', $alias);
+        $first = $segments[0] ?? '';
+
+        if ($first === 'templates') {
+            $score += 30;
+        } elseif ($first === self::TMPL_CONTENT || $first === self::TMPL_LAYOUT) {
+            $score += 20;
+        } elseif ($first === '') {
+            $score += 40;
+        }
+
+        if (count($segments) === 1) {
+            $score += 20;
+        }
+
+        if (str_contains($alias, 'templates/')) {
+            $score += 10;
+        }
+
+        return $score;
     }
 
     /* =========================================================
