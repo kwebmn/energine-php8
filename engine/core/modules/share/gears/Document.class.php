@@ -783,7 +783,11 @@ final class Document extends DBWorker implements IDocument
     {
         $loadDataFromFile = static function (string $fileName, string $type) {
             $file = self::TEMPLATES_DIR . constant('DivisionEditor::TMPL_' . strtoupper($type)) . '/' . $fileName;
-            $raw = file_get_contents_stripped($file);
+            if (!is_file($file)) {
+                $raw = '';
+            } else {
+                $raw = stripslashes(trim((string)file_get_contents($file)));
+            }
             $xml = @simplexml_load_string($raw);
             if (!$xml) {
                 throw new SystemException('ERR_WRONG_' . strtoupper($type));
