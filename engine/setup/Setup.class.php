@@ -20,15 +20,6 @@ require_once('JSqueeze.php');
  */
 final class Setup {
     /**
-     * Symlink mode  - for development
-     */
-    const MODE_SYMLINK = 'symlink';
-    /**
-     * Copy minified mode - for production
-     */
-    const MODE_COPY = 'copy';
-
-    /**
      * Path to the directory for uploads.
      */
     const UPLOADS_PATH = 'uploads/public/';
@@ -56,7 +47,7 @@ final class Setup {
     private $config;
 
     /**
-     * Array of directories, that will be created and where will be placed symbolic links from system core and site.
+     * Array of directories that will be populated with public assets from the system core and site.
      * @var array $htdocsDirs
      */
     private $htdocsDirs = array(
@@ -320,7 +311,7 @@ final class Setup {
      * It:
      * - checks connection to database
      * - updates table @c share_sites
-     * - generate symlinks
+     * - publishes module assets
      * - removes legacy JavaScript dependency map
      */
     private function installAction() {
@@ -730,14 +721,13 @@ final class Setup {
     }
 
     /**
-     * Generate symlinks.
+     * Publish module assets into public directories.
      *
-     * @throws Exception 'Не существует: ' . $module_path
-     * @throws Exception 'Нет доступа на запись: ' . $modules_dir
+     * @throws Exception
      */
     private function linkerAction() {
 
-        $this->title('Связывание данных модулей ');
+        $this->title('Публикация ресурсов модулей');
 
         foreach ($this->htdocsDirs as $dir) {
             $dir = HTDOCS_DIR . DIRECTORY_SEPARATOR . $dir;
@@ -751,51 +741,29 @@ final class Setup {
             }
         }
 
-        // создаем симлинки модулей из их физического расположения, описанного в конфиге
-        // в папку CORE_DIR . '/modules/'
-        $this->text(PHP_EOL . 'Создание символических ссылок в ' . CORE_DIR . ':');
-        foreach ($this->config['modules'] as $module => $module_path) {
-            $symlinked_dir = implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module));
-            $this->text('Создание символической ссылки ', $module_path, ' -> ', $symlinked_dir);
-
-            if (file_exists($symlinked_dir) || is_link($symlinked_dir)) {
-                unlink($symlinked_dir);
-            }
-
-            if (!file_exists($module_path)) {
-                throw new Exception('Не существует: ' . $module_path);
-            }
-
-            $modules_dir = implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES));
-            if (!is_writeable($modules_dir)) {
-                throw new Exception('Нет доступа на запись: ' . $modules_dir);
-            }
-
-            symlink($module_path, $symlinked_dir);
-
-        }
-
         //На этот момент у нас есть все необходимые директории в htdocs и они пустые
         foreach ($this->htdocsDirs as $dir) {
 
             $this->text(PHP_EOL . 'Обработка ' . $dir . ':');
             //сначала проходимся по модулям ядра
             foreach (array_reverse($this->config['modules']) as $module => $module_path) {
+                $moduleDir = implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module));
+                if (!is_dir($moduleDir)) {
+                    throw new Exception('Не существует: ' . $moduleDir);
+                }
                 $this->linkCore(
-                    ($this->config['site']['debug'])?self::MODE_SYMLINK:self::MODE_COPY,
-                    implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module, $dir, '*')),
+                    implode(DIRECTORY_SEPARATOR, array($moduleDir, $dir, '*')),
                     implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir)),
                     count(explode(DIRECTORY_SEPARATOR, $dir)));
 
             }
             $this->linkSite(
-                ($this->config['site']['debug'])?self::MODE_SYMLINK:self::MODE_COPY,
                 implode(DIRECTORY_SEPARATOR, array(SITE_DIR, MODULES, '*', $dir, '*')),
                 implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir))
             );
         }
 
-        $this->text('Символические ссылки расставлены');
+        $this->text('Ресурсы опубликованы');
     }
 
     /**
@@ -952,16 +920,15 @@ final class Setup {
 
     //todo VZ: $level is not used.
     /**
-     * Create symlinks for core modules.
+     * Publish assets for core modules.
      *
-     * @param string $mode Mode.
      * @param string $globPattern File selection pattern.
      * @param string $module Path to the core module.
      * @param int $level Depth level for relative paths.
      *
-     * @throws Exception 'Не удалось создать символическую ссылку'
+     * @throws Exception 'Не удалось скопировать файл'
      */
-    private function linkCore($mode, $globPattern, $module, $level = 1) {
+    private function linkCore($globPattern, $module, $level = 1) {
         $JSMIn = new JSqueeze();
         $fileList = glob($globPattern);
 
@@ -973,58 +940,48 @@ final class Setup {
                         mkdir($dir);
                         $this->text('Создаем директорию ', $dir);
                     }
-                    $this->linkCore($mode, $fo . DIRECTORY_SEPARATOR . '*', $dir, $level + 1);
+                    $this->linkCore($fo . DIRECTORY_SEPARATOR . '*', $dir, $level + 1);
                 } else {
-                    //Если одним из низших по приоритету модулей был уже создан симлинк
+                    //Если одним из низших по приоритету модулей уже был опубликован файл
                     //то затираем его нафиг
                     if (file_exists($dest = $module . DIRECTORY_SEPARATOR . basename($fo))) {
                         unlink($dest);
                     }
 
-                    switch ($mode) {
-                        case self::MODE_SYMLINK:
-                            $this->text('Создаем симлинк ', $fo, ' --> ', $dest);
-                            if (!@symlink($fo, $dest)) {
-                                throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
+                    $pi = pathinfo($fo);
+
+                    if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
+
+                        if (
+                            (strpos($pi['filename'], 'mootools') === false)
+                            &&
+                            (strpos($pi['filename'], 'Swiff.Uploader') === false)
+                            &&
+                            (strpos($pi['filename'], 'mootools-more') === false)
+                            &&
+                            (strpos($pi['filename'], 'mootools-ext') === false)
+                            &&
+                            (strpos($pi['filename'], 'jwplayer') === false)
+                            &&
+                            (strpos($pi['dirname'], 'ckeditor') === false)
+                            &&
+                            (strpos($pi['dirname'], 'codemirror') === false)
+                        ) {
+                            $this->text('Минифицируем и копируем ', $fo, ' --> ', $dest);
+                            file_put_contents($dest, $JSMIn->squeeze(file_get_contents($fo), true, false, false));
+                        } else {
+                            $this->text('Копируем ', $fo, ' --> ', $dest);
+                            if (!@copy($fo, $dest)) {
+                                throw new Exception('Не удалось скопировать файл ' . $fo . ' в ' . $dest);
                             }
-                            break;
-                        case self::MODE_COPY:
-                            $pi = pathinfo($fo);
+                        }
 
-                            if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
+                    } else {
+                        $this->text('Копируем ', $fo, ' --> ', $dest);
+                        if (!@copy($fo, $dest)) {
+                            throw new Exception('Не удалось скопировать файл ' . $fo . ' в ' . $dest);
 
-                                if (
-                                    (strpos($pi['filename'], 'mootools') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'Swiff.Uploader') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'mootools-more') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'mootools-ext') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'jwplayer') === false)
-                                    &&
-                                    (strpos($pi['dirname'], 'ckeditor') === false)
-                                    &&
-                                    (strpos($pi['dirname'], 'codemirror') === false)
-                                ) {
-                                    $this->text('Минифицируем и копируем ', $fo, ' --> ', $dest);
-                                    file_put_contents($dest, $JSMIn->squeeze(file_get_contents($fo), true, false, false));
-                                } else {
-                                    $this->text('Создаем символическую ссылку ', $fo, ' --> ', $dest);
-                                    if (!@symlink($fo, $dest)) {
-                                        throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
-                                    }
-                                }
-
-                            } else {
-                                $this->text('Создаем символическую ссылку ', $fo, ' --> ', $dest);
-                                if (!@symlink($fo, $dest)) {
-                                    throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
-
-                                }
-                            }
-                            break;
+                        }
                     }
                 }
             }
@@ -1032,15 +989,14 @@ final class Setup {
     }
 
     /**
-     * Create symlinks for site modules.
+     * Publish assets for site modules.
      *
-     * @param string $mode Mode.
      * @param string $globPattern File selection pattern.
-     * @param string $dir Directory where symlinks will be created.
+     * @param string $dir Directory where assets will be copied.
      *
-     * @throws Exception 'Не удалось создать символическую ссылку'
+     * @throws Exception 'Не удалось скопировать файл'
      */
-    private function linkSite($mode, $globPattern, $dir) {
+    private function linkSite($globPattern, $dir) {
         $JSMin = new JSqueeze();
 
         $fileList = glob($globPattern);
@@ -1058,27 +1014,17 @@ final class Setup {
                 $srcFile = $fo;
                 $linkPath = implode(DIRECTORY_SEPARATOR, array($dir, $module, basename($fo_stripped)));
 
-                switch ($mode) {
-                    case self::MODE_SYMLINK:
-                        $this->text('Создаем симлинк ', $srcFile, ' --> ', $linkPath);
-                        if (!@symlink($srcFile, $linkPath)) {
-                            throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath);
-                        }
-                        break;
-                    case self::MODE_COPY:
-                        $pi = pathinfo($srcFile);
+                $pi = pathinfo($srcFile);
 
-                        if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
-                            $this->text('Минифицируем и копируем ', $srcFile, ' --> ', $linkPath);
-                            file_put_contents($linkPath, $JSMin->squeeze(file_get_contents($srcFile), true, false, false));
-                        } else {
-                            $this->text('Создаем символическую ссылку ', $srcFile, ' --> ', $linkPath);
-                            if (!@symlink($srcFile, $linkPath)) {
-                                throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath);
+                if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
+                    $this->text('Минифицируем и копируем ', $srcFile, ' --> ', $linkPath);
+                    file_put_contents($linkPath, $JSMin->squeeze(file_get_contents($srcFile), true, false, false));
+                } else {
+                    $this->text('Копируем ', $srcFile, ' --> ', $linkPath);
+                    if (!@copy($srcFile, $linkPath)) {
+                        throw new Exception('Не удалось скопировать файл ' . $srcFile . ' в ' . $linkPath);
 
-                            }
-                        }
-                        break;
+                    }
                 }
             }
         }
