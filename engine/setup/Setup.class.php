@@ -363,7 +363,11 @@ final class Setup {
         );
 
         foreach ($iterator as $item) {
-            $relativePath = substr($item->getPathname(), strlen($sourceDir) + 1);
+            $relativePath = ltrim($iterator->getSubPathName(), DIRECTORY_SEPARATOR);
+            if ($relativePath === '') {
+                continue;
+            }
+
             $targetPath = $targetRoot . DIRECTORY_SEPARATOR . $relativePath;
 
             if ($item->isDir()) {
@@ -372,7 +376,8 @@ final class Setup {
             }
 
             $this->ensureDirectoryExists(dirname($targetPath));
-            $this->ensureSymlink($item->getPathname(), $targetPath);
+            $sourcePath = $sourceDir . DIRECTORY_SEPARATOR . $relativePath;
+            $this->ensureSymlink($sourcePath, $targetPath);
         }
     }
 
@@ -474,7 +479,10 @@ final class Setup {
      * @param string $target Target symlink path.
      */
     private function ensureSymlink($source, $target) {
-        $sourceRealPath = realpath($source) ?: $source;
+        $sourceRealPath = realpath($source);
+        if ($sourceRealPath === false) {
+            $sourceRealPath = $source;
+        }
 
         if (is_link($target)) {
             $currentLink = readlink($target);
@@ -494,10 +502,10 @@ final class Setup {
             return;
         }
 
-        if (@symlink($sourceRealPath, $target)) {
-            $this->text('Создаём симлинк ' . $target . ' → ' . $sourceRealPath);
+        if (@symlink($source, $target)) {
+            $this->text('Создаём симлинк ' . $target . ' → ' . $source);
         } else {
-            $this->text('Не удалось создать симлинк ' . $target . ' → ' . $sourceRealPath);
+            $this->text('Не удалось создать симлинк ' . $target . ' → ' . $source);
         }
     }
 
