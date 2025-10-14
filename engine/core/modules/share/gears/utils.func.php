@@ -5,8 +5,7 @@ declare(strict_types=1);
  * Utilities (PHP 8.3):
  * inspect(), splitDate(), stop(), simple_log(), dump_log(), ddump_log(),
  * simplifyDBResult(), inverseDBResult(), convertDBResult(), convertFieldNames(),
- * arrayPush(), array_push_before(), array_push_after(),
- * file_get_contents_stripped(), str_replace_opt(),
+ * arrayPush(),
  * withLibxml(), file_snippet().
  */
 
@@ -337,69 +336,6 @@ function arrayPush(array &$array, mixed $var, int|string $key = null): int|strin
     }
     $array[$newkey] = $var;
     return $newkey;
-}
-
-/**
- * Вставка перед позицией/ключом.
- */
-function array_push_before(array $array, mixed $var, int|string $pos): array {
-    $var = is_array($var) ? $var : [$var];
-
-    if (is_int($pos)) {
-        return array_merge(
-            array_slice($array, 0, $pos),
-            $var,
-            array_slice($array, $pos)
-        );
-    }
-
-    $result = [];
-    foreach ($array as $key => $value) {
-        if ($key === $pos) {
-            $result = array_merge($result, $var);
-        }
-        $result[$key] = $value;
-    }
-    return $result;
-}
-
-/**
- * Вставка после позиции/ключа.
- */
-function array_push_after(array $src, mixed $in, int|string $pos): array {
-    $in = is_array($in) ? $in : [$in];
-    if (is_int($pos)) {
-        return array_merge(array_slice($src, 0, $pos + 1), $in, array_slice($src, $pos + 1));
-    }
-    $R = [];
-    foreach ($src as $k => $v) {
-        $R[$k] = $v;
-        if ($k === $pos) {
-            $R = array_merge($R, $in);
-        }
-    }
-    return $R;
-}
-
-/**
- * Прочитать файл и обрезать пробелы/слэши.
- */
-function file_get_contents_stripped(string $fileName): string {
-    if (!is_file($fileName)) return '';
-    return stripslashes(trim((string)file_get_contents($fileName)));
-}
-
-/**
- * Быстрая замена одиночного символа (совместимость с оригиналом).
- */
-function str_replace_opt(string $from, string $to, string $src): string {
-    // Если подали 1 символ — самый быстрый путь
-    if (strlen($from) === 1 && strlen($to) === 1) {
-        // strtr быстрее ручного цикла
-        return strtr($src, [$from => $to]);
-    }
-    // fallback
-    return str_replace($from, $to, $src);
 }
 
 /* --------------------------------------------------------------------------

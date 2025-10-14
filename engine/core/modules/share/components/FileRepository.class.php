@@ -833,10 +833,8 @@ final class FileRepository extends Grid implements SampleFileRepository
         $mime   = (string)$m[1];
         $string = (string)$m[2];
 
-        // В их кодовой базе используется str_replace_opt — оставим вызов как есть
-        $string = function_exists('str_replace_opt')
-            ? str_replace_opt(' ', '+', $string)
-            : str_replace(' ', '+', $string);
+        // Заменяем пробелы на плюсы для корректной base64-строки.
+        $string = str_replace(' ', '+', $string);
 
         return (object)[
             'mime' => $mime,
