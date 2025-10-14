@@ -39,6 +39,13 @@ final class Document extends DBWorker implements IDocument
     private ?DOMDocument $doc = null;
 
     /**
+     * Cached template registry by type.
+     *
+     * @var array<string, array<string, array{path:string,module:string,origin:string}>>
+     */
+    private static array $templateRegistry = [];
+
+    /**
      * User rights for document.
      * Rights:
      *  - ACCESS_NONE = 0
@@ -437,7 +444,7 @@ final class Document extends DBWorker implements IDocument
             return '';
         }
 
-        return $this->sanitizeLibraryKey($path);
+        return self::sanitizeLibraryKey($path);
     }
 
     protected function detectElementModule(DOMElement $element): string
@@ -469,7 +476,7 @@ final class Document extends DBWorker implements IDocument
             return $path;
         }
 
-        $normalized = $this->sanitizeLibraryKey($path);
+        $normalized = self::sanitizeLibraryKey($path);
         if ($normalized === '') {
             return null;
         }
@@ -580,7 +587,7 @@ final class Document extends DBWorker implements IDocument
                 }
                 $relativeInside = str_replace('\\', '/', $relativeInside);
 
-                $key = $this->sanitizeLibraryKey(substr($relativeInside, 0, - (strlen($ext) + 1)));
+                $key = self::sanitizeLibraryKey(substr($relativeInside, 0, - (strlen($ext) + 1)));
                 if ($key === '') {
                     continue;
                 }
@@ -605,7 +612,7 @@ final class Document extends DBWorker implements IDocument
         return $index;
     }
 
-    private function sanitizeLibraryKey(string $path): string
+    private static function sanitizeLibraryKey(string $path): string
     {
         $path = str_replace('\\', '/', $path);
         $path = preg_replace('#/+#', '/', $path);
@@ -758,7 +765,7 @@ final class Document extends DBWorker implements IDocument
     }
 
     /** Add translation constant */
-    public function addTranslation(string $const, Component $component = null): void
+    public function addTranslation(string $const, ?Component $component = null): void
     {
         $this->translations[$const] = $component ? $component->getName() : null;
     }
@@ -782,8 +789,8 @@ final class Document extends DBWorker implements IDocument
     public static function getTemplatesData(int $documentID): object
     {
         $loadDataFromFile = static function (string $fileName, string $type) {
-            $file = self::TEMPLATES_DIR . constant('DivisionEditor::TMPL_' . strtoupper($type)) . '/' . $fileName;
-            if (!is_file($file)) {
+            $file = self::resolveTemplatePath($fileName, $type);
+            if (!$file || !is_file($file)) {
                 $raw = '';
             } else {
                 $raw = stripslashes(trim((string)file_get_contents($file)));
@@ -836,5 +843,191 @@ final class Document extends DBWorker implements IDocument
     {
         return $this->doc;
 
+    }
+
+    /**
+     * Resolve template path by stored file name.
+     */
+    public static function resolveTemplatePath(string $fileName, string $type): ?string
+    {
+        $info = self::findTemplate($fileName, $type);
+
+        return $info['path'] ?? null;
+    }
+
+    /**
+     * Find template metadata by stored file name.
+     *
+     * @return array{path:string,module:string,origin:string}|null
+     */
+    public static function findTemplate(string $fileName, string $type): ?array
+    {
+        $key = self::sanitizeLibraryKey($fileName);
+        if ($key === '') {
+            return null;
+        }
+
+        $registry  = self::getTemplateRegistry($type);
+        $candidates = self::expandTemplateKeyVariants($key);
+
+        foreach ($candidates as $candidate) {
+            if (isset($registry[$candidate])) {
+                return $registry[$candidate];
+            }
+        }
+
+        foreach ($registry as $registeredKey => $info) {
+            foreach ($candidates as $candidate) {
+                if ($registeredKey === $candidate || str_ends_with($registeredKey, '/' . $candidate)) {
+                    return $info;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get cached template registry for template type.
+     *
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    public static function getTemplateRegistry(string $type): array
+    {
+        if (!isset(self::$templateRegistry[$type])) {
+            self::$templateRegistry[$type] = self::scanTemplates($type);
+        }
+
+        return self::$templateRegistry[$type];
+    }
+
+    /**
+     * Scan filesystem for templates of specified type.
+     *
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    private static function scanTemplates(string $type): array
+    {
+        $result = [];
+
+        $sources = [
+            ['base' => SITE_DIR . '/modules',  'origin' => 'site'],
+            ['base' => CORE_DIR . '/modules',  'origin' => 'core'],
+        ];
+
+        foreach ($sources as $source) {
+            $baseDir = $source['base'];
+            $origin  = $source['origin'];
+
+            if (!is_dir($baseDir)) {
+                continue;
+            }
+
+            $modules = glob($baseDir . '/*', GLOB_ONLYDIR) ?: [];
+            foreach ($modules as $moduleDir) {
+                $module = basename($moduleDir);
+                $templateDir = rtrim($moduleDir, '/\\') . '/templates/' . $type;
+                if (!is_dir($templateDir)) {
+                    continue;
+                }
+
+                $normalizedDir = rtrim($templateDir, '/\\');
+
+                $iterator = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($normalizedDir, FilesystemIterator::SKIP_DOTS)
+                );
+
+                /** @var SplFileInfo $fileInfo */
+                foreach ($iterator as $fileInfo) {
+                    if (!$fileInfo->isFile()) {
+                        continue;
+                    }
+
+                    $fileName = $fileInfo->getFilename();
+                    if (!str_ends_with($fileName, '.' . $type . '.xml')) {
+                        continue;
+                    }
+
+                    $fullPath = $fileInfo->getPathname();
+                    $relative = substr($fullPath, strlen($normalizedDir) + 1);
+                    $relative = str_replace(DIRECTORY_SEPARATOR, '/', (string)$relative);
+
+                    foreach (self::buildTemplateAliases($module, $relative, $fileName, $type) as $alias) {
+                        self::registerTemplateAlias($result, $alias, $fullPath, $module, $origin);
+                    }
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Produce the full list of legacy aliases that can point to a template file.
+     *
+     * @return string[]
+     */
+    private static function buildTemplateAliases(string $module, string $relative, string $fileName, string $type): array
+    {
+        $aliases = [
+            $module . '/' . $relative,
+            $relative,
+            $fileName,
+            $type . '/' . $relative,
+            $type . '/' . $fileName,
+            'templates/' . $relative,
+            'templates/' . $type . '/' . $relative,
+            'templates/' . $type . '/' . $fileName,
+            $module . '/templates/' . $relative,
+            $module . '/templates/' . $fileName,
+            $module . '/templates/' . $type . '/' . $relative,
+            $module . '/templates/' . $type . '/' . $fileName,
+        ];
+
+        return array_values(array_unique($aliases));
+    }
+
+    /**
+     * Generate possible lookup variants for a stored template key.
+     *
+     * @return string[]
+     */
+    private static function expandTemplateKeyVariants(string $key): array
+    {
+        $variants = [];
+        $segments = explode('/', $key);
+        $segmentCount = count($segments);
+
+        if ($segmentCount === 0) {
+            return [$key];
+        }
+
+        for ($i = 0; $i < $segmentCount; $i++) {
+            $variant = implode('/', array_slice($segments, $i));
+            if ($variant !== '' && !in_array($variant, $variants, true)) {
+                $variants[] = $variant;
+            }
+        }
+
+        return $variants === [] ? [$key] : $variants;
+    }
+
+    /**
+     * Register an alias key in the template registry result.
+     *
+     * @param array<string, array{path:string,module:string,origin:string}> $result
+     */
+    private static function registerTemplateAlias(array &$result, string $key, string $path, string $module, string $origin): void
+    {
+        $key = self::sanitizeLibraryKey($key);
+        if ($key === '' || isset($result[$key])) {
+            return;
+        }
+
+        $result[$key] = [
+            'path'   => $path,
+            'module' => $module,
+            'origin' => $origin,
+        ];
     }
 }

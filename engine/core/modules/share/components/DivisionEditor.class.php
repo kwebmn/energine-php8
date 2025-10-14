@@ -433,69 +433,210 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
      */
     private function loadTemplateData(string $type, string $siteFolder, string|false $oldValue = false): array
     {
-        $dirPath = Document::TEMPLATES_DIR . $type . '/';
-        $include = SITE_DIR . '/modules/' . $siteFolder . '/templates/' . $type . '.include';
+        $registry = Document::getTemplateRegistry($type);
+        $aliases  = $this->determineTemplateAliases($type, $siteFolder, $registry);
+        $selection = $this->deduplicateTemplateSelection($aliases, $registry, $type, $oldValue);
 
-        // Набор путей по include-правилам либо дефолтные маски
-        $folders = [];
-        if (file_exists($include)) {
-            $rules = file($include) ?: [];
-            foreach ($rules as $rule) {
-                $rule = trim($rule);
-                if ($rule !== '') {
-                    $folders[] = glob($dirPath . $rule) ?: [];
-                }
-            }
-        } else {
-            $folders = [
-                glob($dirPath . '*.' . $type . '.xml') ?: [],
-                glob($dirPath . $siteFolder . '/*.' . $type . '.xml') ?: [],
-            ];
+        $options = $this->buildTemplateOptions($selection, $type);
+
+        if ($oldValue && !isset($selection[$oldValue])) {
+            $options[] = ['key' => $oldValue, 'value' => $oldValue, 'disabled' => 'disabled'];
         }
 
-        // Плоский список уникальных файлов
-        $map = [];
-        foreach ($folders as $chunk) {
-            foreach ($chunk as $path) {
-                $map[basename($path)] = $path;
-            }
-        }
-
-        $out = [];
-        $dom = new DOMDocument('1.0', 'UTF-8');
-
-        foreach ($map as $path) {
-            $relative = str_replace($dirPath, '', $path);
-            [$name, $tp] = explode('.', substr(basename($relative), 0, -4), 2);
-            $title = $this->translate(strtoupper($tp . '_' . $name));
-
-            $row = ['key' => $relative, 'value' => $title];
-
-            if ($type === self::TMPL_CONTENT && file_exists($full = $dirPath . $relative)) {
-                $dom->load($full);
-                if ($seg = $dom->documentElement->getAttribute('segment')) {
-                    $row['data-segment'] = $seg;
-                }
-                if ($lay = $dom->documentElement->getAttribute('layout')) {
-                    $row['data-layout'] = $lay;
-                }
-            }
-
-            $out[] = $row;
-        }
-
-        // Если старое значение из БД не обнаружено среди вариантов — добавим disabled-опцию
-        if ($oldValue && !in_array($dirPath . $oldValue, array_values($map), true)) {
-            $out[] = ['key' => $oldValue, 'value' => $oldValue, 'disabled' => 'disabled'];
-        }
-
-        // Натуральная сортировка по названию
         usort(
-            $out,
+            $options,
             static fn(array $a, array $b): int => strnatcasecmp((string)$a['value'], (string)$b['value'])
         );
 
-        return $out;
+        return $options;
+    }
+
+    /**
+     * Возвращает алиасы шаблонов, доступные в интерфейсе редактора.
+     *
+     * @param array<string, array{path:string,module:string,origin:string}> $registry
+     * @return string[]
+     */
+    private function determineTemplateAliases(string $type, string $siteFolder, array $registry): array
+    {
+        $include = SITE_DIR . '/modules/' . $siteFolder . '/templates/' . $type . '.include';
+
+        $selected = [];
+
+        if (is_file($include)) {
+            foreach (file($include) ?: [] as $rule) {
+                $rule = trim($rule);
+                if ($rule === '') {
+                    continue;
+                }
+
+                foreach ($registry as $key => $info) {
+                    if (fnmatch($rule, $key, FNM_PATHNAME)) {
+                        $selected[$key] = true;
+                    }
+                }
+            }
+
+            return array_keys($selected);
+        }
+
+        foreach ($registry as $key => $info) {
+            if (
+                $info['origin'] === 'core' ||
+                ($info['origin'] === 'site' && $info['module'] === $siteFolder)
+            ) {
+                $selected[$key] = true;
+            }
+        }
+
+        if ($selected === []) {
+            foreach (array_keys($registry) as $key) {
+                $selected[$key] = true;
+            }
+        }
+
+        return array_keys($selected);
+    }
+
+    /**
+     * Удаляет дубли по физическому пути и возвращает выбранные алиасы.
+     *
+     * @param string[] $aliases
+     * @param array<string, array{path:string,module:string,origin:string}> $registry
+     * @param string|false $oldValue
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    private function deduplicateTemplateSelection(
+        array $aliases,
+        array $registry,
+        string $type,
+        string|false $oldValue
+    ): array {
+        $selectedByPath = [];
+
+        foreach ($aliases as $alias) {
+            if (!isset($registry[$alias])) {
+                continue;
+            }
+
+            $info = $registry[$alias];
+            $path = $info['path'];
+
+            if (!isset($selectedByPath[$path])) {
+                $selectedByPath[$path] = ['alias' => $alias, 'info' => $info];
+                continue;
+            }
+
+            $preferred = $this->selectPreferredTemplateAlias($selectedByPath[$path]['alias'], $alias);
+            if ($preferred === $alias) {
+                $selectedByPath[$path] = ['alias' => $alias, 'info' => $info];
+            }
+        }
+
+        if ($oldValue) {
+            $resolved = Document::findTemplate($oldValue, $type);
+            if ($resolved) {
+                $path = $resolved['path'];
+                if (isset($selectedByPath[$path])) {
+                    $selectedByPath[$path] = ['alias' => $oldValue, 'info' => $resolved];
+                }
+            }
+        }
+
+        $selection = [];
+        foreach ($selectedByPath as $entry) {
+            $selection[$entry['alias']] = $entry['info'];
+        }
+
+        return $selection;
+    }
+
+    /**
+     * Строит итоговый список опций для селекта шаблонов.
+     *
+     * @param array<string, array{path:string,module:string,origin:string}> $selection
+     * @return array<int, array<string, string>>
+     */
+    private function buildTemplateOptions(array $selection, string $type): array
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $options = [];
+
+        foreach ($selection as $alias => $info) {
+            $options[] = $this->describeTemplateOption($alias, $info, $type, $dom);
+        }
+
+        return $options;
+    }
+
+    /**
+     * Формирует описание опции с учётом метаданных XML.
+     *
+     * @param array{path:string,module:string,origin:string} $info
+     */
+    private function describeTemplateOption(
+        string $alias,
+        array $info,
+        string $type,
+        ?DOMDocument $dom = null
+    ): array {
+        $dom ??= new DOMDocument('1.0', 'UTF-8');
+
+        $path = $info['path'];
+        [$name, $tp] = explode('.', substr(basename($alias), 0, -4), 2);
+        $title = $this->translate(strtoupper($tp . '_' . $name));
+
+        $row = ['key' => $alias, 'value' => $title];
+
+        if ($type === self::TMPL_CONTENT && is_file($path)) {
+            $dom->load($path);
+            if ($seg = $dom->documentElement->getAttribute('segment')) {
+                $row['data-segment'] = $seg;
+            }
+            if ($lay = $dom->documentElement->getAttribute('layout')) {
+                $row['data-layout'] = $lay;
+            }
+        }
+
+        return $row;
+    }
+
+    /**
+     * Выбираем alias, который будет показан в списке для конкретного шаблона.
+     */
+    private function selectPreferredTemplateAlias(string $current, string $candidate): string
+    {
+        return $this->scoreTemplateAlias($candidate) < $this->scoreTemplateAlias($current)
+            ? $candidate
+            : $current;
+    }
+
+    /**
+     * Чем ниже score — тем «правильнее» alias (модуль/relative > относительные > templates/*).
+     */
+    private function scoreTemplateAlias(string $alias): int
+    {
+        $score = 0;
+        $segments = explode('/', $alias);
+        $first = $segments[0] ?? '';
+
+        if ($first === 'templates') {
+            $score += 30;
+        } elseif ($first === self::TMPL_CONTENT || $first === self::TMPL_LAYOUT) {
+            $score += 20;
+        } elseif ($first === '') {
+            $score += 40;
+        }
+
+        if (count($segments) === 1) {
+            $score += 20;
+        }
+
+        if (str_contains($alias, 'templates/')) {
+            $score += 10;
+        }
+
+        return $score;
     }
 
     /* =========================================================
@@ -753,10 +894,15 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
                 'cancelText'         => $this->translate('BTN_CANCEL'),
             ];
 
-            // Возможен откат к шаблону ядра (если текущий — в каталоге сайта)
-            if ((dirname($contentFile) !== '.') &&
-                file_exists('templates/content/' . basename($contentFile))) {
-                $result['actionSelector']['revert'] = $this->translate('TXT_REVERT_CONTENT');
+            $contentMeta = Document::findTemplate($contentFile, self::TMPL_CONTENT);
+            if ($contentMeta && $contentMeta['origin'] === 'site') {
+                $basename = basename($contentMeta['path']);
+                foreach (Document::getTemplateRegistry(self::TMPL_CONTENT) as $info) {
+                    if ($info['origin'] === 'core' && basename($info['path']) === $basename) {
+                        $result['actionSelector']['revert'] = $this->translate('TXT_REVERT_CONTENT');
+                        break;
+                    }
+                }
             }
         }
 
