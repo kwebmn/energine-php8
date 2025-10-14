@@ -157,7 +157,7 @@ final class EnergineBootstrapper
 
         $coreRel = defined('CORE_REL_DIR')
             ? CORE_REL_DIR
-            : (getenv('CORE_REL_DIR') ?: ($config['core_rel_dir'] ?? 'core'));
+            : (getenv('CORE_REL_DIR') ?: ($config['core_rel_dir'] ?? 'engine/core'));
         $siteRel = defined('SITE_REL_DIR')
             ? SITE_REL_DIR
             : (getenv('SITE_REL_DIR') ?: ($config['site_rel_dir'] ?? 'site'));

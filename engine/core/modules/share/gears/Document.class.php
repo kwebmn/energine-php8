@@ -522,7 +522,7 @@ final class Document extends DBWorker implements IDocument
         }
 
         $coreBaseDir = (defined('CORE_DIR') ? (string)CORE_DIR : '') . '/modules';
-        $coreRelBase = trim((string)(defined('CORE_REL_DIR') ? CORE_REL_DIR : 'core'), '/');
+        $coreRelBase = trim((string)(defined('CORE_REL_DIR') ? CORE_REL_DIR : 'engine/core'), '/');
         if ($coreRelBase !== '' && is_dir($coreBaseDir)) {
             foreach (glob($coreBaseDir . '/*/scripts', GLOB_ONLYDIR) ?: [] as $dir) {
                 $moduleName = basename(dirname($dir));

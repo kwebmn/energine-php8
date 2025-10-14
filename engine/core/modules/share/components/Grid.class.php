@@ -776,7 +776,7 @@ class Grid extends DBDataSet {
             'tageditor',
             'share',
             'TagEditor',
-            array('config' => 'core/modules/share/config/TagEditorModal.component.xml')
+            array('config' => 'engine/core/modules/share/config/TagEditorModal.component.xml')
         );
         $this->tagEditor->run();
     }
