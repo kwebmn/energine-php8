@@ -765,7 +765,7 @@ final class Document extends DBWorker implements IDocument
     }
 
     /** Add translation constant */
-    public function addTranslation(string $const, Component $component = null): void
+    public function addTranslation(string $const, ?Component $component = null): void
     {
         $this->translations[$const] = $component ? $component->getName() : null;
     }
