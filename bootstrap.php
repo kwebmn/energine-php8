@@ -1,26 +1,24 @@
 <?php
 declare(strict_types=1);
 
+use DI\ContainerBuilder as PhpDiContainerBuilder;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level as MonologLevel;
 use Monolog\Logger as MonologLogger;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\ContainerInterface as SymfonyContainerInterface;
-use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\Dumper\PhpDumper;
-use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\Translation\Loader\ArrayLoader as SymfonyArrayLoader;
 use Symfony\Component\Translation\Translator;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface as SymfonyValidatorInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Bootstrap: вычисляет пути ядра/сайта, подключает setup при необходимости
@@ -180,133 +178,109 @@ $monologLevelResolver = static function (string $name): ?MonologLevel {
     }
 };
 
-// --- DI (Symfony DependencyInjection) ---
-if (!empty($feat['symfony_di']) && class_exists(ContainerBuilder::class)) {
-    $sfCfg      = $config['symfony_di'] ?? [];
-    $cacheFile  = (string)($sfCfg['cache_file'] ?? ($docRoot . '/var/cache/symfony_container.php'));
-    $cacheClass = (string)($sfCfg['cache_class'] ?? 'CachedAppContainer');
-    $sfContainer = null;
+// --- DI (PHP-DI) ---
+$container = null;
+if (class_exists(PhpDiContainerBuilder::class)) {
+    $diCfg = $config['di'] ?? [];
+    $cb    = new PhpDiContainerBuilder();
 
-    if (!empty($sfCfg['compile']) && is_file($cacheFile)) {
-        require_once $cacheFile;
-        if (class_exists($cacheClass)) {
-            $candidate = new $cacheClass();
-            if ($candidate instanceof SymfonyContainerInterface) {
-                $sfContainer = $candidate;
-            }
-        }
+    if (!empty($diCfg['compile'])) {
+        $cb->enableCompilation($diCfg['cache_dir'] ?? ($docRoot . '/var/cache/di'));
+        $cb->writeProxiesToFile(true, $diCfg['proxy_dir'] ?? ($docRoot . '/var/cache/di/proxies'));
     }
 
-    if (!$sfContainer instanceof SymfonyContainerInterface) {
-        $builder = new ContainerBuilder();
-        $builder->setParameter('app.config', $config);
-        $builder->setParameter('app.doc_root', $docRoot);
-        $builder->setParameter('app.env', $config['env']['name'] ?? null);
+    $baseDefinitions = [
+        'config'      => $config,
+        'app.docRoot' => $docRoot,
+        'app.env'     => $config['env']['name'] ?? null,
+        Registry::class => $reg,
+        'registry'      => $reg,
+    ];
 
-        if (!empty($config['logger']['enabled']) && class_exists(MonologLogger::class)) {
-            $loggerDef = new Definition(MonologLogger::class);
-            $loggerDef->setArgument(0, $config['logger']['channel'] ?? 'app');
-            $loggerDef->setPublic(true);
-            foreach (($config['logger']['handlers'] ?? []) as $idx => $handler) {
+    $serviceDefinitions = [];
+
+    if (!empty($config['logger']['enabled']) && class_exists(MonologLogger::class)) {
+        $serviceDefinitions[LoggerInterface::class] = static function (ContainerInterface $c) use ($monologLevelResolver): LoggerInterface {
+            $cfg     = $c->get('config');
+            $logCfg  = $cfg['logger'] ?? [];
+            $channel = (string)($logCfg['channel'] ?? 'app');
+            $logger  = new MonologLogger($channel);
+
+            foreach (($logCfg['handlers'] ?? []) as $handler) {
                 if (($handler['type'] ?? '') !== 'stream' || empty($handler['path'])) {
                     continue;
                 }
 
-                $levelName = (string)($handler['level'] ?? ($config['logger']['level'] ?? 'debug'));
+                $levelName = (string)($handler['level'] ?? ($logCfg['level'] ?? 'debug'));
                 $level     = $monologLevelResolver($levelName) ?? MonologLevel::Debug;
-
-                $handlerDef = new Definition(StreamHandler::class);
-                $handlerDef->setArguments([
-                    $handler['path'],
-                    $level,
-                    (bool)($handler['bubble'] ?? true),
-                ]);
-                $handlerDef->setPublic(true);
-
-                $handlerId = 'logger.handler.' . $idx;
-                $builder->setDefinition($handlerId, $handlerDef);
-                $loggerDef->addMethodCall('pushHandler', [new Reference($handlerId)]);
+                $logger->pushHandler(new StreamHandler($handler['path'], $level, (bool)($handler['bubble'] ?? true)));
             }
 
-            $builder->setDefinition('logger', $loggerDef);
-            $builder->setAlias(LoggerInterface::class, 'logger')->setPublic(true);
-        }
+            return $logger;
+        };
+    }
 
-        if (!empty($config['cache2']) && interface_exists(TagAwareCacheInterface::class)) {
-            $c2       = $config['cache2'];
-            $ns       = (string)($c2['namespace'] ?? 'app');
-            $ttl      = (int)($c2['default_ttl'] ?? 3600);
-            $adapter  = strtolower((string)($c2['adapter'] ?? 'filesystem'));
-            $poolId   = 'cache.pool';
-            $poolDef  = null;
+    if (!empty($config['cache2']) && interface_exists(TagAwareCacheInterface::class)) {
+        $serviceDefinitions[TagAwareCacheInterface::class] = static function (ContainerInterface $c): TagAwareCacheInterface {
+            $cfg = $c->get('config');
+            $c2  = $cfg['cache2'];
+            $ns  = (string)($c2['namespace'] ?? 'app');
+            $ttl = (int)($c2['default_ttl'] ?? 3600);
 
-            switch ($adapter) {
+            switch (strtolower((string)($c2['adapter'] ?? 'filesystem'))) {
                 case 'redis':
-                    $connId   = 'cache.redis.connection';
-                    $connDef  = new Definition(\Redis::class);
-                    $connDef->setFactory([RedisAdapter::class, 'createConnection']);
-                    $connDef->setArguments([$c2['redis_dsn'] ?? 'redis://127.0.0.1:6379']);
-                    $connDef->setPublic(true);
-                    $builder->setDefinition($connId, $connDef);
-
-                    $poolDef = new Definition(RedisAdapter::class);
-                    $poolDef->setArguments([new Reference($connId), $ns, $ttl]);
+                    $redis = RedisAdapter::createConnection($c2['redis_dsn'] ?? 'redis://127.0.0.1:6379');
+                    $pool  = new RedisAdapter($redis, $ns, $ttl);
                     break;
 
                 case 'apcu':
-                    $poolDef = new Definition(ApcuAdapter::class);
-                    $poolDef->setArguments([$ns, $ttl]);
+                    $pool = new ApcuAdapter($ns, $ttl);
                     break;
 
                 default:
-                    $dir    = (string)($c2['directory'] ?? ($docRoot . '/var/cache'));
-                    $poolDef = new Definition(FilesystemAdapter::class);
-                    $poolDef->setArguments([$ns, $ttl, $dir]);
+                    $docRoot = (string)($c->has('app.docRoot') ? $c->get('app.docRoot') : HTDOCS_DIR);
+                    $dir     = (string)($c2['directory'] ?? ($docRoot . '/var/cache'));
+                    $pool    = new FilesystemAdapter($ns, $ttl, $dir);
                     break;
             }
 
-            if ($poolDef instanceof Definition) {
-                $poolDef->setPublic(true);
-                $builder->setDefinition($poolId, $poolDef);
+            return new TagAwareAdapter($pool);
+        };
+    }
 
-                $tagDef = new Definition(TagAwareAdapter::class);
-                $tagDef->setArguments([new Reference($poolId)]);
-                $tagDef->setPublic(true);
-                $builder->setDefinition('cache.tag_aware', $tagDef);
+    if (!isset($serviceDefinitions[TagAwareCacheInterface::class]) && !empty($config['site']['cache']) && interface_exists(TagAwareCacheInterface::class)) {
+        // allow container consumers to still depend on the cache contract if cache2 is not configured
+        $serviceDefinitions[TagAwareCacheInterface::class] = static function () use ($docRoot): TagAwareCacheInterface {
+            $pool = new FilesystemAdapter('app', 3600, $docRoot . '/var/cache');
+            return new TagAwareAdapter($pool);
+        };
+    }
 
-                $builder->setAlias(TagAwareCacheInterface::class, 'cache.tag_aware')->setPublic(true);
-            }
-        }
-
-        if (!empty($feat['dbal']) && class_exists(DriverManager::class)) {
-            $d  = $config['dbal'] ?? [];
-            $db = [
+    if (!empty($feat['dbal']) && class_exists(DriverManager::class)) {
+        $serviceDefinitions[Connection::class] = static function (ContainerInterface $c): Connection {
+            $cfg = $c->get('config');
+            $d   = $cfg['dbal'] ?? [];
+            $db  = [
                 'driver'   => $d['driver']   ?? 'pdo_mysql',
-                'host'     => $d['host']     ?? $config['database']['host'],
-                'port'     => $d['port']     ?? (int)$config['database']['port'],
-                'dbname'   => $d['dbname']   ?? $config['database']['db'],
-                'user'     => $d['user']     ?? $config['database']['username'],
-                'password' => $d['password'] ?? $config['database']['password'],
+                'host'     => $d['host']     ?? $cfg['database']['host'],
+                'port'     => $d['port']     ?? (int)$cfg['database']['port'],
+                'dbname'   => $d['dbname']   ?? $cfg['database']['db'],
+                'user'     => $d['user']     ?? $cfg['database']['username'],
+                'password' => $d['password'] ?? $cfg['database']['password'],
                 'charset'  => $d['charset']  ?? 'utf8mb4',
             ];
 
-            $connDef = new Definition(Connection::class);
-            $connDef->setFactory([DriverManager::class, 'getConnection']);
-            $connDef->setArguments([$db]);
-            $connDef->setPublic(true);
+            return DriverManager::getConnection($db);
+        };
+    }
 
-            $builder->setDefinition('dbal.connection', $connDef);
-            $builder->setAlias(Connection::class, 'dbal.connection')->setPublic(true);
-        }
-
-        if (!empty($feat['translation']) && class_exists(Translator::class)) {
-            $i18n   = $config['i18n'] ?? [];
-            $locale = (string)($i18n['default_locale'] ?? 'uk');
-
-            $translatorDef = new Definition(Translator::class);
-            $translatorDef->setArgument(0, $locale);
-            $translatorDef->setPublic(true);
-            $translatorDef->addMethodCall('addLoader', ['array', new Definition(\Symfony\Component\Translation\Loader\ArrayLoader::class)]);
+    if (!empty($feat['translation']) && class_exists(Translator::class)) {
+        $serviceDefinitions[TranslatorInterface::class] = static function (ContainerInterface $c): TranslatorInterface {
+            $cfg     = $c->get('config');
+            $i18n    = $cfg['i18n'] ?? [];
+            $locale  = (string)($i18n['default_locale'] ?? 'uk');
+            $translator = new Translator($locale);
+            $translator->addLoader('array', new SymfonyArrayLoader());
 
             foreach (($i18n['resources'] ?? []) as $res) {
                 if (!is_file($res['file'] ?? '')) {
@@ -318,104 +292,68 @@ if (!empty($feat['symfony_di']) && class_exists(ContainerBuilder::class)) {
                     continue;
                 }
 
-                $translatorDef->addMethodCall('addResource', [
+                $translator->addResource(
                     'array',
                     $messages,
                     (string)($res['locale'] ?? $locale),
-                    (string)($res['domain'] ?? 'messages'),
-                ]);
+                    (string)($res['domain'] ?? 'messages')
+                );
             }
 
             if (!empty($i18n['fallbacks'])) {
-                $translatorDef->addMethodCall('setFallbackLocales', [$i18n['fallbacks']]);
+                $translator->setFallbackLocales($i18n['fallbacks']);
             }
 
-            $builder->setDefinition('translator', $translatorDef);
-            $builder->setAlias(TranslatorInterface::class, 'translator')->setPublic(true);
-        }
+            return $translator;
+        };
+    }
 
-        if (!empty($feat['validator']) && class_exists(Validation::class)) {
-            $validatorDef = new Definition(SymfonyValidatorInterface::class);
-            $validatorDef->setFactory([Validation::class, 'createValidator']);
-            $validatorDef->setPublic(true);
+    if (!empty($feat['validator']) && class_exists(Validation::class)) {
+        $serviceDefinitions[SymfonyValidatorInterface::class] = static function (): SymfonyValidatorInterface {
+            return Validation::createValidator();
+        };
+    }
 
-            $builder->setDefinition('validator', $validatorDef);
-            $builder->setAlias(SymfonyValidatorInterface::class, 'validator')->setPublic(true);
-        }
+    $cb->addDefinitions($baseDefinitions);
+    if (!empty($serviceDefinitions)) {
+        $cb->addDefinitions($serviceDefinitions);
+    }
 
-        $servicesFile = $sfCfg['services'] ?? (HTDOCS_DIR . '/app/config/services.php');
-        if (is_string($servicesFile) && is_file($servicesFile)) {
-            $servicesConfigurator = require $servicesFile;
-            if (is_callable($servicesConfigurator)) {
-                $servicesConfigurator($builder, $config);
-            }
-        }
-
-        $builder->compile(true);
-
-        if (!empty($sfCfg['compile'])) {
-            $cacheDir = dirname($cacheFile);
-            if (!is_dir($cacheDir) && !mkdir($cacheDir, 0777, true) && !is_dir($cacheDir)) {
-                throw new \RuntimeException('Unable to create Symfony DI cache directory: ' . $cacheDir);
-            }
-
-            $dumper = new PhpDumper($builder);
-            $dump   = $dumper->dump(['class' => $cacheClass]);
-            if (file_put_contents($cacheFile, $dump) === false) {
-                throw new \RuntimeException('Unable to write Symfony DI cache file: ' . $cacheFile);
-            }
-
-            require_once $cacheFile;
-            if (class_exists($cacheClass)) {
-                $candidate = new $cacheClass();
-                if ($candidate instanceof SymfonyContainerInterface) {
-                    $sfContainer = $candidate;
-                }
-            }
-        }
-
-        if (!$sfContainer instanceof SymfonyContainerInterface) {
-            $sfContainer = $builder;
+    $definitionsFile = $diCfg['definitions'] ?? (HTDOCS_DIR . '/app/config/definitions.php');
+    if (is_string($definitionsFile) && is_file($definitionsFile)) {
+        $definitionsConfigurator = require $definitionsFile;
+        if (is_callable($definitionsConfigurator)) {
+            $definitionsConfigurator($cb);
         }
     }
 
-    if ($sfContainer instanceof SymfonyContainerInterface) {
-        $reg->symfonyContainer = $sfContainer;
+    $container = $cb->build();
 
-        if (!isset($reg->logger) && $sfContainer->has(LoggerInterface::class)) {
-            $reg->logger = $sfContainer->get(LoggerInterface::class);
-        }
-
-        if (!isset($reg->psrCache) && $sfContainer->has(TagAwareCacheInterface::class)) {
-            $reg->psrCache = $sfContainer->get(TagAwareCacheInterface::class);
-        }
-
-        if (!isset($reg->dbal) && $sfContainer->has(Connection::class)) {
-            $reg->dbal = $sfContainer->get(Connection::class);
-        }
-
-        if (!isset($reg->translator) && $sfContainer->has(TranslatorInterface::class)) {
-            $reg->translator = $sfContainer->get(TranslatorInterface::class);
-        }
-
-        if (!isset($reg->validator) && $sfContainer->has(SymfonyValidatorInterface::class)) {
-            $reg->validator = $sfContainer->get(SymfonyValidatorInterface::class);
-        }
+    if (class_exists('Registry') && method_exists('Registry', 'setContainer')) {
+        Registry::setContainer($container);
     }
-}
 
-// --- DI (php-di) ---
-if (!empty($feat['di']) && class_exists(\DI\ContainerBuilder::class)) {
-    $diCfg = $config['di'] ?? [];
-    $cb = new \DI\ContainerBuilder();
-    if (!empty($diCfg['compile'])) {
-        $cb->enableCompilation($diCfg['cache_dir'] ?? ($docRoot.'/var/cache/di'));
-        $cb->writeProxiesToFile(true, $diCfg['proxy_dir'] ?? ($docRoot.'/var/cache/di/proxies'));
+    $reg->container = $container;
+
+    if (!isset($reg->logger) && $container->has(LoggerInterface::class)) {
+        $reg->logger = $container->get(LoggerInterface::class);
     }
-    if (!empty($diCfg['definitions']) && is_file($diCfg['definitions'])) {
-        (require $diCfg['definitions'])($cb);
+
+    if (!isset($reg->psrCache) && $container->has(TagAwareCacheInterface::class)) {
+        $reg->psrCache = $container->get(TagAwareCacheInterface::class);
     }
-    $reg->container = $cb->build();
+
+    if (!isset($reg->dbal) && $container->has(Connection::class)) {
+        $reg->dbal = $container->get(Connection::class);
+    }
+
+    if (!isset($reg->translator) && $container->has(TranslatorInterface::class)) {
+        $reg->translator = $container->get(TranslatorInterface::class);
+    }
+
+    if (!isset($reg->validator) && $container->has(SymfonyValidatorInterface::class)) {
+        $reg->validator = $container->get(SymfonyValidatorInterface::class);
+    }
 }
 
 // --- Logger (Monolog) ---

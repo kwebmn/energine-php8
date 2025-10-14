@@ -34,12 +34,20 @@ if (!function_exists('E')) {
  *
  * @final
  */
+use Psr\Container\ContainerInterface;
+
 final class Registry extends BaseObject {
     /**
      * Instance of this class.
      * @var Registry|null
      */
     private static $instance = null;
+
+    /**
+     * Shared DI container.
+     * @var ContainerInterface|null
+     */
+    private static $container = null;
 
     /**
      * List of stored objects in the registry.
@@ -83,6 +91,20 @@ final class Registry extends BaseObject {
     }
 
     /**
+     * Attach DI container.
+     */
+    public static function setContainer(?ContainerInterface $container): void {
+        self::$container = $container;
+    }
+
+    /**
+     * Get DI container.
+     */
+    public static function getContainer(): ?ContainerInterface {
+        return self::$container;
+    }
+
+    /**
      * Magic get.
      *
      * @param string $className Class name.
@@ -107,11 +129,25 @@ final class Registry extends BaseObject {
             return $this->entities[$className];
         }
 
+        if (self::$container instanceof ContainerInterface && self::$container->has($className)) {
+            $resolved = self::$container->get($className);
+            $this->entities[$className] = $resolved;
+
+            return $resolved;
+        }
+
         // Поскольку предполагается хранить синглтоны, создаём класс по имени
         $result = new $className();
         $this->entities[$className] = $result;
 
         return $result;
+    }
+
+    /**
+     * Container accessor for helpers.
+     */
+    public function getContainerInstance(): ?ContainerInterface {
+        return self::$container;
     }
 
     /**
