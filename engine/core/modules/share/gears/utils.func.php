@@ -326,7 +326,7 @@ function convertFieldNames(array $fields, string $prefix = ''): array {
 /**
  * Вставить элемент в конец массива с автоматическим числовым ключом (или заданным).
  */
-function arrayPush(array &$array, mixed $var, int|string $key = null): int|string {
+function arrayPush(array &$array, mixed $var, int|string|null $key = null): int|string {
     if ($key === null) {
         // найдём макс. числовой ключ
         $numericKeys = array_filter(array_keys($array), static fn($k) => is_int($k));
