@@ -13,8 +13,6 @@ final class Setup;
  * @version 1.0.0
  */
 
-require_once('JSqueeze.php');
-
 /**
  * Main system setup.
  */
@@ -45,19 +43,6 @@ final class Setup {
      * @var array $config
      */
     private $config;
-
-    /**
-     * Array of directories that will be populated with public assets from the system core and site.
-     * @var array $htdocsDirs
-     */
-    private $htdocsDirs = array(
-        'images',
-        'scripts',
-        'stylesheets',
-        'templates/content',
-        'templates/icons',
-        'templates/layout'
-    );
 
     /**
      * PDO
@@ -311,13 +296,11 @@ final class Setup {
      * It:
      * - checks connection to database
      * - updates table @c share_sites
-     * - publishes module assets
      * - removes legacy JavaScript dependency map
      */
     private function installAction() {
         $this->checkDBConnection();
         $this->updateSitesTable();
-        $this->linkerAction();
         $this->scriptMapAction();
     }
 
@@ -721,52 +704,6 @@ final class Setup {
     }
 
     /**
-     * Publish module assets into public directories.
-     *
-     * @throws Exception
-     */
-    private function linkerAction() {
-
-        $this->title('Публикация ресурсов модулей');
-
-        foreach ($this->htdocsDirs as $dir) {
-            $dir = HTDOCS_DIR . DIRECTORY_SEPARATOR . $dir;
-
-            if (!file_exists($dir)) {
-                if (!@mkdir($dir, 0755, true)) {
-                    throw new Exception('Невозможно создать директорию:' . $dir);
-                }
-            } else {
-                $this->cleaner($dir);
-            }
-        }
-
-        //На этот момент у нас есть все необходимые директории в htdocs и они пустые
-        foreach ($this->htdocsDirs as $dir) {
-
-            $this->text(PHP_EOL . 'Обработка ' . $dir . ':');
-            //сначала проходимся по модулям ядра
-            foreach (array_reverse($this->config['modules']) as $module => $module_path) {
-                $moduleDir = implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module));
-                if (!is_dir($moduleDir)) {
-                    throw new Exception('Не существует: ' . $moduleDir);
-                }
-                $this->linkCore(
-                    implode(DIRECTORY_SEPARATOR, array($moduleDir, $dir, '*')),
-                    implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir)),
-                    count(explode(DIRECTORY_SEPARATOR, $dir)));
-
-            }
-            $this->linkSite(
-                implode(DIRECTORY_SEPARATOR, array(SITE_DIR, MODULES, '*', $dir, '*')),
-                implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir))
-            );
-        }
-
-        $this->text('Ресурсы опубликованы');
-    }
-
-    /**
      * Iterate over uploads.
      *
      * @param string $directory Directory.
@@ -914,118 +851,6 @@ final class Setup {
                     }
                 }
                 closedir($dh);
-            }
-        }
-    }
-
-    //todo VZ: $level is not used.
-    /**
-     * Publish assets for core modules.
-     *
-     * @param string $globPattern File selection pattern.
-     * @param string $module Path to the core module.
-     * @param int $level Depth level for relative paths.
-     *
-     * @throws Exception 'Не удалось скопировать файл'
-     */
-    private function linkCore($globPattern, $module, $level = 1) {
-        $JSMIn = new JSqueeze();
-        $fileList = glob($globPattern);
-
-        if (!empty($fileList)) {
-            foreach ($fileList as $fo) {
-                if (is_dir($fo)) {
-                    $dir = $module . DIRECTORY_SEPARATOR . basename($fo);
-                    if (!file_exists($dir)) {
-                        mkdir($dir);
-                        $this->text('Создаем директорию ', $dir);
-                    }
-                    $this->linkCore($fo . DIRECTORY_SEPARATOR . '*', $dir, $level + 1);
-                } else {
-                    //Если одним из низших по приоритету модулей уже был опубликован файл
-                    //то затираем его нафиг
-                    if (file_exists($dest = $module . DIRECTORY_SEPARATOR . basename($fo))) {
-                        unlink($dest);
-                    }
-
-                    $pi = pathinfo($fo);
-
-                    if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
-
-                        if (
-                            (strpos($pi['filename'], 'mootools') === false)
-                            &&
-                            (strpos($pi['filename'], 'Swiff.Uploader') === false)
-                            &&
-                            (strpos($pi['filename'], 'mootools-more') === false)
-                            &&
-                            (strpos($pi['filename'], 'mootools-ext') === false)
-                            &&
-                            (strpos($pi['filename'], 'jwplayer') === false)
-                            &&
-                            (strpos($pi['dirname'], 'ckeditor') === false)
-                            &&
-                            (strpos($pi['dirname'], 'codemirror') === false)
-                        ) {
-                            $this->text('Минифицируем и копируем ', $fo, ' --> ', $dest);
-                            file_put_contents($dest, $JSMIn->squeeze(file_get_contents($fo), true, false, false));
-                        } else {
-                            $this->text('Копируем ', $fo, ' --> ', $dest);
-                            if (!@copy($fo, $dest)) {
-                                throw new Exception('Не удалось скопировать файл ' . $fo . ' в ' . $dest);
-                            }
-                        }
-
-                    } else {
-                        $this->text('Копируем ', $fo, ' --> ', $dest);
-                        if (!@copy($fo, $dest)) {
-                            throw new Exception('Не удалось скопировать файл ' . $fo . ' в ' . $dest);
-
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Publish assets for site modules.
-     *
-     * @param string $globPattern File selection pattern.
-     * @param string $dir Directory where assets will be copied.
-     *
-     * @throws Exception 'Не удалось скопировать файл'
-     */
-    private function linkSite($globPattern, $dir) {
-        $JSMin = new JSqueeze();
-
-        $fileList = glob($globPattern);
-        if (!empty($fileList)) {
-            foreach ($fileList as $fo) {
-
-                $fo_stripped = str_replace(SITE_DIR, '', $fo);
-                list(, , $module) = explode(DIRECTORY_SEPARATOR, $fo_stripped);
-                $new_dir = implode(DIRECTORY_SEPARATOR, array($dir, $module));
-
-                if (!file_exists($new_dir)) {
-                    mkdir($new_dir);
-                }
-
-                $srcFile = $fo;
-                $linkPath = implode(DIRECTORY_SEPARATOR, array($dir, $module, basename($fo_stripped)));
-
-                $pi = pathinfo($srcFile);
-
-                if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
-                    $this->text('Минифицируем и копируем ', $srcFile, ' --> ', $linkPath);
-                    file_put_contents($linkPath, $JSMin->squeeze(file_get_contents($srcFile), true, false, false));
-                } else {
-                    $this->text('Копируем ', $srcFile, ' --> ', $linkPath);
-                    if (!@copy($srcFile, $linkPath)) {
-                        throw new Exception('Не удалось скопировать файл ' . $srcFile . ' в ' . $linkPath);
-
-                    }
-                }
             }
         }
     }
