@@ -439,13 +439,13 @@ final class Setup {
             $publicModulePath = $modulesRoot . DIRECTORY_SEPARATOR . $moduleName;
 
             if (is_dir($publicModulePath)) {
-                return $publicModulePath;
+                return $this->canonicalizeLinkSource($publicModulePath);
             }
 
             if (is_link($publicModulePath)) {
                 $linkTarget = $this->resolveSymlinkTarget($publicModulePath);
                 if ($linkTarget && is_dir($linkTarget)) {
-                    return $publicModulePath;
+                    return $this->canonicalizeLinkSource($publicModulePath);
                 }
 
                 $this->text('Удаляем битый симлинк ' . $publicModulePath);
@@ -454,7 +454,7 @@ final class Setup {
         }
 
         if ($configuredPath !== '' && is_dir($configuredPath)) {
-            return $configuredPath;
+            return $this->canonicalizeLinkSource($configuredPath);
         }
 
         if ($configuredPath !== '') {
@@ -478,12 +478,85 @@ final class Setup {
         }
 
         if (strpos($linkTarget, DIRECTORY_SEPARATOR) === 0) {
-            return realpath($linkTarget) ?: $linkTarget;
+            $resolvedAbsolute = @realpath($linkTarget);
+
+            return ($resolvedAbsolute !== false) ? $resolvedAbsolute : $linkTarget;
         }
 
         $absolute = dirname($path) . DIRECTORY_SEPARATOR . $linkTarget;
 
-        return realpath($absolute) ?: $absolute;
+        $resolvedAbsolute = @realpath($absolute);
+
+        return ($resolvedAbsolute !== false) ? $resolvedAbsolute : $absolute;
+    }
+
+    /**
+     * Normalize a source path so symlinks point to the physical location.
+     *
+     * @param string $path Path to normalize.
+     *
+     * @return string
+     */
+    private function canonicalizeLinkSource($path) {
+        $resolved = @realpath($path);
+        if ($resolved !== false) {
+            return $resolved;
+        }
+
+        $root = rtrim(HTDOCS_DIR, DIRECTORY_SEPARATOR);
+        if ($root !== '' && strpos($path, $root . DIRECTORY_SEPARATOR) === 0) {
+            $relative = substr($path, strlen($root));
+            $relative = ltrim($relative, DIRECTORY_SEPARATOR);
+
+            $prefixes = array(
+                array(
+                    'base' => rtrim(CORE_DIR, DIRECTORY_SEPARATOR),
+                    'relative' => trim(CORE_REL_DIR, DIRECTORY_SEPARATOR)
+                ),
+                array(
+                    'base' => rtrim(SITE_DIR, DIRECTORY_SEPARATOR),
+                    'relative' => trim(SITE_REL_DIR, DIRECTORY_SEPARATOR)
+                ),
+            );
+
+            foreach ($prefixes as $prefix) {
+                if ($prefix['relative'] === '') {
+                    continue;
+                }
+
+                if ($relative === $prefix['relative']
+                    || strpos($relative, $prefix['relative'] . DIRECTORY_SEPARATOR) === 0
+                ) {
+                    $suffix = substr($relative, strlen($prefix['relative']));
+                    $candidate = $prefix['base'];
+                    if ($suffix !== false && $suffix !== '') {
+                        $candidate .= DIRECTORY_SEPARATOR . ltrim($suffix, DIRECTORY_SEPARATOR);
+                    }
+
+                    $candidateResolved = @realpath($candidate);
+                    if ($candidateResolved !== false) {
+                        return $candidateResolved;
+                    }
+
+                    if ($this->pathExists($candidate)) {
+                        return $candidate;
+                    }
+                }
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * Check whether a path exists or is a symlink.
+     *
+     * @param string $path
+     *
+     * @return bool
+     */
+    private function pathExists($path) {
+        return file_exists($path) || is_link($path);
     }
 
     /**
@@ -493,9 +566,10 @@ final class Setup {
      * @param string $target Target symlink path.
      */
     private function ensureSymlink($source, $target) {
-        $linkTarget = realpath($source);
-        if ($linkTarget === false) {
-            if (!file_exists($source)) {
+        $linkTarget = $this->canonicalizeLinkSource($source);
+
+        if (!$this->pathExists($linkTarget)) {
+            if (!$this->pathExists($source)) {
                 $this->text('Пропускаем ' . $target . ' — источник не найден (' . $source . ').');
                 return;
             }
@@ -506,12 +580,17 @@ final class Setup {
         if (is_link($target)) {
             $currentLink = readlink($target);
             $currentRealPath = ($currentLink !== false)
-                ? realpath((strpos($currentLink, DIRECTORY_SEPARATOR) === 0)
+                ? @realpath((strpos($currentLink, DIRECTORY_SEPARATOR) === 0)
                     ? $currentLink
                     : dirname($target) . DIRECTORY_SEPARATOR . $currentLink)
                 : false;
 
-            if ($currentRealPath === realpath($linkTarget) || $currentLink === $linkTarget) {
+            $normalizedTarget = @realpath($linkTarget);
+            if ($normalizedTarget === false) {
+                $normalizedTarget = $linkTarget;
+            }
+
+            if ($currentRealPath === $normalizedTarget || $currentLink === $linkTarget) {
                 return;
             }
 

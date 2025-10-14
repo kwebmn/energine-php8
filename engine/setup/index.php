@@ -9,9 +9,15 @@ define('CHARSET', 'UTF-8');
 //Минимальная версия РНР
 define('MIN_PHP_VERSION', 5.3);
 
+$safeRealpath = static function ($path) {
+    $resolved = @realpath($path);
+
+    return ($resolved !== false) ? $resolved : null;
+};
+
 $rootCandidates = [
-    realpath(__DIR__ . '/..') ?: dirname(__DIR__),
-    realpath(__DIR__ . '/../..') ?: dirname(dirname(__DIR__)),
+    $safeRealpath(__DIR__ . '/..') ?: dirname(__DIR__),
+    dirname(dirname(__DIR__)),
 ];
 
 $projectRoot = $rootCandidates[0];
@@ -45,8 +51,10 @@ if (!defined('SITE_REL_DIR')) {
     define('SITE_REL_DIR', $siteRel);
 }
 
-$coreDir = realpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . CORE_REL_DIR) ?: HTDOCS_DIR . DIRECTORY_SEPARATOR . CORE_REL_DIR;
-$siteDir = realpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR) ?: HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR;
+$coreDir = $safeRealpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . CORE_REL_DIR)
+    ?: HTDOCS_DIR . DIRECTORY_SEPARATOR . CORE_REL_DIR;
+$siteDir = $safeRealpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR)
+    ?: HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR;
 
 if (!defined('CORE_DIR')) {
     define('CORE_DIR', $coreDir);
