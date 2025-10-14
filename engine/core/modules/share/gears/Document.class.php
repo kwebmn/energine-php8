@@ -641,7 +641,7 @@ final class Document extends DBWorker implements IDocument
             $this->setProperty('single', 'single');
 
             if ($actionParams[1] === 'pageToolBar') {
-                $this->componentManager->addComponent(
+                $this->componentManager->add(
                     $this->componentManager->createComponent(
                         'pageToolBar',
                         'share',
