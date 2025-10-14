@@ -433,112 +433,172 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
      */
     private function loadTemplateData(string $type, string $siteFolder, string|false $oldValue = false): array
     {
+        $registry = Document::getTemplateRegistry($type);
+        $aliases  = $this->determineTemplateAliases($type, $siteFolder, $registry);
+        $selection = $this->deduplicateTemplateSelection($aliases, $registry, $type, $oldValue);
+
+        $options = $this->buildTemplateOptions($selection, $type);
+
+        if ($oldValue && !isset($selection[$oldValue])) {
+            $options[] = ['key' => $oldValue, 'value' => $oldValue, 'disabled' => 'disabled'];
+        }
+
+        usort(
+            $options,
+            static fn(array $a, array $b): int => strnatcasecmp((string)$a['value'], (string)$b['value'])
+        );
+
+        return $options;
+    }
+
+    /**
+     * Возвращает алиасы шаблонов, доступные в интерфейсе редактора.
+     *
+     * @param array<string, array{path:string,module:string,origin:string}> $registry
+     * @return string[]
+     */
+    private function determineTemplateAliases(string $type, string $siteFolder, array $registry): array
+    {
         $include = SITE_DIR . '/modules/' . $siteFolder . '/templates/' . $type . '.include';
 
-        $registry = Document::getTemplateRegistry($type);
-
-        // Набор путей по include-правилам либо дефолтные маски
         $selected = [];
-        if (file_exists($include)) {
-            $rules = file($include) ?: [];
-            foreach ($rules as $rule) {
+
+        if (is_file($include)) {
+            foreach (file($include) ?: [] as $rule) {
                 $rule = trim($rule);
                 if ($rule === '') {
                     continue;
                 }
+
                 foreach ($registry as $key => $info) {
                     if (fnmatch($rule, $key, FNM_PATHNAME)) {
                         $selected[$key] = true;
                     }
                 }
             }
-        } else {
-            foreach ($registry as $key => $info) {
-                if (
-                    $info['origin'] === 'core' ||
-                    ($info['origin'] === 'site' && $info['module'] === $siteFolder)
-                ) {
-                    $selected[$key] = true;
-                }
-            }
-            if (empty($selected)) {
-                foreach (array_keys($registry) as $key) {
-                    $selected[$key] = true;
-                }
+
+            return array_keys($selected);
+        }
+
+        foreach ($registry as $key => $info) {
+            if (
+                $info['origin'] === 'core' ||
+                ($info['origin'] === 'site' && $info['module'] === $siteFolder)
+            ) {
+                $selected[$key] = true;
             }
         }
 
+        if ($selected === []) {
+            foreach (array_keys($registry) as $key) {
+                $selected[$key] = true;
+            }
+        }
+
+        return array_keys($selected);
+    }
+
+    /**
+     * Удаляет дубли по физическому пути и возвращает выбранные алиасы.
+     *
+     * @param string[] $aliases
+     * @param array<string, array{path:string,module:string,origin:string}> $registry
+     * @param string|false $oldValue
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    private function deduplicateTemplateSelection(
+        array $aliases,
+        array $registry,
+        string $type,
+        string|false $oldValue
+    ): array {
         $selectedByPath = [];
-        foreach (array_keys($selected) as $key) {
-            if (!isset($registry[$key])) {
+
+        foreach ($aliases as $alias) {
+            if (!isset($registry[$alias])) {
                 continue;
             }
 
-            $info = $registry[$key];
+            $info = $registry[$alias];
             $path = $info['path'];
 
             if (!isset($selectedByPath[$path])) {
-                $selectedByPath[$path] = ['alias' => $key, 'info' => $info];
+                $selectedByPath[$path] = ['alias' => $alias, 'info' => $info];
                 continue;
             }
 
-            $preferred = $this->selectPreferredTemplateAlias($selectedByPath[$path]['alias'], $key);
-            if ($preferred === $key) {
-                $selectedByPath[$path] = ['alias' => $preferred, 'info' => $info];
+            $preferred = $this->selectPreferredTemplateAlias($selectedByPath[$path]['alias'], $alias);
+            if ($preferred === $alias) {
+                $selectedByPath[$path] = ['alias' => $alias, 'info' => $info];
             }
         }
 
         if ($oldValue) {
-            $oldInfo = Document::findTemplate($oldValue, $type);
-            if ($oldInfo) {
-                $path = $oldInfo['path'];
+            $resolved = Document::findTemplate($oldValue, $type);
+            if ($resolved) {
+                $path = $resolved['path'];
                 if (isset($selectedByPath[$path])) {
-                    $selectedByPath[$path] = ['alias' => $oldValue, 'info' => $oldInfo];
+                    $selectedByPath[$path] = ['alias' => $oldValue, 'info' => $resolved];
                 }
             }
         }
 
-        $finalSelection = [];
+        $selection = [];
         foreach ($selectedByPath as $entry) {
-            $finalSelection[$entry['alias']] = $entry['info'];
+            $selection[$entry['alias']] = $entry['info'];
         }
 
-        $out = [];
+        return $selection;
+    }
+
+    /**
+     * Строит итоговый список опций для селекта шаблонов.
+     *
+     * @param array<string, array{path:string,module:string,origin:string}> $selection
+     * @return array<int, array<string, string>>
+     */
+    private function buildTemplateOptions(array $selection, string $type): array
+    {
         $dom = new DOMDocument('1.0', 'UTF-8');
+        $options = [];
 
-        foreach ($finalSelection as $alias => $info) {
-            $path = $info['path'];
-            $relative = $alias;
-            [$name, $tp] = explode('.', substr(basename($relative), 0, -4), 2);
-            $title = $this->translate(strtoupper($tp . '_' . $name));
+        foreach ($selection as $alias => $info) {
+            $options[] = $this->describeTemplateOption($alias, $info, $type, $dom);
+        }
 
-            $row = ['key' => $relative, 'value' => $title];
+        return $options;
+    }
 
-            if ($type === self::TMPL_CONTENT && file_exists($path)) {
-                $dom->load($path);
-                if ($seg = $dom->documentElement->getAttribute('segment')) {
-                    $row['data-segment'] = $seg;
-                }
-                if ($lay = $dom->documentElement->getAttribute('layout')) {
-                    $row['data-layout'] = $lay;
-                }
+    /**
+     * Формирует описание опции с учётом метаданных XML.
+     *
+     * @param array{path:string,module:string,origin:string} $info
+     */
+    private function describeTemplateOption(
+        string $alias,
+        array $info,
+        string $type,
+        ?DOMDocument $dom = null
+    ): array {
+        $dom ??= new DOMDocument('1.0', 'UTF-8');
+
+        $path = $info['path'];
+        [$name, $tp] = explode('.', substr(basename($alias), 0, -4), 2);
+        $title = $this->translate(strtoupper($tp . '_' . $name));
+
+        $row = ['key' => $alias, 'value' => $title];
+
+        if ($type === self::TMPL_CONTENT && is_file($path)) {
+            $dom->load($path);
+            if ($seg = $dom->documentElement->getAttribute('segment')) {
+                $row['data-segment'] = $seg;
             }
-
-            $out[] = $row;
+            if ($lay = $dom->documentElement->getAttribute('layout')) {
+                $row['data-layout'] = $lay;
+            }
         }
 
-        // Если старое значение из БД не обнаружено среди вариантов — добавим disabled-опцию
-        if ($oldValue && !isset($finalSelection[$oldValue])) {
-            $out[] = ['key' => $oldValue, 'value' => $oldValue, 'disabled' => 'disabled'];
-        }
-
-        // Натуральная сортировка по названию
-        usort(
-            $out,
-            static fn(array $a, array $b): int => strnatcasecmp((string)$a['value'], (string)$b['value'])
-        );
-
-        return $out;
+        return $row;
     }
 
     /**

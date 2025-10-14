@@ -952,23 +952,39 @@ final class Document extends DBWorker implements IDocument
                     $relative = substr($fullPath, strlen($normalizedDir) + 1);
                     $relative = str_replace(DIRECTORY_SEPARATOR, '/', (string)$relative);
 
-                    self::registerTemplateAlias($result, $module . '/' . $relative, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $relative, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $fileName, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $type . '/' . $relative, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $type . '/' . $fileName, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, 'templates/' . $relative, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, 'templates/' . $type . '/' . $relative, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, 'templates/' . $type . '/' . $fileName, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $module . '/templates/' . $relative, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $module . '/templates/' . $fileName, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $module . '/templates/' . $type . '/' . $relative, $fullPath, $module, $origin);
-                    self::registerTemplateAlias($result, $module . '/templates/' . $type . '/' . $fileName, $fullPath, $module, $origin);
+                    foreach (self::buildTemplateAliases($module, $relative, $fileName, $type) as $alias) {
+                        self::registerTemplateAlias($result, $alias, $fullPath, $module, $origin);
+                    }
                 }
             }
         }
 
         return $result;
+    }
+
+    /**
+     * Produce the full list of legacy aliases that can point to a template file.
+     *
+     * @return string[]
+     */
+    private static function buildTemplateAliases(string $module, string $relative, string $fileName, string $type): array
+    {
+        $aliases = [
+            $module . '/' . $relative,
+            $relative,
+            $fileName,
+            $type . '/' . $relative,
+            $type . '/' . $fileName,
+            'templates/' . $relative,
+            'templates/' . $type . '/' . $relative,
+            'templates/' . $type . '/' . $fileName,
+            $module . '/templates/' . $relative,
+            $module . '/templates/' . $fileName,
+            $module . '/templates/' . $type . '/' . $relative,
+            $module . '/templates/' . $type . '/' . $fileName,
+        ];
+
+        return array_values(array_unique($aliases));
     }
 
     /**
