@@ -131,7 +131,7 @@ final class ComponentManager extends BaseObject implements Iterator
     /**
      * Create component.
      */
-    public function createComponent(string $name, string $module, string $class, array $params = null)/*: Component*/
+    public function createComponent(string $name, string $module, string $class, ?array $params = null)/*: Component*/
     {
         return self::_createComponent($name, $module, $class, $params);
     }
@@ -222,7 +222,7 @@ final class ComponentManager extends BaseObject implements Iterator
      *
      * @throws SystemException
      */
-    private static function _createComponent(string $name, string $module, string $class, array $params = null)/*: Component*/
+    private static function _createComponent(string $name, string $module, string $class, ?array $params = null)/*: Component*/
     {
         try {
             /** @var Component $result */
