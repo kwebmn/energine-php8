@@ -13,21 +13,10 @@ final class Setup;
  * @version 1.0.0
  */
 
-require_once('JSqueeze.php');
-
 /**
  * Main system setup.
  */
 final class Setup {
-    /**
-     * Symlink mode  - for development
-     */
-    const MODE_SYMLINK = 'symlink';
-    /**
-     * Copy minified mode - for production
-     */
-    const MODE_COPY = 'copy';
-
     /**
      * Path to the directory for uploads.
      */
@@ -56,16 +45,14 @@ final class Setup {
     private $config;
 
     /**
-     * Array of directories, that will be created and where will be placed symbolic links from system core and site.
-     * @var array $htdocsDirs
+     * Asset directories that should be linked into htdocs.
+     *
+     * @var array<int, string>
      */
-    private $htdocsDirs = array(
+    private $assetDirs = array(
         'images',
         'scripts',
         'stylesheets',
-        'templates/content',
-        'templates/icons',
-        'templates/layout'
     );
 
     /**
@@ -137,7 +124,7 @@ final class Setup {
      * @throws Exception 'Странный какой то конфиг. Пользуясь ним я не могу ничего сконфигурить. Или возьмите нормальный конфиг, или - извините.'
      * @throws Exception 'В конфиге ничего не сказано о режиме отладки. Это плохо. Так я работать не буду.'
      * @throws Exception 'Нет. С отключенным режимом отладки я работать не буду, и не просите. Запускайте меня после того как исправите в конфиге ["site"]["debug"] с 0 на 1.'
-     * @throws Exception 'Странно. Отсутствует перечень модулей. Я могу конечно и сам посмотреть, что находится в папке core/modules, но как то это не кузяво будет. '
+     * @throws Exception 'Странно. Отсутствует перечень модулей. Я могу конечно и сам посмотреть, что находится в папке engine/core/modules, но как то это не кузяво будет. '
      */
     public function checkEnvironment() {
 
@@ -187,7 +174,7 @@ final class Setup {
 
         //А задан ли у нас перечень модулей?
         if (!isset($this->config['modules']) && empty($this->config['modules'])) {
-            throw new Exception('Странно. Отсутствует перечень модулей. Я могу конечно и сам посмотреть, что находится в папке core/modules, но как то это не кузяво будет. ');
+            throw new Exception('Странно. Отсутствует перечень модулей. Я могу конечно и сам посмотреть, что находится в папке engine/core/modules, но как то это не кузяво будет. ');
         }
         $this->text('Перечень модулей:', PHP_EOL . ' => ' . implode(PHP_EOL . ' => ', array_values($this->config['modules'])));
     }
@@ -320,13 +307,11 @@ final class Setup {
      * It:
      * - checks connection to database
      * - updates table @c share_sites
-     * - generate symlinks
      * - removes legacy JavaScript dependency map
      */
     private function installAction() {
         $this->checkDBConnection();
         $this->updateSitesTable();
-        $this->linkerAction();
         $this->scriptMapAction();
     }
 
@@ -730,72 +715,131 @@ final class Setup {
     }
 
     /**
-     * Generate symlinks.
-     *
-     * @throws Exception 'Не существует: ' . $module_path
-     * @throws Exception 'Нет доступа на запись: ' . $modules_dir
+     * Generate symlinks for public assets.
      */
     private function linkerAction() {
 
-        $this->title('Связывание данных модулей ');
+        $this->title('Связывание статических ресурсов модулей');
 
-        foreach ($this->htdocsDirs as $dir) {
-            $dir = HTDOCS_DIR . DIRECTORY_SEPARATOR . $dir;
+        foreach ($this->assetDirs as $dir) {
+            $dirPath = HTDOCS_DIR . DIRECTORY_SEPARATOR . $dir;
 
-            if (!file_exists($dir)) {
-                if (!@mkdir($dir, 0755, true)) {
-                    throw new Exception('Невозможно создать директорию:' . $dir);
+            if (!file_exists($dirPath)) {
+                if (!@mkdir($dirPath, 0755, true)) {
+                    throw new Exception('Невозможно создать директорию:' . $dirPath);
                 }
             } else {
-                $this->cleaner($dir);
+                $this->cleaner($dirPath);
             }
         }
 
-        // создаем симлинки модулей из их физического расположения, описанного в конфиге
-        // в папку CORE_DIR . '/modules/'
-        $this->text(PHP_EOL . 'Создание символических ссылок в ' . CORE_DIR . ':');
-        foreach ($this->config['modules'] as $module => $module_path) {
-            $symlinked_dir = implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module));
-            $this->text('Создание символической ссылки ', $module_path, ' -> ', $symlinked_dir);
-
-            if (file_exists($symlinked_dir) || is_link($symlinked_dir)) {
-                unlink($symlinked_dir);
-            }
-
-            if (!file_exists($module_path)) {
-                throw new Exception('Не существует: ' . $module_path);
-            }
-
-            $modules_dir = implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES));
-            if (!is_writeable($modules_dir)) {
-                throw new Exception('Нет доступа на запись: ' . $modules_dir);
-            }
-
-            symlink($module_path, $symlinked_dir);
-
-        }
-
-        //На этот момент у нас есть все необходимые директории в htdocs и они пустые
-        foreach ($this->htdocsDirs as $dir) {
-
+        foreach ($this->assetDirs as $dir) {
             $this->text(PHP_EOL . 'Обработка ' . $dir . ':');
-            //сначала проходимся по модулям ядра
-            foreach (array_reverse($this->config['modules']) as $module => $module_path) {
-                $this->linkCore(
-                    ($this->config['site']['debug'])?self::MODE_SYMLINK:self::MODE_COPY,
-                    implode(DIRECTORY_SEPARATOR, array(CORE_DIR, MODULES, $module, $dir, '*')),
-                    implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir)),
-                    count(explode(DIRECTORY_SEPARATOR, $dir)));
 
+            $targetDir = implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir));
+
+            foreach (array_reverse($this->config['modules']) as $modulePath) {
+                $sourceDir = implode(DIRECTORY_SEPARATOR, array($modulePath, $dir));
+                $this->linkDirectoryContents($sourceDir, $targetDir);
             }
-            $this->linkSite(
-                ($this->config['site']['debug'])?self::MODE_SYMLINK:self::MODE_COPY,
-                implode(DIRECTORY_SEPARATOR, array(SITE_DIR, MODULES, '*', $dir, '*')),
-                implode(DIRECTORY_SEPARATOR, array(HTDOCS_DIR, $dir))
-            );
+
+            $this->linkSiteAssets($dir, $targetDir);
         }
 
         $this->text('Символические ссылки расставлены');
+    }
+
+    /**
+     * Recursively clean directory.
+     *
+     * @param string $dir Path to the directory.
+     */
+    private function cleaner($dir) {
+        if (is_dir($dir)) {
+            if ($dh = opendir($dir)) {
+                while ((($file = readdir($dh)) !== false)) {
+                    if (!in_array($file, array('.', '..'))) {
+                        $filePath = $dir . DIRECTORY_SEPARATOR . $file;
+                        if (is_dir($filePath) && !is_link($filePath)) {
+                            $this->cleaner($filePath);
+                            rmdir($filePath);
+                            $this->text('Удаляем директорию ', $filePath);
+                        } else {
+                            $this->text('Удаляем файл ', $filePath);
+                            unlink($filePath);
+                        }
+                    }
+                }
+                closedir($dh);
+            }
+        }
+    }
+
+    /**
+     * Link assets from site modules into the public directory.
+     *
+     * @param string $dirName Asset directory name (images/scripts/stylesheets).
+     * @param string $targetDir Destination directory.
+     */
+    private function linkSiteAssets($dirName, $targetDir) {
+        $siteModules = glob(implode(DIRECTORY_SEPARATOR, array(SITE_DIR, MODULES, '*')), GLOB_ONLYDIR);
+        if (!$siteModules) {
+            return;
+        }
+
+        foreach ($siteModules as $moduleDir) {
+            $moduleName = basename($moduleDir);
+            $moduleSource = implode(DIRECTORY_SEPARATOR, array($moduleDir, $dirName));
+            if (!is_dir($moduleSource)) {
+                continue;
+            }
+
+            $moduleTarget = implode(DIRECTORY_SEPARATOR, array($targetDir, $moduleName));
+            if (!file_exists($moduleTarget) && !@mkdir($moduleTarget, 0755, true)) {
+                throw new Exception('Невозможно создать директорию:' . $moduleTarget);
+            }
+
+            $this->linkDirectoryContents($moduleSource, $moduleTarget);
+        }
+    }
+
+    /**
+     * Recursively create symlinks from the source directory into the destination directory.
+     *
+     * @param string $sourceDir
+     * @param string $destinationDir
+     */
+    private function linkDirectoryContents($sourceDir, $destinationDir) {
+        if (!is_dir($sourceDir)) {
+            return;
+        }
+
+        if (!file_exists($destinationDir) && !@mkdir($destinationDir, 0755, true)) {
+            throw new Exception('Невозможно создать директорию:' . $destinationDir);
+        }
+
+        $fileList = glob($sourceDir . DIRECTORY_SEPARATOR . '*');
+        if (empty($fileList)) {
+            return;
+        }
+
+        foreach ($fileList as $path) {
+            $destinationPath = $destinationDir . DIRECTORY_SEPARATOR . basename($path);
+
+            if (is_dir($path) && !is_link($path)) {
+                $this->linkDirectoryContents($path, $destinationPath);
+                continue;
+            }
+
+            if (file_exists($destinationPath) || is_link($destinationPath)) {
+                unlink($destinationPath);
+            }
+
+            $this->text('Создаем симлинк ', $path, ' --> ', $destinationPath);
+            if (!@symlink($path, $destinationPath)) {
+                throw new Exception('Не удалось создать символическую ссылку с ' . $path . ' на ' . $destinationPath);
+            }
+        }
     }
 
     /**
@@ -918,169 +962,6 @@ final class Setup {
         } catch (Exception $e) {
             $this->dbConnect->rollBack();
             throw new Exception($e->getMessage());
-        }
-    }
-
-    /**
-     * Recursive clean directory.
-     *
-     * @param string $dir Path to the directory.
-     */
-    private function cleaner($dir) {
-        if (is_dir($dir)) {
-            if ($dh = opendir($dir)) {
-                while ((($file = readdir($dh)) !== false)) {
-                    if (!in_array($file, array('.', '..'))) {
-                        if (is_dir($file = $dir . DIRECTORY_SEPARATOR . $file)) {
-                            if (is_link($file)) {
-                                unlink($file);
-                            } else {
-                                $this->cleaner($file);
-                                rmdir($file);
-                            }
-                            $this->text('Удаляем директорию ', $file);
-                        } else {
-                            $this->text('Удаляем файл ', $file);
-                            unlink($file);
-                        }
-                    }
-                }
-                closedir($dh);
-            }
-        }
-    }
-
-    //todo VZ: $level is not used.
-    /**
-     * Create symlinks for core modules.
-     *
-     * @param string $mode Mode.
-     * @param string $globPattern File selection pattern.
-     * @param string $module Path to the core module.
-     * @param int $level Depth level for relative paths.
-     *
-     * @throws Exception 'Не удалось создать символическую ссылку'
-     */
-    private function linkCore($mode, $globPattern, $module, $level = 1) {
-        $JSMIn = new JSqueeze();
-        $fileList = glob($globPattern);
-
-        if (!empty($fileList)) {
-            foreach ($fileList as $fo) {
-                if (is_dir($fo)) {
-                    $dir = $module . DIRECTORY_SEPARATOR . basename($fo);
-                    if (!file_exists($dir)) {
-                        mkdir($dir);
-                        $this->text('Создаем директорию ', $dir);
-                    }
-                    $this->linkCore($mode, $fo . DIRECTORY_SEPARATOR . '*', $dir, $level + 1);
-                } else {
-                    //Если одним из низших по приоритету модулей был уже создан симлинк
-                    //то затираем его нафиг
-                    if (file_exists($dest = $module . DIRECTORY_SEPARATOR . basename($fo))) {
-                        unlink($dest);
-                    }
-
-                    switch ($mode) {
-                        case self::MODE_SYMLINK:
-                            $this->text('Создаем симлинк ', $fo, ' --> ', $dest);
-                            if (!@symlink($fo, $dest)) {
-                                throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
-                            }
-                            break;
-                        case self::MODE_COPY:
-                            $pi = pathinfo($fo);
-
-                            if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
-
-                                if (
-                                    (strpos($pi['filename'], 'mootools') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'Swiff.Uploader') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'mootools-more') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'mootools-ext') === false)
-                                    &&
-                                    (strpos($pi['filename'], 'jwplayer') === false)
-                                    &&
-                                    (strpos($pi['dirname'], 'ckeditor') === false)
-                                    &&
-                                    (strpos($pi['dirname'], 'codemirror') === false)
-                                ) {
-                                    $this->text('Минифицируем и копируем ', $fo, ' --> ', $dest);
-                                    file_put_contents($dest, $JSMIn->squeeze(file_get_contents($fo), true, false, false));
-                                } else {
-                                    $this->text('Создаем символическую ссылку ', $fo, ' --> ', $dest);
-                                    if (!@symlink($fo, $dest)) {
-                                        throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
-                                    }
-                                }
-
-                            } else {
-                                $this->text('Создаем символическую ссылку ', $fo, ' --> ', $dest);
-                                if (!@symlink($fo, $dest)) {
-                                    throw new Exception('Не удалось создать символическую ссылку с ' . $fo . ' на ' . $dest);
-
-                                }
-                            }
-                            break;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Create symlinks for site modules.
-     *
-     * @param string $mode Mode.
-     * @param string $globPattern File selection pattern.
-     * @param string $dir Directory where symlinks will be created.
-     *
-     * @throws Exception 'Не удалось создать символическую ссылку'
-     */
-    private function linkSite($mode, $globPattern, $dir) {
-        $JSMin = new JSqueeze();
-
-        $fileList = glob($globPattern);
-        if (!empty($fileList)) {
-            foreach ($fileList as $fo) {
-
-                $fo_stripped = str_replace(SITE_DIR, '', $fo);
-                list(, , $module) = explode(DIRECTORY_SEPARATOR, $fo_stripped);
-                $new_dir = implode(DIRECTORY_SEPARATOR, array($dir, $module));
-
-                if (!file_exists($new_dir)) {
-                    mkdir($new_dir);
-                }
-
-                $srcFile = $fo;
-                $linkPath = implode(DIRECTORY_SEPARATOR, array($dir, $module, basename($fo_stripped)));
-
-                switch ($mode) {
-                    case self::MODE_SYMLINK:
-                        $this->text('Создаем симлинк ', $srcFile, ' --> ', $linkPath);
-                        if (!@symlink($srcFile, $linkPath)) {
-                            throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath);
-                        }
-                        break;
-                    case self::MODE_COPY:
-                        $pi = pathinfo($srcFile);
-
-                        if (isset($pi['extension']) && ($pi['extension'] == 'js')) {
-                            $this->text('Минифицируем и копируем ', $srcFile, ' --> ', $linkPath);
-                            file_put_contents($linkPath, $JSMin->squeeze(file_get_contents($srcFile), true, false, false));
-                        } else {
-                            $this->text('Создаем символическую ссылку ', $srcFile, ' --> ', $linkPath);
-                            if (!@symlink($srcFile, $linkPath)) {
-                                throw new Exception('Не удалось создать символическую ссылку с ' . $srcFile . ' на ' . $linkPath);
-
-                            }
-                        }
-                        break;
-                }
-            }
         }
     }
 

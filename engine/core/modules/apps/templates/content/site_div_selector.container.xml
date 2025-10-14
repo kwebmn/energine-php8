@@ -9,7 +9,7 @@
         <params>
             <param name="rights">3</param>
             <param name="state">main</param>
-            <param name="config">core/modules/share/config/SiteDivisionSelector.component.xml</param>
+            <param name="config">engine/core/modules/share/config/SiteDivisionSelector.component.xml</param>
         </params>
     </component>
 </container>

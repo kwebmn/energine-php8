@@ -5,7 +5,7 @@
        <params>
            <param name="id">current</param>
            <param name="recordsPerPage">5</param>
-           <param name="config">core/modules/share/ChildDivisions.component.xml</param>
+            <param name="config">engine/core/modules/share/ChildDivisions.component.xml</param>
        </params>
     </component>
 </content>

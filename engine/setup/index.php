@@ -35,7 +35,7 @@ if (is_file($configPath)) {
     }
 }
 
-$coreRel = defined('CORE_REL_DIR') ? CORE_REL_DIR : (string)($bootstrapConfig['core_rel_dir'] ?? 'core');
+$coreRel = defined('CORE_REL_DIR') ? CORE_REL_DIR : (string)($bootstrapConfig['core_rel_dir'] ?? 'engine/core');
 $siteRel = defined('SITE_REL_DIR') ? SITE_REL_DIR : (string)($bootstrapConfig['site_rel_dir'] ?? 'site');
 
 if (!defined('CORE_REL_DIR')) {

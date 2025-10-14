@@ -4,8 +4,8 @@ declare(strict_types=1);
 class TemplateWizard extends Grid
 {
     const TABLE_PREFIX = 'auto_';
-    const WIZARD_PATH = 'core/modules/wizard/';
-    const TEMPLATES_PATH = 'core/modules/auto/';
+    const WIZARD_PATH = 'engine/core/modules/wizard/';
+    const TEMPLATES_PATH = 'engine/core/modules/auto/';
 
     protected $templateHelper;
 
