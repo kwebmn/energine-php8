@@ -765,10 +765,15 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
                 'cancelText'         => $this->translate('BTN_CANCEL'),
             ];
 
-            // Возможен откат к шаблону ядра (если текущий — в каталоге сайта)
-            if ((dirname($contentFile) !== '.') &&
-                file_exists('templates/content/' . basename($contentFile))) {
-                $result['actionSelector']['revert'] = $this->translate('TXT_REVERT_CONTENT');
+            $contentMeta = Document::findTemplate($contentFile, self::TMPL_CONTENT);
+            if ($contentMeta && $contentMeta['origin'] === 'site') {
+                $basename = basename($contentMeta['path']);
+                foreach (Document::getTemplateRegistry(self::TMPL_CONTENT) as $info) {
+                    if ($info['origin'] === 'core' && basename($info['path']) === $basename) {
+                        $result['actionSelector']['revert'] = $this->translate('TXT_REVERT_CONTENT');
+                        break;
+                    }
+                }
             }
         }
 

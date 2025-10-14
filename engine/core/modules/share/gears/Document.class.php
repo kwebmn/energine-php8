@@ -850,19 +850,37 @@ final class Document extends DBWorker implements IDocument
      */
     public static function resolveTemplatePath(string $fileName, string $type): ?string
     {
+        $info = self::findTemplate($fileName, $type);
+
+        return $info['path'] ?? null;
+    }
+
+    /**
+     * Find template metadata by stored file name.
+     *
+     * @return array{path:string,module:string,origin:string}|null
+     */
+    public static function findTemplate(string $fileName, string $type): ?array
+    {
         $key = self::sanitizeLibraryKey($fileName);
         if ($key === '') {
             return null;
         }
 
-        $registry = self::getTemplateRegistry($type);
-        if (isset($registry[$key])) {
-            return $registry[$key]['path'];
+        $registry  = self::getTemplateRegistry($type);
+        $candidates = self::expandTemplateKeyVariants($key);
+
+        foreach ($candidates as $candidate) {
+            if (isset($registry[$candidate])) {
+                return $registry[$candidate];
+            }
         }
 
         foreach ($registry as $registeredKey => $info) {
-            if ($registeredKey === $key || str_ends_with($registeredKey, '/' . $key)) {
-                return $info['path'];
+            foreach ($candidates as $candidate) {
+                if ($registeredKey === $candidate || str_ends_with($registeredKey, '/' . $candidate)) {
+                    return $info;
+                }
             }
         }
 
@@ -933,20 +951,63 @@ final class Document extends DBWorker implements IDocument
                     $fullPath = $fileInfo->getPathname();
                     $relative = substr($fullPath, strlen($normalizedDir) + 1);
                     $relative = str_replace(DIRECTORY_SEPARATOR, '/', (string)$relative);
-                    $key = self::sanitizeLibraryKey($module . '/' . $relative);
-                    if ($key === '' || isset($result[$key])) {
-                        continue;
-                    }
 
-                    $result[$key] = [
-                        'path'   => $fullPath,
-                        'module' => $module,
-                        'origin' => $origin,
-                    ];
+                    self::registerTemplateAlias($result, $module . '/' . $relative, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $relative, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $fileName, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $type . '/' . $relative, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, $type . '/' . $fileName, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, 'templates/' . $relative, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, 'templates/' . $type . '/' . $relative, $fullPath, $module, $origin);
+                    self::registerTemplateAlias($result, 'templates/' . $type . '/' . $fileName, $fullPath, $module, $origin);
                 }
             }
         }
 
         return $result;
+    }
+
+    /**
+     * Generate possible lookup variants for a stored template key.
+     *
+     * @return string[]
+     */
+    private static function expandTemplateKeyVariants(string $key): array
+    {
+        $variants = [];
+        $segments = explode('/', $key);
+        $segmentCount = count($segments);
+
+        if ($segmentCount === 0) {
+            return [$key];
+        }
+
+        for ($i = 0; $i < $segmentCount; $i++) {
+            $variant = implode('/', array_slice($segments, $i));
+            if ($variant !== '' && !in_array($variant, $variants, true)) {
+                $variants[] = $variant;
+            }
+        }
+
+        return $variants === [] ? [$key] : $variants;
+    }
+
+    /**
+     * Register an alias key in the template registry result.
+     *
+     * @param array<string, array{path:string,module:string,origin:string}> $result
+     */
+    private static function registerTemplateAlias(array &$result, string $key, string $path, string $module, string $origin): void
+    {
+        $key = self::sanitizeLibraryKey($key);
+        if ($key === '' || isset($result[$key])) {
+            return;
+        }
+
+        $result[$key] = [
+            'path'   => $path,
+            'module' => $module,
+            'origin' => $origin,
+        ];
     }
 }
