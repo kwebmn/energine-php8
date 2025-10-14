@@ -1305,7 +1305,6 @@ class Grid {
         }
         element.style.overflowY = 'hidden';
         element.style.scrollbarWidth = 'none';
-        element.style.msOverflowStyle = 'none';
     }
 
     static ensureHeadScrollStyles(doc) {
@@ -1321,7 +1320,7 @@ class Grid {
         const style = targetDoc.createElement('style');
         style.type = 'text/css';
         style.textContent = '.grid-head-scroll-suppressed::-webkit-scrollbar{display:none;}'
-            + '.grid-head-scroll-suppressed{scrollbar-width:none;-ms-overflow-style:none;}';
+            + '.grid-head-scroll-suppressed{scrollbar-width:none;}';
         targetDoc.head.appendChild(style);
         targetDoc.__gridHeadScrollStyleInjected = true;
     }
