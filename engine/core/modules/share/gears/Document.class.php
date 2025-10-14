@@ -39,6 +39,13 @@ final class Document extends DBWorker implements IDocument
     private ?DOMDocument $doc = null;
 
     /**
+     * Cached template registry by type.
+     *
+     * @var array<string, array<string, array{path:string,module:string,origin:string}>>
+     */
+    private static array $templateRegistry = [];
+
+    /**
      * User rights for document.
      * Rights:
      *  - ACCESS_NONE = 0
@@ -782,8 +789,8 @@ final class Document extends DBWorker implements IDocument
     public static function getTemplatesData(int $documentID): object
     {
         $loadDataFromFile = static function (string $fileName, string $type) {
-            $file = self::TEMPLATES_DIR . constant('DivisionEditor::TMPL_' . strtoupper($type)) . '/' . $fileName;
-            if (!is_file($file)) {
+            $file = self::resolveTemplatePath($fileName, $type);
+            if (!$file || !is_file($file)) {
                 $raw = '';
             } else {
                 $raw = stripslashes(trim((string)file_get_contents($file)));
@@ -836,5 +843,110 @@ final class Document extends DBWorker implements IDocument
     {
         return $this->doc;
 
+    }
+
+    /**
+     * Resolve template path by stored file name.
+     */
+    public static function resolveTemplatePath(string $fileName, string $type): ?string
+    {
+        $key = self::sanitizeLibraryKey($fileName);
+        if ($key === '') {
+            return null;
+        }
+
+        $registry = self::getTemplateRegistry($type);
+        if (isset($registry[$key])) {
+            return $registry[$key]['path'];
+        }
+
+        foreach ($registry as $registeredKey => $info) {
+            if ($registeredKey === $key || str_ends_with($registeredKey, '/' . $key)) {
+                return $info['path'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get cached template registry for template type.
+     *
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    public static function getTemplateRegistry(string $type): array
+    {
+        if (!isset(self::$templateRegistry[$type])) {
+            self::$templateRegistry[$type] = self::scanTemplates($type);
+        }
+
+        return self::$templateRegistry[$type];
+    }
+
+    /**
+     * Scan filesystem for templates of specified type.
+     *
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    private static function scanTemplates(string $type): array
+    {
+        $result = [];
+
+        $sources = [
+            ['base' => SITE_DIR . '/modules',  'origin' => 'site'],
+            ['base' => CORE_DIR . '/modules',  'origin' => 'core'],
+        ];
+
+        foreach ($sources as $source) {
+            $baseDir = $source['base'];
+            $origin  = $source['origin'];
+
+            if (!is_dir($baseDir)) {
+                continue;
+            }
+
+            $modules = glob($baseDir . '/*', GLOB_ONLYDIR) ?: [];
+            foreach ($modules as $moduleDir) {
+                $module = basename($moduleDir);
+                $templateDir = rtrim($moduleDir, '/\\') . '/templates/' . $type;
+                if (!is_dir($templateDir)) {
+                    continue;
+                }
+
+                $normalizedDir = rtrim($templateDir, '/\\');
+
+                $iterator = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($normalizedDir, FilesystemIterator::SKIP_DOTS)
+                );
+
+                /** @var SplFileInfo $fileInfo */
+                foreach ($iterator as $fileInfo) {
+                    if (!$fileInfo->isFile()) {
+                        continue;
+                    }
+
+                    $fileName = $fileInfo->getFilename();
+                    if (!str_ends_with($fileName, '.' . $type . '.xml')) {
+                        continue;
+                    }
+
+                    $fullPath = $fileInfo->getPathname();
+                    $relative = substr($fullPath, strlen($normalizedDir) + 1);
+                    $relative = str_replace(DIRECTORY_SEPARATOR, '/', (string)$relative);
+                    $key = self::sanitizeLibraryKey($module . '/' . $relative);
+                    if ($key === '' || isset($result[$key])) {
+                        continue;
+                    }
+
+                    $result[$key] = [
+                        'path'   => $fullPath,
+                        'module' => $module,
+                        'origin' => $origin,
+                    ];
+                }
+            }
+        }
+
+        return $result;
     }
 }

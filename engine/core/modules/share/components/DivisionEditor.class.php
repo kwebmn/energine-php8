@@ -433,46 +433,58 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
      */
     private function loadTemplateData(string $type, string $siteFolder, string|false $oldValue = false): array
     {
-        $dirPath = Document::TEMPLATES_DIR . $type . '/';
         $include = SITE_DIR . '/modules/' . $siteFolder . '/templates/' . $type . '.include';
 
+        $registry = Document::getTemplateRegistry($type);
+
         // Набор путей по include-правилам либо дефолтные маски
-        $folders = [];
+        $selected = [];
         if (file_exists($include)) {
             $rules = file($include) ?: [];
             foreach ($rules as $rule) {
                 $rule = trim($rule);
-                if ($rule !== '') {
-                    $folders[] = glob($dirPath . $rule) ?: [];
+                if ($rule === '') {
+                    continue;
+                }
+                foreach ($registry as $key => $info) {
+                    if (fnmatch($rule, $key, FNM_PATHNAME)) {
+                        $selected[$key] = true;
+                    }
                 }
             }
         } else {
-            $folders = [
-                glob($dirPath . '*.' . $type . '.xml') ?: [],
-                glob($dirPath . $siteFolder . '/*.' . $type . '.xml') ?: [],
-            ];
-        }
-
-        // Плоский список уникальных файлов
-        $map = [];
-        foreach ($folders as $chunk) {
-            foreach ($chunk as $path) {
-                $map[basename($path)] = $path;
+            foreach ($registry as $key => $info) {
+                if (
+                    $info['origin'] === 'core' ||
+                    ($info['origin'] === 'site' && $info['module'] === $siteFolder)
+                ) {
+                    $selected[$key] = true;
+                }
+            }
+            if (empty($selected)) {
+                foreach (array_keys($registry) as $key) {
+                    $selected[$key] = true;
+                }
             }
         }
 
         $out = [];
         $dom = new DOMDocument('1.0', 'UTF-8');
 
-        foreach ($map as $path) {
-            $relative = str_replace($dirPath, '', $path);
+        foreach (array_keys($selected) as $key) {
+            if (!isset($registry[$key])) {
+                continue;
+            }
+
+            $path = $registry[$key]['path'];
+            $relative = $key;
             [$name, $tp] = explode('.', substr(basename($relative), 0, -4), 2);
             $title = $this->translate(strtoupper($tp . '_' . $name));
 
             $row = ['key' => $relative, 'value' => $title];
 
-            if ($type === self::TMPL_CONTENT && file_exists($full = $dirPath . $relative)) {
-                $dom->load($full);
+            if ($type === self::TMPL_CONTENT && file_exists($path)) {
+                $dom->load($path);
                 if ($seg = $dom->documentElement->getAttribute('segment')) {
                     $row['data-segment'] = $seg;
                 }
@@ -485,7 +497,7 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
         }
 
         // Если старое значение из БД не обнаружено среди вариантов — добавим disabled-опцию
-        if ($oldValue && !in_array($dirPath . $oldValue, array_values($map), true)) {
+        if ($oldValue && !isset($selected[$oldValue])) {
             $out[] = ['key' => $oldValue, 'value' => $oldValue, 'disabled' => 'disabled'];
         }
 
