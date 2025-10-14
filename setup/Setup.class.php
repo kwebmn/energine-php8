@@ -295,6 +295,31 @@ final class Setup {
     }
 
     /**
+     * Create symlinks for module assets.
+     * It links stylesheets, scripts and images from modules into the project root.
+     */
+    private function linkerAction() {
+        $this->title('Линкуем ресурсы модулей');
+
+        $assetTypes = array('stylesheets', 'scripts', 'images');
+        foreach ($assetTypes as $assetType) {
+            $this->ensureDirectoryExists(HTDOCS_DIR . DIRECTORY_SEPARATOR . $assetType);
+        }
+
+        $moduleDirectories = $this->collectModuleDirectories();
+
+        foreach ($moduleDirectories as $moduleName => $modulePath) {
+            foreach ($assetTypes as $assetType) {
+                $sourceDir = $modulePath . DIRECTORY_SEPARATOR . $assetType;
+                if (!is_dir($sourceDir)) {
+                    continue;
+                }
+                $this->linkAssetsRecursively($sourceDir, HTDOCS_DIR . DIRECTORY_SEPARATOR . $assetType);
+            }
+        }
+    }
+
+    /**
      * Run full system installation.
      * It:
      * - checks connection to database
@@ -304,7 +329,285 @@ final class Setup {
     private function installAction() {
         $this->checkDBConnection();
         $this->updateSitesTable();
+        $this->linkerAction();
         $this->scriptMapAction();
+    }
+
+    /**
+     * Ensure the directory exists (create recursively if required).
+     *
+     * @param string $directory Directory path.
+     *
+     * @throws Exception 'Не удалось создать директорию: ' . $directory
+     */
+    private function ensureDirectoryExists($directory) {
+        if (is_dir($directory)) {
+            return;
+        }
+
+        if (!@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new Exception('Не удалось создать директорию: ' . $directory);
+        }
+    }
+
+    /**
+     * Recursively link assets from module directory to public directory.
+     *
+     * @param string $sourceDir Source assets directory.
+     * @param string $targetRoot Target root directory for assets of the same type.
+     */
+    private function linkAssetsRecursively($sourceDir, $targetRoot) {
+        $entries = scandir($sourceDir);
+        if ($entries === false) {
+            $this->text('Пропускаем ' . $sourceDir . ' — не удалось прочитать содержимое каталога.');
+            return;
+        }
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $sourcePath = $sourceDir . DIRECTORY_SEPARATOR . $entry;
+            $targetPath = $targetRoot . DIRECTORY_SEPARATOR . $entry;
+
+            if (is_dir($sourcePath) && !is_link($sourcePath)) {
+                if (!file_exists($targetPath)) {
+                    $this->ensureSymlink($sourcePath, $targetPath);
+                    continue;
+                }
+
+                if (is_link($targetPath)) {
+                    $resolvedTarget = $this->resolveSymlinkTarget($targetPath);
+                    if ($resolvedTarget && realpath($resolvedTarget) === realpath($sourcePath)) {
+                        continue;
+                    }
+
+                    $this->ensureSymlink($sourcePath, $targetPath);
+                    continue;
+                }
+
+                if (is_dir($targetPath)) {
+                    $this->linkAssetsRecursively($sourcePath, $targetPath);
+                    continue;
+                }
+
+                $this->text('Пропускаем ' . $targetPath . ' — путь занят и не является директорией или симлинком.');
+                continue;
+            }
+
+            $this->ensureSymlink($sourcePath, $targetPath);
+        }
+    }
+
+    /**
+     * Collect module directories that should have their assets linked.
+     *
+     * @return array<string, string>
+     */
+    private function collectModuleDirectories() {
+        $directories = array();
+        $modulesRoot = is_dir(HTDOCS_DIR . DIRECTORY_SEPARATOR . MODULES)
+            ? HTDOCS_DIR . DIRECTORY_SEPARATOR . MODULES
+            : null;
+
+        if (!empty($this->config['modules']) && is_array($this->config['modules'])) {
+            foreach ($this->config['modules'] as $moduleName => $modulePath) {
+                $moduleKey = is_string($moduleName) ? $moduleName : (string)$modulePath;
+                $resolved = $this->resolveModuleDirectory($moduleKey, (string)$modulePath, $modulesRoot);
+                if ($resolved) {
+                    $directories[$moduleKey] = $resolved;
+                }
+            }
+        }
+
+        foreach (glob(SITE_DIR . '/modules/*', GLOB_ONLYDIR) ?: array() as $siteModulePath) {
+            $directories[basename($siteModulePath)] = $siteModulePath;
+        }
+
+        return $directories;
+    }
+
+    /**
+     * Resolve module directory to use when linking assets.
+     *
+     * @param string $moduleName Module key/name.
+     * @param string $configuredPath Path from configuration.
+     * @param string $modulesRoot Public modules root directory.
+     *
+     * @return string|null
+     */
+    private function resolveModuleDirectory($moduleName, $configuredPath, $modulesRoot) {
+        if ($modulesRoot) {
+            $publicModulePath = $modulesRoot . DIRECTORY_SEPARATOR . $moduleName;
+
+            if (is_dir($publicModulePath)) {
+                return $this->canonicalizeLinkSource($publicModulePath);
+            }
+
+            if (is_link($publicModulePath)) {
+                $linkTarget = $this->resolveSymlinkTarget($publicModulePath);
+                if ($linkTarget && is_dir($linkTarget)) {
+                    return $this->canonicalizeLinkSource($publicModulePath);
+                }
+
+                $this->text('Удаляем битый симлинк ' . $publicModulePath);
+                @unlink($publicModulePath);
+            }
+        }
+
+        if ($configuredPath !== '' && is_dir($configuredPath)) {
+            return $this->canonicalizeLinkSource($configuredPath);
+        }
+
+        if ($configuredPath !== '') {
+            $this->text('Пропускаем модуль ' . $moduleName . ' — каталог не найден (' . $configuredPath . ').');
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve symlink target to absolute path.
+     *
+     * @param string $path Symlink path.
+     *
+     * @return string|null
+     */
+    private function resolveSymlinkTarget($path) {
+        $linkTarget = readlink($path);
+        if ($linkTarget === false) {
+            return null;
+        }
+
+        if (strpos($linkTarget, DIRECTORY_SEPARATOR) === 0) {
+            $resolvedAbsolute = @realpath($linkTarget);
+
+            return ($resolvedAbsolute !== false) ? $resolvedAbsolute : $linkTarget;
+        }
+
+        $absolute = dirname($path) . DIRECTORY_SEPARATOR . $linkTarget;
+
+        $resolvedAbsolute = @realpath($absolute);
+
+        return ($resolvedAbsolute !== false) ? $resolvedAbsolute : $absolute;
+    }
+
+    /**
+     * Normalize a source path so symlinks point to the physical location.
+     *
+     * @param string $path Path to normalize.
+     *
+     * @return string
+     */
+    private function canonicalizeLinkSource($path) {
+        $resolved = @realpath($path);
+        if ($resolved !== false) {
+            return $resolved;
+        }
+
+        $root = rtrim(HTDOCS_DIR, DIRECTORY_SEPARATOR);
+        if ($root !== '' && strpos($path, $root . DIRECTORY_SEPARATOR) === 0) {
+            $relative = substr($path, strlen($root));
+            $relative = ltrim($relative, DIRECTORY_SEPARATOR);
+
+            $prefixes = array(
+                array(
+                    'base' => rtrim(CORE_DIR, DIRECTORY_SEPARATOR),
+                    'relative' => trim(CORE_REL_DIR, DIRECTORY_SEPARATOR)
+                ),
+                array(
+                    'base' => rtrim(SITE_DIR, DIRECTORY_SEPARATOR),
+                    'relative' => trim(SITE_REL_DIR, DIRECTORY_SEPARATOR)
+                ),
+            );
+
+            foreach ($prefixes as $prefix) {
+                if ($prefix['relative'] === '') {
+                    continue;
+                }
+
+                if ($relative === $prefix['relative']
+                    || strpos($relative, $prefix['relative'] . DIRECTORY_SEPARATOR) === 0
+                ) {
+                    $suffix = substr($relative, strlen($prefix['relative']));
+                    $candidate = $prefix['base'];
+                    if ($suffix !== false && $suffix !== '') {
+                        $candidate .= DIRECTORY_SEPARATOR . ltrim($suffix, DIRECTORY_SEPARATOR);
+                    }
+
+                    $candidateResolved = @realpath($candidate);
+                    if ($candidateResolved !== false) {
+                        return $candidateResolved;
+                    }
+
+                    if ($this->pathExists($candidate)) {
+                        return $candidate;
+                    }
+                }
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * Check whether a path exists or is a symlink.
+     *
+     * @param string $path
+     *
+     * @return bool
+     */
+    private function pathExists($path) {
+        return file_exists($path) || is_link($path);
+    }
+
+    /**
+     * Create a symlink if it doesn't exist or points to another location.
+     *
+     * @param string $source Source file path.
+     * @param string $target Target symlink path.
+     */
+    private function ensureSymlink($source, $target) {
+        $linkTarget = $this->canonicalizeLinkSource($source);
+
+        if (!$this->pathExists($linkTarget)) {
+            if (!$this->pathExists($source)) {
+                $this->text('Пропускаем ' . $target . ' — источник не найден (' . $source . ').');
+                return;
+            }
+
+            $linkTarget = $source;
+        }
+
+        if (is_link($target)) {
+            $currentLink = readlink($target);
+            $currentRealPath = ($currentLink !== false)
+                ? @realpath((strpos($currentLink, DIRECTORY_SEPARATOR) === 0)
+                    ? $currentLink
+                    : dirname($target) . DIRECTORY_SEPARATOR . $currentLink)
+                : false;
+
+            $normalizedTarget = @realpath($linkTarget);
+            if ($normalizedTarget === false) {
+                $normalizedTarget = $linkTarget;
+            }
+
+            if ($currentRealPath === $normalizedTarget || $currentLink === $linkTarget) {
+                return;
+            }
+
+            unlink($target);
+        } elseif (file_exists($target)) {
+            $this->text('Пропускаем ' . $target . ' — уже существует и не является симлинком.');
+            return;
+        }
+
+        if (@symlink($linkTarget, $target)) {
+            $this->text('Создаём симлинк ' . $linkTarget . ' → ' . $target);
+        } else {
+            $this->text('Не удалось создать симлинк ' . $linkTarget . ' → ' . $target);
+        }
     }
 
     /**
