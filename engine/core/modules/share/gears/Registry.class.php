@@ -34,12 +34,23 @@ if (!function_exists('E')) {
  *
  * @final
  */
+use DI\FactoryInterface;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
+
 final class Registry extends BaseObject {
     /**
      * Instance of this class.
      * @var Registry|null
      */
     private static $instance = null;
+
+    /**
+     * Shared DI container.
+     * @var ContainerInterface|null
+     */
+    private static $container = null;
 
     /**
      * List of stored objects in the registry.
@@ -83,6 +94,20 @@ final class Registry extends BaseObject {
     }
 
     /**
+     * Attach DI container.
+     */
+    public static function setContainer(?ContainerInterface $container): void {
+        self::$container = $container;
+    }
+
+    /**
+     * Get DI container.
+     */
+    public static function getContainer(): ?ContainerInterface {
+        return self::$container;
+    }
+
+    /**
      * Magic get.
      *
      * @param string $className Class name.
@@ -107,11 +132,38 @@ final class Registry extends BaseObject {
             return $this->entities[$className];
         }
 
+        if (self::$container instanceof ContainerInterface) {
+            try {
+                if (self::$container->has($className)) {
+                    $resolved = self::$container->get($className);
+                    $this->entities[$className] = $resolved;
+
+                    return $resolved;
+                }
+
+                if (self::$container instanceof FactoryInterface) {
+                    $resolved = self::$container->make($className);
+                    $this->entities[$className] = $resolved;
+
+                    return $resolved;
+                }
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
+                // Fallback ниже
+            }
+        }
+
         // Поскольку предполагается хранить синглтоны, создаём класс по имени
         $result = new $className();
         $this->entities[$className] = $result;
 
         return $result;
+    }
+
+    /**
+     * Container accessor for helpers.
+     */
+    public function getContainerInstance(): ?ContainerInterface {
+        return self::$container;
     }
 
     /**
@@ -235,7 +287,15 @@ final class Registry extends BaseObject {
             $siteID = E()->getSiteManager()->getCurrentSite()->id;
         }
         if (!isset($this->entities['Sitemap'][$siteID])) {
-            $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
+            if (self::$container instanceof FactoryInterface) {
+                try {
+                    $this->entities['Sitemap'][$siteID] = self::$container->make(Sitemap::class, ['siteID' => $siteID]);
+                } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                    $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
+                }
+            } else {
+                $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
+            }
         }
         return $this->entities['Sitemap'][$siteID];
     }

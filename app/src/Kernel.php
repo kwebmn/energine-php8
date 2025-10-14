@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App;
 
 use LogicException;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
@@ -56,7 +58,7 @@ final class Kernel
 
         require __DIR__ . '/../../bootstrap.php';
 
-        $this->registry = \E();
+        $this->registry = $this->resolveRegistry();
         $this->bootstrapped = true;
     }
 
@@ -71,7 +73,7 @@ final class Kernel
 
     private function runEnergine(Request $request): HttpResponse
     {
-        $registry = $this->registry ?? \E();
+        $registry = $this->resolveRegistry();
 
         $useTimer = (bool)$registry->getConfigValue('site.useTimer');
         $start = $useTimer ? hrtime(true) : null;
@@ -122,5 +124,38 @@ final class Kernel
         }
 
         return (bool)filter_var(getenv('APP_DEBUG') ?: '0', FILTER_VALIDATE_BOOL);
+}
+
+    /**
+     * Получить экземпляр Registry через контейнер PHP-DI.
+     */
+    private function resolveRegistry(): \Registry
+    {
+        if ($this->registry instanceof \Registry) {
+            return $this->registry;
+        }
+
+        if (function_exists('\\container')) {
+            try {
+                $container = \container();
+                if ($container->has(\Registry::class)) {
+                    $registry = $container->get(\Registry::class);
+                    if ($registry instanceof \Registry) {
+                        return $this->registry = $registry;
+                    }
+                }
+
+                if ($container->has('registry')) {
+                    $registry = $container->get('registry');
+                    if ($registry instanceof \Registry) {
+                        return $this->registry = $registry;
+                    }
+                }
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                // ниже fallback на singleton
+            }
+        }
+
+        return $this->registry = \Registry::getInstance();
     }
 }

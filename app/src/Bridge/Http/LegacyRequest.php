@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace App\Bridge\Http;
 
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request as SRequest;
 
 /**
@@ -119,7 +122,7 @@ final class LegacyRequest {
      * Последовательность источников: 1) первый сегмент пути, 2) атрибут _locale,
      * 3) параметр ?lang, 4) cookie lang, 5) заголовок Accept-Language,
      * 6) Language::getDefault() или конфигурация i18n.default_locale (по умолчанию 'uk').
-     * При первом вызове синхронизирует E()->getLanguage()->setCurrent($id).
+     * При первом вызове синхронизирует Language::setCurrent($id) через DI.
      *
      * @return string
      */
@@ -160,8 +163,13 @@ final class LegacyRequest {
         $this->langId   = $supported[$chosenAbbr] ?? null;
 
         if ($this->langId !== null) {
-            try { \E()->getLanguage()->setCurrent($this->langId); }
-            catch (\Throwable $e) { \E()->logger?->warning('Cannot set current language', ['id'=>$this->langId,'e'=>$e->getMessage()]); }
+            try {
+                $this->language()->setCurrent($this->langId);
+            } catch (\Throwable $e) {
+                if ($logger = $this->logger()) {
+                    $logger->warning('Cannot set current language', ['id' => $this->langId, 'e' => $e->getMessage()]);
+                }
+            }
         }
 
         return $this->langAbbr;
@@ -176,7 +184,13 @@ final class LegacyRequest {
     public function getLangID(): int {
         if ($this->langId === null) $this->getLang();
         if ($this->langId === null) {
-            try { $id = \E()->getLanguage()->getCurrent(); if (is_int($id)) $this->langId = $id; } catch (\Throwable) {}
+            try {
+                $id = $this->language()->getCurrent();
+                if (is_int($id)) {
+                    $this->langId = $id;
+                }
+            } catch (\Throwable) {
+            }
         }
         return $this->langId ?? 0;
     }
@@ -221,13 +235,15 @@ final class LegacyRequest {
     private function getSupportedLangs(): array {
         $map = [];
         try {
-            $langs = \E()->getLanguage()->getLanguages(); // [id => ['lang_abbr'=>..., ...], ...]
+            $langs = $this->language()->getLanguages(); // [id => ['lang_abbr'=>..., ...], ...]
             foreach ($langs as $id => $info) {
                 $abbr = isset($info['lang_abbr']) ? $this->normalizeAbbr((string)$info['lang_abbr']) : '';
                 if ($abbr !== '') $map[$abbr] = (int)$id;
             }
         } catch (\Throwable $e) {
-            \E()->logger?->warning('Language service unavailable', ['e'=>$e->getMessage()]);
+            if ($logger = $this->logger()) {
+                $logger->warning('Language service unavailable', ['e' => $e->getMessage()]);
+            }
         }
         return $map;
     }
@@ -240,15 +256,15 @@ final class LegacyRequest {
      */
     private function getDefaultAbbr(array $supported): string {
         try {
-            $defId = \E()->getLanguage()->getDefault();
+            $defId = $this->language()->getDefault();
             if (is_int($defId)) {
-                $abbr = $this->normalizeAbbr((string)\E()->getLanguage()->getAbbrByID($defId));
+                $abbr = $this->normalizeAbbr((string)$this->language()->getAbbrByID($defId));
                 if ($abbr !== '') return $abbr;
             }
         } catch (\Throwable) {}
         $cfg = 'uk';
         try {
-            $cfgVal = (string)(\E()->getConfigValue('i18n.default_locale') ?? '');
+            $cfgVal = (string)($this->registry()->getConfigValue('i18n.default_locale') ?? '');
             if ($cfgVal !== '') $cfg = $this->normalizeAbbr($cfgVal);
         } catch (\Throwable) {}
         if (!isset($supported[$cfg]) && !empty($supported)) $cfg = array_key_first($supported);
@@ -290,5 +306,69 @@ final class LegacyRequest {
         }
         arsort($out, SORT_NUMERIC);
         return array_keys($out);
+}
+
+    /**
+     * Получить Registry через контейнер PHP-DI.
+     */
+    private function registry(): \Registry
+    {
+        if (function_exists('\\container')) {
+            try {
+                $container = \container();
+                if ($container->has(\Registry::class)) {
+                    $registry = $container->get(\Registry::class);
+                    if ($registry instanceof \Registry) {
+                        return $registry;
+                    }
+                }
+
+                if ($container->has('registry')) {
+                    $registry = $container->get('registry');
+                    if ($registry instanceof \Registry) {
+                        return $registry;
+                    }
+                }
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                // fallback ниже
+            }
+        }
+
+        return \Registry::getInstance();
+    }
+
+    /**
+     * Сервис работы с языками.
+     */
+    private function language(): \Language
+    {
+        return $this->registry()->getLanguage();
+    }
+
+    /**
+     * Получить PSR-совместимый логгер, если он зарегистрирован.
+     */
+    private function logger(): ?LoggerInterface
+    {
+        if (function_exists('\\container')) {
+            try {
+                $container = \container();
+                if ($container->has(LoggerInterface::class)) {
+                    $logger = $container->get(LoggerInterface::class);
+                    if ($logger instanceof LoggerInterface) {
+                        return $logger;
+                    }
+                }
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                // fallback на реестр
+            }
+        }
+
+        $registry = $this->registry();
+        if (isset($registry->logger) && $registry->logger instanceof LoggerInterface) {
+            return $registry->logger;
+        }
+
+        return null;
     }
 }
