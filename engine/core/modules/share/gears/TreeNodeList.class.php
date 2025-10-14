@@ -67,7 +67,7 @@ class TreeNodeList implements Iterator
      * @return int
      */
     public function getLength() {
-        return (int) sizeof($this->nodeList);
+        return (int) count($this->nodeList);
     }
 
     /**

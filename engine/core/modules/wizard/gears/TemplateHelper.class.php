@@ -189,7 +189,7 @@ class TemplateHelper extends DBWorker
             $f .= '`smap_id` int(10) UNSIGNED NOT NULL,';
         }
 
-        if (is_array($fields) and sizeof($fields) > 0)
+        if (is_array($fields) and count($fields) > 0)
         {
             $array_keys = array_keys($fields);
             $last_key = end($array_keys);
@@ -253,7 +253,7 @@ class TemplateHelper extends DBWorker
             $f = '`' . $pk . '` int(10) UNSIGNED NOT NULL,' . "\n";
             $f .= '`lang_id` int(10) UNSIGNED NOT NULL,';
 
-            if (is_array($fieldsTr) and sizeof($fieldsTr) > 0)
+            if (is_array($fieldsTr) and count($fieldsTr) > 0)
             {
                 $array_keys = array_keys($fieldsTr);
                 $last_key = end($array_keys);
@@ -472,7 +472,7 @@ class TemplateHelper extends DBWorker
             $f .= "\t\t\t" . '<field name="smap_id"/>' . "\n";
         }
 
-        if (is_array($fields) > 0 and sizeof($fields))
+        if (is_array($fields) > 0 and count($fields))
         {
             foreach ($fields as $key => $row)
             {
@@ -480,7 +480,7 @@ class TemplateHelper extends DBWorker
             }
         }
 
-        if ($isTr and is_array($fields) > 0 and sizeof($fields))
+        if ($isTr and is_array($fields) > 0 and count($fields))
         {
             foreach ($fieldsTr as $key => $row)
             {

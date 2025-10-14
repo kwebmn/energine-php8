@@ -54,7 +54,7 @@ class LDContainer extends DBWorker
     public function getLD()
     {
         $arr = array();
-        if (sizeof($this->container) > 0 and is_array($this->container))
+        if (count($this->container) > 0 and is_array($this->container))
         {
             foreach ($this->container as $key => $row)
             {

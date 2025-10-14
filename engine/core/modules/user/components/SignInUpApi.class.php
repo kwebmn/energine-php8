@@ -214,7 +214,7 @@ class SignInUpApi extends DBWorker
             array('u_id'),
             array('u_name' => $email)
         );
-        if (is_array($res) and sizeof($res) > 0 )
+        if (is_array($res) and count($res) > 0 )
         {
             return true;
         }
