@@ -477,9 +477,14 @@ final class Setup {
      * @param string $target Target symlink path.
      */
     private function ensureSymlink($source, $target) {
-        $sourceRealPath = realpath($source);
-        if ($sourceRealPath === false) {
-            $sourceRealPath = $source;
+        $linkTarget = realpath($source);
+        if ($linkTarget === false) {
+            if (!file_exists($source)) {
+                $this->text('Пропускаем ' . $target . ' — источник не найден (' . $source . ').');
+                return;
+            }
+
+            $linkTarget = $source;
         }
 
         if (is_link($target)) {
@@ -490,7 +495,7 @@ final class Setup {
                     : dirname($target) . DIRECTORY_SEPARATOR . $currentLink)
                 : false;
 
-            if ($currentRealPath === $sourceRealPath) {
+            if ($currentRealPath === realpath($linkTarget) || $currentLink === $linkTarget) {
                 return;
             }
 
@@ -500,10 +505,10 @@ final class Setup {
             return;
         }
 
-        if (@symlink($source, $target)) {
-            $this->text('Создаём симлинк ' . $target . ' → ' . $source);
+        if (@symlink($linkTarget, $target)) {
+            $this->text('Создаём симлинк ' . $linkTarget . ' → ' . $target);
         } else {
-            $this->text('Не удалось создать симлинк ' . $target . ' → ' . $source);
+            $this->text('Не удалось создать симлинк ' . $linkTarget . ' → ' . $target);
         }
     }
 
