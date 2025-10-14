@@ -306,16 +306,9 @@ final class Setup {
             $this->ensureDirectoryExists(HTDOCS_DIR . DIRECTORY_SEPARATOR . $assetType);
         }
 
-        $moduleDirectories = array();
-        if (!empty($this->config['modules']) && is_array($this->config['modules'])) {
-            $moduleDirectories = array_values($this->config['modules']);
-        }
+        $moduleDirectories = $this->collectModuleDirectories();
 
-        foreach (glob(SITE_DIR . '/modules/*', GLOB_ONLYDIR) ?: array() as $siteModulePath) {
-            $moduleDirectories[] = $siteModulePath;
-        }
-
-        foreach ($moduleDirectories as $modulePath) {
+        foreach ($moduleDirectories as $moduleName => $modulePath) {
             foreach ($assetTypes as $assetType) {
                 $sourceDir = $modulePath . DIRECTORY_SEPARATOR . $assetType;
                 if (!is_dir($sourceDir)) {
@@ -365,7 +358,10 @@ final class Setup {
      */
     private function linkAssetsRecursively($sourceDir, $targetRoot) {
         $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($sourceDir, FilesystemIterator::SKIP_DOTS),
+            new RecursiveDirectoryIterator(
+                $sourceDir,
+                FilesystemIterator::SKIP_DOTS | FilesystemIterator::FOLLOW_SYMLINKS
+            ),
             RecursiveIteratorIterator::SELF_FIRST
         );
 
@@ -381,6 +377,97 @@ final class Setup {
             $this->ensureDirectoryExists(dirname($targetPath));
             $this->ensureSymlink($item->getPathname(), $targetPath);
         }
+    }
+
+    /**
+     * Collect module directories that should have their assets linked.
+     *
+     * @return array<string, string>
+     */
+    private function collectModuleDirectories() {
+        $directories = array();
+        $modulesRoot = HTDOCS_DIR . DIRECTORY_SEPARATOR . MODULES;
+        $this->ensureDirectoryExists($modulesRoot);
+
+        if (!empty($this->config['modules']) && is_array($this->config['modules'])) {
+            foreach ($this->config['modules'] as $moduleName => $modulePath) {
+                $moduleKey = is_string($moduleName) ? $moduleName : (string)$modulePath;
+                $resolved = $this->resolveModuleDirectory($moduleKey, (string)$modulePath, $modulesRoot);
+                if ($resolved) {
+                    $directories[$moduleKey] = $resolved;
+                }
+            }
+        }
+
+        foreach (glob(SITE_DIR . '/modules/*', GLOB_ONLYDIR) ?: array() as $siteModulePath) {
+            $directories[basename($siteModulePath)] = $siteModulePath;
+        }
+
+        return $directories;
+    }
+
+    /**
+     * Resolve module directory to use when linking assets.
+     *
+     * @param string $moduleName Module key/name.
+     * @param string $configuredPath Path from configuration.
+     * @param string $modulesRoot Public modules root directory.
+     *
+     * @return string|null
+     */
+    private function resolveModuleDirectory($moduleName, $configuredPath, $modulesRoot) {
+        $publicModulePath = $modulesRoot . DIRECTORY_SEPARATOR . $moduleName;
+
+        if (is_dir($publicModulePath)) {
+            return $publicModulePath;
+        }
+
+        if (is_link($publicModulePath)) {
+            $linkTarget = $this->resolveSymlinkTarget($publicModulePath);
+            if ($linkTarget && is_dir($linkTarget)) {
+                return $publicModulePath;
+            }
+
+            $this->text('Удаляем битый симлинк ' . $publicModulePath);
+            @unlink($publicModulePath);
+        }
+
+        if ($configuredPath !== '' && is_dir($configuredPath)) {
+            $this->ensureSymlink($configuredPath, $publicModulePath);
+            if (is_dir($publicModulePath) || is_link($publicModulePath)) {
+                return $publicModulePath;
+            }
+
+            return $configuredPath;
+        }
+
+        if ($configuredPath !== '') {
+            $this->text('Пропускаем модуль ' . $moduleName . ' — каталог не найден (' . $configuredPath . ').');
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve symlink target to absolute path.
+     *
+     * @param string $path Symlink path.
+     *
+     * @return string|null
+     */
+    private function resolveSymlinkTarget($path) {
+        $linkTarget = readlink($path);
+        if ($linkTarget === false) {
+            return null;
+        }
+
+        if (strpos($linkTarget, DIRECTORY_SEPARATOR) === 0) {
+            return realpath($linkTarget) ?: $linkTarget;
+        }
+
+        $absolute = dirname($path) . DIRECTORY_SEPARATOR . $linkTarget;
+
+        return realpath($absolute) ?: $absolute;
     }
 
     /**
