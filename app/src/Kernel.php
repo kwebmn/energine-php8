@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Bootstrap\EnergineBootstrapper;
 use LogicException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -15,6 +16,8 @@ final class Kernel
 {
     private bool $bootstrapped = false;
     private ?\Registry $registry = null;
+    /** @var array<mixed> */
+    private array $config = [];
 
     public function __construct(
         private readonly string $environment,
@@ -54,10 +57,7 @@ final class Kernel
 
     private function bootstrap(): void
     {
-        $config = [];
-
-        require __DIR__ . '/../../bootstrap.php';
-
+        $this->config = EnergineBootstrapper::boot();
         $this->registry = $this->resolveRegistry();
         $this->bootstrapped = true;
     }

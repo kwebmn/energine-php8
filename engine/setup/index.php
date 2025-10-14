@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 ob_start();
 
 define('CHARSET', 'UTF-8');
@@ -7,7 +9,55 @@ define('CHARSET', 'UTF-8');
 //Минимальная версия РНР
 define('MIN_PHP_VERSION', 5.3);
 
-require_once('../bootstrap.php'); 
+$rootCandidates = [
+    realpath(__DIR__ . '/..') ?: dirname(__DIR__),
+    realpath(__DIR__ . '/../..') ?: dirname(dirname(__DIR__)),
+];
+
+$projectRoot = $rootCandidates[0];
+foreach ($rootCandidates as $candidate) {
+    if ($candidate && is_file($candidate . '/system.config.php')) {
+        $projectRoot = $candidate;
+        break;
+    }
+}
+
+if (!defined('HTDOCS_DIR')) {
+    define('HTDOCS_DIR', $projectRoot);
+}
+
+$bootstrapConfig = [];
+$configPath = HTDOCS_DIR . '/system.config.php';
+if (is_file($configPath)) {
+    $loadedConfig = include $configPath;
+    if (is_array($loadedConfig)) {
+        $bootstrapConfig = $loadedConfig;
+    }
+}
+
+$coreRel = defined('CORE_REL_DIR') ? CORE_REL_DIR : (string)($bootstrapConfig['core_rel_dir'] ?? 'core');
+$siteRel = defined('SITE_REL_DIR') ? SITE_REL_DIR : (string)($bootstrapConfig['site_rel_dir'] ?? 'site');
+
+if (!defined('CORE_REL_DIR')) {
+    define('CORE_REL_DIR', $coreRel);
+}
+if (!defined('SITE_REL_DIR')) {
+    define('SITE_REL_DIR', $siteRel);
+}
+
+$coreDir = realpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . CORE_REL_DIR) ?: HTDOCS_DIR . DIRECTORY_SEPARATOR . CORE_REL_DIR;
+$siteDir = realpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR) ?: HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR;
+
+if (!defined('CORE_DIR')) {
+    define('CORE_DIR', $coreDir);
+}
+if (!defined('SITE_DIR')) {
+    define('SITE_DIR', $siteDir);
+}
+
+if (!defined('SETUP_DIR')) {
+    define('SETUP_DIR', __DIR__);
+}
 
 //Название директории в которой содержатся модули(как ядра, так и модули проекта)
 define('MODULES', 'modules');
