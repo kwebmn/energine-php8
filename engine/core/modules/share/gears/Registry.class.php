@@ -34,7 +34,10 @@ if (!function_exists('E')) {
  *
  * @final
  */
+use DI\FactoryInterface;
+use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 
 final class Registry extends BaseObject {
     /**
@@ -129,11 +132,24 @@ final class Registry extends BaseObject {
             return $this->entities[$className];
         }
 
-        if (self::$container instanceof ContainerInterface && self::$container->has($className)) {
-            $resolved = self::$container->get($className);
-            $this->entities[$className] = $resolved;
+        if (self::$container instanceof ContainerInterface) {
+            try {
+                if (self::$container->has($className)) {
+                    $resolved = self::$container->get($className);
+                    $this->entities[$className] = $resolved;
 
-            return $resolved;
+                    return $resolved;
+                }
+
+                if (self::$container instanceof FactoryInterface) {
+                    $resolved = self::$container->make($className);
+                    $this->entities[$className] = $resolved;
+
+                    return $resolved;
+                }
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
+                // Fallback ниже
+            }
         }
 
         // Поскольку предполагается хранить синглтоны, создаём класс по имени
@@ -271,7 +287,15 @@ final class Registry extends BaseObject {
             $siteID = E()->getSiteManager()->getCurrentSite()->id;
         }
         if (!isset($this->entities['Sitemap'][$siteID])) {
-            $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
+            if (self::$container instanceof FactoryInterface) {
+                try {
+                    $this->entities['Sitemap'][$siteID] = self::$container->make(Sitemap::class, ['siteID' => $siteID]);
+                } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                    $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
+                }
+            } else {
+                $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
+            }
         }
         return $this->entities['Sitemap'][$siteID];
     }
