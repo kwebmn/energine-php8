@@ -103,4 +103,35 @@ final class ShareSessionHandler extends AbstractSessionHandler
             return false;
         }
     }
+
+    public function close(): bool
+    {
+        return true;
+    }
+
+    public function updateTimestamp(string $sessionId, string $data): bool
+    {
+        $now = time();
+
+        $payload = [
+            'session_last_impression' => $now,
+            'session_expires' => $now + $this->lifespan,
+        ];
+
+        if (isset($_SESSION['userID'])) {
+            $payload['u_id'] = (int) $_SESSION['userID'];
+        }
+
+        if ($this->userAgent !== '') {
+            $payload['session_user_agent'] = $this->userAgent;
+        }
+
+        $updated = $this->db->modify(QAL::UPDATE, self::TABLE, $payload, ['session_native_id' => $sessionId]);
+
+        if ($updated !== true) {
+            return $this->doWrite($sessionId, $data);
+        }
+
+        return true;
+    }
 }
