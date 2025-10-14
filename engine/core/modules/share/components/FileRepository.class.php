@@ -240,7 +240,7 @@ final class FileRepository extends Grid implements SampleFileRepository
 
         $data = new Data();
         $f = new Field('upl_pid');
-        $f->setData($uplPID, true);
+        $f->setData($uplPID);
         $data->addField($f);
         $this->setData($data);
 
@@ -506,7 +506,7 @@ final class FileRepository extends Grid implements SampleFileRepository
 
         $data = new Data();
         $f = new Field('upl_pid');
-        $f->setData($uplPID, true);
+        $f->setData($uplPID);
         $data->addField($f);
         $this->setData($data);
 
