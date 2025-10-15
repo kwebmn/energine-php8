@@ -50,7 +50,7 @@
 
   "require": {
     "php": "^8.4",
-    "ext-opcache": "*",
+    "ext-zend-opcache": "*",
 
     "psr/log": "^3.0",
     "psr/cache": "^3.0",
