@@ -22,7 +22,7 @@ class Image;
 class Image;
 @endcode
  */
-class Image extends Object
+class Image extends BaseObject
 {
     /**
      * Default memory limit.

@@ -31,7 +31,11 @@ final class EnergineBootstrapper
 {
     private static bool $booted = false;
 
-    /** @var array<mixed> */
+    /**
+     * Loaded project configuration.
+     *
+     * @var array<mixed>
+     */
     private static array $config = [];
 
     /**
@@ -647,17 +651,8 @@ final class EnergineBootstrapper
             }
         }
 
-        $d  = $config['dbal'] ?? [];
-        $db = [
-            'driver'   => $d['driver']   ?? $config['database']['driver'] ?? 'pdo_mysql',
-            'host'     => $d['host']     ?? $config['database']['host'],
-            'port'     => $d['port']     ?? (int)$config['database']['port'],
-            'dbname'   => $d['dbname']   ?? $config['database']['db'],
-            'user'     => $d['user']     ?? $config['database']['username'],
-            'password' => $d['password'] ?? $config['database']['password'],
-            'charset'  => $d['charset']  ?? 'utf8mb4',
-        ];
-        $reg->dbal = DriverManager::getConnection($db);
+        $connectionParams = self::resolveDbalConnectionParams($config);
+        $reg->dbal = DriverManager::getConnection($connectionParams);
     }
 
     private static function ensureTranslator(array $config, object $reg, array $feat): void
@@ -666,18 +661,23 @@ final class EnergineBootstrapper
             return;
         }
 
-        $i18n    = $config['i18n'] ?? [];
-        $locale  = $i18n['default_locale'] ?? 'uk';
-        $translator = new Translator($locale);
+        $i18nConfig = self::resolveI18nConfig($config);
+
+        $translator = new Translator($i18nConfig['locale']);
         $translator->addLoader('array', new SymfonyArrayLoader());
-        foreach (($i18n['resources'] ?? []) as $res) {
-            if (is_file($res['file'] ?? '')) {
-                $messages = include $res['file'];
-                $translator->addResource('array', $messages, $res['locale'] ?? $locale, $res['domain'] ?? 'messages');
+        foreach ($i18nConfig['resources'] as $resource) {
+            if (is_file($resource['file'])) {
+                $messages = include $resource['file'];
+                $translator->addResource(
+                    'array',
+                    $messages,
+                    $resource['locale'] ?? $i18nConfig['locale'],
+                    $resource['domain'] ?? 'messages'
+                );
             }
         }
-        if (!empty($i18n['fallbacks'])) {
-            $translator->setFallbackLocales($i18n['fallbacks']);
+        if ($i18nConfig['fallbacks'] !== []) {
+            $translator->setFallbackLocales($i18nConfig['fallbacks']);
         }
         $reg->translator = $translator;
     }
@@ -696,5 +696,171 @@ final class EnergineBootstrapper
         if (!defined($name)) {
             define($name, $value);
         }
+    }
+
+    /**
+     * Build and validate Doctrine DBAL connection parameters from configuration.
+     *
+     * @param array<mixed> $config
+     *
+     * @return array{
+     *     driver: string,
+     *     host: string,
+     *     port: int,
+     *     dbname: string,
+     *     user: string,
+     *     password: string,
+     *     charset: string
+     * }
+     */
+    private static function resolveDbalConnectionParams(array $config): array
+    {
+        $dbalOverrides = self::expectArray($config['dbal'] ?? null, 'dbal', true);
+        $databaseConfig = self::expectArray($config['database'] ?? null, 'database');
+
+        $driver = self::expectString(
+            $dbalOverrides['driver'] ?? $databaseConfig['driver'] ?? 'pdo_mysql',
+            'dbal.driver'
+        );
+        $host = self::expectString(
+            $dbalOverrides['host'] ?? $databaseConfig['host'] ?? null,
+            'database.host'
+        );
+        $port = self::expectPort(
+            $dbalOverrides['port'] ?? $databaseConfig['port'] ?? null,
+            'database.port'
+        );
+        $dbname = self::expectString(
+            $dbalOverrides['dbname'] ?? $databaseConfig['dbname'] ?? $databaseConfig['db'] ?? null,
+            'database.dbname'
+        );
+        $user = self::expectString(
+            $dbalOverrides['user'] ?? $databaseConfig['user'] ?? $databaseConfig['username'] ?? null,
+            'database.user'
+        );
+        $password = self::expectString(
+            $dbalOverrides['password'] ?? $databaseConfig['password'] ?? '',
+            'database.password',
+            allowEmpty: true
+        );
+        $charset = self::expectString(
+            $dbalOverrides['charset'] ?? 'utf8mb4',
+            'dbal.charset'
+        );
+
+        return [
+            'driver' => $driver,
+            'host' => $host,
+            'port' => $port,
+            'dbname' => $dbname,
+            'user' => $user,
+            'password' => $password,
+            'charset' => $charset,
+        ];
+    }
+
+    /**
+     * @param array<mixed> $config
+     *
+     * @return array{
+     *     locale: string,
+     *     fallbacks: list<string>,
+     *     resources: list<array{file: string, locale?: string, domain?: string}>
+     * }
+     */
+    private static function resolveI18nConfig(array $config): array
+    {
+        $raw = $config['i18n'] ?? null;
+        $i18n = self::expectArray($raw, 'i18n', true);
+
+        $locale = self::expectString($i18n['default_locale'] ?? 'uk', 'i18n.default_locale');
+
+        $fallbacks = [];
+        foreach (($i18n['fallbacks'] ?? []) as $index => $fallback) {
+            $fallbacks[] = self::expectString($fallback, sprintf('i18n.fallbacks[%d]', $index));
+        }
+
+        $resources = [];
+        foreach (($i18n['resources'] ?? []) as $index => $resource) {
+            if (!is_array($resource)) {
+                throw new LogicException(sprintf('i18n.resources[%d] должен быть массивом.', $index));
+            }
+
+            $file = self::expectString($resource['file'] ?? null, sprintf('i18n.resources[%d].file', $index));
+            $entry = ['file' => $file];
+
+            if (array_key_exists('locale', $resource)) {
+                $entry['locale'] = self::expectString(
+                    $resource['locale'],
+                    sprintf('i18n.resources[%d].locale', $index)
+                );
+            }
+
+            if (array_key_exists('domain', $resource)) {
+                $entry['domain'] = self::expectString(
+                    $resource['domain'],
+                    sprintf('i18n.resources[%d].domain', $index)
+                );
+            }
+
+            $resources[] = $entry;
+        }
+
+        return [
+            'locale' => $locale,
+            'fallbacks' => $fallbacks,
+            'resources' => $resources,
+        ];
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return array<mixed>
+     */
+    private static function expectArray(mixed $value, string $section, bool $nullable = false): array
+    {
+        if ($value === null) {
+            if ($nullable) {
+                return [];
+            }
+
+            throw new LogicException(sprintf('Секция %s должна быть массивом.', $section));
+        }
+
+        if (!is_array($value)) {
+            throw new LogicException(sprintf('Секция %s должна быть массивом.', $section));
+        }
+
+        return $value;
+    }
+
+    private static function expectString(mixed $value, string $path, bool $allowEmpty = false): string
+    {
+        if (!is_string($value)) {
+            throw new LogicException(sprintf('%s должен быть строкой.', $path));
+        }
+
+        if (!$allowEmpty && $value === '') {
+            throw new LogicException(sprintf('%s не должен быть пустым.', $path));
+        }
+
+        return $value;
+    }
+
+    private static function expectPort(mixed $value, string $path): int
+    {
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        if (is_string($value) && ctype_digit($value)) {
+            $intValue = (int) $value;
+            if ($intValue > 0) {
+                return $intValue;
+            }
+        }
+
+        throw new LogicException(sprintf('%s должен быть положительным целым числом.', $path));
     }
 }

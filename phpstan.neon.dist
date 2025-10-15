@@ -10,6 +10,7 @@ parameters:
     tmpDir: var/phpstan
     bootstrapFiles:
         - app/helpers.php
+        - app/phpstan/bootstrap.php
     scanDirectories:
         - engine/core
         - site/modules
