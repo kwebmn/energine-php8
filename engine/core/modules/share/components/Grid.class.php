@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Energine\Core\ExtraManager\ExtraManagerFactory;
+
 /**
  * @file
  * Grid
@@ -70,9 +72,12 @@ class Grid extends DBDataSet
     /**
      * @copydoc DBDataSet::__construct
      */
-    public function __construct(string $name, string $module, ?array $params = null)
+    public function __construct(string $name, string $module, ?array $params = null, ?ExtraManagerFactory $extraManagerFactory = null)
     {
         parent::__construct($name, $module, $params);
+
+        $this->setExtraManagerFactory($extraManagerFactory);
+        $this->obtainExtraManagerFactory(null);
 
         $this->setProperty('exttype', 'grid');
 
@@ -1222,56 +1227,6 @@ class Grid extends DBDataSet
                 $this->addWYSIWYGTranslations();
                 break;
             }
-        }
-    }
-
-    /**
-     * Build the list of additional files / tabs.
-     *
-     * @param string $tableName Table name.
-     * @param bool   $data      Data.
-     */
-    protected function linkExtraManagers($tableName, $data = false)
-    {
-        if ($this->dbh->tableExists($tableName . AttachmentManager::ATTACH_TABLE_SUFFIX) && $this->getState() != 'attachments')
-        {
-
-            $fd = new FieldDescription('attached_files');
-            $fd->setType(FieldDescription::FIELD_TYPE_TAB);
-            $fd->setProperty('title', $this->translate('TAB_ATTACHED_FILES'));
-            $fd->setProperty('tableName', $tableName . AttachmentManager::ATTACH_TABLE_SUFFIX);
-            $this->getDataDescription()->addFieldDescription($fd);
-
-            $field = new Field('attached_files');
-            $state = $this->getState();
-            $tab_url = (($state != 'add') ? $this->getData()->getFieldByName($this->getPK())->getRowData(0) : '') . '/attachments/';
-
-            $field->setData($tab_url, true);
-            $this->getData()->addField($field);
-        }
-
-        if ($this->dbh->tableExists($this->getTableName() . TagManager::TAGS_TABLE_SUFFIX))
-        {
-            $tm = new TagManager($this->getDataDescription(), $this->getData(), $this->getTableName());
-            $tm->createFieldDescription();
-            $tm->createField();
-        }
-
-        if ($this->dbh->tableExists($tableName . FilterManager::FILTER_TABLE_SUFFIX) && $this->getState() != 'filtersTree')
-        {
-
-            $fd = new FieldDescription('filtersTree');
-            $fd->setType(FieldDescription::FIELD_TYPE_TAB);
-            $fd->setProperty('title', $this->translate('TAB_FILTERS'));
-            $fd->setProperty('tableName', $tableName . FilterManager::FILTER_TABLE_SUFFIX);
-            $this->getDataDescription()->addFieldDescription($fd);
-
-            $field = new Field('filtersTree');
-            $state = $this->getState();
-            $tab_url = (($state != 'add') ? $this->getData()->getFieldByName($this->getPK())->getRowData(0) : '') . '/filtersTree/';
-
-            $field->setData($tab_url, true);
-            $this->getData()->addField($field);
         }
     }
 

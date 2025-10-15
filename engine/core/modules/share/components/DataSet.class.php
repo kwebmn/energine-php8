@@ -65,6 +65,13 @@ abstract class DataSet extends Component
     private ?Data $data = null;
 
     /**
+     * Extra managers active for the current build lifecycle.
+     *
+     * @var array<int, \Energine\Core\ExtraManager\ExtraManagerInterface>
+     */
+    protected array $activeExtraManagers = [];
+
+    /**
      * Array of toolbars (name => Toolbar).
      * @var array<string, Toolbar>
      */
@@ -443,6 +450,14 @@ abstract class DataSet extends Component
                 foreach ($methodConfig->translations->translation as $translation)
                 {
                     $this->addTranslation((string)$translation['const']);
+                }
+            }
+
+            if (!empty($this->activeExtraManagers))
+            {
+                foreach ($this->activeExtraManagers as $manager)
+                {
+                    $manager->build($result);
                 }
             }
         }

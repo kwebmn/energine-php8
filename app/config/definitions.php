@@ -5,6 +5,8 @@ use App\Security\EnergineRoleMapper;
 use App\Security\EnergineUserProvider;
 use App\Security\LegacySecuritySynchronizer;
 use App\Security\NullAuthenticationManager;
+use Energine\Core\ExtraManager\ExtraManagerFactory;
+use Energine\Core\ExtraManager\ExtraManagerInterface;
 use DI\ContainerBuilder;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
@@ -144,6 +146,46 @@ return static function (ContainerBuilder $cb): void {
                 $c->get(EnergineUserProvider::class),
                 $firewall !== '' ? $firewall : 'legacy'
             );
+        },
+
+        ExtraManagerFactory::class => static function (ContainerInterface $c): ExtraManagerFactory {
+            $cfg        = $c->has('config') ? $c->get('config') : [];
+            $configured = $cfg['extra_managers']['defaults'] ?? null;
+
+            if (is_array($configured))
+            {
+                $factory = new ExtraManagerFactory();
+                foreach ($configured as $className)
+                {
+                    $className = ltrim((string)$className, '\\');
+                    if ($className === '' || !class_exists($className))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        $instance = new $className();
+                    }
+                    catch (\Throwable)
+                    {
+                        continue;
+                    }
+
+                    if ($instance instanceof ExtraManagerInterface)
+                    {
+                        $factory->addManager($instance);
+                    }
+                }
+
+                return $factory;
+            }
+
+            return new ExtraManagerFactory([
+                new \AttachmentManager(),
+                new \TagManager(),
+                new \FilterManager(),
+            ]);
         },
     ]);
 };
