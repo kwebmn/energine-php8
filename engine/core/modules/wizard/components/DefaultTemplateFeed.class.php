@@ -8,7 +8,7 @@ class DefaultTemplateFeed extends ExtendedFeed
         $this->setTableName('DefaultTemplateTableName');
     }
 
-    protected function defineParams()
+    protected function defineParams(): array
     {
         $result = array_merge(
             parent::defineParams(),
