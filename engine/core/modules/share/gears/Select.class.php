@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,10 +25,12 @@ class Select extends Control
         parent::__construct($id);
         $this->type = 'select';
 
-        if ($title !== null && $title !== false && $title !== '') {
+        if ($title !== null && $title !== false && $title !== '')
+        {
             $this->setAttribute('title', (string)$title);
         }
-        if ($action !== null && $action !== false && $action !== '') {
+        if ($action !== null && $action !== false && $action !== '')
+        {
             $this->setAttribute('action', (string)$action);
         }
     }
@@ -39,21 +42,26 @@ class Select extends Control
     {
         parent::loadFromXml($description);
 
-        if (!empty($description->options)) {
-            foreach ($description->options->option as $item) {
+        if (!empty($description->options))
+        {
+            foreach ($description->options->option as $item)
+            {
                 $id = isset($item['id']) ? (string)$item['id'] : '';
                 $val = (string)$item;
 
                 // Соберём доп. атрибуты option (кроме id)
                 $props = [];
-                foreach ($item->attributes() as $k => $v) {
-                    if ((string)$k === 'id') {
+                foreach ($item->attributes() as $k => $v)
+                {
+                    if ((string)$k === 'id')
+                    {
                         continue;
                     }
                     $props[(string)$k] = (string)$v;
                 }
 
-                if ($id !== '') {
+                if ($id !== '')
+                {
                     $this->addItem($id, $val, $props);
                 }
             }
@@ -82,18 +90,23 @@ class Select extends Control
     {
         $result = parent::build();
 
-        if (!empty($this->items)) {
+        if (!empty($this->items))
+        {
             $options = $this->doc->createElement('options');
 
-            foreach ($this->items as $itemID => $itemData) {
+            foreach ($this->items as $itemID => $itemData)
+            {
                 $option = $this->doc->createElement('option');
                 // текст через DOMText во избежание двойного экранирования
                 $option->appendChild(new DOMText((string)$itemData['value']));
                 $option->setAttribute('id', (string)$itemID);
 
-                if (!empty($itemData['properties'])) {
-                    foreach ($itemData['properties'] as $key => $value) {
-                        if (is_array($value)) {
+                if (!empty($itemData['properties']))
+                {
+                    foreach ($itemData['properties'] as $key => $value)
+                    {
+                        if (is_array($value))
+                        {
                             continue;
                         }
                         $option->setAttribute((string)$key, (string)$value);
@@ -117,7 +130,8 @@ class Select extends Control
     public function removeItem(string|int $id): void
     {
         $key = (string)$id;
-        if (isset($this->items[$key])) {
+        if (isset($this->items[$key]))
+        {
             unset($this->items[$key]);
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,12 +25,15 @@ class ExtendedFeedEditor extends FeedEditor
     /**
      * @copydoc FeedEditor::setParam
      */
-    protected function setParam($name, $value) : void
+    protected function setParam($name, $value): void
     {
-        if ($name === 'tableName') {
-            foreach (array_keys($this->dbh->getColumnsInfo($value)) as $columnName) {
+        if ($name === 'tableName')
+        {
+            foreach (array_keys($this->dbh->getColumnsInfo($value)) as $columnName)
+            {
                 // Ищем колонку, содержащую маркер '_is_published'
-                if (is_string($columnName) && str_contains($columnName, '_is_published')) {
+                if (is_string($columnName) && str_contains($columnName, '_is_published'))
+                {
                     $this->publishFieldName = $columnName;
                     $this->addTranslation('BTN_PUBLISH', 'BTN_UNPUBLISH');
                     break;
@@ -43,7 +47,7 @@ class ExtendedFeedEditor extends FeedEditor
     /**
      * @copydoc FeedEditor::add
      */
-    protected function add() : void
+    protected function add(): void
     {
         parent::add();
         $tm = new TagManager($this->getDataDescription(), $this->getData(), $this->getTableName());
@@ -53,7 +57,7 @@ class ExtendedFeedEditor extends FeedEditor
     /**
      * @copydoc FeedEditor::edit
      */
-    protected function edit() : void
+    protected function edit(): void
     {
         parent::edit();
         $tm = new TagManager($this->getDataDescription(), $this->getData(), $this->getTableName());
@@ -66,13 +70,15 @@ class ExtendedFeedEditor extends FeedEditor
      *
      * @throws SystemException 'ERR_NO_DATA'
      */
-    protected function autoCompleteTags() : void
+    protected function autoCompleteTags(): void
     {
         $b = new JSONCustomBuilder();
         $this->setBuilder($b);
 
-        try {
-            if (!isset($_POST['value'])) {
+        try
+        {
+            if (!isset($_POST['value']))
+            {
                 throw new SystemException('ERR_NO_DATA', SystemException::ERR_CRITICAL);
             }
 
@@ -81,15 +87,19 @@ class ExtendedFeedEditor extends FeedEditor
 
             $result = ['result' => true, 'data' => []];
 
-            if (is_array($tags) && !empty($tags)) {
-                foreach ($tags as $tag) {
+            if (is_array($tags) && !empty($tags))
+            {
+                foreach ($tags as $tag)
+                {
                     $result['data'][] = [
                         'key'   => $tag,
                         'value' => $tag,
                     ];
                 }
             }
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
             $result = [
                 'result' => false,
                 'data'   => false,
@@ -105,7 +115,8 @@ class ExtendedFeedEditor extends FeedEditor
      */
     protected function publish()
     {
-        if ($this->publishFieldName === null) {
+        if ($this->publishFieldName === null)
+        {
             throw new SystemException('ERR_NO_PUBLISH_FIELD', SystemException::ERR_DEVELOPER);
         }
 

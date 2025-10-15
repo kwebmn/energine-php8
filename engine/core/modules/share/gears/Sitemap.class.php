@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -81,22 +82,27 @@ final class Sitemap extends DBWorker
         );
 
         $idsRows = is_array($res) ? $res : []; // QAL иногда возвращает true — нормализуем
-        $smapIds = array_map(static fn($r) => (int)$r['smap_id'], $idsRows);
+        $smapIds = array_map(static fn ($r) => (int)$r['smap_id'], $idsRows);
 
         // 2) Кэш прав доступа (если нет разделов — матрица пустая)
-        if ($smapIds) {
+        if ($smapIds)
+        {
             $rightsMatrix = $this->dbh->select('share_access_level', true, ['smap_id' => $smapIds]);
-            if (!is_array($rightsMatrix)) {
+            if (!is_array($rightsMatrix))
+            {
                 throw new SystemException('ERR_404', SystemException::ERR_404);
             }
             // Инициализация прав по умолчанию
-            foreach ($smapIds as $sid) {
-                foreach ($userGroups as $gid) {
+            foreach ($smapIds as $sid)
+            {
+                foreach ($userGroups as $gid)
+                {
                     $this->cacheAccessLevels[$sid][$gid] = ACCESS_NONE;
                 }
             }
             // Заполнение из БД
-            foreach ($rightsMatrix as $row) {
+            foreach ($rightsMatrix as $row)
+            {
                 $sid = (int)$row['smap_id'];
                 $gid = (int)$row['group_id'];
                 $rid = (int)$row['right_id'];
@@ -122,7 +128,8 @@ final class Sitemap extends DBWorker
              LIMIT 1
         ', $this->siteID, $this->langID);
 
-        if (!is_array($res) || !$res) {
+        if (!is_array($res) || !$res)
+        {
             throw new SystemException('ERR_NO_TRANSLATION', SystemException::ERR_CRITICAL, $this->dbh->getLastRequest());
         }
         $row = $res[0];
@@ -133,7 +140,8 @@ final class Sitemap extends DBWorker
 
         // 5) Подтянем подробную информацию по всем узлам дерева единоразово
         $allIds = array_keys($this->tree->asList());
-        if ($allIds) {
+        if ($allIds)
+        {
             $this->getSitemapData($allIds);
         }
     }
@@ -160,7 +168,8 @@ final class Sitemap extends DBWorker
     {
         $needIds = array_map('intval', (array)$id);
         $needIds = array_values(array_diff($needIds, array_keys($this->info)));
-        if (!$needIds) {
+        if (!$needIds)
+        {
             // уже всё есть
             return array_intersect_key($this->info, array_flip((array)$id));
         }
@@ -188,7 +197,8 @@ final class Sitemap extends DBWorker
             $this->siteID
         );
 
-        if (!is_array($rows)) {
+        if (!is_array($rows))
+        {
             return [];
         }
 
@@ -209,18 +219,22 @@ final class Sitemap extends DBWorker
     {
         $result = convertFieldNames($current, 'smap');
 
-        if (!isset($result['Pid'])) {
+        if (!isset($result['Pid']))
+        {
             // в convertFieldNames поле pid станет 'Pid'
             $result['Pid'] = $current['smap_pid'] ?? null;
         }
 
-        if (!array_key_exists('MetaKeywords', $result) || $result['MetaKeywords'] === null) {
+        if (!array_key_exists('MetaKeywords', $result) || $result['MetaKeywords'] === null)
+        {
             $result['MetaKeywords'] = $this->defaultMetaKeywords;
         }
-        if (!array_key_exists('MetaDescription', $result) || $result['MetaDescription'] === null) {
+        if (!array_key_exists('MetaDescription', $result) || $result['MetaDescription'] === null)
+        {
             $result['MetaDescription'] = $this->defaultMetaDescription;
         }
-        if (!array_key_exists('MetaRobots', $result) || !$result['MetaRobots']) {
+        if (!array_key_exists('MetaRobots', $result) || !$result['MetaRobots'])
+        {
             $result['MetaRobots'] = $this->defaultMetaRobots;
         }
 
@@ -243,12 +257,17 @@ final class Sitemap extends DBWorker
         $segments = [];
         $node = $this->tree->getNodeById($smapID);
 
-        if ($node !== null) {
+        if ($node !== null)
+        {
             $parents = array_reverse(array_keys($node->getParents()->asList(false)));
-            foreach ($parents as $pid) {
-                if (isset($this->info[$pid]) && !empty($this->info[$pid]['Segment'])) {
+            foreach ($parents as $pid)
+            {
+                if (isset($this->info[$pid]) && !empty($this->info[$pid]['Segment']))
+                {
                     $segments[] = $this->info[$pid]['Segment'];
-                } else {
+                }
+                else
+                {
                     $info = $this->getDocumentInfo($pid);
                     $segments[] = (string)($info['Segment'] ?? '');
                 }
@@ -257,7 +276,7 @@ final class Sitemap extends DBWorker
 
         $cur = $this->getDocumentInfo($smapID);
         $segments[] = (string)($cur['Segment'] ?? '');
-        $segments = array_values(array_filter($segments, static fn($s) => $s !== ''));
+        $segments = array_values(array_filter($segments, static fn ($s) => $s !== ''));
 
         return $segments ? implode('/', $segments) . '/' : '';
     }
@@ -271,16 +290,20 @@ final class Sitemap extends DBWorker
         $request = E()->getRequest();
         $id = $this->getDefault();
 
-        if (empty($segments)) {
+        if (empty($segments))
+        {
             return $id;
         }
 
-        foreach ($segments as $i => $segment) {
+        foreach ($segments as $i => $segment)
+        {
             $found = false;
 
-            foreach ($this->info as $pageID => $pageInfo) {
+            foreach ($this->info as $pageID => $pageInfo)
+            {
                 if ((string)$segment === (string)($pageInfo['Segment'] ?? '')
-                    && (int)$id === (int)($pageInfo['Pid'] ?? -1)) {
+                    && (int)$id === (int)($pageInfo['Pid'] ?? -1))
+                {
                     $id = (int)$pageID;
                     $request->setPathOffset($i + 1);
                     $found = true;
@@ -288,7 +311,8 @@ final class Sitemap extends DBWorker
                 }
             }
 
-            if (!$found) {
+            if (!$found)
+            {
                 break;
             }
         }
@@ -301,7 +325,8 @@ final class Sitemap extends DBWorker
      */
     public function getDocumentRights(int $docID, array|int|false $groups = false): int
     {
-        $groupList = match (true) {
+        $groupList = match (true)
+        {
             $groups === false => E()->getAUser()->getGroups(),
             is_int($groups)   => [$groups],
             default           => array_values(array_map('intval', $groups)),
@@ -310,7 +335,8 @@ final class Sitemap extends DBWorker
         $groupMap = array_combine($groupList, $groupList);
 
         $result = ACCESS_NONE;
-        if (isset($this->cacheAccessLevels[$docID])) {
+        if (isset($this->cacheAccessLevels[$docID]))
+        {
             $result = max(array_intersect_key($this->cacheAccessLevels[$docID], $groupMap) ?: [ACCESS_NONE]);
         }
 
@@ -325,11 +351,13 @@ final class Sitemap extends DBWorker
     public function getChilds(int $smapID, bool $returnAsTreeNodeList = false): array|TreeNodeList
     {
         $node = $this->tree->getNodeById($smapID);
-        if (!$node) {
+        if (!$node)
+        {
             return $returnAsTreeNodeList ? new TreeNodeList() : [];
         }
 
-        if ($returnAsTreeNodeList) {
+        if ($returnAsTreeNodeList)
+        {
             return $node->getChildren();
         }
 
@@ -343,7 +371,8 @@ final class Sitemap extends DBWorker
     public function getDescendants(int $smapID): array
     {
         $node = $this->tree->getNodeById($smapID);
-        if (!$node) {
+        if (!$node)
+        {
             return [];
         }
         $ids = array_keys($node->getChildren()->asList());
@@ -358,7 +387,8 @@ final class Sitemap extends DBWorker
     public function getParent(int $smapID): int|false
     {
         $node = $this->tree->getNodeById($smapID);
-        if ($node === null) {
+        if ($node === null)
+        {
             return false;
         }
         $parents = $node->getParents()->asList(false);
@@ -371,7 +401,8 @@ final class Sitemap extends DBWorker
     public function getParents(int $smapID): array
     {
         $node = $this->tree->getNodeById($smapID);
-        if ($node === null) {
+        if ($node === null)
+        {
             return [];
         }
         $ids = array_reverse(array_keys($node->getParents()->asList(false)));
@@ -387,7 +418,8 @@ final class Sitemap extends DBWorker
     private function buildPagesMap(array $ids): array
     {
         $result = [];
-        foreach ($ids as $id) {
+        foreach ($ids as $id)
+        {
             $id = (int)$id;
             $info = $this->getDocumentInfo($id);
             $info['Segment'] = $this->getURLByID($id);
@@ -401,9 +433,11 @@ final class Sitemap extends DBWorker
      */
     public function getDocumentInfo(int|string $id): array
     {
-        if (!isset($this->info[$id])) {
+        if (!isset($this->info[$id]))
+        {
             $fetched = $this->getSitemapData($id);
-            if (isset($fetched[$id])) {
+            if (isset($fetched[$id]))
+            {
                 return $fetched[$id];
             }
             // На всякий случай — пустышка

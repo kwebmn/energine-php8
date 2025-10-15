@@ -2,13 +2,13 @@
 
 class LDContainer extends DBWorker
 {
-
     private static $instance;
 
 
     public static function getInstance()
     {
-        if (!isset(self::$instance)) {
+        if (!isset(self::$instance))
+        {
             self::$instance = new LDContainer();
         }
         return self::$instance;
@@ -19,49 +19,49 @@ class LDContainer extends DBWorker
     public function __construct()
     {
         parent::__construct();
-        $this->container = array();
+        $this->container = [];
 
-//        $search = array(
-//            '@context' => 'https://schema.org',
-//            'type' => 'WebSite',
-//            'url' => 'https://www.agronom.info',
-//            'potentialAction' => array(
-//                '@type' => 'SearchAction',
-//                'target' => 'https://www.agronom.info/search?q={search_term_string}',
-//                'query-input' => 'required name=search_term_string'
-//            )
-//        );
+        //        $search = array(
+        //            '@context' => 'https://schema.org',
+        //            'type' => 'WebSite',
+        //            'url' => 'https://www.agronom.info',
+        //            'potentialAction' => array(
+        //                '@type' => 'SearchAction',
+        //                'target' => 'https://www.agronom.info/search?q={search_term_string}',
+        //                'query-input' => 'required name=search_term_string'
+        //            )
+        //        );
 
 
-        $logo = array(
+        $logo = [
             '@context' => 'https://schema.org',
             '@type' => 'Organization',
             'url' => 'https://www.agronom.info',
             'logo' => 'https://www.agronom.info/images/default/logo.svg',
             'legalName' => 'Агроном Инфо'
-        );
+        ];
 
         $this->addLD('logo', $logo);
 
     }
-    
-    function addLD($name, $data)
+
+    public function addLD($name, $data)
     {
         $this->container[$name] = $data;
 
     }
-    
+
     public function getLD()
     {
-        $arr = array();
+        $arr = [];
         if (count($this->container) > 0 and is_array($this->container))
         {
             foreach ($this->container as $key => $row)
             {
-                $arr[] = array(
+                $arr[] = [
                     'ld_id' => $key,
                     'ld_body' => json_encode($row, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-                );
+                ];
             }
         }
         return $arr;

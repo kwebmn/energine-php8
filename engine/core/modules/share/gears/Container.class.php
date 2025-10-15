@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -20,13 +21,16 @@ class Container extends Control
         parent::__construct($id);
         $this->type = 'container';
 
-        if ($action !== null && $action !== false && $action !== '') {
+        if ($action !== null && $action !== false && $action !== '')
+        {
             $this->setAttribute('action', (string)$action);
         }
-        if ($title !== null && $title !== false && $title !== '') {
+        if ($title !== null && $title !== false && $title !== '')
+        {
             $this->setAttribute('title', (string)$title);
         }
-        if ($tooltip !== null && $tooltip !== false && $tooltip !== '') {
+        if ($tooltip !== null && $tooltip !== false && $tooltip !== '')
+        {
             $this->setAttribute('tooltip', (string)$tooltip);
         }
     }
@@ -41,13 +45,16 @@ class Container extends Control
     {
         parent::loadFromXml($description);
 
-        foreach ($description->control as $controlDescription) {
-            if (!isset($controlDescription['type'])) {
+        foreach ($description->control as $controlDescription)
+        {
+            if (!isset($controlDescription['type']))
+            {
                 throw new SystemException('ERR_DEV_NO_CONTROL_TYPE', SystemException::ERR_DEVELOPER);
             }
 
             $controlClassName = ucfirst((string)$controlDescription['type']);
-            if (!class_exists($controlClassName, false)) {
+            if (!class_exists($controlClassName, false))
+            {
                 throw new SystemException('ERR_DEV_NO_CONTROL_CLASS', SystemException::ERR_DEVELOPER, $controlClassName);
             }
 
@@ -71,7 +78,8 @@ class Container extends Control
     {
         $root = parent::build(); // <control type="container" .../>
 
-        foreach ($this->controls as $control) {
+        foreach ($this->controls as $control)
+        {
             $childNode = $control->build(); // корневой узел чужого DOMDocument
             $root->appendChild($this->doc->importNode($childNode, true));
         }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,12 +25,13 @@ class SiteSaver extends Saver
      *
      * @return mixed ID on insert, true on update (as in Saver::save)
      */
-    public function save() : mixed
+    public function save(): mixed
     {
         $mainTable = 'share_sites';
 
         // Ensure only one site is marked as default
-        if (isset($_POST[$mainTable]['site_is_default']) && $_POST[$mainTable]['site_is_default'] !== '0') {
+        if (isset($_POST[$mainTable]['site_is_default']) && $_POST[$mainTable]['site_is_default'] !== '0')
+        {
             $this->dbh->modify(QAL::UPDATE, $mainTable, ['site_is_default' => 0]);
         }
 
@@ -49,10 +51,14 @@ class SiteSaver extends Saver
         $tm->save($siteId);
 
         // On insert, create site structure
-        if ($this->getMode() === QAL::INSERT) {
-            if (isset($_POST['copy_site_structure'])) {
+        if ($this->getMode() === QAL::INSERT)
+        {
+            if (isset($_POST['copy_site_structure']))
+            {
                 $this->copyStructure((int)$_POST['copy_site_structure'], $siteId);
-            } else {
+            }
+            else
+            {
                 $this->createMainPage($siteId);
             }
         }
@@ -72,8 +78,10 @@ class SiteSaver extends Saver
             'domain_id'
         );
 
-        if (!empty($domainIDs)) {
-            foreach ($domainIDs as $domainID) {
+        if (!empty($domainIDs))
+        {
+            foreach ($domainIDs as $domainID)
+            {
                 $this->dbh->modify(QAL::INSERT, 'share_domain2site', [
                     'site_id'   => $siteId,
                     'domain_id' => (int)$domainID,
@@ -102,8 +110,10 @@ class SiteSaver extends Saver
 
         // Insert translations (site name as page name)
         $translationTableName = 'share_sites_translation';
-        if (isset($_POST[$translationTableName]) && is_array($_POST[$translationTableName])) {
-            foreach ($_POST[$translationTableName] as $langID => $siteInfo) {
+        if (isset($_POST[$translationTableName]) && is_array($_POST[$translationTableName]))
+        {
+            foreach ($_POST[$translationTableName] as $langID => $siteInfo)
+            {
                 $this->dbh->modify(QAL::INSERT, 'share_sitemap_translation', [
                     'lang_id' => (int)$langID,
                     'smap_id' => $smapId,
@@ -136,9 +146,11 @@ class SiteSaver extends Saver
     {
         // 1) Find file with default="1"
         $pattern = implode(DIRECTORY_SEPARATOR, [SITE_DIR, self::MODULES, $module, 'templates', $type, '*']);
-        foreach (glob($pattern) ?: [] as $path) {
+        foreach (glob($pattern) ?: [] as $path)
+        {
             $xml = @simplexml_load_file($path);
-            if ($xml && isset($xml['default'])) {
+            if ($xml && isset($xml['default']))
+            {
                 return $module . '/' . basename($path);
             }
         }
@@ -147,7 +159,8 @@ class SiteSaver extends Saver
         $moduleDefault = implode(DIRECTORY_SEPARATOR, [
             SITE_DIR, self::MODULES, $module, 'templates', $type, "default.$type.xml"
         ]);
-        if (file_exists($moduleDefault)) {
+        if (file_exists($moduleDefault))
+        {
             return $module . '/' . "default.$type.xml";
         }
 
@@ -166,13 +179,15 @@ class SiteSaver extends Saver
             ['site_id' => $sourceSiteID]
         );
 
-        if (!is_array($source) || !$source) {
+        if (!is_array($source) || !$source)
+        {
             return;
         }
 
         $oldToNew = $this->copyRows($source, null, '', $destinationSiteID);
 
-        foreach ($oldToNew as $oldID => $newID) {
+        foreach ($oldToNew as $oldID => $newID)
+        {
             // Translations
             $this->dbh->modifyRequest(
                 'INSERT INTO share_sitemap_translation (smap_id, lang_id, smap_name, smap_description_rtf, smap_html_title, smap_meta_keywords, smap_meta_description, smap_is_disabled)
@@ -218,13 +233,16 @@ class SiteSaver extends Saver
     {
         $map = [];
 
-        foreach ($source as $row) {
-            if ($row['smap_pid'] == $PID) {
+        foreach ($source as $row)
+        {
+            if ($row['smap_pid'] == $PID)
+            {
                 $newRow = $row;
                 $newRow['site_id']  = $siteID;
                 $newRow['smap_pid'] = $newPID;
 
-                if ($row['smap_segment'] === '') {
+                if ($row['smap_segment'] === '')
+                {
                     $newRow['smap_segment'] = QAL::EMPTY_STRING;
                 }
 

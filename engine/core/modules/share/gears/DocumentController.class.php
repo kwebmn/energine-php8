@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -32,7 +33,8 @@ class DocumentController extends BaseObject
      *  4) (debug) заголовок X-Debug-Format: xml|struct|json, либо ?format=
      *  5) по умолчанию — HTML
      */
-    public function getViewMode() {
+    public function getViewMode()
+    {
         $result = self::TRANSFORM_HTML;
 
         if (isset($_GET[self::TRANSFORM_DEBUG_XML]) &&
@@ -41,10 +43,12 @@ class DocumentController extends BaseObject
         ) {
             $result = self::TRANSFORM_DEBUG_XML;
         }
-        elseif (isset($_GET[self::TRANSFORM_HTML])) {
+        elseif (isset($_GET[self::TRANSFORM_HTML]))
+        {
             $result = self::TRANSFORM_HTML;
         }
-        elseif (isset($_GET[self::TRANSFORM_STRUCTURE_XML])) {
+        elseif (isset($_GET[self::TRANSFORM_STRUCTURE_XML]))
+        {
             $result = self::TRANSFORM_STRUCTURE_XML;
         }
         elseif (isset($_GET[self::TRANSFORM_JSON]) ||
@@ -70,7 +74,8 @@ class DocumentController extends BaseObject
         $language = E()->getLanguage();
         $language->setCurrent($language->getIDByAbbr(E()->getRequest()->getLang(), true));
 
-        try {
+        try
+        {
             $document = E()->getDocument();
             $document->loadComponents();
             $document->runComponents();
@@ -78,22 +83,26 @@ class DocumentController extends BaseObject
             // Контроль «непрожёванных» сегментов URL
             $pathLen  = count(E()->getRequest()->getPath());
             $usedLen  = E()->getRequest()->getUsedSegments();
-            if ($pathLen !== $usedLen) {
+            if ($pathLen !== $usedLen)
+            {
                 throw new SystemException('ERR_404', SystemException::ERR_404, (string)E()->getRequest()->getURI());
             }
 
             $document->build();
         }
-        catch (IRQ $int) {
+        catch (IRQ $int)
+        {
             // Режим STRUCTURE: отдаём разметку layout/content без выполнения компонентов
             $document = E()->PageStructureDocument;
-            if ($l = $int->getLayoutBlock()) {
+            if ($l = $int->getLayoutBlock())
+            {
                 $document->setLayout($l);
             }
             $document->setContent($int->getContentBlock());
             $document->build();
         }
-        catch (SystemException $e) {
+        catch (SystemException $e)
+        {
             $document = E()->ErrorDocument;
             $document->attachException($e);
             $document->build();
@@ -107,10 +116,12 @@ class DocumentController extends BaseObject
      */
     public function getTransformer(): ITransformer
     {
-        if (!self::$transformer) {
+        if (!self::$transformer)
+        {
             $vm = $this->getViewMode();
 
-            self::$transformer = match ($vm) {
+            self::$transformer = match ($vm)
+            {
                 self::TRANSFORM_JSON          => new JSONTransformer(),
                 self::TRANSFORM_DEBUG_XML,
                 self::TRANSFORM_STRUCTURE_XML => new XMLTransformer(),

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -46,7 +47,8 @@ final class UserSession extends DBWorker
      */
     public function __construct(bool $force = false)
     {
-        if (!self::$instance) {
+        if (!self::$instance)
+        {
             throw new SystemException('ERR_NO_CONSTRUCTOR');
         }
 
@@ -80,26 +82,38 @@ final class UserSession extends DBWorker
         self::$session = new Session($this->storage);
 
         $existingId = self::isOpen();
-        if ($existingId) {
-            if ($this->handler->isValid($existingId)) {
+        if ($existingId)
+        {
+            if ($this->handler->isValid($existingId))
+            {
                 self::$session->setId($existingId);
-            } else {
+            }
+            else
+            {
                 $this->handler->deleteById($existingId);
-                if ($force) {
+                if ($force)
+                {
                     self::$session->setId(self::createIdentifier());
-                } else {
+                }
+                else
+                {
                     E()->getResponse()->deleteCookie(self::DEFAULT_SESSION_NAME);
                     return;
                 }
             }
-        } elseif (!$force) {
+        }
+        elseif (!$force)
+        {
             // Нет cookie и не форсируем — просто не стартуем сессию
             return;
         }
 
-        try {
+        try
+        {
             self::$session->start();
-        } catch (\Throwable) {
+        }
+        catch (\Throwable)
+        {
             // глушим, чтобы не ронять страницу — хранение всё равно в БД
         }
     }
@@ -121,7 +135,8 @@ final class UserSession extends DBWorker
     public static function isValid(string $sessID): bool
     {
         $handler = self::resolveHandler();
-        if ($handler) {
+        if ($handler)
+        {
             return $handler->isValid($sessID);
         }
 
@@ -154,7 +169,8 @@ final class UserSession extends DBWorker
             'session_ip'           => E()->getRequest()->getClientIP(true),
         ];
 
-        if ($UID) {
+        if ($UID)
+        {
             $data['u_id'] = (int)$UID;
             // совместимость с форматом PHP-хранилища (имя переменной + сериализованное значение)
             $data['session_data'] = 'userID|' . serialize((int)$UID);
@@ -173,7 +189,8 @@ final class UserSession extends DBWorker
      */
     public static function manuallyDeleteSessionInfo(): void
     {
-        if (!empty($_COOKIE[self::DEFAULT_SESSION_NAME])) {
+        if (!empty($_COOKIE[self::DEFAULT_SESSION_NAME]))
+        {
             $sid = $_COOKIE[self::DEFAULT_SESSION_NAME];
             E()->getDB()->modify(QAL::DELETE, self::TABLE, null, ['session_native_id' => $sid]);
         }
@@ -186,7 +203,8 @@ final class UserSession extends DBWorker
      */
     public static function start(bool $force = false): void
     {
-        if (self::$instance) {
+        if (self::$instance)
+        {
             throw new SystemException('ERR_SESSION_ALREADY_STARTED');
         }
         self::$instance = true;
@@ -198,20 +216,26 @@ final class UserSession extends DBWorker
      */
     public static function createIdentifier(): string
     {
-        try {
+        try
+        {
             return bin2hex(random_bytes(16)); // 32 hex-символа
-        } catch (\Throwable) {
+        }
+        catch (\Throwable)
+        {
             return sha1((string)(microtime(true) . random_int(PHP_INT_MIN, PHP_INT_MAX)));
         }
     }
 
     private static function resolveHandler(): ?ShareSessionHandler
     {
-        if (self::$session instanceof Session) {
+        if (self::$session instanceof Session)
+        {
             $storage = self::$session->getStorage();
-            if ($storage instanceof NativeSessionStorage) {
+            if ($storage instanceof NativeSessionStorage)
+            {
                 $handler = $storage->getSaveHandler();
-                if ($handler instanceof ShareSessionHandler) {
+                if ($handler instanceof ShareSessionHandler)
+                {
                     return $handler;
                 }
             }

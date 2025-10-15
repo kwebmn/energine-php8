@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 class PageInfo extends DataSet
@@ -14,7 +15,8 @@ class PageInfo extends DataSet
         $this->setBuilder(new SimpleBuilder());
 
         $dd = $this->createDataDescription();
-        if ($dd->isEmpty()) {
+        if ($dd->isEmpty())
+        {
             $dd->load([
                 'smap_id' => [
                     'type'  => FieldDescription::FIELD_TYPE_INT,
@@ -34,7 +36,8 @@ class PageInfo extends DataSet
         $this->js = $this->buildJS();
 
         $toolbars = $this->createToolbar();
-        if (!empty($toolbars)) {
+        if (!empty($toolbars))
+        {
             $this->addToolbar($toolbars);
         }
 
@@ -58,7 +61,8 @@ class PageInfo extends DataSet
             (int)$this->document->getLang()
         );
 
-        if (is_array($data) && !empty($data)) {
+        if (is_array($data) && !empty($data))
+        {
             $d->load($data);
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -39,7 +40,8 @@ final class TextBlock extends DataSet implements SampleTextBlock
 
         $this->isEditable = $this->document->isEditable();
 
-        if ($this->isEditable) {
+        if ($this->isEditable)
+        {
             // Тексты для тулбара и признак «редактируемый» для фронтенда
             $this->addWYSIWYGTranslations();
             $this->setProperty('editable', 'editable');
@@ -71,7 +73,8 @@ final class TextBlock extends DataSet implements SampleTextBlock
         $num   = (int)$this->getParam('num');
         $docID = ($num !== 0) ? $this->document->getID() : null;
 
-        if ($docID === null) {
+        if ($docID === null)
+        {
             // Глобальный блок (smap_id IS NULL)
             $this->setProperty('global', 'global');
         }
@@ -85,18 +88,22 @@ final class TextBlock extends DataSet implements SampleTextBlock
 
         // Собираем параметры
         $params = [$this->document->getLang()];
-        if ($docID !== null) {
+        if ($docID !== null)
+        {
             $params[] = $docID;
         }
         $params[] = $this->getParam('num');
 
         $res = $this->dbh->selectRequest($sql, ...$params);
 
-        if (is_array($res) && !empty($res)) {
+        if (is_array($res) && !empty($res))
+        {
             $row           = $res[0];
             $this->id      = (int)$row['id'];
             $this->content = (string)($row['content'] ?? '');
-        } elseif ($this->getParam('text') !== false) {
+        }
+        elseif ($this->getParam('text') !== false)
+        {
             $this->content = (string)$this->getParam('text');
         }
 
@@ -149,20 +156,24 @@ final class TextBlock extends DataSet implements SampleTextBlock
      */
     protected function buildJS(): ?\DOMNode
     {
-        if (!$this->isEditable) {
+        if (!$this->isEditable)
+        {
             return null;
         }
 
         // может вернуть null или DOMNode — оба варианта валидны для ?DOMNode
         $result = parent::buildJS();
 
-        if ($result instanceof \DOMNode && ($config = E()->getConfigValue('wysiwyg.styles'))) {
+        if ($result instanceof \DOMNode && ($config = E()->getConfigValue('wysiwyg.styles')))
+        {
             $var = $this->doc->createElement('variable');
             $var->setAttribute('name', 'wysiwyg_styles');
             $var->setAttribute('type', 'json');
 
-            foreach ($config as $key => $value) {
-                if (isset($value['caption'])) {
+            foreach ($config as $key => $value)
+            {
+                if (isset($value['caption']))
+                {
                     $config[$key]['caption'] = $this->translate($value['caption']);
                 }
             }
@@ -187,8 +198,10 @@ final class TextBlock extends DataSet implements SampleTextBlock
         $this->dbh->beginTransaction();
 
         $result = '';
-        try {
-            if (!isset($_POST['data'], $_POST['num'])) {
+        try
+        {
+            if (!isset($_POST['data'], $_POST['num']))
+            {
                 throw new SystemException('ERR_DEV_NO_DATA', SystemException::ERR_DEVELOPER);
             }
 
@@ -200,8 +213,10 @@ final class TextBlock extends DataSet implements SampleTextBlock
             $tbID = $this->getTextBlockID($docID, $num);
             $html = DataSet::cleanupHTML((string)$_POST['data']);
 
-            if (trim($html) !== '') {
-                if (!$tbID) {
+            if (trim($html) !== '')
+            {
+                if (!$tbID)
+                {
                     // Вставка base-строки
                     $tbID = (int)$this->dbh->modify(
                         QAL::INSERT,
@@ -214,14 +229,17 @@ final class TextBlock extends DataSet implements SampleTextBlock
                 $t = $this->tableName . '_translation';
                 $exists = $this->dbh->select($t, ['tb_id'], ['tb_id' => $tbID, 'lang_id' => $langID]);
 
-                if (is_array($exists)) {
+                if (is_array($exists))
+                {
                     $this->dbh->modify(
                         QAL::UPDATE,
                         $t,
                         ['tb_content' => $html],
                         ['tb_id' => $tbID, 'lang_id' => $langID]
                     );
-                } elseif ($exists === true) {
+                }
+                elseif ($exists === true)
+                {
                     $this->dbh->modify(
                         QAL::INSERT,
                         $t,
@@ -230,13 +248,17 @@ final class TextBlock extends DataSet implements SampleTextBlock
                 }
 
                 $result = $html;
-            } elseif ($tbID) {
+            }
+            elseif ($tbID)
+            {
                 // Пустой текст — удаляем запись целиком
                 $this->dbh->modify(QAL::DELETE, $this->tableName, null, ['tb_id' => $tbID]);
             }
 
             $this->dbh->commit();
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $this->dbh->rollback();
             $result = $e->getMessage();
         }
@@ -266,4 +288,6 @@ final class TextBlock extends DataSet implements SampleTextBlock
 /**
  * Пустой интерфейс-маркер для генерации sample.
  */
-interface SampleTextBlock {}
+interface SampleTextBlock
+{
+}

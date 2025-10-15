@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -33,48 +34,63 @@ class SiteProperties extends Component
         $result = parent::build();
 
         $paramId = (string)$this->getParam('id');
-        if ($paramId === '') {
+        if ($paramId === '')
+        {
             return $result;
         }
 
-        try {
+        try
+        {
             $site = E()->getSiteManager()->getCurrentSite();
-            if (!is_object($site)) {
+            if (!is_object($site))
+            {
                 return $result;
             }
 
             $value = null;
 
             // Прямой доступ к публичному свойству
-            if (property_exists($site, $paramId)) {
+            if (property_exists($site, $paramId))
+            {
                 /** @var mixed $tmp */
                 $tmp = $site->{$paramId};
                 $value = $tmp;
-            } else {
+            }
+            else
+            {
                 // Попытка через геттер вида getXxx()
                 $method = 'get' . str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $paramId)));
-                if (method_exists($site, $method)) {
+                if (method_exists($site, $method))
+                {
                     /** @var mixed $tmp */
                     $tmp = $site->{$method}();
                     $value = $tmp;
-                } else {
+                }
+                else
+                {
                     // На случай магии __get попробуем доступ; перехватываем любые ошибки
-                    try {
+                    try
+                    {
                         /** @var mixed $tmp */
                         $tmp = $site->{$paramId};
                         $value = $tmp;
-                    } catch (\Throwable $e) {
+                    }
+                    catch (\Throwable $e)
+                    {
                         // игнорируем, оставляем $value = null
                     }
                 }
             }
 
-            if ($value !== null && $value !== '' && $value !== false) {
+            if ($value !== null && $value !== '' && $value !== false)
+            {
                 $result->documentElement->appendChild(
                     $result->createTextNode((string)$value)
                 );
             }
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             // Тихо возвращаем пустой DOM компонента
         }
 

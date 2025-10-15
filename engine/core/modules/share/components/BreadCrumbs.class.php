@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -74,7 +75,7 @@ final class BreadCrumbs extends DataSet
      *
      * @return array<int, array{Id:int|string,Name:string,Segment:string,Title?:string}>|false
      */
-    protected function loadData() : array|false|null
+    protected function loadData(): array|false|null
     {
         $sitemap   = E()->getMap();
         $currentId = $this->document->getID();
@@ -83,7 +84,8 @@ final class BreadCrumbs extends DataSet
 
         // Родители текущего документа (обычно от корня к листу).
         $parents = (array)$sitemap->getParents($currentId);
-        foreach ($parents as $id => $info) {
+        foreach ($parents as $id => $info)
+        {
             $result[] = [
                 'Id'      => $id,
                 'Name'    => strip_tags((string)($info['Name'] ?? '')),
@@ -102,15 +104,18 @@ final class BreadCrumbs extends DataSet
         ];
 
         // Дополнительные крошки от других компонентов (если есть).
-        if (!empty($this->additionalCrumbs)) {
+        if (!empty($this->additionalCrumbs))
+        {
             $result = array_merge($result, $this->additionalCrumbs);
         }
 
         // Вставляем ссылку на главную страницу (если это не она).
         $defaultId = $sitemap->getDefault();
-        if ($currentId !== $defaultId) {
+        if ($currentId !== $defaultId)
+        {
             $first = $result[0] ?? null;
-            if (!$first || (isset($first['Id']) && (string)$first['Id'] !== (string)$defaultId)) {
+            if (!$first || (isset($first['Id']) && (string)$first['Id'] !== (string)$defaultId))
+            {
                 $home = (array)$sitemap->getDocumentInfo($defaultId);
                 array_unshift($result, [
                     'Id'      => $defaultId,
@@ -143,7 +148,8 @@ final class BreadCrumbs extends DataSet
             'Name'    => $smapName,
             'Segment' => $smapSegment,
         ];
-        if ($title !== '') {
+        if ($title !== '')
+        {
             $crumb['Title'] = $title;
         }
         $this->additionalCrumbs[] = $crumb;
@@ -168,7 +174,8 @@ final class BreadCrumbs extends DataSet
      */
     public function removeCrumb(int $indexFromEnd): void
     {
-        if ($indexFromEnd <= 0) {
+        if ($indexFromEnd <= 0)
+        {
             return;
         }
         $count = count($this->additionalCrumbs);

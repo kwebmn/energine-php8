@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 final class LangSwitcher extends DataSet
@@ -27,11 +28,13 @@ final class LangSwitcher extends DataSet
 
         $result = [];
 
-        foreach ($allLanguages as $langID => $langInfo) {
+        foreach ($allLanguages as $langID => $langInfo)
+        {
             $realAbbr = $langInfo['lang_abbr'];
 
             // Для языка по умолчанию префикс пустой
-            if (!empty($langInfo['lang_default'])) {
+            if (!empty($langInfo['lang_default']))
+            {
                 $langInfo['lang_abbr'] = '';
             }
 

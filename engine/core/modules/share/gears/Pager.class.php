@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -78,12 +79,14 @@ final class Pager extends BaseObject
      */
     public function setRecordsPerPage(int $recordsPerPage): void
     {
-        if ($recordsPerPage < 1) {
+        if ($recordsPerPage < 1)
+        {
             throw new SystemException('ERR_DEV_BAD_RECORDS_PER_PAGE', SystemException::ERR_DEVELOPER);
         }
         $this->recordsPerPage = $recordsPerPage;
         // Пересчёт страниц возможен только если уже знаем общее число записей
-        if ($this->recordsCount >= 0) {
+        if ($this->recordsCount >= 0)
+        {
             $this->recalcPagesAndClamp();
         }
     }
@@ -103,12 +106,14 @@ final class Pager extends BaseObject
      */
     public function setCurrentPage(int $currentPage): void
     {
-        if ($currentPage < 1) {
+        if ($currentPage < 1)
+        {
             throw new SystemException('ERR_DEV_BAD_PAGE_NUMBER', SystemException::ERR_DEVELOPER);
         }
         $this->currentPage = $currentPage;
         // Если кол-во страниц уже известно — поджать сразу
-        if ($this->numPages > 0) {
+        if ($this->numPages > 0)
+        {
             $this->currentPage = min($this->currentPage, $this->numPages);
         }
     }
@@ -118,7 +123,8 @@ final class Pager extends BaseObject
      */
     public function setRecordsCount(int $count): void
     {
-        if ($count < 0) {
+        if ($count < 0)
+        {
             throw new SystemException('ERR_DEV_BAD_RECORDS_COUNT', SystemException::ERR_DEVELOPER);
         }
         $this->recordsCount = $count;
@@ -159,7 +165,8 @@ final class Pager extends BaseObject
         $pager = new Toolbar('pager');
 
         // Пробросим текущую строку GET — чтобы UI мог собирать ссылки
-        if (!empty($_GET)) {
+        if (!empty($_GET))
+        {
             $this->setProperty('get_string', http_build_query($_GET));
         }
 
@@ -177,8 +184,10 @@ final class Pager extends BaseObject
         $pager->setProperty('per_page', $this->recordsPerPage);
 
         // Пользовательские свойства (если выставляли заранее)
-        if (!empty($this->properties)) {
-            foreach ($this->properties as $k => $v) {
+        if (!empty($this->properties))
+        {
+            foreach ($this->properties as $k => $v)
+            {
                 $pager->setProperty($k, $v);
             }
         }
@@ -187,47 +196,67 @@ final class Pager extends BaseObject
         $current = $this->currentPage;
 
         // Если страниц 0 или 1 — ничего не рисуем (BC: Toolbar::build() вернёт false без controls)
-        if ($total <= 1) {
+        if ($total <= 1)
+        {
             return $pager->build();
         }
 
         // Кнопки «в начало/назад»
-        if ($this->showFirstLast) {
+        if ($this->showFirstLast)
+        {
             $first = new Link('page_first', '1', '«');
-            if ($current === 1) $first->disable();
+            if ($current === 1)
+            {
+                $first->disable();
+            }
             $pager->attachControl($first);
         }
-        if ($this->showPrevNext) {
+        if ($this->showPrevNext)
+        {
             $prevPage = max(1, $current - 1);
             $prev = new Link('page_prev', (string)$prevPage, '‹');
-            if ($current === 1) $prev->disable();
+            if ($current === 1)
+            {
+                $prev->disable();
+            }
             $pager->attachControl($prev);
         }
 
         // Основное «окно» страниц
-        foreach ($this->buildPageSequence($total, $current, $this->visibleAround) as $token) {
-            if ($token === '…') {
+        foreach ($this->buildPageSequence($total, $current, $this->visibleAround) as $token)
+        {
+            if ($token === '…')
+            {
                 $pager->attachControl(new Separator('sep_' . uniqid()));
                 continue;
             }
             $page = (int)$token;
             $control = new Link('page' . $page, (string)$page, (string)$page);
-            if ($page === $current) {
+            if ($page === $current)
+            {
                 $control->disable();
             }
             $pager->attachControl($control);
         }
 
         // Кнопки «вперёд/в конец»
-        if ($this->showPrevNext) {
+        if ($this->showPrevNext)
+        {
             $nextPage = min($total, $current + 1);
             $next = new Link('page_next', (string)$nextPage, '›');
-            if ($current === $total) $next->disable();
+            if ($current === $total)
+            {
+                $next->disable();
+            }
             $pager->attachControl($next);
         }
-        if ($this->showFirstLast) {
+        if ($this->showFirstLast)
+        {
             $last = new Link('page_last', (string)$total, '»');
-            if ($current === $total) $last->disable();
+            if ($current === $total)
+            {
+                $last->disable();
+            }
             $pager->attachControl($last);
         }
 
@@ -243,9 +272,12 @@ final class Pager extends BaseObject
             ? (int)ceil($this->recordsCount / $this->recordsPerPage)
             : 0;
 
-        if ($this->numPages > 0) {
+        if ($this->numPages > 0)
+        {
             $this->currentPage = min(max(1, $this->currentPage), $this->numPages);
-        } else {
+        }
+        else
+        {
             // При нуле страниц оставим currentPage = 1 (не влияет на build)
             $this->currentPage = 1;
         }
@@ -256,7 +288,8 @@ final class Pager extends BaseObject
      */
     private function calcFromTo(): array
     {
-        if ($this->recordsCount === 0) {
+        if ($this->recordsCount === 0)
+        {
             return [0, 0];
         }
         $from = ($this->currentPage - 1) * $this->recordsPerPage + 1;
@@ -290,16 +323,21 @@ final class Pager extends BaseObject
         $ranges[] = [$tailStart, $total];
 
         // Слить диапазоны, отсортировать, добавить «…» при разрывах
-        usort($ranges, static function ($a, $b) {
+        usort($ranges, static function ($a, $b)
+        {
             return $a[0] <=> $b[0];
         });
 
         // Нормализация (слияние пересечений)
         $merged = [];
-        foreach ($ranges as [$s, $e]) {
-            if (empty($merged) || $s > $merged[count($merged) - 1][1] + 1) {
+        foreach ($ranges as [$s, $e])
+        {
+            if (empty($merged) || $s > $merged[count($merged) - 1][1] + 1)
+            {
                 $merged[] = [$s, $e];
-            } else {
+            }
+            else
+            {
                 $merged[count($merged) - 1][1] = max($merged[count($merged) - 1][1], $e);
             }
         }
@@ -307,11 +345,14 @@ final class Pager extends BaseObject
         // Финальная плоская последовательность
         $seq = [];
         $prevEnd = 0;
-        foreach ($merged as [$s, $e]) {
-            if ($prevEnd > 0 && $s > $prevEnd + 1) {
+        foreach ($merged as [$s, $e])
+        {
+            if ($prevEnd > 0 && $s > $prevEnd + 1)
+            {
                 $seq[] = '…';
             }
-            for ($i = $s; $i <= $e; $i++) {
+            for ($i = $s; $i <= $e; $i++)
+            {
                 $seq[] = $i;
             }
             $prevEnd = $e;

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -72,7 +73,8 @@ final class ComponentManager extends BaseObject implements Iterator
      */
     public function getBlockByName(string $name)
     {
-        if (isset($this->registeredBlocks[$name])) {
+        if (isset($this->registeredBlocks[$name]))
+        {
             return $this->registeredBlocks[$name];
         }
         return $this->blocks[$name] ?? false;
@@ -87,8 +89,10 @@ final class ComponentManager extends BaseObject implements Iterator
     {
         // required attributes
         $required = ['name', 'module', 'class'];
-        foreach ($required as $attrName) {
-            if (!isset($componentDescription[$attrName])) {
+        foreach ($required as $attrName)
+        {
+            if (!isset($componentDescription[$attrName]))
+            {
                 throw new SystemException("ERR_DEV_NO_REQUIRED_ATTRIB $attrName", SystemException::ERR_DEVELOPER);
             }
         }
@@ -99,27 +103,37 @@ final class ComponentManager extends BaseObject implements Iterator
 
         // extract params
         $params = null;
-        if (isset($componentDescription->params)) {
+        if (isset($componentDescription->params))
+        {
             $params = [];
-            foreach ($componentDescription->params->param as $tagName => $paramDescr) {
-                if ($tagName !== 'param' || !isset($paramDescr['name'])) {
+            foreach ($componentDescription->params->param as $tagName => $paramDescr)
+            {
+                if ($tagName !== 'param' || !isset($paramDescr['name']))
+                {
                     continue;
                 }
                 $paramName = (string)$paramDescr['name'];
 
                 // scalar text OR first nested child (BC with original behavior)
-                if (!$paramDescr->count()) {
+                if (!$paramDescr->count())
+                {
                     $paramValue = (string)$paramDescr;
-                } else {
+                }
+                else
+                {
                     [$paramValue] = $paramDescr->children();
                 }
 
-                if (array_key_exists($paramName, $params)) {
-                    if (!is_array($params[$paramName])) {
+                if (array_key_exists($paramName, $params))
+                {
+                    if (!is_array($params[$paramName]))
+                    {
                         $params[$paramName] = [$params[$paramName]];
                     }
                     $params[$paramName][] = $paramValue;
-                } else {
+                }
+                else
+                {
                     $params[$paramName] = $paramValue;
                 }
             }
@@ -144,9 +158,12 @@ final class ComponentManager extends BaseObject implements Iterator
     public static function findBlockByName(SimpleXMLElement $containerXMLDescription, string $blockName)
     {
         // Safe literal for XPath: handle quotes inside the name
-        if (str_contains($blockName, '"')) {
+        if (str_contains($blockName, '"'))
+        {
             $literal = 'concat("'.str_replace('"', '",\'"\',"', $blockName).'")';
-        } else {
+        }
+        else
+        {
             $literal = '"' . $blockName . '"';
         }
 
@@ -165,7 +182,8 @@ final class ComponentManager extends BaseObject implements Iterator
      */
     public static function getDescriptionFromFile(string $blockDescriptionFileName): SimpleXMLElement
     {
-        if (!file_exists($blockDescriptionFileName)) {
+        if (!file_exists($blockDescriptionFileName))
+        {
             throw new SystemException('ERR_DEV_NO_CONTAINER_FILE', SystemException::ERR_CRITICAL, $blockDescriptionFileName);
         }
 
@@ -175,7 +193,8 @@ final class ComponentManager extends BaseObject implements Iterator
         libxml_clear_errors();
         libxml_use_internal_errors($prev);
 
-        if (!$xml) {
+        if (!$xml)
+        {
             throw new SystemException('ERR_DEV_BAD_CONTAINER_FILE', SystemException::ERR_CRITICAL, $blockDescriptionFileName);
         }
 
@@ -191,7 +210,8 @@ final class ComponentManager extends BaseObject implements Iterator
     {
         $result = false;
 
-        switch ($blockDescription->getName()) {
+        switch ($blockDescription->getName())
+        {
             case 'content':
                 $props  = array_merge(['tag' => 'content'], $additionalProps);
                 $result = ComponentContainer::createFromDescription($blockDescription, $props);
@@ -224,11 +244,14 @@ final class ComponentManager extends BaseObject implements Iterator
      */
     private static function _createComponent(string $name, string $module, string $class, ?array $params = null)/*: Component*/
     {
-        try {
+        try
+        {
             /** @var Component $result */
             $result = new $class($name, $module, $params);
             return $result;
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             throw new SystemException(
                 $e->getMessage(),
                 SystemException::ERR_DEVELOPER,

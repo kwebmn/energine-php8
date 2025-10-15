@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -50,22 +51,27 @@ class PageStructureDocument extends Object implements IDocument
         $this->doc = new DOMDocument('1.0', 'UTF-8');
 
         // 1) Создаём/импортируем layout
-        if ($this->layout instanceof SimpleXMLElement) {
+        if ($this->layout instanceof SimpleXMLElement)
+        {
             $layoutNode = dom_import_simplexml($this->layout);
             // На случай сбоя импорта — дефолтный корень <page>
             $layoutElem = ($layoutNode === false)
                 ? $this->doc->createElement('page')
                 : $this->doc->importNode($layoutNode, true);
-        } else {
+        }
+        else
+        {
             // Если layout не задан — корень <page>
             $layoutElem = $this->doc->createElement('page');
         }
         $this->doc->appendChild($layoutElem);
 
         // 2) Импортируем content внутрь layout (если он задан)
-        if ($this->content instanceof SimpleXMLElement) {
+        if ($this->content instanceof SimpleXMLElement)
+        {
             $contentNode = dom_import_simplexml($this->content);
-            if ($contentNode !== false) {
+            if ($contentNode !== false)
+            {
                 $layoutElem->appendChild($this->doc->importNode($contentNode, true));
             }
         }

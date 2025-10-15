@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -49,11 +50,13 @@ final class FiltersTreeEditor extends Grid
             ],
         ];
 
-        try {
+        try
+        {
             $rawId = $_GET['id'] ?? '#';
 
             // Если не '#', строим список реальных узлов
-            if ($rawId !== '#') {
+            if ($rawId !== '#')
+            {
                 // Преобразуем "0" → null (корень), иначе int
                 $parentId = ((string)$rawId === '0') ? null : (int)$rawId;
 
@@ -62,7 +65,8 @@ final class FiltersTreeEditor extends Grid
 
                 // Имя «основной» таблицы
                 $base = (string)$this->getParam('origTableName');
-                if ($base === '') {
+                if ($base === '')
+                {
                     throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER);
                 }
 
@@ -98,9 +102,11 @@ final class FiltersTreeEditor extends Grid
                     E()->getLanguage()->getCurrent()
                 );
 
-                if (is_array($rows) && !empty($rows)) {
+                if (is_array($rows) && !empty($rows))
+                {
                     $data = [];
-                    foreach ($rows as $row) {
+                    foreach ($rows as $row)
+                    {
                         $item = [
                             'id'       => (string)$row['filter_id'],
                             'text'     => (string)$row['filter_name'],
@@ -113,7 +119,8 @@ final class FiltersTreeEditor extends Grid
                             'children' => ($row['children'] !== null),
                         ];
 
-                        if (!empty($row['filter_img'])) {
+                        if (!empty($row['filter_img']))
+                        {
                             // мини-иконка (32x32, zc=2—кроп)
                             $item['icon'] = '/resizer/w32-h32/' . $row['filter_img'] . '?zc=2';
                         }
@@ -122,7 +129,9 @@ final class FiltersTreeEditor extends Grid
                     }
                 }
             }
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             // На проде — тихо отдаём пустой набор, чтобы не ломать UI;
             // при необходимости можно логировать.
             $data = [];
@@ -141,11 +150,14 @@ final class FiltersTreeEditor extends Grid
         $res = parent::loadData();
 
         // В режиме add — проставим filter_pid из параметров состояния
-        if ($this->getState() === 'add' && is_array($res)) {
+        if ($this->getState() === 'add' && is_array($res))
+        {
             $params = $this->getStateParams();
-            if (is_array($params) && !empty($params)) {
+            if (is_array($params) && !empty($params))
+            {
                 $filterPid = (int)($params[0] ?? 0);
-                foreach ($res as $i => $row) {
+                foreach ($res as $i => $row)
+                {
                     $res[$i]['filter_pid'] = $filterPid ?: null;
                 }
             }
@@ -163,7 +175,8 @@ final class FiltersTreeEditor extends Grid
 
         // Гарантируем наличие скрытого поля filter_pid
         $fd = $dd->getFieldDescriptionByName('filter_pid');
-        if (!$fd) {
+        if (!$fd)
+        {
             $fd = new FieldDescription('filter_pid');
             $dd->addFieldDescription($fd);
         }
@@ -182,7 +195,8 @@ final class FiltersTreeEditor extends Grid
     {
         $this->applyUserFilter();
 
-        if (!$this->getOrderColumn()) {
+        if (!$this->getOrderColumn())
+        {
             throw new SystemException('ERR_NO_ORDER_COLUMN', SystemException::ERR_DEVELOPER);
         }
 
@@ -198,7 +212,8 @@ final class FiltersTreeEditor extends Grid
             $currentID
         );
 
-        if (!is_array($res) || empty($res)) {
+        if (!is_array($res) || empty($res))
+        {
             throw new SystemException('ERR_404', SystemException::ERR_404);
         }
 
@@ -213,7 +228,8 @@ final class FiltersTreeEditor extends Grid
         // Базовый фильтр, если задан
         $baseFilter = $this->getFilter();
         $baseFilterSQL = '';
-        if (!empty($baseFilter)) {
+        if (!empty($baseFilter))
+        {
             // buildWhereCondition возвращает строку с WHERE ... → убираем WHERE
             $baseFilterSQL = ' AND ' . str_replace('WHERE', '', $this->dbh->buildWhereCondition($baseFilter));
         }
@@ -239,12 +255,14 @@ final class FiltersTreeEditor extends Grid
 
         $neighbor = convertDBResult($this->dbh->selectRequest($sql), 'neighborID');
 
-        if ($neighbor) {
+        if ($neighbor)
+        {
             $neighborID       = (int)current($neighbor)['neighborID'];
             $neighborOrderNum = (int)current($neighbor)['neighborOrderNum'];
 
             $this->dbh->beginTransaction();
-            try {
+            try
+            {
                 // Меняем местами порядковые номера
                 $this->dbh->modify(
                     QAL::UPDATE,
@@ -259,7 +277,9 @@ final class FiltersTreeEditor extends Grid
                     [$this->getPK() => $neighborID]
                 );
                 $this->dbh->commit();
-            } catch (\Throwable $e) {
+            }
+            catch (\Throwable $e)
+            {
                 $this->dbh->rollback();
                 throw $e;
             }
@@ -283,13 +303,15 @@ final class FiltersTreeEditor extends Grid
         $tableData = $tableBase . FilterManager::FILTER_DATA_TABLE_SUFFIX;
 
         $filterId = (int)($_POST['id'] ?? 0);
-        if ($filterId <= 0 || $tableBase === '') {
+        if ($filterId <= 0 || $tableBase === '')
+        {
             $this->jsonOk(false);
         }
 
         $linkedId = (int)($this->getParam('linkedID') ?: 0);
 
-        if ($linkedId) {
+        if ($linkedId)
+        {
             // по target_id
             $this->dbh->modify(QAL::DELETE, $tableData, true, [
                 'target_id' => $linkedId,
@@ -299,7 +321,9 @@ final class FiltersTreeEditor extends Grid
                 'target_id' => $linkedId,
                 'filter_id' => $filterId,
             ]);
-        } else {
+        }
+        else
+        {
             // по session_id
             $sid = session_id();
             $this->dbh->modify(QAL::DELETE, $tableData, true, [
@@ -325,18 +349,22 @@ final class FiltersTreeEditor extends Grid
         $tableData = $tableBase . FilterManager::FILTER_DATA_TABLE_SUFFIX;
 
         $filterId = (int)($_POST['id'] ?? 0);
-        if ($filterId <= 0 || $tableBase === '') {
+        if ($filterId <= 0 || $tableBase === '')
+        {
             $this->jsonOk(false);
         }
 
         $linkedId = (int)($this->getParam('linkedID') ?: 0);
 
-        if ($linkedId) {
+        if ($linkedId)
+        {
             $this->dbh->modify(QAL::DELETE, $tableData, true, [
                 'target_id' => $linkedId,
                 'filter_id' => $filterId,
             ]);
-        } else {
+        }
+        else
+        {
             $this->dbh->modify(QAL::DELETE, $tableData, true, [
                 'session_id' => session_id(),
                 'filter_id'  => $filterId,

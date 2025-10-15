@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -52,8 +53,14 @@ class Switcher extends Button
     /** Нормализация входного значения в bool. */
     private static function normalizeToBool(bool|int|string $v): bool
     {
-        if (is_bool($v))   { return $v; }
-        if (is_int($v))    { return $v !== 0; }
+        if (is_bool($v))
+        {
+            return $v;
+        }
+        if (is_int($v))
+        {
+            return $v !== 0;
+        }
         $s = strtolower(trim((string)$v));
         return in_array($s, ['1','true','yes','on','y'], true);
     }

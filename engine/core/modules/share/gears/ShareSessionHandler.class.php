@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\AbstractSessionHandler;
@@ -63,17 +64,20 @@ final class ShareSessionHandler extends AbstractSessionHandler
             'session_expires' => $now + $this->lifespan,
         ];
 
-        if (isset($_SESSION['userID'])) {
+        if (isset($_SESSION['userID']))
+        {
             $payload['u_id'] = (int) $_SESSION['userID'];
         }
 
-        if ($this->userAgent !== '') {
+        if ($this->userAgent !== '')
+        {
             $payload['session_user_agent'] = $this->userAgent;
         }
 
         $updated = $this->db->modify(QAL::UPDATE, self::TABLE, $payload, ['session_native_id' => $sessionId]);
 
-        if ($updated !== true) {
+        if ($updated !== true)
+        {
             $payload['session_native_id'] = $sessionId;
             $payload['session_created'] = $now;
             $payload['session_ip'] = E()->getRequest()->getClientIP(true);
@@ -93,13 +97,16 @@ final class ShareSessionHandler extends AbstractSessionHandler
 
     public function gc(int $max_lifetime): int|false
     {
-        try {
+        try
+        {
             $pdo = $this->db->getPDO();
             $stmt = $pdo->prepare('DELETE FROM ' . self::TABLE . ' WHERE session_expires < UNIX_TIMESTAMP()');
             $stmt->execute();
 
             return $stmt->rowCount();
-        } catch (\Throwable) {
+        }
+        catch (\Throwable)
+        {
             return false;
         }
     }
@@ -118,17 +125,20 @@ final class ShareSessionHandler extends AbstractSessionHandler
             'session_expires' => $now + $this->lifespan,
         ];
 
-        if (isset($_SESSION['userID'])) {
+        if (isset($_SESSION['userID']))
+        {
             $payload['u_id'] = (int) $_SESSION['userID'];
         }
 
-        if ($this->userAgent !== '') {
+        if ($this->userAgent !== '')
+        {
             $payload['session_user_agent'] = $this->userAgent;
         }
 
         $updated = $this->db->modify(QAL::UPDATE, self::TABLE, $payload, ['session_native_id' => $sessionId]);
 
-        if ($updated !== true) {
+        if ($updated !== true)
+        {
             return $this->doWrite($sessionId, $data);
         }
 

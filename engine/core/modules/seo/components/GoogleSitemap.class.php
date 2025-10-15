@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -75,7 +76,8 @@ class GoogleSitemap extends SitemapTree
         ) {
             $fd = new FieldDescription($fieldName);
             $fd->setType($fieldType);
-            if ($fieldName === 'Id') {
+            if ($fieldName === 'Id')
+            {
                 $fd->setProperty('key', 1);
             }
             $dd->addFieldDescription($fd);
@@ -83,12 +85,16 @@ class GoogleSitemap extends SitemapTree
         $this->setDataDescription($dd);
 
         $result = [];
-        foreach (E()->getSiteManager() as $siteID => $site) {
-            if ($site->isIndexed) {
+        foreach (E()->getSiteManager() as $siteID => $site)
+        {
+            if ($site->isIndexed)
+            {
                 $sitemap = E()->getMap($siteID);
                 $info = $sitemap->getInfo();
-                if (is_array($info)) {
-                    foreach ($info as $id => $row) {
+                if (is_array($info))
+                {
+                    foreach ($info as $id => $row)
+                    {
                         $result[] = [
                             'Id'      => $id,
                             'Pid'     => $row['Pid'],
@@ -133,8 +139,10 @@ class GoogleSitemap extends SitemapTree
             'xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">' . PHP_EOL
         );
 
-        if ($videosInfo instanceof PDOStatement) {
-            while ($video = $videosInfo->fetch(PDO::FETCH_ASSOC)) {
+        if ($videosInfo instanceof PDOStatement)
+        {
+            while ($video = $videosInfo->fetch(PDO::FETCH_ASSOC))
+            {
                 $response->write(
                     "<url>\n" .
                     '<loc>' . $video['videos_loc'] . "</loc>\n" .
@@ -195,10 +203,13 @@ class GoogleSitemap extends SitemapTree
 
         $mainSiteTree = E()->getMap($defaultSiteID)->getTree();
 
-        foreach ($sm as $siteID => $site) {
-            if ($siteID != $defaultSiteID && $site->isIndexed) {
+        foreach ($sm as $siteID => $site)
+        {
+            if ($siteID != $defaultSiteID && $site->isIndexed)
+            {
                 $tree = E()->getMap($siteID)->getTree();
-                if ($tree) {
+                if ($tree)
+                {
                     $mainSiteTree->add($tree->getRoot());
                 }
             }

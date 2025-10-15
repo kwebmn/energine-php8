@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,7 +25,9 @@ declare(strict_types=1);
  */
 final class TreeConverter
 {
-    private function __construct() {}
+    private function __construct()
+    {
+    }
 
     /**
      * @param array  $data            Входные данные (массив ассоц. массивов)
@@ -46,15 +49,18 @@ final class TreeConverter
         // Корнями считаем группы с parent == '' (или null → ''), а также «висячих» детей,
         // чей parent отсутствует среди существующих id (на всякий случай).
         $rootParents = [''];
-        foreach (array_keys($byParent) as $p) {
-            if ($p !== '' && !isset($allIds[$p])) {
+        foreach (array_keys($byParent) as $p)
+        {
+            if ($p !== '' && !isset($allIds[$p]))
+            {
                 $rootParents[] = $p;
             }
         }
         $rootParents = array_values(array_unique($rootParents));
 
         // Рекурсивно навешиваем потомков
-        foreach ($rootParents as $p) {
+        foreach ($rootParents as $p)
+        {
             self::attachChildren($root, $p, $byParent, $keyName, $parentKeyName);
         }
 
@@ -71,11 +77,14 @@ final class TreeConverter
         $byParent = [];
         $idsSeen  = [];
 
-        foreach ($data as $i => $row) {
-            if (!is_array($row)) {
+        foreach ($data as $i => $row)
+        {
+            if (!is_array($row))
+            {
                 throw new InvalidArgumentException("Invalid row at index {$i}: not an array");
             }
-            if (!array_key_exists($keyName, $row) || !array_key_exists($parentKeyName, $row)) {
+            if (!array_key_exists($keyName, $row) || !array_key_exists($parentKeyName, $row))
+            {
                 throw new InvalidArgumentException(
                     "Invalid row at index {$i}: missing '{$keyName}' or '{$parentKeyName}'"
                 );
@@ -85,12 +94,14 @@ final class TreeConverter
             $id  = (string)$row[$keyName];
             $pid = (string)($row[$parentKeyName] ?? '');
 
-            if ($id === $pid) {
+            if ($id === $pid)
+            {
                 throw new InvalidArgumentException(
                     "Invalid row at index {$i}: node references itself (id == parentId == '{$id}')"
                 );
             }
-            if (isset($idsSeen[$id])) {
+            if (isset($idsSeen[$id]))
+            {
                 throw new InvalidArgumentException(
                     "Duplicate node id '{$id}' at index {$i}. IDs must be unique."
                 );
@@ -119,11 +130,13 @@ final class TreeConverter
         string $keyName,
         string $parentKeyName
     ): void {
-        if (empty($byParent[$parentId])) {
+        if (empty($byParent[$parentId]))
+        {
             return;
         }
 
-        foreach ($byParent[$parentId] as $row) {
+        foreach ($byParent[$parentId] as $row)
+        {
             $id = (string)$row[$keyName];
 
             // Создаём узел
@@ -132,14 +145,18 @@ final class TreeConverter
             // Добавляем к контейнеру:
             // - если верхний уровень → TreeNodeList::add(TreeNode)
             // - иначе → TreeNode::addChild(TreeNode)
-            if ($parentContainer instanceof TreeNodeList) {
+            if ($parentContainer instanceof TreeNodeList)
+            {
                 $added = $parentContainer->add($node);
-            } else {
+            }
+            else
+            {
                 $added = $parentContainer->addChild($node);
             }
 
             // Ожидаем, что add()/addChild() возвращают добавленный TreeNode
-            if (!$added instanceof TreeNode) {
+            if (!$added instanceof TreeNode)
+            {
                 // На случай несоответствия старой реализации
                 $added = $node;
             }

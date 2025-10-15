@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -25,7 +26,8 @@ class JSONDivBuilder extends JSONBuilder
     public function getResult(): string
     {
         // Если результат уже собран (массив из JSONBuilder::build), дополним его.
-        if (is_array($this->result)) {
+        if (is_array($this->result))
+        {
             $this->result['current'] = $this->documentId;
         }
         // Дальнейшее оформление (pager и json_encode) — в родителе.

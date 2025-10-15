@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -18,7 +19,8 @@ class SitePropertiesEditor extends Grid
 
         // Если открыт редактор свойств конкретного сайта — показываем его свойства + дефолтные
         $siteId = $params['siteID'] ?? null;
-        if ($siteId !== null && $siteId !== '') {
+        if ($siteId !== null && $siteId !== '')
+        {
             $this->addFilterCondition(
                 'site_id = ' . (int)$siteId . ' OR site_id IS NULL'
             );
@@ -32,15 +34,19 @@ class SitePropertiesEditor extends Grid
     {
         $dd = parent::createDataDescription();
 
-        if (in_array($this->getState(), ['add', 'edit'], true)) {
+        if (in_array($this->getState(), ['add', 'edit'], true))
+        {
             // site_id в формах не редактируется напрямую
-            if ($fdSite = $dd->getFieldDescriptionByName('site_id')) {
+            if ($fdSite = $dd->getFieldDescriptionByName('site_id'))
+            {
                 $fdSite->setType(FieldDescription::FIELD_TYPE_HIDDEN);
             }
 
             // prop_name нельзя менять при редактировании
-            if ($this->getState() === 'edit') {
-                if ($fdName = $dd->getFieldDescriptionByName('prop_name')) {
+            if ($this->getState() === 'edit')
+            {
+                if ($fdName = $dd->getFieldDescriptionByName('prop_name'))
+                {
                     $fdName->setMode(FieldDescription::FIELD_MODE_READ);
                 }
             }
@@ -57,8 +63,10 @@ class SitePropertiesEditor extends Grid
         $data = parent::createData();
 
         // При добавлении проставляем site_id из параметров
-        if ($this->getState() === 'add') {
-            if ($fSite = $data->getFieldByName('site_id')) {
+        if ($this->getState() === 'add')
+        {
+            if ($fSite = $data->getFieldByName('site_id'))
+            {
                 $fSite->setData($this->getParam('siteID'), true);
             }
         }
@@ -69,26 +77,31 @@ class SitePropertiesEditor extends Grid
     /**
      * @inheritDoc
      */
-    protected function loadData() : array|false|null
+    protected function loadData(): array|false|null
     {
         $data = parent::loadData();
 
         // В getRawData скрываем дефолтную запись, если есть оверрайд для конкретного сайта
         $siteId = $this->getParam('siteID');
-        if ($this->getState() === 'getRawData' && $siteId && is_array($data)) {
+        if ($this->getState() === 'getRawData' && $siteId && is_array($data))
+        {
             // prop_name => [rowIndex => site_id]
             $props = [];
-            foreach ($data as $idx => $row) {
+            foreach ($data as $idx => $row)
+            {
                 $props[$row['prop_name']][$idx] = (int)($row['site_id'] ?? 0);
             }
 
             array_walk(
                 $props,
-                function (array $row) use (&$data, $siteId): void {
+                function (array $row) use (&$data, $siteId): void
+                {
                     // Если есть и дефолт (0), и запись для текущего сайта — дефолт прячем
-                    if (in_array(0, $row, true) && in_array((int)$siteId, $row, true)) {
+                    if (in_array(0, $row, true) && in_array((int)$siteId, $row, true))
+                    {
                         $defaultIdx = array_search(0, $row, true);
-                        if ($defaultIdx !== false) {
+                        if ($defaultIdx !== false)
+                        {
                             unset($data[$defaultIdx]);
                         }
                     }
@@ -96,7 +109,8 @@ class SitePropertiesEditor extends Grid
             );
 
             // Добавляем признак, что запись дефолтная
-            $data = array_map(static function (array $row): array {
+            $data = array_map(static function (array $row): array
+            {
                 $row['prop_is_default'] = is_null($row['site_id']);
                 return $row;
             }, $data);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -34,7 +35,8 @@ final class XMLTransformer implements ITransformer
      */
     public function transform(): string
     {
-        if (!$this->document instanceof DOMDocument) {
+        if (!$this->document instanceof DOMDocument)
+        {
             throw new \SystemException('ERR_DEV_NO_DOCUMENT', \SystemException::ERR_DEVELOPER);
         }
 
@@ -49,7 +51,8 @@ final class XMLTransformer implements ITransformer
         $prevUseInternal = libxml_use_internal_errors(true);
         $this->document->encoding = 'UTF-8';
         $this->document->formatOutput = $pretty;
-        if ($pretty) {
+        if ($pretty)
+        {
             // чтобы форматирование работало предсказуемо
             $this->document->preserveWhiteSpace = false;
         }
@@ -59,18 +62,21 @@ final class XMLTransformer implements ITransformer
         libxml_clear_errors();
         libxml_use_internal_errors($prevUseInternal);
 
-        if ($xml === false || !empty($errors)) {
+        if ($xml === false || !empty($errors))
+        {
             $msg = $this->formatLibxmlErrors('XML serialization error', $errors);
 
             // Логируем, если есть Monolog
-            if (isset(E()->logger)) {
+            if (isset(E()->logger))
+            {
                 E()->logger->error($msg, ['component' => 'xml-transformer']);
             }
 
             $isDebug = (defined('DEBUG') && DEBUG)
                 || filter_var(getenv('APP_DEBUG') ?: '0', FILTER_VALIDATE_BOOL);
 
-            if ($isDebug) {
+            if ($isDebug)
+            {
                 throw new \RuntimeException($msg);
             }
             throw new \SystemException('ERR_XML_SERIALIZE: ' . $msg, \SystemException::ERR_DEVELOPER);
@@ -87,16 +93,20 @@ final class XMLTransformer implements ITransformer
      */
     private function formatLibxmlErrors(string $title, array $errors): string
     {
-        if (!$errors) {
+        if (!$errors)
+        {
             return $title;
         }
         $lines = [$title . ':'];
-        foreach ($errors as $e) {
-            if (!$e instanceof \LibXMLError) {
+        foreach ($errors as $e)
+        {
+            if (!$e instanceof \LibXMLError)
+            {
                 $lines[] = (string) $e;
                 continue;
             }
-            $level = match ($e->level) {
+            $level = match ($e->level)
+            {
                 LIBXML_ERR_FATAL   => 'FATAL',
                 LIBXML_ERR_ERROR   => 'ERROR',
                 LIBXML_ERR_WARNING => 'WARN',

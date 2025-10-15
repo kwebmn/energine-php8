@@ -9,9 +9,9 @@ class TemplateHelper extends DBWorker
             $template = $this->dbh->select(
                 'site_generator',
                 true,
-                array(
+                [
                     'sg_id' => $templateId
-                )
+                ]
             );
 
             $template = $template[0];
@@ -42,7 +42,7 @@ class TemplateHelper extends DBWorker
                 /**
                  * List
                  */
-                $this->createClassList('DefaultTemplateList',$template['sg_class_name'], TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
+                $this->createClassList('DefaultTemplateList', $template['sg_class_name'], TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
                 $this->createClassListConfig('DefaultTemplateList', $template['sg_class_name'], $primaryKey, $fields, $fieldsTr, $template['sg_is_translation'], $template['sg_is_js']);
 
                 if ($template['sg_is_js'])
@@ -53,7 +53,7 @@ class TemplateHelper extends DBWorker
                 /**
                  * Grid
                  */
-                $this->createClassList('DefaultTemplateGrid',$template['sg_class_name'] . 'Editor', TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
+                $this->createClassList('DefaultTemplateGrid', $template['sg_class_name'] . 'Editor', TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
                 $this->createClassListConfig('DefaultTemplateGrid', $template['sg_class_name'] . 'Editor', $primaryKey, $fields, $fieldsTr, $template['sg_is_translation'], $template['sg_is_js']);
 
                 /**
@@ -62,14 +62,13 @@ class TemplateHelper extends DBWorker
                 $this->createTemplateFile('default_template_list', $template['sg_template_name'], $template['sg_tablename'], $template['sg_class_name']);
                 $this->createTemplateFile('default_template_list_editor', $template['sg_template_name'] . '_editor', $template['sg_tablename'] . '_editor', $template['sg_class_name'] . 'Editor');
             }
-
             elseif ($template['sg_type'] == '2')
             {
 
                 /**
                  * List
                  */
-                $this->createClassList('DefaultTemplateFeed',$template['sg_class_name'] . 'Feed', TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
+                $this->createClassList('DefaultTemplateFeed', $template['sg_class_name'] . 'Feed', TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
                 $this->createClassListConfig('DefaultTemplateFeed', $template['sg_class_name'] . 'Feed', $primaryKey, $fields, $fieldsTr, $template['sg_is_translation'], $template['sg_is_js'], $template['sg_type']);
 
                 if ($template['sg_is_js'])
@@ -80,7 +79,7 @@ class TemplateHelper extends DBWorker
                 /**
                  * Feed
                  */
-                $this->createClassList('DefaultTemplateFeedEditor',$template['sg_class_name'] . 'FeedEditor', TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
+                $this->createClassList('DefaultTemplateFeedEditor', $template['sg_class_name'] . 'FeedEditor', TemplateWizard::TABLE_PREFIX . $template['sg_tablename']);
                 $this->createClassListConfig('DefaultTemplateFeedEditor', $template['sg_class_name'] . 'FeedEditor', $primaryKey, $fields, $fieldsTr, $template['sg_is_translation'], $template['sg_is_js'], $template['sg_type']);
 
                 /**
@@ -99,13 +98,12 @@ class TemplateHelper extends DBWorker
             $this->dbh->modify(
                 QAL::UPDATE,
                 'site_generator',
-                array(
+                [
                     'sg_build_date' => date('Y-m-d H:i:s')
-                ),
-                array(
+                ],
+                [
                     'sg_id' => $templateId
-                )
-
+                ]
             );
         }
         catch (Exception $e)
@@ -138,9 +136,9 @@ class TemplateHelper extends DBWorker
         if (strpos($content, $includeTxt) === false)
         {
             $content = str_replace(
-                            $nextTxt,
-                            "\t" . $includeTxt . "\n" . $nextTxt,
-                            $content
+                $nextTxt,
+                "\t" . $includeTxt . "\n" . $nextTxt,
+                $content
             );
             file_put_contents($xsltIncludeFile, $content);
             $this->log('Building XSLT.');
@@ -195,7 +193,8 @@ class TemplateHelper extends DBWorker
             $last_key = end($array_keys);
             foreach ($fields as $key => $row)
             {
-                $f .= $row;;
+                $f .= $row;
+                ;
                 if ($last_key != $key)
                 {
                     $f .= ",\n";
@@ -260,7 +259,8 @@ class TemplateHelper extends DBWorker
 
                 foreach ($fieldsTr as $key => $row)
                 {
-                    $f .= $row;;
+                    $f .= $row;
+                    ;
                     if ($last_key != $key)
                     {
                         $f .= ",\n";
@@ -503,7 +503,7 @@ class TemplateHelper extends DBWorker
     public function prepareFields($fields)
     {
 
-        $result = array();
+        $result = [];
         if (is_string($fields) and strlen($fields) > 0)
         {
             $fields = explode("\n", $fields);
@@ -520,27 +520,27 @@ class TemplateHelper extends DBWorker
 
                 if (strpos($field, '_id') or strpos($field, '_number'))
                 {
-                    $result[$field]= 'INT(10) UNSIGNED DEFAULT NULL';
+                    $result[$field] = 'INT(10) UNSIGNED DEFAULT NULL';
                 }
                 elseif (strpos($field, '_is_'))
                 {
-                    $result[$field]= 'TINYINT(1) NOT NULL DEFAULT \'0\'';
+                    $result[$field] = 'TINYINT(1) NOT NULL DEFAULT \'0\'';
                 }
                 elseif (strpos($field, '_date'))
                 {
-                    $result[$field]= 'DATETIME DEFAULT NULL';
+                    $result[$field] = 'DATETIME DEFAULT NULL';
                 }
                 elseif (strpos($field, '_rtf'))
                 {
-                    $result[$field]= 'TEXT DEFAULT NULL';
+                    $result[$field] = 'TEXT DEFAULT NULL';
                 }
                 elseif (strpos($field, '_text'))
                 {
-                    $result[$field]= 'TEXT DEFAULT NULL';
+                    $result[$field] = 'TEXT DEFAULT NULL';
                 }
                 elseif (strpos($field, '_price'))
                 {
-                    $result[$field]= 'DECIMAL (10,2) DEFAULT NULL';
+                    $result[$field] = 'DECIMAL (10,2) DEFAULT NULL';
                 }
                 else
                 {
@@ -553,8 +553,8 @@ class TemplateHelper extends DBWorker
         }
         return $result;
     }
-    
-    
+
+
     public function isTableExists($tableName)
     {
         $result = false;

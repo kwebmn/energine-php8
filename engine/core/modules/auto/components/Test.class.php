@@ -12,9 +12,9 @@ class Test extends DBDataSet
     {
         $result = array_merge(
             parent::defineParams(),
-            array(
+            [
                 'active' => true
-            )
+            ]
         );
         return $result;
     }

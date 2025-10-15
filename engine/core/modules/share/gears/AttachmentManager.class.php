@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -48,14 +49,17 @@ class AttachmentManager extends DBWorker
         $this->isActive   = (bool)$this->dbh->tableExists($uploadsTable);
         $this->tableName  = $this->isActive ? $uploadsTable : null;
 
-        if ($this->isActive) {
+        if ($this->isActive)
+        {
             $this->dataDescription = $dataDescription;
             $this->data            = $data;
             $this->addOG           = $addToOG;
 
             // Find PK field in the dataset description (field with property 'key')
-            foreach ($this->dataDescription as $fd) {
-                if ($fd instanceof FieldDescription && $fd->getPropertyValue('key')) {
+            foreach ($this->dataDescription as $fd)
+            {
+                if ($fd instanceof FieldDescription && $fd->getPropertyValue('key'))
+                {
                     $this->pk = $fd;
                     break;
                 }
@@ -68,12 +72,14 @@ class AttachmentManager extends DBWorker
      */
     public function createFieldDescription(): void
     {
-        if (!$this->isActive || !$this->dataDescription) {
+        if (!$this->isActive || !$this->dataDescription)
+        {
             return;
         }
 
         $fd = $this->dataDescription->getFieldDescriptionByName('attachments');
-        if (!$fd) {
+        if (!$fd)
+        {
             $fd = new FieldDescription('attachments');
             $this->dataDescription->addFieldDescription($fd);
         }
@@ -89,21 +95,26 @@ class AttachmentManager extends DBWorker
      */
     public function createField(string|false $mapFieldName = false, bool $returnOnlyFirstAttachment = false, array|false $mapValue = false): void
     {
-        if (!$this->isActive || !$this->data || $this->data->isEmpty() || !$this->tableName) {
+        if (!$this->isActive || !$this->data || $this->data->isEmpty() || !$this->tableName)
+        {
             return;
         }
 
         // Determine mapping field & values
-        if ($mapFieldName === false) {
-            if (!$this->pk) {
+        if ($mapFieldName === false)
+        {
+            if (!$this->pk)
+            {
                 return;
             }
             $mapFieldName = $this->pk->getName();
         }
 
-        if ($mapValue === false) {
+        if ($mapValue === false)
+        {
             $mapField = $this->data->getFieldByName($mapFieldName);
-            if (!$mapField) {
+            if (!$mapField)
+            {
                 return;
             }
             $mapValue = $mapField->getData();
@@ -114,11 +125,13 @@ class AttachmentManager extends DBWorker
         $this->data->addField($attachmentsField);
 
         // Normalize values to a flat numeric array
-        if (!is_array($mapValue)) {
+        if (!is_array($mapValue))
+        {
             $mapValue = [$mapValue];
         }
-        $mapValue = array_values(array_filter($mapValue, static fn($v) => $v !== null && $v !== '' && $v !== false));
-        if (!$mapValue) {
+        $mapValue = array_values(array_filter($mapValue, static fn ($v) => $v !== null && $v !== '' && $v !== false));
+        if (!$mapValue)
+        {
             return;
         }
 
@@ -128,19 +141,24 @@ class AttachmentManager extends DBWorker
         $prefix           = '';
 
         // Detect prefix from PK column (e.g., news_uploads.news_upl_id => 'news_upl')
-        foreach ($columns as $cname => $col) {
-            if (isset($col['index']) && $col['index'] === 'PRI') {
+        foreach ($columns as $cname => $col)
+        {
+            if (isset($col['index']) && $col['index'] === 'PRI')
+            {
                 $prefix = str_replace('_id', '', (string)$cname);
             }
         }
 
         $lang_pk = false;
         $lang_columns = [];
-        if ($langMapTableName) {
+        if ($langMapTableName)
+        {
             /** @var array<string, array> $lang_columns */
             $lang_columns = $this->dbh->getColumnsInfo($langMapTableName);
-            foreach ($lang_columns as $cname => $col) {
-                if (isset($col['index']) && $col['index'] === 'PRI' && $cname !== 'lang_id') {
+            foreach ($lang_columns as $cname => $col)
+            {
+                if (isset($col['index']) && $col['index'] === 'PRI' && $cname !== 'lang_id')
+                {
                     $lang_pk = $cname;
                 }
             }
@@ -149,28 +167,37 @@ class AttachmentManager extends DBWorker
         // Build list of additional fields (both base and translation tables) without prefix
         // IMPORTANT: do NOT include the mapping key itself, so it remains available in $row.
         $additional_fields = [];
-        foreach ($columns as $cname => $col) {
-            if ($cname === $mapFieldName) {
+        foreach ($columns as $cname => $col)
+        {
+            if ($cname === $mapFieldName)
+            {
                 continue; // do not rename/remove the mapping key
             }
             $isPrimary = !empty($col['index']) && $col['index'] === 'PRI';
             $hasFK     = !empty($col['key']['tableName']);
-            if ($cname !== 'session_id' && (!$isPrimary && !$hasFK)) {
+            if ($cname !== 'session_id' && (!$isPrimary && !$hasFK))
+            {
                 $newName = str_replace($prefix . '_', '', (string)$cname);
-                if ($newName !== 'order_num') {
+                if ($newName !== 'order_num')
+                {
                     $additional_fields[$cname] = $newName;
                 }
             }
         }
-        if ($langMapTableName) {
-            foreach ($lang_columns as $cname => $col) {
-                if ($cname === $mapFieldName) {
+        if ($langMapTableName)
+        {
+            foreach ($lang_columns as $cname => $col)
+            {
+                if ($cname === $mapFieldName)
+                {
                     continue; // do not rename/remove the mapping key
                 }
                 $isPrimary = !empty($col['index']) && $col['index'] === 'PRI';
-                if (!$isPrimary) {
+                if (!$isPrimary)
+                {
                     $newName = str_replace($prefix . '_', '', (string)$cname);
-                    if ($newName !== 'name') {
+                    if ($newName !== 'name')
+                    {
                         $additional_fields[$cname] = $newName;
                     }
                 }
@@ -196,14 +223,17 @@ class AttachmentManager extends DBWorker
             'AND (su.upl_is_ready = 1) AND (su.upl_is_active = 1)';
 
         // If table has an *_order_num column, sort by it (legacy behavior)
-        foreach ($columns as $colName => $colInfo) {
-            if (strpos((string)$colName, '_order_num') !== false) {
+        foreach ($columns as $colName => $colInfo)
+        {
+            if (strpos((string)$colName, '_order_num') !== false)
+            {
                 $select .= ' ORDER BY ' . $colName;
             }
         }
 
         $images = $this->dbh->select($select);
-        if (!is_array($images) || !$images) {
+        if (!is_array($images) || !$images)
+        {
             return;
         }
 
@@ -214,17 +244,22 @@ class AttachmentManager extends DBWorker
 
         // Group images by mapping value
         $imageData = [];
-        foreach ($images as $row) {
+        foreach ($images as $row)
+        {
             $repoPath      = E()->FileRepoInfo->getRepositoryRoot($row['file']);
             $row['secure'] = (bool)E()->getConfigValue('repositories.ftp.' . $repoPath . '.secure', 0);
 
             // Remap additional fields from full names to shortened names (do NOT touch the map key)
-            if ($additional_fields) {
-                foreach ($additional_fields as $old => $new) {
-                    if ($old === $mapFieldName) {
+            if ($additional_fields)
+            {
+                foreach ($additional_fields as $old => $new)
+                {
+                    if ($old === $mapFieldName)
+                    {
                         continue;
                     }
-                    if (array_key_exists($old, $row)) {
+                    if (array_key_exists($old, $row))
+                    {
                         $row[$new] = $row[$old];
                         unset($row[$old]);
                     }
@@ -233,11 +268,13 @@ class AttachmentManager extends DBWorker
 
             // Safe access to mapping key with fallback to stripped key
             $mapID = $row[$mapFieldName] ?? ($row[$mapFieldStripped] ?? null);
-            if ($mapID === null) {
+            if ($mapID === null)
+            {
                 continue; // no key — skip row (prevents "Undefined array key" warnings)
             }
 
-            if ($returnOnlyFirstAttachment && isset($imageData[$mapID])) {
+            if ($returnOnlyFirstAttachment && isset($imageData[$mapID]))
+            {
                 continue;
             }
 
@@ -246,9 +283,11 @@ class AttachmentManager extends DBWorker
         }
 
         // Fill attachments per requested row index (preserving order of $mapValue)
-        for ($i = 0, $n = count($mapValue); $i < $n; $i++) {
+        for ($i = 0, $n = count($mapValue); $i < $n; $i++)
+        {
             $key = $mapValue[$i];
-            if (!isset($imageData[$key]) || !is_array($imageData[$key])) {
+            if (!isset($imageData[$key]) || !is_array($imageData[$key]))
+            {
                 continue;
             }
 
@@ -322,12 +361,15 @@ class AttachmentManager extends DBWorker
             $playlist = [];
             $first    = $imageData[$key][0];
             $base     = pathinfo($first['file'], PATHINFO_DIRNAME) . '/' . pathinfo($first['file'], PATHINFO_FILENAME);
-            foreach (['mp4', 'webm', 'flv'] as $ext) {
-                if (!empty($first['is_' . $ext]) && (string)$first['is_' . $ext] === '1') {
+            foreach (['mp4', 'webm', 'flv'] as $ext)
+            {
+                if (!empty($first['is_' . $ext]) && (string)$first['is_' . $ext] === '1')
+                {
                     $playlist[] = ['id' => $base . '.' . $ext, 'type' => $ext];
                 }
             }
-            if (count($playlist) > 1) {
+            if (count($playlist) > 1)
+            {
                 $fd = new FieldDescription('playlist');
                 $fd->setType(FieldDescription::FIELD_TYPE_SELECT);
                 $fd->loadAvailableValues($playlist, 'id', 'id');
@@ -335,8 +377,10 @@ class AttachmentManager extends DBWorker
             }
 
             // Additional fields from *_uploads and *_uploads_translation (except 'name')
-            foreach ($additional_fields as $new_name) {
-                if ($new_name !== 'name') {
+            foreach ($additional_fields as $new_name)
+            {
+                if ($new_name !== 'name')
+                {
                     $fd = new FieldDescription($new_name);
                     $fd->setType(FieldDescription::FIELD_TYPE_STRING);
                     $dd->addFieldDescription($fd);

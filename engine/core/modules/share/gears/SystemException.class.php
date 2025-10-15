@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -72,7 +73,8 @@ class SystemException extends Exception
         $this->publicMessage = $publicMessage;
         $this->context       = $context;
 
-        if ($customMessages !== null) {
+        if ($customMessages !== null)
+        {
             $this->customMessages = is_array($customMessages)
                 ? $customMessages
                 : [$customMessages];
@@ -86,17 +88,24 @@ class SystemException extends Exception
         // 403/404 → выставить статус и перевести на текущий язык;
         // прочее (кроме ERR_DB) → перевести на текущий язык; для ERR_DB — без перевода.
         $lang = E()->getLanguage();
-        if ($code === self::ERR_LANG) {
+        if ($code === self::ERR_LANG)
+        {
             $this->setResponseStatus(503);
             $this->setResponseHeader('Retry-After', '20');
             $message = DBWorker::_translate($message, $lang->getDefault());
-        } elseif ($code === self::ERR_403) {
+        }
+        elseif ($code === self::ERR_403)
+        {
             $this->setResponseStatus(403);
             $message = DBWorker::_translate($message, $lang->getCurrent());
-        } elseif ($code === self::ERR_404) {
+        }
+        elseif ($code === self::ERR_404)
+        {
             $this->setResponseStatus(404);
             $message = DBWorker::_translate($message, $lang->getCurrent());
-        } elseif ($code !== self::ERR_DB) {
+        }
+        elseif ($code !== self::ERR_DB)
+        {
             $message = DBWorker::_translate($message, $lang->getCurrent());
         }
         // Легаси-ветка для ERR_DB оставляем без изменения статуса/перевода.
@@ -110,7 +119,8 @@ class SystemException extends Exception
      */
     protected function mapHttpStatus(int $code): int
     {
-        return match ($code) {
+        return match ($code)
+        {
             self::ERR_403     => 403,
             self::ERR_404     => 404,
             self::ERR_LANG    => 503,
@@ -121,7 +131,8 @@ class SystemException extends Exception
     /** Установить статус ответа, если Response доступен. */
     protected function setResponseStatus(int $status): void
     {
-        if ($this->response) {
+        if ($this->response)
+        {
             $this->response->setStatus($status);
         }
     }
@@ -129,7 +140,8 @@ class SystemException extends Exception
     /** Установить заголовок ответа, если Response доступен. */
     protected function setResponseHeader(string $name, string $value): void
     {
-        if ($this->response) {
+        if ($this->response)
+        {
             $this->response->setHeader($name, $value);
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -26,7 +27,8 @@ final class UserEditor extends Grid
     public function deleteData(int|string $id): void
     {
         // запретить удалять себя
-        if ((int)$this->document->user->getID() === $id) {
+        if ((int)$this->document->user->getID() === $id)
+        {
             throw new SystemException('ERR_CANT_DELETE_YOURSELF', SystemException::ERR_CRITICAL);
         }
         parent::deleteData($id);
@@ -54,21 +56,26 @@ final class UserEditor extends Grid
             && $_POST[$table]['u_password'] === ''
         ) {
             unset($_POST[$table]['u_password']);
-        } else {
+        }
+        else
+        {
             // Если пароль пришёл — хешируем современным способом
-            if (isset($_POST[$table]['u_password'])) {
+            if (isset($_POST[$table]['u_password']))
+            {
                 $_POST[$table]['u_password'] = User::hashPassword((string)$_POST[$table]['u_password']);
             }
         }
 
         // Проверка уникальности логина при добавлении
         $isAdd = isset($_POST[$table][$pk]) && $_POST[$table][$pk] === '';
-        if ($isAdd) {
+        if ($isAdd)
+        {
             $uName = (string)($_POST[$table]['u_name'] ?? '');
             if ($uName !== '' && $this->dbh->getScalar(
-                    'SELECT COUNT(*) FROM ' . $table . ' WHERE u_name=%s',
-                    $uName
-                )) {
+                'SELECT COUNT(*) FROM ' . $table . ' WHERE u_name=%s',
+                $uName
+            ))
+            {
                 throw new SystemException('ERR_USER_EXISTS', SystemException::ERR_CRITICAL);
             }
         }
@@ -84,8 +91,10 @@ final class UserEditor extends Grid
         // Обновляем группы пользователя
         $this->dbh->modify(QAL::DELETE, 'user_user_groups', null, ['u_id' => $UID]);
 
-        if (!empty($_POST['group_id']) && is_array($_POST['group_id'])) {
-            foreach ($_POST['group_id'] as $groupID) {
+        if (!empty($_POST['group_id']) && is_array($_POST['group_id']))
+        {
+            foreach ($_POST['group_id'] as $groupID)
+            {
                 $groupID = (int)$groupID;
                 $this->dbh->modify(QAL::INSERT, 'user_user_groups', ['u_id' => $UID, 'group_id' => $groupID]);
             }
@@ -104,14 +113,17 @@ final class UserEditor extends Grid
         $b = new JSONCustomBuilder();
         $this->setBuilder($b);
 
-        try {
+        try
+        {
             [$id] = $this->getStateParams();
             $id = (int)$id;
 
-            if (!$this->recordExists($id)) {
+            if (!$this->recordExists($id))
+            {
                 throw new SystemException('ERR_404', SystemException::ERR_404);
             }
-            if ((int)$this->document->user->getID() === $id) {
+            if ((int)$this->document->user->getID() === $id)
+            {
                 throw new SystemException('ERR_CANT_ACTIVATE_YOURSELF', SystemException::ERR_CRITICAL);
             }
 
@@ -123,8 +135,11 @@ final class UserEditor extends Grid
             $b->setProperties(['result' => true]);
 
             $this->dbh->commit();
-        } catch (SystemException $e) {
-            if ($transactionStarted) {
+        }
+        catch (SystemException $e)
+        {
+            if ($transactionStarted)
+            {
                 $this->dbh->rollback();
             }
             $b->setProperties([
@@ -144,10 +159,14 @@ final class UserEditor extends Grid
     {
         $result = parent::loadData();
 
-        if ($this->getState() === 'getRawData' && is_array($result)) {
+        if ($this->getState() === 'getRawData' && is_array($result))
+        {
             $result = array_map([$this, 'printUserGroups'], $result);
-        } elseif (in_array($this->getState(), ['edit', 'view'], true)) {
-            if (is_array($result) && isset($result[0])) {
+        }
+        elseif (in_array($this->getState(), ['edit', 'view'], true))
+        {
+            if (is_array($result) && isset($result[0]))
+            {
                 $result[0]['u_password'] = '';
             }
         }
@@ -164,9 +183,11 @@ final class UserEditor extends Grid
         $userGroupIDs  = (array)$userGroup->getUserGroups((int)($row['u_id'] ?? 0));
         $userGroupName = [];
 
-        foreach ($userGroupIDs as $UGID) {
+        foreach ($userGroupIDs as $UGID)
+        {
             $info = (array)$userGroup->getInfo((int)$UGID);
-            if (isset($info['group_name'])) {
+            if (isset($info['group_name']))
+            {
                 $userGroupName[] = (string)$info['group_name'];
             }
         }
@@ -189,16 +210,21 @@ final class UserEditor extends Grid
     {
         $dd = parent::createDataDescription();
 
-        if (in_array($this->getState(), ['add', 'edit'], true)) {
-            foreach ($dd as $fd) {
+        if (in_array($this->getState(), ['add', 'edit'], true))
+        {
+            foreach ($dd as $fd)
+            {
                 $fd->setProperty('tabName', $this->translate('TXT_USER_EDITOR'));
             }
 
-            if ($fd = $dd->getFieldDescriptionByName('u_name')) {
+            if ($fd = $dd->getFieldDescriptionByName('u_name'))
+            {
                 $fd->setType(FieldDescription::FIELD_TYPE_EMAIL);
             }
-            foreach (['u_is_active', 'u_recovery_code', 'u_recovery_date'] as $name) {
-                if ($fd = $dd->getFieldDescriptionByName($name)) {
+            foreach (['u_is_active', 'u_recovery_code', 'u_recovery_date'] as $name)
+            {
+                if ($fd = $dd->getFieldDescriptionByName($name))
+                {
                     $dd->removeFieldDescription($fd);
                 }
             }
@@ -221,8 +247,10 @@ final class UserEditor extends Grid
         }
 
         // Для формы редактирования пароль необязателен
-        if ($this->getType() === self::COMPONENT_TYPE_FORM_ALTER) {
-            if ($f = $dd->getFieldDescriptionByName('u_password')) {
+        if ($this->getType() === self::COMPONENT_TYPE_FORM_ALTER)
+        {
+            if ($f = $dd->getFieldDescriptionByName('u_password'))
+            {
                 $f->removeProperty('pattern');
                 $f->removeProperty('message');
                 $f->setProperty('nullable', true);
@@ -240,7 +268,8 @@ final class UserEditor extends Grid
     protected function loadDataDescription(): array
     {
         $result = parent::loadDataDescription();
-        if ($this->getState() === 'save' && isset($result['u_password'])) {
+        if ($this->getState() === 'save' && isset($result['u_password']))
+        {
             $result['u_password']['nullable'] = true;
         }
         return $result;
@@ -259,23 +288,33 @@ final class UserEditor extends Grid
         $filter = $this->getFilter();
         $id     = (is_array($filter) && !empty($filter)) ? (int)current($filter) : 0;
 
-        if ($this->getType() !== self::COMPONENT_TYPE_LIST) {
+        if ($this->getType() !== self::COMPONENT_TYPE_LIST)
+        {
             $selectedGroups = [];
 
-            if (!empty($_POST['group_id']) && is_array($_POST['group_id'])) {
-                foreach ($_POST['group_id'] as $groupID) {
+            if (!empty($_POST['group_id']) && is_array($_POST['group_id']))
+            {
+                foreach ($_POST['group_id'] as $groupID)
+                {
                     $groupID = (int)$groupID;
-                    if ($groupID > 0) {
+                    if ($groupID > 0)
+                    {
                         $selectedGroups[$groupID] = $groupID;
                     }
                 }
-            } elseif ($id > 0) {
+            }
+            elseif ($id > 0)
+            {
                 $rows = $this->dbh->select('user_user_groups', ['group_id'], ['u_id' => $id]);
-                if (is_array($rows)) {
-                    foreach ($rows as $row) {
-                        if (isset($row['group_id'])) {
+                if (is_array($rows))
+                {
+                    foreach ($rows as $row)
+                    {
+                        if (isset($row['group_id']))
+                        {
                             $groupID = (int)$row['group_id'];
-                            if ($groupID > 0) {
+                            if ($groupID > 0)
+                            {
                                 $selectedGroups[$groupID] = $groupID;
                             }
                         }
@@ -296,17 +335,21 @@ final class UserEditor extends Grid
      */
     protected function auth(): void
     {
-        try {
+        try
+        {
             [$id] = $this->getStateParams();
             $id = (int)$id;
 
-            if (!$this->recordExists($id)) {
+            if (!$this->recordExists($id))
+            {
                 throw new SystemException('ERR_404', SystemException::ERR_404);
             }
 
             $_SESSION['userID'] = $id;
             $this->response->setRedirect('/my/');
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e)
+        {
             // Безопасно игнорируем, логирование по месту
         }
     }

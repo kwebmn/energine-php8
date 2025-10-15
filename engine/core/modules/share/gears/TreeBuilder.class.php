@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -46,19 +47,23 @@ final class TreeBuilder extends AbstractBuilder
     protected function run(): void
     {
         // Ищем поле-ключ (id)
-        foreach ($this->dataDescription as $fieldName => $fd) {
+        foreach ($this->dataDescription as $fieldName => $fd)
+        {
             /** @var FieldDescription $fd */
-            if ($fd->getPropertyValue('key') !== null) {
+            if ($fd->getPropertyValue('key') !== null)
+            {
                 $this->idFieldName = (string)$fieldName;
                 break;
             }
         }
 
-        if (!$this->idFieldName) {
+        if (!$this->idFieldName)
+        {
             throw new SystemException('ERR_DEV_NO_TREE_IDENT', SystemException::ERR_DEVELOPER);
         }
 
-        if ($this->tree instanceof TreeNodeList && !$this->data->isEmpty()) {
+        if ($this->tree instanceof TreeNodeList && !$this->data->isEmpty())
+        {
             $this->result->appendChild($this->buildTree($this->tree));
         }
     }
@@ -74,8 +79,10 @@ final class TreeBuilder extends AbstractBuilder
         $idField   = $this->data->getFieldByName($this->idFieldName);
         $idToIndex = $idField ? array_flip((array)$idField->getData()) : [];
 
-        foreach ($tree as $id => $node) {
-            if (!isset($idToIndex[$id])) {
+        foreach ($tree as $id => $node)
+        {
+            if (!isset($idToIndex[$id]))
+            {
                 // В дереве есть узел, которого нет в наборе данных — пропускаем
                 continue;
             }
@@ -84,18 +91,21 @@ final class TreeBuilder extends AbstractBuilder
             $domRecord = $this->result->createElement('record');
 
             // Поля строки
-            foreach ($this->dataDescription as $fieldName => $fd) {
+            foreach ($this->dataDescription as $fieldName => $fd)
+            {
                 /** @var FieldDescription $fd */
                 $fieldValue      = '';
                 $fieldProperties = [];
 
-                if ($f = $this->data->getFieldByName((string)$fieldName)) {
+                if ($f = $this->data->getFieldByName((string)$fieldName))
+                {
                     $fieldValue      = $f->getRowData($rowIndex);
                     $fieldValue      = $fieldValue === null ? '' : $fieldValue;
                     $fieldProperties = $f->getRowProperties($rowIndex);
 
                     // Для SELECT — подменяем значение на <options>
-                    if ($fd->getType() === FieldDescription::FIELD_TYPE_SELECT) {
+                    if ($fd->getType() === FieldDescription::FIELD_TYPE_SELECT)
+                    {
                         $fieldValue = $this->createOptions($fd, [$fieldValue]);
                     }
                 }
@@ -107,7 +117,8 @@ final class TreeBuilder extends AbstractBuilder
             $domRecordset->appendChild($domRecord);
 
             // Рекурсивно добавляем детей
-            if ($node->hasChildren()) {
+            if ($node->hasChildren())
+            {
                 $domRecord->appendChild($this->buildTree($node->getChildren()));
             }
         }
@@ -133,7 +144,8 @@ final class TreeBuilder extends AbstractBuilder
                      'sort',
                      'customField',
                      'default',
-                 ] as $prop) {
+                 ] as $prop)
+        {
             $fieldInfo->removeProperty($prop);
         }
 

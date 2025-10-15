@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -53,12 +54,30 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         return $this->base;
     }
 
-    public function allowsCreateDir(): bool { return true; }
-    public function allowsUploadFile(): bool { return true; }
-    public function allowsEditDir(): bool   { return true; }
-    public function allowsEditFile(): bool  { return true; }
-    public function allowsDeleteDir(): bool { return true; }
-    public function allowsDeleteFile(): bool{ return true; }
+    public function allowsCreateDir(): bool
+    {
+        return true;
+    }
+    public function allowsUploadFile(): bool
+    {
+        return true;
+    }
+    public function allowsEditDir(): bool
+    {
+        return true;
+    }
+    public function allowsEditFile(): bool
+    {
+        return true;
+    }
+    public function allowsDeleteDir(): bool
+    {
+        return true;
+    }
+    public function allowsDeleteFile(): bool
+    {
+        return true;
+    }
 
     /**
      * @copydoc IFileRepository::uploadFile
@@ -72,27 +91,36 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         $dest   = (string)$destFilename;
         $dir    = dirname($dest);
 
-        if (!is_dir($dir)) {
-            [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
-            if ($created === false && !is_dir($dir)) {
+        if (!is_dir($dir))
+        {
+            [$created, $error] = $this->callFs(static fn (): bool => mkdir($dir, 0777, true));
+            if ($created === false && !is_dir($dir))
+            {
                 $context = $error !== null ? ['error' => $error] : [];
                 throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir, null, $context);
             }
         }
-        if (!is_writable($dir)) {
+        if (!is_writable($dir))
+        {
             throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir);
         }
-        [$copied, $copyError] = $this->callFs(static fn(): bool => copy($source, $dest));
-        if ($copied === false) {
+        [$copied, $copyError] = $this->callFs(static fn (): bool => copy($source, $dest));
+        if ($copied === false)
+        {
             $context = $copyError !== null ? ['error' => $copyError] : [];
             throw new SystemException('ERR_COPY_UPLOADED_FILE', SystemException::ERR_CRITICAL, $dest, null, $context);
         }
 
-        if (is_file($source)) {
-            [$deleted, $deleteError] = $this->callFs(static fn(): bool => unlink($source));
-            if ($deleted === false) {
+        if (is_file($source))
+        {
+            [$deleted, $deleteError] = $this->callFs(static fn (): bool => unlink($source));
+            if ($deleted === false)
+            {
                 $ctx = ['file' => $source];
-                if ($deleteError !== null) { $ctx['error'] = $deleteError; }
+                if ($deleteError !== null)
+                {
+                    $ctx['error'] = $deleteError;
+                }
                 $this->logWarning('FileRepositoryLocal: unable to remove source file after upload', $ctx);
             }
         }
@@ -111,18 +139,22 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         $path = (string)$filePath;
         $dir  = dirname($path);
 
-        if (!is_dir($dir)) {
-            [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
-            if ($created === false && !is_dir($dir)) {
+        if (!is_dir($dir))
+        {
+            [$created, $error] = $this->callFs(static fn (): bool => mkdir($dir, 0777, true));
+            if ($created === false && !is_dir($dir))
+            {
                 $context = $error !== null ? ['error' => $error] : [];
                 throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir, null, $context);
             }
         }
-        if (!is_writable($dir)) {
+        if (!is_writable($dir))
+        {
             throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir);
         }
-        [$written, $writeError] = $this->callFs(static fn() => file_put_contents($path, $fileData));
-        if ($written === false) {
+        [$written, $writeError] = $this->callFs(static fn () => file_put_contents($path, $fileData));
+        if ($written === false)
+        {
             $context = $writeError !== null ? ['error' => $writeError] : [];
             throw new SystemException('ERR_PUT_FILE', SystemException::ERR_CRITICAL, $dir . DIRECTORY_SEPARATOR . $path, null, $context);
         }
@@ -146,10 +178,14 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         $source = (string)$sourceFilename;
         $dest   = (string)$destFilename;
 
-        [$copied, $copyError] = $this->callFs(static fn(): bool => copy($source, $dest));
-        if ($copied === false) {
+        [$copied, $copyError] = $this->callFs(static fn (): bool => copy($source, $dest));
+        if ($copied === false)
+        {
             $ctx = ['src' => $source, 'dest' => $dest];
-            if ($copyError !== null) { $ctx['error'] = $copyError; }
+            if ($copyError !== null)
+            {
+                $ctx['error'] = $copyError;
+            }
             $this->logWarning('FileRepositoryLocal: updateFile copy failed', $ctx);
         }
 
@@ -170,14 +206,19 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
     public function deleteFile($filename): bool
     {
         $path = (string)$filename;
-        if (!is_file($path)) {
+        if (!is_file($path))
+        {
             return false;
         }
 
-        [$deleted, $deleteError] = $this->callFs(static fn(): bool => unlink($path));
-        if ($deleted === false) {
+        [$deleted, $deleteError] = $this->callFs(static fn (): bool => unlink($path));
+        if ($deleted === false)
+        {
             $ctx = ['file' => $path];
-            if ($deleteError !== null) { $ctx['error'] = $deleteError; }
+            if ($deleteError !== null)
+            {
+                $ctx['error'] = $deleteError;
+            }
             $this->logWarning('FileRepositoryLocal: deleteFile failed', $ctx);
             return false;
         }
@@ -195,7 +236,8 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
     public function analyze($filename)
     {
         $fi = E()->FileRepoInfo->analyze((string)$filename, true);
-        if (is_object($fi)) {
+        if (is_object($fi))
+        {
             $fi->ready = true;
         }
         return $fi;
@@ -209,19 +251,25 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
     public function createDir($dir): bool
     {
         $dir = (string)$dir;
-        if (is_dir($dir)) {
+        if (is_dir($dir))
+        {
             return true;
         }
 
         $parentDir = dirname($dir);
-        if (!is_dir($parentDir) || !is_writable($parentDir)) {
+        if (!is_dir($parentDir) || !is_writable($parentDir))
+        {
             throw new SystemException('ERR_DIR_CREATE', SystemException::ERR_CRITICAL, $parentDir);
         }
 
-        [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir));
-        if ($created === false) {
+        [$created, $error] = $this->callFs(static fn (): bool => mkdir($dir));
+        if ($created === false)
+        {
             $ctx = ['dir' => $dir];
-            if ($error !== null) { $ctx['error'] = $error; }
+            if ($error !== null)
+            {
+                $ctx['error'] = $error;
+            }
             $this->logWarning('FileRepositoryLocal: createDir failed', $ctx);
             return false;
         }
@@ -249,44 +297,61 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
 
     private function rmdirRecursive(string $dir): bool
     {
-        if (!is_dir($dir)) {
+        if (!is_dir($dir))
+        {
             return false;
         }
 
-        [$items, $scanError] = $this->callFs(static fn() => scandir($dir));
-        if (!is_array($items)) {
-            if ($scanError !== null) {
+        [$items, $scanError] = $this->callFs(static fn () => scandir($dir));
+        if (!is_array($items))
+        {
+            if ($scanError !== null)
+            {
                 $this->logWarning('FileRepositoryLocal: unable to read directory contents', ['dir' => $dir, 'error' => $scanError]);
             }
             return false;
         }
 
-        foreach ($items as $item) {
-            if ($item === '.' || $item === '..') {
+        foreach ($items as $item)
+        {
+            if ($item === '.' || $item === '..')
+            {
                 continue;
             }
 
             $path = $dir . DIRECTORY_SEPARATOR . $item;
 
-            if (is_dir($path) && !is_link($path)) {
-                if (!$this->rmdirRecursive($path)) {
+            if (is_dir($path) && !is_link($path))
+            {
+                if (!$this->rmdirRecursive($path))
+                {
                     return false;
                 }
-            } else {
-                [$deleted, $deleteError] = $this->callFs(static fn(): bool => unlink($path));
-                if ($deleted === false) {
+            }
+            else
+            {
+                [$deleted, $deleteError] = $this->callFs(static fn (): bool => unlink($path));
+                if ($deleted === false)
+                {
                     $ctx = ['file' => $path];
-                    if ($deleteError !== null) { $ctx['error'] = $deleteError; }
+                    if ($deleteError !== null)
+                    {
+                        $ctx['error'] = $deleteError;
+                    }
                     $this->logWarning('FileRepositoryLocal: unable to remove file', $ctx);
                     return false;
                 }
             }
         }
 
-        [$removed, $removeError] = $this->callFs(static fn(): bool => rmdir($dir));
-        if ($removed === false) {
+        [$removed, $removeError] = $this->callFs(static fn (): bool => rmdir($dir));
+        if ($removed === false)
+        {
             $ctx = ['dir' => $dir];
-            if ($removeError !== null) { $ctx['error'] = $removeError; }
+            if ($removeError !== null)
+            {
+                $ctx['error'] = $removeError;
+            }
             $this->logWarning('FileRepositoryLocal: unable to remove directory', $ctx);
             return false;
         }
@@ -302,16 +367,22 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         $result = null;
         $error  = null;
 
-        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool {
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool
+        {
             throw new \ErrorException($message, 0, $severity, $file, $line);
         });
 
-        try {
+        try
+        {
             $result = $operation();
-        } catch (\ErrorException $e) {
+        }
+        catch (\ErrorException $e)
+        {
             $result = false;
             $error  = $e->getMessage();
-        } finally {
+        }
+        finally
+        {
             restore_error_handler();
         }
 
@@ -320,15 +391,20 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
 
     protected function logWarning(string $message, array $context = []): void
     {
-        try {
-            if (function_exists('E')) {
+        try
+        {
+            if (function_exists('E'))
+            {
                 $reg = E();
-                if (isset($reg->logger)) {
+                if (isset($reg->logger))
+                {
                     $reg->logger->warning($message, $context);
                     return;
                 }
             }
-        } catch (\Throwable) {
+        }
+        catch (\Throwable)
+        {
         }
 
         $suffix = $context ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';

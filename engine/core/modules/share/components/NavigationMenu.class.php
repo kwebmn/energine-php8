@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -34,14 +35,19 @@ final class NavigationMenu extends DataSet
     {
         $result = new DataDescription();
 
-        foreach (['Id', 'Pid', 'Name', 'Segment', 'Redirect'] as $fieldName) {
+        foreach (['Id', 'Pid', 'Name', 'Segment', 'Redirect'] as $fieldName)
+        {
             $fd = new FieldDescription($fieldName);
-            if (in_array($fieldName, ['Id', 'Pid'], true)) {
+            if (in_array($fieldName, ['Id', 'Pid'], true))
+            {
                 $fd->setType(FieldDescription::FIELD_TYPE_INT);
-            } else {
+            }
+            else
+            {
                 $fd->setType(FieldDescription::FIELD_TYPE_STRING);
             }
-            if ($fieldName === 'Id') {
+            if ($fieldName === 'Id')
+            {
                 $fd->setProperty('key', 1);
             }
             $result->addFieldDescription($fd);
@@ -61,27 +67,33 @@ final class NavigationMenu extends DataSet
         $this->filteredIDs = true;
         $tags = (string)$this->getParam('tags');
 
-        if ($tags !== '') {
+        if ($tags !== '')
+        {
             $this->filteredIDs = TagManager::getFilter($tags, 'share_sitemap_tags');
         }
 
-        if (!is_array($data) || empty($data)) {
+        if (!is_array($data) || empty($data))
+        {
             return [];
         }
 
-        if (empty($this->filteredIDs)) {
+        if (empty($this->filteredIDs))
+        {
             return [];
         }
 
-        foreach ($data as $key => $value) {
+        foreach ($data as $key => $value)
+        {
             // Пропускаем, если фильтр задан и текущий ключ не входит в него
-            if ($this->filteredIDs !== true && !in_array($key, $this->filteredIDs, true)) {
+            if ($this->filteredIDs !== true && !in_array($key, $this->filteredIDs, true))
+            {
                 unset($data[$key]);
                 continue;
             }
 
             // Не показываем раздел по умолчанию
-            if ($key == $sitemap->getDefault()) {
+            if ($key == $sitemap->getDefault())
+            {
                 unset($data[$key]);
                 continue;
             }
@@ -105,10 +117,12 @@ final class NavigationMenu extends DataSet
         $parents = $map->getParents($currentId);
 
         // Если текущий узел не первого уровня — соберём детей всех его прямых предков
-        if (!empty($parents) && is_array($parents)) {
+        if (!empty($parents) && is_array($parents))
+        {
             $ancestorID = (int)array_key_first($parents);
 
-            foreach ($parents as $nodeID => $node) {
+            foreach ($parents as $nodeID => $node)
+            {
                 $nodeID = (int)$nodeID;
 
                 $nodeChilds = $this->dbh->select(
@@ -123,11 +137,14 @@ final class NavigationMenu extends DataSet
                     (int)E()->getLanguage()->getCurrent()
                 );
 
-                if (is_array($nodeChilds)) {
+                if (is_array($nodeChilds))
+                {
                     // как в оригинале: для прямых потомков "предка" делаем корневой уровень (pid=false)
                     $nodeChilds = array_map(
-                        function (array $n) use ($ancestorID): array {
-                            if ((int)$n['smap_pid'] === $ancestorID) {
+                        function (array $n) use ($ancestorID): array
+                        {
+                            if ((int)$n['smap_pid'] === $ancestorID)
+                            {
                                 $n['smap_pid'] = false; // сохраняем оригинальную семантику
                             }
                             return $n;
@@ -141,14 +158,17 @@ final class NavigationMenu extends DataSet
         }
 
         // Если у текущего есть предки — берём его прямых детей
-        if (!empty($parents)) {
+        if (!empty($parents))
+        {
             $childs = $this->dbh->select(
                 'share_sitemap',
                 ['smap_id', 'smap_pid'],
                 ['smap_pid' => $currentId],
                 ['smap_order_num' => QAL::ASC]
             );
-        } else {
+        }
+        else
+        {
             // Если текущий — первый уровень, берём дочерние разделы и делаем их корневыми (pid=NULL)
             $childs = $this->dbh->select(
                 'SELECT smap_id, NULL AS smap_pid
@@ -159,7 +179,8 @@ final class NavigationMenu extends DataSet
             );
         }
 
-        if (is_array($childs)) {
+        if (is_array($childs))
+        {
             $treeData = array_merge($treeData, $childs);
         }
 
