@@ -181,6 +181,21 @@ return static function (ContainerBuilder $cb): void {
                 return $factory;
             }
 
+            $rootDir  = dirname(__DIR__, 2);
+            $extraDir = $rootDir . '/engine/core/modules/share/gears/extra';
+
+            foreach ([
+                'AttachmentManager' => $extraDir . '/AttachmentManager.class.php',
+                'TagManager'        => $extraDir . '/TagManager.class.php',
+                'FilterManager'     => $extraDir . '/FilterManager.class.php',
+            ] as $className => $file)
+            {
+                if (!class_exists($className, false) && is_file($file))
+                {
+                    require_once $file;
+                }
+            }
+
             return new ExtraManagerFactory([
                 new \AttachmentManager(),
                 new \TagManager(),
