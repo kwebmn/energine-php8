@@ -1,15 +1,18 @@
 <?php
+
 declare(strict_types=1);
 
-namespace App\Routing;
+use App\Routing\Router;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
 
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
+$routes = new RouteCollection();
+$routes->add('app_health_check', new Route(
+    path: '/health',
+    defaults: [
+        '_controller' => Router::class . '::health',
+    ],
+    methods: ['GET']
+));
 
-final class Router
-{
-    public function health(Request $r): Response
-    {
-        return new Response('ok', 200);
-    }
-}
+return $routes;
