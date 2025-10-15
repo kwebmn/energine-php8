@@ -1,14 +1,16 @@
 <?php
 
 $finder = PhpCsFixer\Finder::create()
-    ->in(__DIR__)
+    ->in([
+        __DIR__ . '/engine',
+        __DIR__ . '/site',
+    ])
     ->exclude([
         'vendor',
         'node_modules',
         'storage',
         'var',
     ])
-    ->notPath('bootstrap/cache')
     ->files();
 
 return (new PhpCsFixer\Config())
