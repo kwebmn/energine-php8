@@ -2,6 +2,25 @@
 
 declare(strict_types=1);
 
+if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerFactory', false))
+{
+    $gearsDir      = dirname(__DIR__) . '/gears';
+    $interfaceFile = $gearsDir . '/ExtraManagerInterface.php';
+    $factoryFile   = $gearsDir . '/ExtraManagerFactory.php';
+
+    if (is_file($interfaceFile))
+    {
+        require_once $interfaceFile;
+    }
+
+    if (is_file($factoryFile))
+    {
+        require_once $factoryFile;
+    }
+}
+
+use Energine\Core\ExtraManager\ExtraManagerFactory;
+
 /**
  * Class that shows the data from database.
  */
@@ -19,10 +38,17 @@ class DBDataSet extends DataSet
     private ?array $limit = null;
     private ?string $previousState = null;
 
+    private ?ExtraManagerFactory $extraManagerFactory = null;
+
     public function __construct(string $name, string $module, ?array $params = null)
     {
         parent::__construct($name, $module, $params);
         $this->setType(self::COMPONENT_TYPE_LIST);
+    }
+
+    public function setExtraManagerFactory(?ExtraManagerFactory $factory): void
+    {
+        $this->extraManagerFactory = $factory;
     }
 
     protected function defineParams(): array
@@ -74,6 +100,202 @@ class DBDataSet extends DataSet
         }
 
         return $result;
+    }
+
+    /**
+     * Resolve and activate optional managers for specified table.
+     *
+     * @param string $tableName
+     * @param bool   $data      unused legacy parameter preserved for BC
+     */
+    protected function linkExtraManagers($tableName, $data = false): void
+    {
+        $this->activeExtraManagers = [];
+
+        $factory = $this->obtainExtraManagerFactory($this->extraManagerFactory);
+        if (!$factory instanceof ExtraManagerFactory)
+        {
+            return;
+        }
+
+        $context = [
+            'state'      => $this->getState(),
+            'translate'  => function (string $key): string {
+                return $this->translate($key);
+            },
+            'component'  => $this,
+        ];
+
+        $allowed  = $this->resolveExtraManagerWhitelist();
+        $managers = $factory->getApplicableManagers(
+            (string)$tableName,
+            $this->getDataDescription(),
+            $context,
+            $allowed
+        );
+
+        $recordId = $this->extractRecordId();
+
+        foreach ($managers as $manager)
+        {
+            $manager->addFieldDescription($this->getDataDescription());
+            $manager->addField($this->getData(), (string)$tableName, $recordId);
+            $this->activeExtraManagers[] = $manager;
+        }
+    }
+
+    protected function obtainExtraManagerFactory(?ExtraManagerFactory $factory = null): ?ExtraManagerFactory
+    {
+        if ($factory instanceof ExtraManagerFactory)
+        {
+            $this->extraManagerFactory = $factory;
+            return $factory;
+        }
+
+        if ($this->extraManagerFactory instanceof ExtraManagerFactory)
+        {
+            return $this->extraManagerFactory;
+        }
+
+        if (function_exists('container'))
+        {
+            try
+            {
+                $container = container();
+                if ($container->has(ExtraManagerFactory::class))
+                {
+                    $resolved = $container->get(ExtraManagerFactory::class);
+                    if ($resolved instanceof ExtraManagerFactory)
+                    {
+                        $this->extraManagerFactory = $resolved;
+                        return $resolved;
+                    }
+                }
+            }
+            catch (\Throwable)
+            {
+                // Fallback to defaults below.
+            }
+        }
+
+        $this->extraManagerFactory = $this->createDefaultExtraManagerFactory();
+
+        return $this->extraManagerFactory;
+    }
+
+    protected function createDefaultExtraManagerFactory(): ExtraManagerFactory
+    {
+        $gearsDir      = dirname(__DIR__) . '/gears';
+        $componentsDir = __DIR__;
+
+        $this->requireExtraManagerClass('AttachmentManager', $gearsDir . '/AttachmentManager.class.php');
+        $this->requireExtraManagerClass('TagManager', $gearsDir . '/TagManager.class.php');
+        $this->requireExtraManagerClass('FilterManager', $componentsDir . '/FilterManager.class.php');
+
+        return new ExtraManagerFactory([
+            new AttachmentManager(),
+            new TagManager(),
+            new FilterManager(),
+        ]);
+    }
+
+    private function requireExtraManagerClass(string $className, string $file): void
+    {
+        if (!class_exists($className, false) && is_file($file))
+        {
+            require_once $file;
+        }
+    }
+
+    /**
+     * Determine allowed extra managers from component configuration.
+     *
+     * @return array<int,string>|null
+     */
+    protected function resolveExtraManagerWhitelist(): ?array
+    {
+        $stateConfig = $this->getConfig()->getStateConfig($this->getState());
+        $stateList   = $this->extractExtraManagerList($stateConfig instanceof \SimpleXMLElement ? $stateConfig : null);
+        if ($stateList !== null)
+        {
+            return $stateList;
+        }
+
+        $root = $this->getConfig()->getConfigXML();
+        return $this->extractExtraManagerList($root instanceof \SimpleXMLElement ? $root : null);
+    }
+
+    private function extractExtraManagerList(?\SimpleXMLElement $scope): ?array
+    {
+        if (!$scope || !isset($scope->extraManagers))
+        {
+            return null;
+        }
+
+        $node  = $scope->extraManagers;
+        $items = [];
+
+        foreach ($node->children() as $child)
+        {
+            $items[] = trim((string)$child);
+        }
+
+        if ($items === [])
+        {
+            $text = trim((string)$node);
+            if ($text === '')
+            {
+                return [];
+            }
+
+            $parts = preg_split('/[,\s]+/', $text) ?: [];
+            $items = $parts;
+        }
+
+        $items = array_map('trim', $items);
+        $items = array_values(array_filter($items, static fn(string $item): bool => $item !== ''));
+
+        return $items;
+    }
+
+    protected function extractRecordId(): ?string
+    {
+        if ($this->getState() === 'add')
+        {
+            return null;
+        }
+
+        $data = $this->getData();
+        if ($data)
+        {
+            $pk = $this->getPK();
+            if ($pk)
+            {
+                $pkField = $data->getFieldByName($pk);
+                if ($pkField !== false)
+                {
+                    $value = $pkField->getRowData(0);
+                    if ($value !== null && $value !== '')
+                    {
+                        return (string)$value;
+                    }
+                }
+            }
+        }
+
+        $params = $this->getStateParams();
+        if (empty($params))
+        {
+            return null;
+        }
+
+        $id = current($params);
+        if ($id === false || $id === null)
+        {
+            return null;
+        }
+
+        return (string)$id;
     }
 
     /**

@@ -2,25 +2,7 @@
 
 declare(strict_types=1);
 
-if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerFactory', false))
-{
-    $gearsDir      = dirname(__DIR__) . '/gears';
-    $interfaceFile = $gearsDir . '/ExtraManagerInterface.php';
-    $factoryFile   = $gearsDir . '/ExtraManagerFactory.php';
-
-    if (is_file($interfaceFile))
-    {
-        require_once $interfaceFile;
-    }
-
-    if (is_file($factoryFile))
-    {
-        require_once $factoryFile;
-    }
-}
-
 use Energine\Core\ExtraManager\ExtraManagerFactory;
-use Energine\Core\ExtraManager\ExtraManagerInterface;
 
 /**
  * @file
@@ -88,21 +70,14 @@ class Grid extends DBDataSet
     protected $fkCRUDEditor = null;
 
     /**
-     * Factory that resolves optional managers (attachments, tags, etc.).
-     */
-    private ?ExtraManagerFactory $extraManagerFactory = null;
-
-    /** @var ExtraManagerInterface[] Active managers for current form build. */
-    private array $activeExtraManagers = [];
-
-    /**
      * @copydoc DBDataSet::__construct
      */
     public function __construct(string $name, string $module, ?array $params = null, ?ExtraManagerFactory $extraManagerFactory = null)
     {
         parent::__construct($name, $module, $params);
 
-        $this->extraManagerFactory = $this->obtainExtraManagerFactory($extraManagerFactory);
+        $this->setExtraManagerFactory($extraManagerFactory);
+        $this->obtainExtraManagerFactory(null);
 
         $this->setProperty('exttype', 'grid');
 
@@ -841,14 +816,6 @@ class Grid extends DBDataSet
             }
         }
 
-        if (!empty($this->activeExtraManagers))
-        {
-            foreach ($this->activeExtraManagers as $manager)
-            {
-                $manager->build($result);
-            }
-        }
-
         return $result;
     }
 
@@ -1261,163 +1228,6 @@ class Grid extends DBDataSet
                 break;
             }
         }
-    }
-
-    /**
-     * Build the list of additional files / tabs.
-     *
-     * @param string $tableName Table name.
-     * @param bool   $data      Data.
-     */
-    protected function linkExtraManagers($tableName, $data = false)
-    {
-        $this->activeExtraManagers = [];
-
-        if (!$this->extraManagerFactory instanceof ExtraManagerFactory)
-        {
-            return;
-        }
-
-        $context = [
-            'state' => $this->getState(),
-            'translate' => function (string $key): string {
-                return $this->translate($key);
-            },
-            'component' => $this,
-        ];
-
-        $allowed = $this->resolveExtraManagerWhitelist();
-        $managers = $this->extraManagerFactory->getApplicableManagers(
-            $tableName,
-            $this->getDataDescription(),
-            $context,
-            $allowed
-        );
-
-        $recordId = $this->extractRecordId();
-
-        foreach ($managers as $manager)
-        {
-            $manager->addFieldDescription($this->getDataDescription());
-            $manager->addField($this->getData(), $tableName, $recordId);
-            $this->activeExtraManagers[] = $manager;
-        }
-    }
-
-    private function obtainExtraManagerFactory(?ExtraManagerFactory $factory = null): ExtraManagerFactory
-    {
-        if ($factory instanceof ExtraManagerFactory)
-        {
-            return $factory;
-        }
-
-        if (function_exists('container'))
-        {
-            try
-            {
-                $container = container();
-                if ($container->has(ExtraManagerFactory::class))
-                {
-                    $resolved = $container->get(ExtraManagerFactory::class);
-                    if ($resolved instanceof ExtraManagerFactory)
-                    {
-                        return $resolved;
-                    }
-                }
-            }
-            catch (\Throwable)
-            {
-                // Fallback to defaults below.
-            }
-        }
-
-        return $this->createDefaultExtraManagerFactory();
-    }
-
-    private function createDefaultExtraManagerFactory(): ExtraManagerFactory
-    {
-        return new ExtraManagerFactory([
-            new AttachmentManager(),
-            new TagManager(),
-            new FilterManager(),
-        ]);
-    }
-
-    /**
-     * @return array<int,string>|null
-     */
-    private function resolveExtraManagerWhitelist(): ?array
-    {
-        $stateConfig = $this->getConfig()->getStateConfig($this->getState());
-        $stateList   = $this->extractExtraManagerList($stateConfig instanceof \SimpleXMLElement ? $stateConfig : null);
-        if ($stateList !== null)
-        {
-            return $stateList;
-        }
-
-        $root = $this->getConfig()->getConfigXML();
-        return $this->extractExtraManagerList($root instanceof \SimpleXMLElement ? $root : null);
-    }
-
-    private function extractExtraManagerList(?\SimpleXMLElement $scope): ?array
-    {
-        if (!$scope || !isset($scope->extraManagers))
-        {
-            return null;
-        }
-
-        $node  = $scope->extraManagers;
-        $items = [];
-
-        foreach ($node->children() as $child)
-        {
-            $items[] = trim((string)$child);
-        }
-
-        if ($items === [])
-        {
-            $text = trim((string)$node);
-            if ($text === '')
-            {
-                return [];
-            }
-
-            $parts = preg_split('/[,\s]+/', $text) ?: [];
-            $items = $parts;
-        }
-
-        $items = array_map('trim', $items);
-        $items = array_values(array_filter($items, static fn(string $item): bool => $item !== ''));
-
-        return $items;
-    }
-
-    private function extractRecordId(): ?string
-    {
-        if ($this->getState() === 'add')
-        {
-            return null;
-        }
-
-        $data = $this->getData();
-        if (!$data)
-        {
-            return null;
-        }
-
-        $pkField = $data->getFieldByName($this->getPK());
-        if ($pkField === false)
-        {
-            return null;
-        }
-
-        $value = $pkField->getRowData(0);
-        if ($value === null || $value === '')
-        {
-            return null;
-        }
-
-        return (string)$value;
     }
 
     /**
