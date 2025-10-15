@@ -108,10 +108,13 @@
     "phpstan/phpstan": "^2.1",
     "friendsofphp/php-cs-fixer": "^3.64",
     "slevomat/coding-standard": "^8.0",
-    "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "shipmonk/dead-code-detector": "^0.13"
   },
   "scripts": {
     "cs:fix": "php-cs-fixer fix",
-    "cs:lint": "php-cs-fixer fix --dry-run --diff"
+    "cs:lint": "php-cs-fixer fix --dry-run --diff",
+    "phpstan": "phpstan analyse --configuration=phpstan.neon.dist",
+    "phpstan:dead-code": "phpstan analyse --configuration=phpstan.neon.dist --level=max"
   }
 }
