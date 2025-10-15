@@ -2,6 +2,23 @@
 
 declare(strict_types=1);
 
+if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerFactory', false))
+{
+    $extraDir = dirname(__DIR__) . '/extra';
+    $interfaceFile = $extraDir . '/ExtraManagerInterface.php';
+    $factoryFile   = $extraDir . '/ExtraManagerFactory.php';
+
+    if (is_file($interfaceFile))
+    {
+        require_once $interfaceFile;
+    }
+
+    if (is_file($factoryFile))
+    {
+        require_once $factoryFile;
+    }
+}
+
 use Energine\Core\ExtraManager\ExtraManagerFactory;
 use Energine\Core\ExtraManager\ExtraManagerInterface;
 
