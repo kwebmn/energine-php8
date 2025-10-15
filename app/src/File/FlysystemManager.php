@@ -72,7 +72,20 @@ final class FlysystemManager
         $root = (string)($cfg['root'] ?? '');
 
         if ($root === '') {
+            $root = (string)($_SERVER['DOCUMENT_ROOT'] ?? '');
+        }
+
+        $trimmed = rtrim($root, "\\/");
+        if ($trimmed !== '' && !preg_match('~^[A-Za-z]:$~', $trimmed)) {
+            $root = $trimmed;
+        }
+
+        if ($root === '') {
             throw new RuntimeException('Flysystem local adapter requires "files.local.root" configuration.');
+        }
+
+        if (!is_dir($root)) {
+            throw new RuntimeException(sprintf('Flysystem local adapter root "%s" does not exist or is not a directory.', $root));
         }
 
         $visibility = PortableVisibilityConverter::fromArray([

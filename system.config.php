@@ -391,7 +391,7 @@ return array(
     'files' => array(
         'default_adapter' => 'local', // local|s3|ftp
         'local' => array(
-            'root' => $_SERVER['DOCUMENT_ROOT'].'/var/storage',
+            'root' => $_SERVER['DOCUMENT_ROOT'],
         ),
         's3' => array(
             'key'     => 'AWS_KEY',

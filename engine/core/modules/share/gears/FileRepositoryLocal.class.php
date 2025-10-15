@@ -109,6 +109,7 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         try
         {
             $filesystem = $this->getFilesystem();
+            $this->ensureDirectoryExists($filesystem, $normalized);
             if ($filesystem->fileExists($normalized))
             {
                 $filesystem->delete($normalized);
@@ -191,9 +192,11 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
     {
         $path = (string)$filename;
 
-        if (is_file($path))
+        $absolute = $this->resolveAbsoluteLocalPath($path);
+
+        if ($absolute !== '' && is_file($absolute))
         {
-            $fi = E()->FileRepoInfo->analyze($path, true);
+            $fi = E()->FileRepoInfo->analyze($absolute, true);
             if (is_object($fi))
             {
                 $fi->ready = true;
@@ -351,6 +354,8 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         {
             $filesystem = $this->getFilesystem();
 
+            $this->ensureDirectoryExists($filesystem, $normalized);
+
             if ($overwrite && $filesystem->fileExists($normalized))
             {
                 $filesystem->delete($normalized);
@@ -383,8 +388,17 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
 
     protected function normalizePath(string $path): string
     {
-        $path   = str_replace('\\', '/', $path);
-        $parts  = [];
+        $path = str_replace('\\', '/', $path);
+
+        $docRoot = $this->getDocumentRoot();
+        if ($docRoot !== '' && str_starts_with($path, $docRoot . '/'))
+        {
+            $path = substr($path, strlen($docRoot) + 1);
+        }
+
+        $path = ltrim($path, '/');
+
+        $parts = [];
         foreach (explode('/', $path) as $part)
         {
             if ($part === '' || $part === '.')
@@ -407,6 +421,36 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         return 'local';
     }
 
+    protected function resolveAbsoluteLocalPath(string $path): string
+    {
+        $sanitized = str_replace('\\', '/', $path);
+
+        if ($sanitized === '')
+        {
+            return '';
+        }
+
+        if ($sanitized[0] === '/' || preg_match('~^[A-Za-z]:/~', $sanitized) === 1)
+        {
+            return $path;
+        }
+
+        $normalized = $this->normalizePath($sanitized);
+
+        $docRoot = $this->getDocumentRoot();
+        if ($docRoot === '')
+        {
+            return $normalized;
+        }
+
+        if ($normalized === '')
+        {
+            return $docRoot;
+        }
+
+        return $docRoot . '/' . $normalized;
+    }
+
     protected function getFilesystem(): FilesystemOperator
     {
         if ($this->filesystem === null)
@@ -415,6 +459,20 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         }
 
         return $this->filesystem;
+    }
+
+    protected function ensureDirectoryExists(FilesystemOperator $filesystem, string $path): void
+    {
+        $directory = $this->normalizePath(dirname($path));
+        if ($directory === '')
+        {
+            return;
+        }
+
+        if (!$filesystem->directoryExists($directory))
+        {
+            $filesystem->createDirectory($directory);
+        }
     }
 
     protected function getFlysystemManager(): FlysystemManager
@@ -454,5 +512,23 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
 
         $suffix = $context ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
         error_log($message . $suffix);
+    }
+
+    private function getDocumentRoot(): string
+    {
+        static $docRoot = null;
+
+        if ($docRoot === null)
+        {
+            $value = isset($_SERVER['DOCUMENT_ROOT']) ? (string)$_SERVER['DOCUMENT_ROOT'] : '';
+            $value = str_replace('\\', '/', $value);
+            $docRoot = rtrim($value, '/');
+            if ($docRoot === '' && $value !== '')
+            {
+                $docRoot = $value;
+            }
+        }
+
+        return $docRoot;
     }
 }
