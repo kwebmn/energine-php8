@@ -60,6 +60,11 @@ abstract class DataSet extends Component
     private ?DataDescription $dataDescription = null;
 
     /**
+     * Data provider implementation (optional).
+     */
+    private ?DataProviderInterface $dataProvider = null;
+
+    /**
      * Data.
      */
     private ?Data $data = null;
@@ -269,29 +274,50 @@ abstract class DataSet extends Component
      */
     protected function createDataDescription(): DataDescription
     {
-        // описание данных из конфигурации
-        $configDataDescriptionObject = new DataDescription();
-        if ($this->getConfig()->getCurrentStateConfig())
-        {
-            $configDataDescriptionObject->loadXML($this->getConfig()->getCurrentStateConfig()->fields);
-        }
+        $configDescription = $this->createConfigDataDescription();
 
-        // внешнее описание данных
         $externalDataDescription = $this->loadDataDescription();
         if (is_null($externalDataDescription))
         {
             throw new SystemException('ERR_DEV_LOAD_DATA_DESCR_IS_FUNCTION', SystemException::ERR_DEVELOPER);
         }
 
-        // если существует внешнее описание данных - пересекаем с описанием из конфиг
         if ($externalDataDescription)
         {
-            $externalDataDescriptionObject = new DataDescription();
-            $externalDataDescriptionObject->load($externalDataDescription);
-            $configDataDescriptionObject = $configDataDescriptionObject->intersect($externalDataDescriptionObject);
+            $configDescription = $this->mergeExternalDataDescription(
+                $configDescription,
+                $externalDataDescription
+            );
+        }
+
+        return $configDescription;
+    }
+
+    /**
+     * Build data description from component configuration.
+     */
+    protected function createConfigDataDescription(): DataDescription
+    {
+        $configDataDescriptionObject = new DataDescription();
+        if ($this->getConfig()->getCurrentStateConfig())
+        {
+            $configDataDescriptionObject->loadXML($this->getConfig()->getCurrentStateConfig()->fields);
         }
 
         return $configDataDescriptionObject;
+    }
+
+    /**
+     * Merge configuration description with external one.
+     *
+     * @param array<int|string, array<string, mixed>> $external
+     */
+    protected function mergeExternalDataDescription(DataDescription $configDescription, array $external): DataDescription
+    {
+        $externalDataDescriptionObject = new DataDescription();
+        $externalDataDescriptionObject->load($external);
+
+        return $configDescription->intersect($externalDataDescriptionObject);
     }
 
     /**
@@ -356,7 +382,29 @@ abstract class DataSet extends Component
      */
     protected function loadData(): array|false|null
     {
-        return false;
+        if (!$this->dataProvider instanceof DataProviderInterface)
+        {
+            return false;
+        }
+
+        $options = $this->createQueryOptions();
+        $this->beforeLoadData($options);
+
+        $data = $this->dataProvider->fetchData($options);
+        if (!is_array($data))
+        {
+            return $data;
+        }
+
+        $description = $this->getDataDescription();
+        if ($description instanceof DataDescription)
+        {
+            $data = $this->dataProvider->modifyData($data, $description);
+        }
+
+        $this->afterLoadData($data, $options);
+
+        return $data;
     }
 
     /**
@@ -393,6 +441,8 @@ abstract class DataSet extends Component
         }
         else
         {
+            $this->beforeBuildView();
+
             if (!$this->getBuilder())
             {
                 throw new SystemException(
@@ -460,6 +510,8 @@ abstract class DataSet extends Component
                     $manager->build($result);
                 }
             }
+
+            $this->afterBuildView($result);
         }
 
         return $result;
@@ -504,6 +556,57 @@ abstract class DataSet extends Component
         }
 
         return $result;
+    }
+
+    /**
+     * Provide data provider implementation.
+     */
+    public function setDataProvider(?DataProviderInterface $dataProvider): void
+    {
+        $this->dataProvider = $dataProvider;
+    }
+
+    protected function getDataProvider(): ?DataProviderInterface
+    {
+        return $this->dataProvider;
+    }
+
+    /**
+     * Hook executed before the data is requested from the provider.
+     */
+    protected function beforeLoadData(QueryOptions $options): void
+    {
+    }
+
+    /**
+     * Hook executed after the data has been fetched and processed.
+     *
+     * @param array<int, array<string, mixed>> $data
+     */
+    protected function afterLoadData(array &$data, QueryOptions $options): void
+    {
+    }
+
+    /**
+     * Hook executed before the DOM representation is created.
+     */
+    protected function beforeBuildView(): void
+    {
+    }
+
+    /**
+     * Hook executed after the DOM representation is created.
+     */
+    protected function afterBuildView(DOMDocument $document): void
+    {
+    }
+
+    /**
+     * Build default query options for the data provider.
+     */
+    protected function createQueryOptions(): QueryOptions
+    {
+        return new QueryOptions();
     }
 
     /**

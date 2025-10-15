@@ -52,6 +52,11 @@ class DBDataSet extends DataSet
      */
     protected function loadDataDescription(): array|false|null
     {
+        if ($this->getDataProvider() instanceof DataProviderInterface)
+        {
+            return $this->getDataProvider()->getDataDescription();
+        }
+
         $result = $this->dbh->getColumnsInfo($this->getTableName());
 
         if ($this->getTranslationTableName())
@@ -286,6 +291,11 @@ class DBDataSet extends DataSet
      */
     protected function loadData(): array|false|null
     {
+        if ($this->getDataProvider() instanceof DataProviderInterface)
+        {
+            return parent::loadData();
+        }
+
         if ($this->pager)
         {
             $this->setLimit($this->pager->getLimit());
