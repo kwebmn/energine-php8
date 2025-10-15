@@ -95,8 +95,10 @@
   "config": {
     "optimize-autoloader": true,
     "apcu-autoloader": true,
+    "process-timeout": 3600,
     "allow-plugins": {
-      "symfony/runtime": true
+      "symfony/runtime": true,
+      "dealerdirect/phpcodesniffer-composer-installer": true
     }
   },
   "minimum-stability": "stable",
@@ -104,7 +106,9 @@
   "require-dev": {
     "filp/whoops": "^2.18",
     "phpstan/phpstan": "^2.1",
-    "friendsofphp/php-cs-fixer": "^3.64"
+    "friendsofphp/php-cs-fixer": "^3.64",
+    "slevomat/coding-standard": "^8.0",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
   },
   "scripts": {
     "cs:fix": "php-cs-fixer fix",
