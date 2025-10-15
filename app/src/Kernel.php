@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App;
 
 use App\Bootstrap\EnergineBootstrapper;
+use App\Security\LegacySecuritySynchronizer;
 use LogicException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -79,6 +80,7 @@ final class Kernel
         $start = $useTimer ? hrtime(true) : null;
 
         \UserSession::start();
+        $this->synchroniseSecurityToken();
         $registry->getController()->run();
 
         if ($useTimer && $start !== null) {
@@ -157,5 +159,34 @@ final class Kernel
         }
 
         return $this->registry = \Registry::getInstance();
+    }
+
+    private function synchroniseSecurityToken(): void
+    {
+        if (!function_exists('container')) {
+            return;
+        }
+
+        try {
+            $container = container();
+        } catch (\RuntimeException) {
+            return;
+        }
+
+        if (!$container->has(LegacySecuritySynchronizer::class)) {
+            return;
+        }
+
+        try {
+            $container->get(LegacySecuritySynchronizer::class)->synchronise();
+        } catch (Throwable $e) {
+            if ($this->shouldRethrow($e)) {
+                throw $e;
+            }
+
+            if (function_exists('log_exception')) {
+                log_exception($e, 'warning');
+            }
+        }
     }
 }
