@@ -207,6 +207,33 @@ final class Request extends BaseObject
     /** Доступ к «сырому» Symfony Request при необходимости */
     public function raw(): SRequest { return $this->sreq; }
 
+    /** Проксируем новые методы HttpFoundation. */
+    public function __call(string $name, array $arguments): mixed
+    {
+        if (!method_exists($this->sreq, $name)) {
+            throw new \BadMethodCallException(sprintf('Method %s::%s does not exist', self::class, $name));
+        }
+
+        return $this->sreq->$name(...$arguments);
+    }
+
+    /** Позволяем обращаться к публичным свойствам HttpFoundation Request. */
+    public function __get(string $name): mixed
+    {
+        if (property_exists($this->sreq, $name)) {
+            return $this->sreq->$name;
+        }
+
+        trigger_error(sprintf('Undefined property: %s::$%s', self::class, $name), E_USER_NOTICE);
+
+        return null;
+    }
+
+    public function __isset(string $name): bool
+    {
+        return property_exists($this->sreq, $name) && isset($this->sreq->$name);
+    }
+
     /* ======================= helpers ======================= */
 
     private function normalizeRoot(string $root): string

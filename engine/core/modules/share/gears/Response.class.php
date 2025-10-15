@@ -200,6 +200,12 @@ final class Response extends BaseObject
         exit;
     }
 
+    /** Получить «сырой» Symfony Response. */
+    public function raw(): SResponse
+    {
+        return $this->resp;
+    }
+
     /* ===== Удобные хелперы ===== */
 
     public function text(string $content, int $status = 200): void {
@@ -293,5 +299,32 @@ final class Response extends BaseObject
     /** Быстрый текстовый ответ-ошибка */
     public function error(int $status, string $message = 'Error'): void {
         $this->text($message, $status);
+    }
+
+    /** Проксируем методы HttpFoundation Response. */
+    public function __call(string $name, array $arguments): mixed
+    {
+        if (!method_exists($this->resp, $name)) {
+            throw new \BadMethodCallException(sprintf('Method %s::%s does not exist', self::class, $name));
+        }
+
+        return $this->resp->$name(...$arguments);
+    }
+
+    /** Доступ к публичным свойствам HttpFoundation Response. */
+    public function __get(string $name): mixed
+    {
+        if (property_exists($this->resp, $name)) {
+            return $this->resp->$name;
+        }
+
+        trigger_error(sprintf('Undefined property: %s::$%s', self::class, $name), E_USER_NOTICE);
+
+        return null;
+    }
+
+    public function __isset(string $name): bool
+    {
+        return property_exists($this->resp, $name) && isset($this->resp->$name);
     }
 }
