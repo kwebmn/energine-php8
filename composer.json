@@ -103,6 +103,11 @@
   "prefer-stable": true,
   "require-dev": {
     "filp/whoops": "^2.18",
-    "phpstan/phpstan": "^2.1"
+    "phpstan/phpstan": "^2.1",
+    "friendsofphp/php-cs-fixer": "^3.64"
+  },
+  "scripts": {
+    "cs:fix": "php-cs-fixer fix",
+    "cs:lint": "php-cs-fixer fix --dry-run --diff"
   }
 }
