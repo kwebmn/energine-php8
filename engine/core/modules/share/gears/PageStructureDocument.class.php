@@ -8,7 +8,7 @@ declare(strict_types=1);
  *
  * Generate document structure: <page> (layout) + optional content subtree.
  */
-class PageStructureDocument extends Object implements IDocument
+class PageStructureDocument extends BaseObject implements IDocument
 {
     /** @var DOMDocument */
     private DOMDocument $doc;
