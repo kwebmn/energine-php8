@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use Energine\Core\ExtraManager\ExtraManagerInterface;
+
 /**
  * Automates working with file attachments for dataset rows.
  */
-class AttachmentManager extends DBWorker
+class AttachmentManager extends DBWorker implements ExtraManagerInterface
 {
     /** Suffix for per-entity attachment tables (e.g., `news_uploads`). */
     public const ATTACH_TABLE_SUFFIX = '_uploads';
@@ -25,6 +27,9 @@ class AttachmentManager extends DBWorker
     /** Name of the `<table>_uploads` table when active. */
     private ?string $tableName = null;
 
+    /** Base table name for current ExtraManager invocation. */
+    private ?string $currentBaseTable = null;
+
     /** Data description of the owning dataset. */
     private ?DataDescription $dataDescription = null;
 
@@ -34,18 +39,27 @@ class AttachmentManager extends DBWorker
     /** If true, will add OG tags for images (logic kept commented for BC). */
     private bool $addOG = false;
 
+    /** Context from factory (state, translator callback, etc.). */
+    private array $context = [];
+
     /**
      * @param DataDescription $dataDescription  Data description to extend.
      * @param Data            $data             Data rows to map attachments onto.
      * @param string          $tableName        Base table name (without suffix).
      * @param bool            $addToOG          Whether to add OG images (BC; logic commented).
      */
-    public function __construct(DataDescription $dataDescription, Data $data, string $tableName, bool $addToOG = false)
+    public function __construct(?DataDescription $dataDescription = null, ?Data $data = null, ?string $tableName = null, bool $addToOG = false)
     {
         parent::__construct();
+        if ($dataDescription && $data && $tableName)
+        {
+            $this->initialiseLegacy($dataDescription, $data, $tableName, $addToOG);
+        }
+    }
 
+    private function initialiseLegacy(DataDescription $dataDescription, Data $data, string $tableName, bool $addToOG): void
+    {
         $uploadsTable     = $tableName . self::ATTACH_TABLE_SUFFIX;
-        // Cast explicitly: legacy tableExists() may return non-bool
         $this->isActive   = (bool)$this->dbh->tableExists($uploadsTable);
         $this->tableName  = $this->isActive ? $uploadsTable : null;
 
@@ -55,7 +69,6 @@ class AttachmentManager extends DBWorker
             $this->data            = $data;
             $this->addOG           = $addToOG;
 
-            // Find PK field in the dataset description (field with property 'key')
             foreach ($this->dataDescription as $fd)
             {
                 if ($fd instanceof FieldDescription && $fd->getPropertyValue('key'))
@@ -65,6 +78,87 @@ class AttachmentManager extends DBWorker
                 }
             }
         }
+    }
+
+    public function setContext(array $context): void
+    {
+        $this->context = $context;
+    }
+
+    private function translate(string $key): string
+    {
+        $translator = $this->context['translate'] ?? null;
+        if (is_callable($translator))
+        {
+            try
+            {
+                /** @var callable $translator */
+                return (string)$translator($key);
+            }
+            catch (\Throwable)
+            {
+                // fallback below
+            }
+        }
+
+        return self::_translate($key);
+    }
+
+    public function supports(string $tableName, DataDescription $dataDescription): bool
+    {
+        if (($this->context['state'] ?? null) === 'attachments')
+        {
+            return false;
+        }
+
+        $this->currentBaseTable = $tableName;
+        $uploadsTable           = $tableName . self::ATTACH_TABLE_SUFFIX;
+        $this->tableName        = $uploadsTable;
+        $this->isActive         = (bool)$this->dbh->tableExists($uploadsTable);
+
+        return $this->isActive;
+    }
+
+    public function addFieldDescription(DataDescription $dataDescription): void
+    {
+        if (!$this->isActive)
+        {
+            return;
+        }
+
+        $fd = $dataDescription->getFieldDescriptionByName('attached_files');
+        if (!$fd)
+        {
+            $fd = new FieldDescription('attached_files');
+            $dataDescription->addFieldDescription($fd);
+        }
+
+        $fd->setType(FieldDescription::FIELD_TYPE_TAB);
+        $fd->setProperty('title', $this->translate('TAB_ATTACHED_FILES'));
+        $fd->setProperty('tableName', $this->tableName);
+    }
+
+    public function addField(Data $data, string $tableName, ?string $recordId = null): void
+    {
+        if (!$this->isActive)
+        {
+            return;
+        }
+
+        $field = $data->getFieldByName('attached_files');
+        if ($field === false)
+        {
+            $field = new Field('attached_files');
+            $data->addField($field);
+        }
+
+        $prefix = ($recordId !== null && $recordId !== '') ? $recordId . '/' : '';
+        $field->setData($prefix . 'attachments/', true);
+    }
+
+    public function build(\DOMDocument $document): void
+    {
+        // Attachments use separate component states, nothing to inject into DOM here.
     }
 
     /**

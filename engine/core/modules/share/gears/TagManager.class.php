@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use Energine\Core\ExtraManager\ExtraManagerInterface;
+
 /**
  * @file
  * TagManager (safe transactions + typed props + small perf tweaks)
  */
 
-class TagManager extends DBWorker
+class TagManager extends DBWorker implements ExtraManagerInterface
 {
     /** Таблица тегов */
     public const TAG_TABLENAME = 'share_tags';
@@ -29,15 +31,29 @@ class TagManager extends DBWorker
     /** @var FieldDescription|null PK описания данных */
     private ?FieldDescription $pk = null;
 
+    /** @var array<string,mixed> */
+    private array $context = [];
+
+    /** @var DataDescription|null активное описание данных для ExtraManager. */
+    private ?DataDescription $currentDataDescription = null;
+
     /**
-     * @param DataDescription $dataDescription
-     * @param Data            $data
-     * @param string          $tableName  Имя «главной» таблицы без суффикса (_tags будет добавлен автоматически)
+     * @param DataDescription|null $dataDescription
+     * @param Data|null            $data
+     * @param string|null          $tableName  Имя «главной» таблицы без суффикса (_tags будет добавлен автоматически)
      */
-    public function __construct(DataDescription $dataDescription, $data, string $tableName)
+    public function __construct(?DataDescription $dataDescription = null, ?Data $data = null, ?string $tableName = null)
     {
         parent::__construct();
 
+        if ($dataDescription && $data && $tableName)
+        {
+            $this->initialiseLegacy($dataDescription, $data, $tableName);
+        }
+    }
+
+    private function initialiseLegacy(DataDescription $dataDescription, Data $data, string $tableName): void
+    {
         $this->tableName = $tableName . self::TAGS_TABLE_SUFFIX;
         $this->isActive  = (bool)$this->dbh->tableExists($this->tableName);
 
@@ -55,6 +71,78 @@ class TagManager extends DBWorker
                 }
             }
         }
+    }
+
+    public function setContext(array $context): void
+    {
+        $this->context = $context;
+    }
+
+    public function supports(string $tableName, DataDescription $dataDescription): bool
+    {
+        $this->tableName              = $tableName . self::TAGS_TABLE_SUFFIX;
+        $this->currentDataDescription = $dataDescription;
+        $this->isActive               = (bool)$this->dbh->tableExists($this->tableName);
+
+        if ($this->isActive)
+        {
+            // Найдём PK для последующего pull()
+            foreach ($dataDescription as $fd)
+            {
+                if ($fd->getPropertyValue('key'))
+                {
+                    $this->pk = $fd;
+                    break;
+                }
+            }
+        }
+
+        return $this->isActive;
+    }
+
+    public function addFieldDescription(DataDescription $dataDescription): void
+    {
+        if (!$this->isActive)
+        {
+            return;
+        }
+
+        $fd = $dataDescription->getFieldDescriptionByName('tags');
+        if (!$fd)
+        {
+            $fd = new FieldDescription('tags');
+            $dataDescription->addFieldDescription($fd);
+        }
+
+        $fd->setType(FieldDescription::FIELD_TYPE_TEXTBOX_LIST)
+            ->setProperty('url', 'tag-autocomplete')
+            ->setProperty('separator', self::TAG_SEPARATOR);
+    }
+
+    public function addField(Data $data, string $tableName, ?string $recordId = null): void
+    {
+        if (!$this->isActive)
+        {
+            return;
+        }
+
+        $field = $data->getFieldByName('tags');
+        if ($field === false)
+        {
+            $field = new Field('tags');
+            $data->addField($field);
+        }
+
+        if ($recordId !== null)
+        {
+            $values = $this->pull((int)$recordId, $tableName . self::TAGS_TABLE_SUFFIX);
+            $field->setData($values);
+        }
+    }
+
+    public function build(\DOMDocument $document): void
+    {
+        // nothing to inject
     }
 
     /**

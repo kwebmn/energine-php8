@@ -333,4 +333,12 @@ class ComponentConfig
         }
         return $result;
     }
+
+    /**
+     * Expose raw configuration XML for custom parsing.
+     */
+    public function getConfigXML(): ?SimpleXMLElement
+    {
+        return $this->config ?: null;
+    }
 }

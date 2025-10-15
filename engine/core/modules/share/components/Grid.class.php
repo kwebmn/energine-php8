@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Energine\Core\ExtraManager\ExtraManagerFactory;
+use Energine\Core\ExtraManager\ExtraManagerInterface;
+
 /**
  * @file
  * Grid
@@ -68,11 +71,21 @@ class Grid extends DBDataSet
     protected $fkCRUDEditor = null;
 
     /**
+     * Factory that resolves optional managers (attachments, tags, etc.).
+     */
+    private ?ExtraManagerFactory $extraManagerFactory = null;
+
+    /** @var ExtraManagerInterface[] Active managers for current form build. */
+    private array $activeExtraManagers = [];
+
+    /**
      * @copydoc DBDataSet::__construct
      */
-    public function __construct(string $name, string $module, ?array $params = null)
+    public function __construct(string $name, string $module, ?array $params = null, ?ExtraManagerFactory $extraManagerFactory = null)
     {
         parent::__construct($name, $module, $params);
+
+        $this->extraManagerFactory = $this->obtainExtraManagerFactory($extraManagerFactory);
 
         $this->setProperty('exttype', 'grid');
 
@@ -811,6 +824,14 @@ class Grid extends DBDataSet
             }
         }
 
+        if (!empty($this->activeExtraManagers))
+        {
+            foreach ($this->activeExtraManagers as $manager)
+            {
+                $manager->build($result);
+            }
+        }
+
         return $result;
     }
 
@@ -1233,46 +1254,153 @@ class Grid extends DBDataSet
      */
     protected function linkExtraManagers($tableName, $data = false)
     {
-        if ($this->dbh->tableExists($tableName . AttachmentManager::ATTACH_TABLE_SUFFIX) && $this->getState() != 'attachments')
+        $this->activeExtraManagers = [];
+
+        if (!$this->extraManagerFactory instanceof ExtraManagerFactory)
         {
-
-            $fd = new FieldDescription('attached_files');
-            $fd->setType(FieldDescription::FIELD_TYPE_TAB);
-            $fd->setProperty('title', $this->translate('TAB_ATTACHED_FILES'));
-            $fd->setProperty('tableName', $tableName . AttachmentManager::ATTACH_TABLE_SUFFIX);
-            $this->getDataDescription()->addFieldDescription($fd);
-
-            $field = new Field('attached_files');
-            $state = $this->getState();
-            $tab_url = (($state != 'add') ? $this->getData()->getFieldByName($this->getPK())->getRowData(0) : '') . '/attachments/';
-
-            $field->setData($tab_url, true);
-            $this->getData()->addField($field);
+            return;
         }
 
-        if ($this->dbh->tableExists($this->getTableName() . TagManager::TAGS_TABLE_SUFFIX))
+        $context = [
+            'state' => $this->getState(),
+            'translate' => function (string $key): string {
+                return $this->translate($key);
+            },
+            'component' => $this,
+        ];
+
+        $allowed = $this->resolveExtraManagerWhitelist();
+        $managers = $this->extraManagerFactory->getApplicableManagers(
+            $tableName,
+            $this->getDataDescription(),
+            $context,
+            $allowed
+        );
+
+        $recordId = $this->extractRecordId();
+
+        foreach ($managers as $manager)
         {
-            $tm = new TagManager($this->getDataDescription(), $this->getData(), $this->getTableName());
-            $tm->createFieldDescription();
-            $tm->createField();
+            $manager->addFieldDescription($this->getDataDescription());
+            $manager->addField($this->getData(), $tableName, $recordId);
+            $this->activeExtraManagers[] = $manager;
+        }
+    }
+
+    private function obtainExtraManagerFactory(?ExtraManagerFactory $factory = null): ExtraManagerFactory
+    {
+        if ($factory instanceof ExtraManagerFactory)
+        {
+            return $factory;
         }
 
-        if ($this->dbh->tableExists($tableName . FilterManager::FILTER_TABLE_SUFFIX) && $this->getState() != 'filtersTree')
+        if (function_exists('container'))
         {
-
-            $fd = new FieldDescription('filtersTree');
-            $fd->setType(FieldDescription::FIELD_TYPE_TAB);
-            $fd->setProperty('title', $this->translate('TAB_FILTERS'));
-            $fd->setProperty('tableName', $tableName . FilterManager::FILTER_TABLE_SUFFIX);
-            $this->getDataDescription()->addFieldDescription($fd);
-
-            $field = new Field('filtersTree');
-            $state = $this->getState();
-            $tab_url = (($state != 'add') ? $this->getData()->getFieldByName($this->getPK())->getRowData(0) : '') . '/filtersTree/';
-
-            $field->setData($tab_url, true);
-            $this->getData()->addField($field);
+            try
+            {
+                $container = container();
+                if ($container->has(ExtraManagerFactory::class))
+                {
+                    $resolved = $container->get(ExtraManagerFactory::class);
+                    if ($resolved instanceof ExtraManagerFactory)
+                    {
+                        return $resolved;
+                    }
+                }
+            }
+            catch (\Throwable)
+            {
+                // Fallback to defaults below.
+            }
         }
+
+        return $this->createDefaultExtraManagerFactory();
+    }
+
+    private function createDefaultExtraManagerFactory(): ExtraManagerFactory
+    {
+        return new ExtraManagerFactory([
+            new AttachmentManager(),
+            new TagManager(),
+            new FilterManager(),
+        ]);
+    }
+
+    /**
+     * @return array<int,string>|null
+     */
+    private function resolveExtraManagerWhitelist(): ?array
+    {
+        $stateConfig = $this->getConfig()->getStateConfig($this->getState());
+        $stateList   = $this->extractExtraManagerList($stateConfig instanceof \SimpleXMLElement ? $stateConfig : null);
+        if ($stateList !== null)
+        {
+            return $stateList;
+        }
+
+        $root = $this->getConfig()->getConfigXML();
+        return $this->extractExtraManagerList($root instanceof \SimpleXMLElement ? $root : null);
+    }
+
+    private function extractExtraManagerList(?\SimpleXMLElement $scope): ?array
+    {
+        if (!$scope || !isset($scope->extraManagers))
+        {
+            return null;
+        }
+
+        $node  = $scope->extraManagers;
+        $items = [];
+
+        foreach ($node->children() as $child)
+        {
+            $items[] = trim((string)$child);
+        }
+
+        if ($items === [])
+        {
+            $text = trim((string)$node);
+            if ($text === '')
+            {
+                return [];
+            }
+
+            $parts = preg_split('/[,\s]+/', $text) ?: [];
+            $items = $parts;
+        }
+
+        $items = array_map('trim', $items);
+        $items = array_values(array_filter($items, static fn(string $item): bool => $item !== ''));
+
+        return $items;
+    }
+
+    private function extractRecordId(): ?string
+    {
+        if ($this->getState() === 'add')
+        {
+            return null;
+        }
+
+        $data = $this->getData();
+        if (!$data)
+        {
+            return null;
+        }
+
+        $pkField = $data->getFieldByName($this->getPK());
+        if ($pkField === false)
+        {
+            return null;
+        }
+
+        $value = $pkField->getRowData(0);
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        return (string)$value;
     }
 
     /**
