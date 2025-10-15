@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Doctrine\DBAL\Connection as DoctrineConnection;
+
 /**
  * Предок для классов, работающих с БД.
  * Дает $this->dbh (QAL) и утилиты перевода/дат.
@@ -180,5 +182,13 @@ abstract class DBWorker extends BaseObject
         $year = $month = $day = 0;
         sscanf($date, $format, $year, $month, $day);
         return self::_dateToString((int)$year, (int)$month, (int)$day);
+    }
+
+    /**
+     * Доступ к Doctrine DBAL для новых модулей.
+     */
+    protected function getDbal(): ?DoctrineConnection
+    {
+        return ($this->dbh instanceof DBA) ? $this->dbh->getDbal() : null;
     }
 }

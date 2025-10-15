@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Doctrine\DBAL\Connection as DoctrineConnection;
+
 /**
  * Database Abstraction Layer (совместимо с legacy-кодом).
  *
@@ -15,8 +17,11 @@ declare(strict_types=1);
 
 abstract class DBA extends BaseObject
 {
-    /** @var \PDO */
+    /** @var PDO */
     protected PDO $pdo;
+
+    /** Подключение Doctrine DBAL (если доступно). */
+    protected ?DoctrineConnection $dbal = null;
 
     /** Последний SQL (готовая строка или PDO::queryString при prepared) */
     protected string $lastQuery = '';
@@ -57,34 +62,78 @@ abstract class DBA extends BaseObject
         string $username,
         string $password,
         array  $driverOptions,
-        string $charset = 'utf8mb4'
+        string $charset = 'utf8mb4',
+        ?DoctrineConnection $dbal = null
     ) {
+        $this->dbal = $dbal;
+
+        $options = $driverOptions;
+        $options[PDO::ATTR_ERRMODE]            = PDO::ERRMODE_EXCEPTION;
+        $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_ASSOC;
+
+        $pdo = null;
+
+        if ($dbal instanceof DoctrineConnection)
+        {
+            try
+            {
+                $dbal->connect();
+                $native = $dbal->getNativeConnection();
+                if ($native instanceof PDO)
+                {
+                    $pdo = $native;
+                }
+            }
+            catch (Throwable)
+            {
+                $pdo = null;
+            }
+        }
+
+        if (!($pdo instanceof PDO))
+        {
+            try
+            {
+                $pdo = new PDO($dsn, $username, $password, $options);
+            }
+            catch (PDOException $e)
+            {
+                throw new SystemException(
+                    'Unable to connect. The site is temporarily unavailable.',
+                    SystemException::ERR_DB,
+                    'The site is temporarily unavailable'
+                );
+            }
+        }
+
+        foreach ($options as $attr => $value)
+        {
+            if (is_int($attr))
+            {
+                try
+                {
+                    $pdo->setAttribute($attr, $value);
+                }
+                catch (Throwable)
+                {
+                    // Некоторые драйверы могут не поддерживать отдельные атрибуты — это не критично.
+                }
+            }
+        }
+
+        $charset = $charset ?: 'utf8mb4';
         try
         {
-            // Современные значения по умолчанию
-            $driverOptions[PDO::ATTR_ERRMODE]            = PDO::ERRMODE_EXCEPTION;
-            $driverOptions[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_ASSOC;
-
-            // Создание соединения
-            $this->pdo = new PDO($dsn, $username, $password, $driverOptions);
-
-            // Явно задаём кодировку (универсально для старых DSN)
-            $charset = $charset ?: 'utf8mb4';
-            $this->pdo->exec('SET NAMES ' . $charset);
-            $this->pdo->exec('SET CHARSET ' . $charset);
-
-            // Кэш структуры БД
-            $this->dbCache = new DBStructureInfo($this->pdo);
+            $pdo->exec('SET NAMES ' . $charset);
+            $pdo->exec('SET CHARSET ' . $charset);
         }
-        catch (PDOException $e)
+        catch (Throwable)
         {
-            // Сообщение оставляем совместимым
-            throw new SystemException(
-                'Unable to connect. The site is temporarily unavailable.',
-                SystemException::ERR_DB,
-                'The site is temporarily unavailable'
-            );
+            // Игнорируем несовместимые драйверы (например, если SET CHARSET не поддерживается).
         }
+
+        $this->pdo     = $pdo;
+        $this->dbCache = new DBStructureInfo($this->pdo);
     }
 
     /**
@@ -93,6 +142,14 @@ abstract class DBA extends BaseObject
     public function getPDO(): PDO
     {
         return $this->pdo;
+    }
+
+    /**
+     * Получить подключение Doctrine DBAL (если доступно).
+     */
+    public function getDbal(): ?DoctrineConnection
+    {
+        return $this->dbal;
     }
 
     /**
@@ -228,16 +285,55 @@ abstract class DBA extends BaseObject
 
     public function beginTransaction(): bool
     {
+        if ($this->dbal instanceof DoctrineConnection)
+        {
+            try
+            {
+                $this->dbal->beginTransaction();
+                return true;
+            }
+            catch (Throwable)
+            {
+                return false;
+            }
+        }
+
         return $this->pdo->beginTransaction();
     }
 
     public function commit(): bool
     {
+        if ($this->dbal instanceof DoctrineConnection)
+        {
+            try
+            {
+                $this->dbal->commit();
+                return true;
+            }
+            catch (Throwable)
+            {
+                return false;
+            }
+        }
+
         return $this->pdo->commit();
     }
 
     public function rollback(): bool
     {
+        if ($this->dbal instanceof DoctrineConnection)
+        {
+            try
+            {
+                $this->dbal->rollBack();
+                return true;
+            }
+            catch (Throwable)
+            {
+                return false;
+            }
+        }
+
         return $this->pdo->rollBack();
     }
 

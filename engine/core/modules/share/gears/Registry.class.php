@@ -38,6 +38,8 @@ if (!function_exists('E'))
  * @final
  */
 use DI\FactoryInterface;
+use Doctrine\DBAL\Connection as DoctrineConnection;
+use Doctrine\DBAL\DriverManager;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -356,6 +358,98 @@ final class Registry extends BaseObject
     }
 
     /**
+     * Получить подключение Doctrine DBAL (если включено).
+     */
+    public function getDbal(): ?DoctrineConnection
+    {
+        $existing = $this->entities['dbal'] ?? null;
+        if ($existing instanceof DoctrineConnection)
+        {
+            return $existing;
+        }
+
+        if ($existing !== null)
+        {
+            return null;
+        }
+
+        if (self::$container instanceof ContainerInterface)
+        {
+            try
+            {
+                if (self::$container->has(DoctrineConnection::class))
+                {
+                    $connection = self::$container->get(DoctrineConnection::class);
+                    if ($connection instanceof DoctrineConnection)
+                    {
+                        return $this->entities['dbal'] = $connection;
+                    }
+                }
+            }
+            catch (NotFoundExceptionInterface|ContainerExceptionInterface)
+            {
+                // переходим к ручному созданию
+            }
+        }
+
+        $features = (array)$this->getConfigValue('features', []);
+        if (empty($features['dbal']) || !class_exists(DriverManager::class))
+        {
+            return null;
+        }
+
+        $dbalConfig = (array)$this->getConfigValue('dbal', []);
+        $dbConfig   = (array)$this->getConfigValue('database', []);
+
+        if (!isset($dbalConfig['url']))
+        {
+            $map = [
+                'driver'   => 'driver',
+                'host'     => 'host',
+                'port'     => 'port',
+                'dbname'   => 'db',
+                'user'     => 'username',
+                'password' => 'password',
+                'charset'  => 'charset',
+            ];
+
+            foreach ($map as $target => $source)
+            {
+                if (!array_key_exists($target, $dbalConfig) && array_key_exists($source, $dbConfig))
+                {
+                    $dbalConfig[$target] = $dbConfig[$source];
+                }
+            }
+
+            if (!isset($dbalConfig['driver']))
+            {
+                $dbalConfig['driver'] = 'pdo_mysql';
+            }
+
+            if (!isset($dbalConfig['charset']))
+            {
+                $dbalConfig['charset'] = 'utf8mb4';
+            }
+        }
+
+        if (isset($dbalConfig['port']))
+        {
+            $dbalConfig['port'] = (int)$dbalConfig['port'];
+        }
+
+        try
+        {
+            $connection = DriverManager::getConnection($dbalConfig);
+        }
+        catch (Throwable)
+        {
+            return null;
+        }
+
+        return $this->entities['dbal'] = $connection;
+    }
+
+    /**
      * Get QAL (DB).
      *
      * @return QAL
@@ -364,6 +458,11 @@ final class Registry extends BaseObject
     {
         if (!isset($this->entities['QAL']))
         {
+            $dbal = $this->getDbal();
+            $database = (array)$this->getConfigValue('database', []);
+            $dbalConfig = (array)$this->getConfigValue('dbal', []);
+            $charset = (string)($dbalConfig['charset'] ?? $database['charset'] ?? 'utf8mb4');
+
             $this->entities['QAL'] = new QAL(
                 sprintf(
                     'mysql:host=%s;port=%s;dbname=%s',
@@ -377,7 +476,9 @@ final class Registry extends BaseObject
                     PDO::ATTR_PERSISTENT            => (bool)$this->getConfigValue('database.persistent'),
                     PDO::ATTR_EMULATE_PREPARES      => true,
                     PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
-                ]
+                ],
+                $charset,
+                $dbal
             );
         }
         return $this->entities['QAL'];
