@@ -32,4 +32,14 @@ interface ExtraManagerInterface
      * Allow manager to inject additional XML nodes during component build.
      */
     public function build(DOMDocument $document): void;
+
+    /**
+     * Determine whether manager can fully handle specified component state.
+     */
+    public function supportsState(string $state): bool;
+
+    /**
+     * Build DOM structure for state-specific output when supported.
+     */
+    public function buildStateDocument(?\Grid $grid = null): ?DOMDocument;
 }

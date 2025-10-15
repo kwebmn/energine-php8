@@ -93,6 +93,51 @@ class ExtraManagerFactory
     }
 
     /**
+     * @param array<string,mixed>|null $context
+     * @param string[]|null            $allowedClassList
+     *
+     * @return ExtraManagerInterface[]
+     */
+    public function getStateManagers(?array $context = null, ?array $allowedClassList = null): array
+    {
+        $result  = [];
+        $allowed = null;
+
+        if ($allowedClassList !== null)
+        {
+            $allowed = [];
+            foreach ($allowedClassList as $item)
+            {
+                $allowed[] = $this->normalizeCandidates((string)$item);
+            }
+        }
+
+        $state = (string)($context['state'] ?? '');
+
+        foreach ($this->managers as $prototype)
+        {
+            if ($allowed !== null && !$this->isAllowed($prototype::class, $allowed))
+            {
+                continue;
+            }
+
+            $manager = clone $prototype;
+
+            if (method_exists($manager, 'setContext'))
+            {
+                $manager->setContext($context ?? []);
+            }
+
+            if ($manager->supportsState($state))
+            {
+                $result[] = $manager;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * @param string $className
      *
      * @return array<int,string>

@@ -79,6 +79,16 @@ class FilterManager extends DBWorker implements ExtraManagerInterface
         // Filters tree uses dedicated component when opened via tab URL.
     }
 
+    public function supportsState(string $state): bool
+    {
+        return false;
+    }
+
+    public function buildStateDocument(?\Grid $grid = null): ?\DOMDocument
+    {
+        return null;
+    }
+
     public function translate(string $key, ?int $langID = null): string
     {
         $translator = $this->context['translate'] ?? null;
