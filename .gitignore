@@ -5,7 +5,8 @@
 
 # Логи и временные
 *.log
-var/
+var/*
+!var/.gitignore
 cache/
 tmp/
 
@@ -24,3 +25,4 @@ tmp/
 /uploads/
 node_modules/
 system.jsmap.php
+
