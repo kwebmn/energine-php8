@@ -1,5 +1,9 @@
 <?php
 declare(strict_types=1);
+use App\Security\EnergineRoleMapper;
+use App\Security\EnergineUserProvider;
+use App\Security\LegacySecuritySynchronizer;
+use App\Security\NullAuthenticationManager;
 use DI\ContainerBuilder;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
@@ -9,6 +13,15 @@ use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Authorization\AccessDecisionManager;
+use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationChecker;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\RoleVoter;
+use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Translation\Loader\ArrayLoader;
 use Symfony\Component\Translation\Translator;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
@@ -51,6 +64,73 @@ return static function (ContainerBuilder $cb): void {
             $t = new Translator($locale);
             $t->addLoader('array', new ArrayLoader());
             return $t;
+        },
+
+        EnergineRoleMapper::class => static function (ContainerInterface $c): EnergineRoleMapper {
+            $cfg = $c->has('config') ? $c->get('config') : [];
+            $security = $cfg['security'] ?? [];
+            $roleCfg = is_array($security['roles'] ?? null) ? $security['roles'] : [];
+
+            $groupMap = is_array($roleCfg['group_map'] ?? null) ? $roleCfg['group_map'] : [1 => 'ROLE_ADMIN'];
+            $activeDefaults = is_array($roleCfg['active_defaults'] ?? null)
+                ? $roleCfg['active_defaults']
+                : ['ROLE_USER', 'ROLE_AUTHENTICATED'];
+            $inactiveDefaults = is_array($roleCfg['inactive_defaults'] ?? null)
+                ? $roleCfg['inactive_defaults']
+                : ['ROLE_GUEST'];
+            $groupPrefix = is_string($roleCfg['group_role_prefix'] ?? null)
+                ? $roleCfg['group_role_prefix']
+                : 'ROLE_GROUP_';
+
+            return new EnergineRoleMapper($groupMap, $activeDefaults, $inactiveDefaults, $groupPrefix);
+        },
+
+        EnergineUserProvider::class => static function (ContainerInterface $c): EnergineUserProvider {
+            $cfg = $c->has('config') ? $c->get('config') : [];
+            $security = $cfg['security'] ?? [];
+            $options = is_array($security['provider'] ?? null) ? $security['provider'] : [];
+
+            return new EnergineUserProvider(
+                $c->get(Connection::class),
+                $c->get(EnergineRoleMapper::class),
+                $options
+            );
+        },
+
+        UserProviderInterface::class => static function (ContainerInterface $c): UserProviderInterface {
+            return $c->get(EnergineUserProvider::class);
+        },
+
+        TokenStorageInterface::class => static function (): TokenStorageInterface {
+            return new TokenStorage();
+        },
+
+        AuthenticationManagerInterface::class => static function (): AuthenticationManagerInterface {
+            return new NullAuthenticationManager();
+        },
+
+        AccessDecisionManagerInterface::class => static function (): AccessDecisionManagerInterface {
+            return new AccessDecisionManager([new RoleVoter()]);
+        },
+
+        AuthorizationCheckerInterface::class => static function (ContainerInterface $c): AuthorizationCheckerInterface {
+            return new AuthorizationChecker(
+                $c->get(TokenStorageInterface::class),
+                $c->get(AuthenticationManagerInterface::class),
+                $c->get(AccessDecisionManagerInterface::class)
+            );
+        },
+
+        LegacySecuritySynchronizer::class => static function (ContainerInterface $c): LegacySecuritySynchronizer {
+            $cfg = $c->has('config') ? $c->get('config') : [];
+            $security = $cfg['security'] ?? [];
+            $firewall = (string)($security['firewall_name'] ?? 'legacy');
+
+            return new LegacySecuritySynchronizer(
+                $c->get(TokenStorageInterface::class),
+                $c->get(EnergineUserProvider::class),
+                $firewall !== '' ? $firewall : 'legacy'
+            );
         },
     ]);
 };
