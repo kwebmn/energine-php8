@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerFactory', false))
 {
-    $extraDir = dirname(__DIR__) . '/extra';
-    $interfaceFile = $extraDir . '/ExtraManagerInterface.php';
-    $factoryFile   = $extraDir . '/ExtraManagerFactory.php';
+    $gearsDir      = dirname(__DIR__) . '/gears';
+    $interfaceFile = $gearsDir . '/ExtraManagerInterface.php';
+    $factoryFile   = $gearsDir . '/ExtraManagerFactory.php';
 
     if (is_file($interfaceFile))
     {

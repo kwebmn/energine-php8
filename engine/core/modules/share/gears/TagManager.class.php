@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerInterface', false))
 {
-    $extraDir = dirname(__DIR__) . '/extra';
-    $interfaceFile = $extraDir . '/ExtraManagerInterface.php';
+    $interfaceFile = __DIR__ . '/ExtraManagerInterface.php';
 
     if (is_file($interfaceFile))
     {
