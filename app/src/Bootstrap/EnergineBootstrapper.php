@@ -639,6 +639,14 @@ final class EnergineBootstrapper
             return;
         }
 
+        if ($reg instanceof \Registry && method_exists($reg, 'getDbal')) {
+            $connection = $reg->getDbal();
+            if ($connection instanceof Connection) {
+                $reg->dbal = $connection;
+                return;
+            }
+        }
+
         $d  = $config['dbal'] ?? [];
         $db = [
             'driver'   => $d['driver']   ?? $config['database']['driver'] ?? 'pdo_mysql',
