@@ -166,6 +166,16 @@ class AttachmentManager extends DBWorker implements ExtraManagerInterface
         // Attachments use separate component states, nothing to inject into DOM here.
     }
 
+    public function supportsState(string $state): bool
+    {
+        return false;
+    }
+
+    public function buildStateDocument(?\Grid $grid = null): ?\DOMDocument
+    {
+        return null;
+    }
+
     /**
      * Add custom field description "attachments" (for list/form rendering).
      */

@@ -145,6 +145,16 @@ class TagManager extends DBWorker implements ExtraManagerInterface
         // nothing to inject
     }
 
+    public function supportsState(string $state): bool
+    {
+        return false;
+    }
+
+    public function buildStateDocument(?\Grid $grid = null): ?\DOMDocument
+    {
+        return null;
+    }
+
     /**
      * Гарантирует наличие FD для поля tags (textbox-list с автокомплитом).
      */

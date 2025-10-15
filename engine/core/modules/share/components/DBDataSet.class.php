@@ -169,11 +169,11 @@ class DBDataSet extends DataSet
     protected function createDefaultExtraManagerFactory(): ExtraManagerFactory
     {
         $gearsDir      = dirname(__DIR__) . '/gears';
-        $componentsDir = __DIR__;
+        $extraDir      = $gearsDir . '/extra';
 
-        $this->requireExtraManagerClass('AttachmentManager', $gearsDir . '/AttachmentManager.class.php');
-        $this->requireExtraManagerClass('TagManager', $gearsDir . '/TagManager.class.php');
-        $this->requireExtraManagerClass('FilterManager', $componentsDir . '/FilterManager.class.php');
+        $this->requireExtraManagerClass('AttachmentManager', $extraDir . '/AttachmentManager.class.php');
+        $this->requireExtraManagerClass('TagManager', $extraDir . '/TagManager.class.php');
+        $this->requireExtraManagerClass('FilterManager', $extraDir . '/FilterManager.class.php');
 
         return new ExtraManagerFactory([
             new AttachmentManager(),

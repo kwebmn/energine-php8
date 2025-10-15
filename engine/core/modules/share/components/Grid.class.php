@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Energine\Core\ExtraManager\ExtraManagerFactory;
+use Energine\Core\ExtraManager\ExtraManagerInterface;
 
 /**
  * @file
@@ -68,6 +69,11 @@ class Grid extends DBDataSet
      * @var Grid|null
      */
     protected $fkCRUDEditor = null;
+
+    /** @var ExtraManagerInterface[] */
+    protected array $extraManagers = [];
+
+    private ?string $extraManagersState = null;
 
     /**
      * @copydoc DBDataSet::__construct
@@ -163,6 +169,17 @@ class Grid extends DBDataSet
             );
         }
         return $this->config;
+    }
+
+    /**
+     * @copydoc DBDataSet::linkExtraManagers
+     */
+    protected function linkExtraManagers($tableName, $data = false): void
+    {
+        parent::linkExtraManagers($tableName, $data);
+
+        $this->extraManagersState = null;
+        $this->resolveStateExtraManagers();
     }
 
     /**
@@ -785,38 +802,129 @@ class Grid extends DBDataSet
      */
     public function build(): DOMDocument
     {
-        switch ($this->getState())
+        $this->resolveStateExtraManagers();
+
+        $state = $this->getState();
+
+        if ($document = $this->buildUsingExtraManagers($state))
         {
-            case 'attachments':
-                return $this->attachmentEditor->build();
-            case 'tags':
-                return $this->tagEditor->build();
-            case 'fkEditor':
-                return $this->fkCRUDEditor->build();
-            case 'filtersTreeEditor':
-                return $this->filtersTree->build();
-            default:
-                // do nothing
+            return $document;
+        }
+
+        if ($state === 'fkEditor' && $this->fkCRUDEditor)
+        {
+            return $this->fkCRUDEditor->build();
+        }
+
+        if ($legacy = $this->buildLegacyState($state))
+        {
+            return $legacy;
         }
 
         if ($this->getType() == self::COMPONENT_TYPE_LIST)
         {
-            $this->addTranslation('MSG_CONFIRM_DELETE');
+            $this->addListTranslations();
         }
 
         $result = parent::build();
 
-        if (!empty($this->filter_control))
+        $this->appendFilterNode($result);
+
+        return $result;
+    }
+
+    /**
+     * Ensure state-aware extra managers are resolved for current state.
+     */
+    protected function resolveStateExtraManagers(): void
+    {
+        $state = $this->getState();
+        if ($this->extraManagersState === $state)
         {
-            if ($f = $this->filter_control->build())
+            return;
+        }
+
+        $this->extraManagersState = $state;
+        $this->extraManagers      = [];
+
+        $factory = $this->obtainExtraManagerFactory();
+        if (!$factory instanceof ExtraManagerFactory)
+        {
+            return;
+        }
+
+        $context = [
+            'state'     => $state,
+            'translate' => function (string $key): string {
+                return $this->translate($key);
+            },
+            'component' => $this,
+        ];
+
+        $allowed = $this->resolveExtraManagerWhitelist();
+        $this->extraManagers = $factory->getStateManagers($context, $allowed);
+    }
+
+    protected function buildUsingExtraManagers(string $state): ?DOMDocument
+    {
+        if ($this->extraManagers === [])
+        {
+            return null;
+        }
+
+        foreach ($this->extraManagers as $manager)
+        {
+            if (!$manager->supportsState($state))
             {
-                $result->documentElement->appendChild(
-                    $result->importNode($f, true)
-                );
+                continue;
+            }
+
+            $document = $manager->buildStateDocument($this);
+            if ($document instanceof DOMDocument)
+            {
+                return $document;
             }
         }
 
-        return $result;
+        return null;
+    }
+
+    protected function addListTranslations(): void
+    {
+        $this->addTranslation('MSG_CONFIRM_DELETE');
+    }
+
+    protected function appendFilterNode(DOMDocument $document): void
+    {
+        if (empty($this->filter_control))
+        {
+            return;
+        }
+
+        $filterNode = $this->filter_control->build();
+        if (!$filterNode)
+        {
+            return;
+        }
+
+        $document->documentElement->appendChild(
+            $document->importNode($filterNode, true)
+        );
+    }
+
+    protected function buildLegacyState(string $state): ?DOMDocument
+    {
+        switch ($state)
+        {
+            case 'attachments':
+                return $this->attachmentEditor ? $this->attachmentEditor->build() : null;
+            case 'tags':
+                return $this->tagEditor ? $this->tagEditor->build() : null;
+            case 'filtersTreeEditor':
+                return $this->filtersTree ? $this->filtersTree->build() : null;
+        }
+
+        return null;
     }
 
     /**
