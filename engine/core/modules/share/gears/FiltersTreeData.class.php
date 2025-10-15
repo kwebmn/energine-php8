@@ -38,13 +38,45 @@ class FiltersTreeData extends DBWorker
      */
     public function buildFilterData(): bool
     {
-        // Уже построено
         if (!empty(self::$filterData))
         {
             return true;
         }
 
-        // Попытка получить из APCu
+        $cacheKey = 'filters.tree.' . $this->tableName;
+        $ttl      = $this->resolveTtl();
+        $psrCache = (function_exists('E') && E()->__isset('psrCache')) ? E()->psrCache : null;
+
+        if ($psrCache && method_exists($psrCache, 'get'))
+        {
+            try
+            {
+                $cachedTree = $psrCache->get($cacheKey, function ($item) use ($ttl)
+                {
+                    if (method_exists($item, 'expiresAfter'))
+                    {
+                        $item->expiresAfter($ttl);
+                    }
+                    if (method_exists($item, 'tag'))
+                    {
+                        $item->tag(['filters', 'filters.' . $this->tableName]);
+                    }
+
+                    return $this->loadFilterDataFromDB();
+                });
+
+                if (is_array($cachedTree))
+                {
+                    self::$filterData = $cachedTree;
+                    return true;
+                }
+            }
+            catch (\Throwable)
+            {
+                // В случае проблем с PSR-кешем продолжим с fallback-ами ниже
+            }
+        }
+
         $cached = false;
         $cachedTree = false;
         if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_fetch'))
@@ -57,7 +89,62 @@ class FiltersTreeData extends DBWorker
             return true;
         }
 
-        // Читаем из БД
+        self::$filterData = $this->loadFilterDataFromDB();
+
+        if (!empty(self::$filterData))
+        {
+            if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_store'))
+            {
+                apcu_store('FILTERS_TREE', self::$filterData, $ttl);
+            }
+
+            if ($psrCache && method_exists($psrCache, 'getItem'))
+            {
+                try
+                {
+                    $item = $psrCache->getItem($cacheKey);
+                    $item->set(self::$filterData);
+                    if ($ttl > 0)
+                    {
+                        $item->expiresAfter($ttl);
+                    }
+                    if (method_exists($item, 'tag'))
+                    {
+                        $item->tag(['filters', 'filters.' . $this->tableName]);
+                    }
+                    $psrCache->save($item);
+                }
+                catch (\Throwable)
+                {
+                    // Тихо игнорируем проблемы сохранения
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function resolveTtl(): int
+    {
+        $ttl = BaseObject::_getConfigValue('site.cache_default_ttl');
+        if (!is_numeric($ttl) || (int)$ttl <= 0)
+        {
+            $ttl = BaseObject::_getConfigValue('site.apcu_ttl', 3600);
+        }
+
+        $ttl = (int)$ttl;
+        return $ttl > 0 ? $ttl : 3600;
+    }
+
+    /**
+     * Загружает дерево фильтров напрямую из БД.
+     *
+     * @return array<int|string, array<int>>
+     */
+    private function loadFilterDataFromDB(): array
+    {
+        $data = [];
+
         $res = $this->dbh->select(
             $this->filterDataTableName,
             ['filter_id', 'target_id']
@@ -67,26 +154,20 @@ class FiltersTreeData extends DBWorker
         {
             foreach ($res as $row)
             {
-                $filterId = (int) $row['filter_id'];
-                $targetId = (int) $row['target_id'];
-                if (!isset(self::$filterData[$filterId]))
+                $filterId = (int)$row['filter_id'];
+                $targetId = (int)$row['target_id'];
+                if (!isset($data[$filterId]))
                 {
-                    self::$filterData[$filterId] = [];
+                    $data[$filterId] = [];
                 }
-                // Уникализируем значения
-                if (!in_array($targetId, self::$filterData[$filterId], true))
+                if (!in_array($targetId, $data[$filterId], true))
                 {
-                    self::$filterData[$filterId][] = $targetId;
+                    $data[$filterId][] = $targetId;
                 }
-            }
-
-            if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_store'))
-            {
-                apcu_store('FILTERS_TREE', self::$filterData, 3600);
             }
         }
 
-        return true;
+        return $data;
     }
 
     /**

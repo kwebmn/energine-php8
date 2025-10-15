@@ -464,10 +464,7 @@ class Grid extends DBDataSet
         $started = $this->dbh->beginTransaction();
         try
         {
-            if (BaseObject::_getConfigValue('site.apcu') == 1)
-            {
-                apcu_clear_cache();
-            }
+            $this->flushGlobalCaches();
 
             $result = $this->saveData();
 
@@ -497,6 +494,30 @@ class Grid extends DBDataSet
                 $this->dbh->rollback();
             }
             throw new SystemException($e->getMessage());
+        }
+    }
+
+    private function flushGlobalCaches(): void
+    {
+        if ((int)BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_clear_cache'))
+        {
+            apcu_clear_cache();
+        }
+
+        if (function_exists('E') && E()->__isset('psrCache'))
+        {
+            $cache = E()->psrCache;
+            if (is_object($cache) && method_exists($cache, 'clear'))
+            {
+                try
+                {
+                    $cache->clear();
+                }
+                catch (\Throwable)
+                {
+                    // Игнорируем проблемы очистки PSR-кеша, как и раньше с APCu
+                }
+            }
         }
     }
 

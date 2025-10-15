@@ -49,30 +49,96 @@ class SeoHelper extends DBWorker
 
     public function buildTable()
     {
-        if (BaseObject::_getConfigValue('site.apcu') == 1)
-        {
-            $cached = false;
-            $cachedData = apcu_fetch(self::TABLE_CONST_CACHE, $cached);
+        $cacheKey = 'seo.table';
+        $ttl      = $this->resolveTtl();
+        $psrCache = (function_exists('E') && E()->__isset('psrCache')) ? E()->psrCache : null;
 
-            if ($cached)
+        if ($psrCache && method_exists($psrCache, 'get'))
+        {
+            try
             {
-                $this->table = $cachedData;
-                return true;
+                $cached = $psrCache->get($cacheKey, function ($item) use ($ttl)
+                {
+                    if (method_exists($item, 'expiresAfter'))
+                    {
+                        $item->expiresAfter($ttl);
+                    }
+                    if (method_exists($item, 'tag'))
+                    {
+                        $item->tag(['seo', 'seo.table']);
+                    }
+
+                    return $this->getTable();
+                });
+
+                if (is_array($cached))
+                {
+                    $this->table = $cached;
+                    return true;
+                }
             }
+            catch (\Throwable)
+            {
+                // Переходим к fallback ниже
+            }
+        }
+
+        $cached = false;
+        $cachedData = false;
+        if (BaseObject::_getConfigValue('site.apcu') == 1 && function_exists('apcu_fetch'))
+        {
+            $cachedData = apcu_fetch(self::TABLE_CONST_CACHE, $cached);
+        }
+
+        if ($cached && is_array($cachedData))
+        {
+            $this->table = $cachedData;
+            return true;
         }
 
         $this->table = $this->getTable();
 
-        if (BaseObject::_getConfigValue('site.apcu') == 1)
+        if (!empty($this->table))
         {
-            $ttl = 3600;
-            if (BaseObject::_getConfigValue('site.apcu_ttl') > 0)
+            if (BaseObject::_getConfigValue('site.apcu') == 1 && function_exists('apcu_store'))
             {
-                $ttl = (int)BaseObject::_getConfigValue('site.apcu_ttl');
+                apcu_store(self::TABLE_CONST_CACHE, $this->table, $ttl);
             }
-            apcu_store(self::TABLE_CONST_CACHE, $this->table, $ttl);
+
+            if ($psrCache && method_exists($psrCache, 'getItem'))
+            {
+                try
+                {
+                    $item = $psrCache->getItem($cacheKey);
+                    $item->set($this->table);
+                    if ($ttl > 0)
+                    {
+                        $item->expiresAfter($ttl);
+                    }
+                    if (method_exists($item, 'tag'))
+                    {
+                        $item->tag(['seo', 'seo.table']);
+                    }
+                    $psrCache->save($item);
+                }
+                catch (\Throwable)
+                {
+                    // Игнорируем проблемы сохранения
+                }
+            }
+        }
+    }
+
+    private function resolveTtl(): int
+    {
+        $ttl = BaseObject::_getConfigValue('site.cache_default_ttl');
+        if (!is_numeric($ttl) || (int)$ttl <= 0)
+        {
+            $ttl = BaseObject::_getConfigValue('site.apcu_ttl', 3600);
         }
 
+        $ttl = (int)$ttl;
+        return $ttl > 0 ? $ttl : 3600;
     }
 
     public function check()
