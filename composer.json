@@ -114,7 +114,7 @@
   "scripts": {
     "cs:fix": "php-cs-fixer fix",
     "cs:lint": "php-cs-fixer fix --dry-run --diff",
-    "phpstan": "phpstan analyse --configuration=phpstan.neon.dist --memory-limit=1G",
-    "phpstan:dead-code": "phpstan analyse --configuration=phpstan.neon.dist --level=max --memory-limit=1G"
+    "phpstan": "phpstan analyse --configuration=phpstan.neon.dist --memory-limit=8G",
+    "phpstan:dead-code": "phpstan analyse --configuration=phpstan.neon.dist --level=max --memory-limit=8G"
   }
 }
