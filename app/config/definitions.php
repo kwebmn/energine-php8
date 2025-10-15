@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+use App\File\FlysystemManager;
 use App\Security\EnergineRoleMapper;
 use App\Security\EnergineUserProvider;
 use App\Security\LegacySecuritySynchronizer;
@@ -7,6 +8,7 @@ use App\Security\NullAuthenticationManager;
 use DI\ContainerBuilder;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use League\Flysystem\FilesystemOperator;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Psr\Container\ContainerInterface;
@@ -35,6 +37,17 @@ return static function (ContainerBuilder $cb): void {
             $log     = new Logger($channel);
             $log->pushHandler(new StreamHandler(__DIR__ . '/../../var/log/app.log'));
             return $log;
+        },
+
+        FlysystemManager::class => static function (ContainerInterface $c): FlysystemManager {
+            $cfg   = $c->has('config') ? $c->get('config') : [];
+            $files = is_array($cfg['files'] ?? null) ? $cfg['files'] : [];
+
+            return new FlysystemManager($files);
+        },
+
+        FilesystemOperator::class => static function (ContainerInterface $c): FilesystemOperator {
+            return $c->get(FlysystemManager::class)->getDefaultFilesystem();
         },
 
         TagAwareCacheInterface::class => static function (): TagAwareCacheInterface {

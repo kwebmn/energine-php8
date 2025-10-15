@@ -79,7 +79,10 @@
     "codemirror/codemirror": "^5.65",
     "ckeditor/ckeditor": "4.22.1",
     "symfony/security-core": "^7.1",
-    "symfony/security-http": "^7.1"
+    "symfony/security-http": "^7.1",
+    "league/flysystem": "^3.24",
+    "league/flysystem-ftp": "^3.24",
+    "league/flysystem-aws-s3-v3": "^3.24"
   },
 
   "autoload": {
