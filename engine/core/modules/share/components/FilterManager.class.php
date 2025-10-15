@@ -90,7 +90,7 @@ class FilterManager extends DBWorker implements ExtraManagerInterface
         // Filters tree uses dedicated component when opened via tab URL.
     }
 
-    private function translate(string $key): string
+    public function translate(string $key, ?int $langID = null): string
     {
         $translator = $this->context['translate'] ?? null;
         if (is_callable($translator))
@@ -98,7 +98,12 @@ class FilterManager extends DBWorker implements ExtraManagerInterface
             try
             {
                 /** @var callable $translator */
-                return (string)$translator($key);
+                $result = $translator($key);
+
+                if (is_string($result))
+                {
+                    return $result;
+                }
             }
             catch (\Throwable)
             {
@@ -106,6 +111,6 @@ class FilterManager extends DBWorker implements ExtraManagerInterface
             }
         }
 
-        return self::_translate($key);
+        return parent::translate($key, $langID);
     }
 }

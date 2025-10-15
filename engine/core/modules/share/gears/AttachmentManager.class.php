@@ -96,7 +96,7 @@ class AttachmentManager extends DBWorker implements ExtraManagerInterface
         $this->context = $context;
     }
 
-    private function translate(string $key): string
+    public function translate(string $key, ?int $langID = null): string
     {
         $translator = $this->context['translate'] ?? null;
         if (is_callable($translator))
@@ -104,7 +104,12 @@ class AttachmentManager extends DBWorker implements ExtraManagerInterface
             try
             {
                 /** @var callable $translator */
-                return (string)$translator($key);
+                $result = $translator($key);
+
+                if (is_string($result))
+                {
+                    return $result;
+                }
             }
             catch (\Throwable)
             {
@@ -112,7 +117,7 @@ class AttachmentManager extends DBWorker implements ExtraManagerInterface
             }
         }
 
-        return self::_translate($key);
+        return parent::translate($key, $langID);
     }
 
     public function supports(string $tableName, DataDescription $dataDescription): bool
