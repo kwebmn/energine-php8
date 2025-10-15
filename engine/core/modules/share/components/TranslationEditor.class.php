@@ -91,6 +91,35 @@ class TranslationEditor extends Grid
             }
         }
 
+        if (E()->__isset('psrCache'))
+        {
+            $psr = E()->psrCache;
+            if (is_object($psr))
+            {
+                if (method_exists($psr, 'invalidateTags'))
+                {
+                    try
+                    {
+                        $psr->invalidateTags(['i18n']);
+                    }
+                    catch (\Throwable)
+                    {
+                        // сохраняем совместимость: при ошибке просто продолжаем
+                    }
+                }
+                elseif (method_exists($psr, 'clear'))
+                {
+                    try
+                    {
+                        $psr->clear();
+                    }
+                    catch (\Throwable)
+                    {
+                    }
+                }
+            }
+        }
+
         return $result;
     }
 }
