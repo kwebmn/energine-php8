@@ -8,7 +8,7 @@ parameters:
         - engine/core/modules
         - site/modules
     tmpDir: var/phpstan
-    autoload_files:
+    bootstrapFiles:
         - app/helpers.php
     scanDirectories:
         - engine/core
