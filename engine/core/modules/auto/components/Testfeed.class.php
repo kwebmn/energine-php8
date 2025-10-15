@@ -8,7 +8,7 @@ class Testfeed extends DBDataSet
         $this->setTableName('auto_Testfeed');
     }
 
-    protected function defineParams()
+    protected function defineParams(): array
     {
         $result = array_merge(
             parent::defineParams(),

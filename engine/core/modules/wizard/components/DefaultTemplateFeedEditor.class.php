@@ -133,7 +133,7 @@ class DefaultTemplateFeedEditor extends ExtendedFeedEditor
      *
      * @return mixed Результат сохранения.
      */
-    protected function saveData()
+    protected function saveData(): mixed
     {
         return LinkingEditor::saveData();
     }
