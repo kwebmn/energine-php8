@@ -2,16 +2,6 @@
 
 declare(strict_types=1);
 
-if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerInterface', false))
-{
-    $interfaceFile = dirname(__DIR__) . '/gears/ExtraManagerInterface.php';
-
-    if (is_file($interfaceFile))
-    {
-        require_once $interfaceFile;
-    }
-}
-
 use Energine\Core\ExtraManager\ExtraManagerInterface;
 
 class FilterManager extends DBWorker implements ExtraManagerInterface

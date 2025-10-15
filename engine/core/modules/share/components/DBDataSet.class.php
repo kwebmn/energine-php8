@@ -2,23 +2,6 @@
 
 declare(strict_types=1);
 
-if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerFactory', false))
-{
-    $gearsDir      = dirname(__DIR__) . '/gears';
-    $interfaceFile = $gearsDir . '/ExtraManagerInterface.php';
-    $factoryFile   = $gearsDir . '/ExtraManagerFactory.php';
-
-    if (is_file($interfaceFile))
-    {
-        require_once $interfaceFile;
-    }
-
-    if (is_file($factoryFile))
-    {
-        require_once $factoryFile;
-    }
-}
-
 use Energine\Core\ExtraManager\ExtraManagerFactory;
 
 /**

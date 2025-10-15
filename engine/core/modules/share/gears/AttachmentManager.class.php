@@ -2,16 +2,6 @@
 
 declare(strict_types=1);
 
-if (!class_exists('\\Energine\\Core\\ExtraManager\\ExtraManagerInterface', false))
-{
-    $interfaceFile = __DIR__ . '/ExtraManagerInterface.php';
-
-    if (is_file($interfaceFile))
-    {
-        require_once $interfaceFile;
-    }
-}
-
 use Energine\Core\ExtraManager\ExtraManagerInterface;
 
 /**
