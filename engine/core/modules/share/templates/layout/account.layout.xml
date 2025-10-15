@@ -5,7 +5,7 @@
         <params>
             <param name="tags">menu</param>
             <param name="recursive">1</param>
-            <param name="config">core/modules/share/MainMenu.component.xml</param>
+            <param name="config">engine/core/modules/share/MainMenu.component.xml</param>
         </params>
     </component>
 
@@ -14,7 +14,7 @@
 <!--            <param name="tags">user</param>-->
             <param name="id">3675</param>
             <param name="recursive">1</param>
-            <param name="config">core/modules/share/MainMenu.component.xml</param>
+            <param name="config">engine/core/modules/share/MainMenu.component.xml</param>
         </params>
     </component>
 
@@ -60,7 +60,7 @@
 <!--        <params>-->
 <!--            <param name="tags">footer</param>-->
 <!--            <param name="recursive">1</param>-->
-<!--            <param name="config">core/modules/share/MainMenu.component.xml</param>-->
+<!--            <param name="config">engine/core/modules/share/MainMenu.component.xml</param>-->
 <!--        </params>-->
 <!--    </component>-->
 

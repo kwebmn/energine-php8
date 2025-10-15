@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -36,15 +37,17 @@ class XSLTTransformer extends BaseObject implements ITransformer
      */
     public function setFileName(string $transformerFilename, bool $isAbsolutePath = false): void
     {
-        if (!$isAbsolutePath) {
+        if (!$isAbsolutePath)
+        {
             $siteFolder = E()->getSiteManager()->getCurrentSite()->folder;
             $transformerFilename = sprintf(
-                    SITE_DIR . self::MAIN_TRANSFORMER_DIR,
-                    $siteFolder
-                ) . $transformerFilename;
+                SITE_DIR . self::MAIN_TRANSFORMER_DIR,
+                $siteFolder
+            ) . $transformerFilename;
         }
 
-        if (!is_file($transformerFilename)) {
+        if (!is_file($transformerFilename))
+        {
             throw new SystemException(
                 'ERR_DEV_NO_MAIN_TRANSFORMER',
                 SystemException::ERR_DEVELOPER,
@@ -71,24 +74,30 @@ class XSLTTransformer extends BaseObject implements ITransformer
      */
     public function transform(): string
     {
-        if (!$this->document) {
+        if (!$this->document)
+        {
             $this->throwXsltError('XSLT transform error: document is not set', []);
         }
 
         // Вариант с xslcache (если включён и установлен)
-        if (extension_loaded('xslcache') && (int)$this->getConfigValue('document.xslcache') === 1) {
+        if (extension_loaded('xslcache') && (int)$this->getConfigValue('document.xslcache') === 1)
+        {
             /** @noinspection PhpUndefinedClassInspection */
             $xsltProc = new xsltCache();
 
-            try {
+            try
+            {
                 $xsltProc->importStyleSheet($this->fileName);
                 $result = $xsltProc->transformToXML($this->document);
-            } catch (\Throwable $e) {
+            }
+            catch (\Throwable $e)
+            {
                 // В DEV — подробности, в PROD — SystemException
                 $this->throwXsltError('XSLT (xslcache) error: ' . $e->getMessage(), []);
             }
 
-            if ($result === false || $result === null) {
+            if ($result === false || $result === null)
+            {
                 $this->throwXsltError('XSLT transform error (xslcache)', []);
             }
 
@@ -104,7 +113,8 @@ class XSLTTransformer extends BaseObject implements ITransformer
         $loadErrors = libxml_get_errors();
         libxml_clear_errors();
 
-        if (!$loaded || !empty($loadErrors)) {
+        if (!$loaded || !empty($loadErrors))
+        {
             libxml_use_internal_errors($prevUseInternal);
             $this->throwXsltError('XSLT load error', $loadErrors);
         }
@@ -118,7 +128,8 @@ class XSLTTransformer extends BaseObject implements ITransformer
         $importErrors = libxml_get_errors();
         libxml_clear_errors();
 
-        if (!$ok || !empty($importErrors)) {
+        if (!$ok || !empty($importErrors))
+        {
             libxml_use_internal_errors($prevUseInternal);
             $this->throwXsltError('XSLT import error', $importErrors);
         }
@@ -131,7 +142,8 @@ class XSLTTransformer extends BaseObject implements ITransformer
         libxml_clear_errors();
         libxml_use_internal_errors($prevUseInternal);
 
-        if ($result === false || !empty($transformErrors)) {
+        if ($result === false || !empty($transformErrors))
+        {
             $this->throwXsltError('XSLT transform error', $transformErrors);
         }
 
@@ -155,14 +167,16 @@ class XSLTTransformer extends BaseObject implements ITransformer
         $msg = $this->formatLibxmlErrors($title, $errors);
 
         // Логируем, если есть Monolog
-        if (isset(E()->logger)) {
+        if (isset(E()->logger))
+        {
             E()->logger->error($msg, ['component' => 'xslt', 'xsl' => $this->fileName ?: null]);
         }
 
         $isDebug = (defined('DEBUG') && DEBUG)
             || filter_var(getenv('APP_DEBUG') ?: '0', FILTER_VALIDATE_BOOL);
 
-        if ($isDebug) {
+        if ($isDebug)
+        {
             throw new \RuntimeException($msg);
         }
 
@@ -177,18 +191,22 @@ class XSLTTransformer extends BaseObject implements ITransformer
      */
     private function formatLibxmlErrors(string $title, array $errors): string
     {
-        if (!$errors) {
+        if (!$errors)
+        {
             return sprintf('%s (XSL: %s)', $title, $this->fileName ?: '-');
         }
 
         $lines = [sprintf('%s (XSL: %s):', $title, $this->fileName ?: '-')];
 
-        foreach ($errors as $e) {
-            if (!$e instanceof \LibXMLError) {
+        foreach ($errors as $e)
+        {
+            if (!$e instanceof \LibXMLError)
+            {
                 $lines[] = (string)$e;
                 continue;
             }
-            $level = match ($e->level) {
+            $level = match ($e->level)
+            {
                 LIBXML_ERR_FATAL   => 'FATAL',
                 LIBXML_ERR_ERROR   => 'ERROR',
                 LIBXML_ERR_WARNING => 'WARN',

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -33,9 +34,12 @@ class PageList extends DataSet
 
         // Нормализуем параметр site: 'default' → id сайта по умолчанию, 'current' → id текущего сайта
         $siteParam = $this->getParam('site');
-        if ($siteParam === 'default') {
+        if ($siteParam === 'default')
+        {
             $this->setParam('site', E()->getSiteManager()->getDefaultSite()->id);
-        } elseif ($siteParam === 'current') {
+        }
+        elseif ($siteParam === 'current')
+        {
             $this->setParam('site', E()->getSiteManager()->getCurrentSite()->id);
         }
     }
@@ -79,7 +83,8 @@ class PageList extends DataSet
 
         $this->ensureDefaultDataDescription();
 
-        if (($data = $this->getData()) instanceof Data && !$data->isEmpty()) {
+        if (($data = $this->getData()) instanceof Data && !$data->isEmpty())
+        {
             $this->injectVirtualFieldDescriptionsIfDataNotEmpty();
             $this->attachAttachmentsIfRequested();
             $this->attachTagsIfRequested();
@@ -100,8 +105,10 @@ class PageList extends DataSet
         $data = is_object($sitemap) ? $sitemap->{$method}($param) : null;
 
         // 3) Постобработка (фильтры/вирт.поля/дерево).
-        if (!empty($data) && is_array($data)) {
-            if ($this->getParam('recursive') && $this->getBuilder() instanceof TreeBuilder) {
+        if (!empty($data) && is_array($data))
+        {
+            if ($this->getParam('recursive') && $this->getBuilder() instanceof TreeBuilder)
+            {
                 // Для TreeBuilder предоставляем полную иерархию потомков текущего узла.
                 $this->getBuilder()->setTree($sitemap->getChilds($param, true));
             }
@@ -114,14 +121,17 @@ class PageList extends DataSet
             // Текущая страница по умолчанию — не выводим (домашняя)
             $defaultId = $sitemap->getDefault();
 
-            foreach ($data as $id => &$row) {
+            foreach ($data as $id => &$row)
+            {
                 // Отбрасываем узлы не прошедшие фильтр тегов
-                if ($allowedIDs !== true && is_array($allowedIDs) && !in_array((int)$id, $allowedIDs, true)) {
+                if ($allowedIDs !== true && is_array($allowedIDs) && !in_array((int)$id, $allowedIDs, true))
+                {
                     unset($data[$id]);
                     continue;
                 }
                 // Не показываем «домашнюю» страницу
-                if ((int)$id === (int)$defaultId) {
+                if ((int)$id === (int)$defaultId)
+                {
                     unset($data[$id]);
                     continue;
                 }
@@ -133,12 +143,15 @@ class PageList extends DataSet
                 $row['Redirect'] = Response::prepareRedirectURL($row['RedirectUrl'] ?? '');
                 $row['Site']     = E()->getSiteManager()->getSiteByID((int)($row['site'] ?? 0))->base ?? '';
 
-                if ($hasDescriptionRtf) {
+                if ($hasDescriptionRtf)
+                {
                     $row['DescriptionRtf'] = $row['DescriptionRtf'] ?? '';
                 }
             }
             unset($row);
-        } else {
+        }
+        else
+        {
             // Пусто — безопасно откатываемся на простой билдер
             $this->setBuilder(new SimpleBuilder());
         }
@@ -156,7 +169,8 @@ class PageList extends DataSet
      */
     private function ensureDefaultDataDescription(): void
     {
-        if ($this->getDataDescription()->isEmpty()) {
+        if ($this->getDataDescription()->isEmpty())
+        {
             $xml = new SimpleXMLElement(
                 '<fields>
                     <field name="Id" type="integer" key="1"/>
@@ -177,8 +191,10 @@ class PageList extends DataSet
      */
     private function injectVirtualFieldDescriptionsIfDataNotEmpty(): void
     {
-        foreach (['Site', 'Redirect'] as $name) {
-            if (!$this->getDataDescription()->getFieldDescriptionByName($name)) {
+        foreach (['Site', 'Redirect'] as $name)
+        {
+            if (!$this->getDataDescription()->getFieldDescriptionByName($name))
+            {
                 $fd = new FieldDescription($name);
                 $fd->setType(FieldDescription::FIELD_TYPE_STRING);
                 $this->getDataDescription()->addFieldDescription($fd);
@@ -191,14 +207,16 @@ class PageList extends DataSet
      */
     private function attachAttachmentsIfRequested(): void
     {
-        if (!$this->getDataDescription()->getFieldDescriptionByName('attachments')) {
+        if (!$this->getDataDescription()->getFieldDescriptionByName('attachments'))
+        {
             return;
         }
 
         $am = new AttachmentManager($this->getDataDescription(), $this->getData(), 'share_sitemap');
         $am->createFieldDescription();
 
-        if (($idField = $this->getData()->getFieldByName('Id')) instanceof Field) {
+        if (($idField = $this->getData()->getFieldByName('Id')) instanceof Field)
+        {
             // Пробрасываем значения smap_id из текущего набора
             $am->createField('smap_id', true, $idField->getData());
         }
@@ -209,7 +227,8 @@ class PageList extends DataSet
      */
     private function attachTagsIfRequested(): void
     {
-        if (!$this->getDataDescription()->getFieldDescriptionByName('tags')) {
+        if (!$this->getDataDescription()->getFieldDescriptionByName('tags'))
+        {
             return;
         }
 
@@ -226,7 +245,8 @@ class PageList extends DataSet
     private function getAllowedIDsByTags(): array|true
     {
         $tags = (string)$this->getParam('tags');
-        if ($tags === '') {
+        if ($tags === '')
+        {
             return true; // фильтр не задан
         }
         // Таблица связки тегов страниц
@@ -244,7 +264,8 @@ class PageList extends DataSet
         $method  = $this->getParam('recursive') ? 'getDescendants' : 'getChilds';
         $idParam = $this->getParam('id');
 
-        switch ($idParam) {
+        switch ($idParam)
+        {
             case self::PARENT_PAGE:
                 // Соседи текущей страницы: берём родителя, далее children(parent)
                 $param = $sitemap->getParent($this->document->getID());
@@ -268,7 +289,8 @@ class PageList extends DataSet
             case null:
             case 0:
                 // Не передан id: берём карту указанного сайта (если задан) и корневую страницу по умолчанию
-                if ($this->getParam('site')) {
+                if ($this->getParam('site'))
+                {
                     $sitemap = E()->getMap((int)$this->getParam('site'));
                 }
                 $param = $sitemap->getDefault();

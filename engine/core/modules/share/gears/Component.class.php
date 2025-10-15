@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -74,8 +75,10 @@ class Component extends DBWorker implements IBlock
         $this->document = E()->getDocument();
         $this->params   = $this->defineParams();
 
-        if (is_array($params)) {
-            foreach ($params as $pName => $pValue) {
+        if (is_array($params))
+        {
+            foreach ($params as $pName => $pValue)
+            {
                 $this->setParam($pName, $pValue);
             }
         }
@@ -105,8 +108,10 @@ class Component extends DBWorker implements IBlock
 
         // Определяем sample (по интерфейсу вида SampleFoo → sample="Foo")
         $ifs = class_implements($this) ?: [];
-        foreach ($ifs as $iname) {
-            if (strtolower(substr($iname, 0, 6)) === 'sample') {
+        foreach ($ifs as $iname)
+        {
+            if (strtolower(substr($iname, 0, 6)) === 'sample')
+            {
                 $this->setProperty('sample', substr($iname, 6));
                 break;
             }
@@ -126,7 +131,8 @@ class Component extends DBWorker implements IBlock
      */
     protected function getConfig(): ComponentConfig
     {
-        if (!$this->config) {
+        if (!$this->config)
+        {
             $this->config = new ComponentConfig(
                 (string)$this->getParam('config'),
                 get_class($this),
@@ -174,23 +180,31 @@ class Component extends DBWorker implements IBlock
      */
     protected function setParam(string $name, mixed $value): void
     {
-        if (!array_key_exists($name, $this->params)) {
+        if (!array_key_exists($name, $this->params))
+        {
             throw new SystemException('ERR_DEV_NO_PARAM', SystemException::ERR_DEVELOPER, $name);
         }
 
-        if ($name === 'active') {
+        if ($name === 'active')
+        {
             $value = (bool)$value;
         }
 
         // Пустые значения игнорируем, кроме явного false
-        if ($value !== null && ($value !== '' || $value === false)) {
-            if (is_scalar($value)) {
+        if ($value !== null && ($value !== '' || $value === false))
+        {
+            if (is_scalar($value))
+            {
                 // Поддержка формата "a|b|c"
                 $parts = explode('|', (string)$value);
                 $this->params[$name] = (count($parts) === 1) ? current($parts) : $parts;
-            } elseif (is_array($value)) {
+            }
+            elseif (is_array($value))
+            {
                 $this->params[$name] = $value;
-            } else {
+            }
+            else
+            {
                 $this->params[$name] = $value;
             }
         }
@@ -215,8 +229,10 @@ class Component extends DBWorker implements IBlock
         $this->state = (string)$this->getParam('state');
 
         // 2) Если компонент активный — состояние берём из конфигурации по URI
-        if ($this->isActive()) {
-            if ($this->getConfig()->isEmpty()) {
+        if ($this->isActive())
+        {
+            if ($this->getConfig()->isEmpty())
+            {
                 throw new SystemException(
                     'ERR_DEV_NO_COMPONENT_CONFIG',
                     SystemException::ERR_DEVELOPER,
@@ -227,26 +243,31 @@ class Component extends DBWorker implements IBlock
             $action = $this->getConfig()->getActionByURI(
                 $this->request->getPath(Request::PATH_ACTION, true)
             );
-            if ($action !== false) {
+            if ($action !== false)
+            {
                 $this->state       = (string)$action['name'];
                 $this->stateParams = $action['params'] ?? null;
             }
         }
         // 3) Иначе — можно переопределить состояние через POST[..][state]
-        elseif (isset($_POST[$this->getName()]['state'])) {
+        elseif (isset($_POST[$this->getName()]['state']))
+        {
             $this->state = (string)$_POST[$this->getName()]['state'];
         }
 
         // 4) Применяем параметры/права из конфигурации текущего состояния
-        if (!$this->getConfig()->isEmpty()) {
+        if (!$this->getConfig()->isEmpty())
+        {
             $this->getConfig()->setCurrentState($this->getState());
             $sc = $this->getConfig()->getCurrentStateConfig() ?? [];
 
-            if (isset($sc['rights'])) {
+            if (isset($sc['rights']))
+            {
                 $this->rights = (int)$sc['rights'];
             }
 
-            if ($csp = $this->getConfig()->getCurrentStateParams()) {
+            if ($csp = $this->getConfig()->getCurrentStateParams())
+            {
                 $this->stateParams = $this->stateParams
                     ? array_merge($this->stateParams, $csp)
                     : $csp;
@@ -289,12 +310,14 @@ class Component extends DBWorker implements IBlock
 
         // Приоритет у методов с суффиксом "State"
         $methodState = $this->getState() . 'State';
-        if (method_exists($this, $methodState)) {
+        if (method_exists($this, $methodState))
+        {
             call_user_func_array([$this, $methodState], $params);
             return;
         }
 
-        if (method_exists($this, $this->getState())) {
+        if (method_exists($this, $this->getState()))
+        {
             call_user_func_array([$this, $this->getState()], $params);
             return;
         }
@@ -309,7 +332,7 @@ class Component extends DBWorker implements IBlock
     /**
      * Действие по умолчанию: подготовка данных.
      */
-    protected function main() : void
+    protected function main(): void
     {
         $this->prepare();
     }
@@ -377,17 +400,22 @@ class Component extends DBWorker implements IBlock
         $root->setAttribute('componentAction', $this->getState());
         $root->setAttribute('class', get_class($this));
 
-        foreach ($this->properties as $propName => $propValue) {
+        foreach ($this->properties as $propName => $propValue)
+        {
             $root->setAttribute($propName, (string)$propValue);
         }
 
         // Если билдер есть и успешно собрал результат — подключаем его вывод
-        if ($this->getBuilder() && $this->getBuilder()->build()) {
+        if ($this->getBuilder() && $this->getBuilder()->build())
+        {
             $builderResult = $this->getBuilder()->getResult();
 
-            if ($builderResult instanceof DOMNode) {
+            if ($builderResult instanceof DOMNode)
+            {
                 $root->appendChild($this->doc->importNode($builderResult, true));
-            } else {
+            }
+            else
+            {
                 $node = $this->doc->createElement('result', (string)$builderResult);
                 $node->setAttribute('xml:id', 'result');
                 $root->appendChild($node);
@@ -406,7 +434,8 @@ class Component extends DBWorker implements IBlock
      */
     public function getStateParams(bool $returnAsAssocArray = false): ?array
     {
-        if (!$returnAsAssocArray && $this->stateParams !== null) {
+        if (!$returnAsAssocArray && $this->stateParams !== null)
+        {
             return array_values($this->stateParams);
         }
         return $this->stateParams;
@@ -417,7 +446,8 @@ class Component extends DBWorker implements IBlock
      */
     public function setStateParam(string $paramName, mixed $paramValue): void
     {
-        if ($this->stateParams === null) {
+        if ($this->stateParams === null)
+        {
             $this->stateParams = [];
         }
         $this->stateParams[$paramName] = $paramValue;

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Mail (Symfony Mailer adapter, drop-in replacement)
  *
@@ -6,12 +7,12 @@
  * DSN берётся из конфигурации 'mail.dsn' или переменной окружения MAILER_DSN.
  */
 
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
-use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 final class Mail extends BaseObject
 {
@@ -44,14 +45,16 @@ final class Mail extends BaseObject
         // Адрес отправителя по умолчанию из конфига (как и раньше)
         $this->sender = $this->getConfigValue('mail.from');
 
-        if ($mailer) {
+        if ($mailer)
+        {
             $this->mailer = $mailer;
             return;
         }
 
         // Транспорт из конфига или окружения
         $dsn = $this->getConfigValue('mail.dsn');
-        if (!$dsn) {
+        if (!$dsn)
+        {
             $dsn = getenv('MAILER_DSN') ?: 'sendmail://default';
         }
 
@@ -105,14 +108,17 @@ final class Mail extends BaseObject
     {
         $html = (string)$text;
 
-        if (is_array($data) && $data) {
+        if (is_array($data) && $data)
+        {
             // безопасная подстановка {key} => value
             $repl = [];
-            foreach ($data as $k => $v) {
+            foreach ($data as $k => $v)
+            {
                 $repl['{'.$k.'}'] = (string)$v;
             }
             // Дополнительно предоставим {host}, как было в старом коде
-            if (!isset($repl['{host}'])) {
+            if (!isset($repl['{host}']))
+            {
                 $repl['{host}'] = E()->getSiteManager()->getDefaultSite()->base;
             }
             $html = strtr($html, $repl);
@@ -132,7 +138,8 @@ final class Mail extends BaseObject
     public function addAttachment($file, $fileName = false)
     {
         $path = (string)$file;
-        if (is_file($path)) {
+        if (is_file($path))
+        {
             $this->attachments[] = ['path' => $path, 'name' => $fileName ? (string)$fileName : null];
         }
         // Тихо игнорируем отсутствующие файлы, как и прежде
@@ -145,7 +152,8 @@ final class Mail extends BaseObject
      */
     public function send()
     {
-        if (empty($this->to)) {
+        if (empty($this->to))
+        {
             return false;
         }
 
@@ -156,22 +164,28 @@ final class Mail extends BaseObject
         $email->from($from);
 
         // To
-        foreach ($this->to as $addr) {
+        foreach ($this->to as $addr)
+        {
             // Address::create безопасно распарсит "Name <email>" и просто email
             $email->addTo(Address::create($addr));
         }
 
         // Reply-To
-        if (!empty($this->replyTo)) {
-            foreach ($this->replyTo as $addr) {
+        if (!empty($this->replyTo))
+        {
+            foreach ($this->replyTo as $addr)
+            {
                 $email->addReplyTo(Address::create($addr));
             }
-        } else {
+        }
+        else
+        {
             $email->addReplyTo(Address::create($from));
         }
 
         // Subject
-        if ($this->subject) {
+        if ($this->subject)
+        {
             $email->subject($this->subject);
         }
 
@@ -181,15 +195,19 @@ final class Mail extends BaseObject
         $email->html($html)->text($plain);
 
         // Вложения
-        foreach ($this->attachments as $att) {
+        foreach ($this->attachments as $att)
+        {
             $name = $att['name'] ?? null;
             $email->attachFromPath($att['path'], $name);
         }
 
-        try {
+        try
+        {
             $this->mailer->send($email);
             return true;
-        } catch (TransportExceptionInterface $e) {
+        }
+        catch (TransportExceptionInterface $e)
+        {
             // здесь можно логировать $e->getMessage()
             return false;
         }

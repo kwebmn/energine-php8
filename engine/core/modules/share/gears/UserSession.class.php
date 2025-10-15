@@ -1,11 +1,15 @@
 <?php
+
 declare(strict_types=1);
+
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
 
 /**
  * Менеджер пользовательских сессий (хранение в БД).
- * PHP 8.x: реализует \SessionHandlerInterface, корректные сигнатуры и типы.
+ * Теперь использует Symfony Session поверх таблицы share_session.
  */
-final class UserSession extends DBWorker implements \SessionHandlerInterface
+final class UserSession extends DBWorker
 {
     /** Имя cookie с пометкой неудачной авторизации (историческое, используется вне класса) */
     public const FAILED_LOGIN_COOKIE_NAME = 'failed_login';
@@ -25,9 +29,6 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
     /** Флаг «инициализатор вызван» — запрещает прямой new, используйте start() */
     private static bool $instance = false;
 
-    /** Текущий session_id (значение cookie) */
-    private ?string $phpSessId = null;
-
     /** Таймаут неактивности (сек) — используется для валидации при необходимости */
     private int $timeout = 0;
 
@@ -36,14 +37,9 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
 
     /** User-Agent (для расширенной аналитики при желании) */
     private string $userAgent = 'ROBOT';
-
-    /**
-     * Кеш считанных данных сессии:
-     * - null   — ещё не читали
-     * - ''     — сессия есть, но данных нет
-     * - string — сериализованные данные сессии
-     */
-    private ?string $data = null;
+    private ?NativeSessionStorage $storage = null;
+    private ?ShareSessionHandler $handler = null;
+    private static ?Session $session = null;
 
     /**
      * @param bool $force Принудительно создать новую сессию, если не передан cookie
@@ -51,7 +47,8 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
      */
     public function __construct(bool $force = false)
     {
-        if (!self::$instance) {
+        if (!self::$instance)
+        {
             throw new SystemException('ERR_NO_CONSTRUCTOR');
         }
 
@@ -61,67 +58,62 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
         $this->lifespan = (int)$this->getConfigValue('session.lifespan') ?: (60 * 60 * 24);
         $this->userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'ROBOT';
 
-        ini_set('session.gc_probability', (string)self::DEFAULT_PROBABILITY);
-
-        // Регистрируем обработчик хранения
-        session_set_save_handler($this, true);
-        session_name(self::DEFAULT_SESSION_NAME);
-
-        $existingId = self::isOpen();
-        if ($existingId) {
-            $this->phpSessId = $existingId;
-            $loaded = self::isValid($existingId); // string|false
-            if ($loaded !== false) {
-                // валидная сессия: продлим жизнь
-                $this->data = (string)$loaded;
-                E()->getDB()->modifyRequest(
-                    'UPDATE ' . self::TABLE . ' 
-                       SET session_last_impression = UNIX_TIMESTAMP(),
-                           session_expires = (UNIX_TIMESTAMP() + %s)
-                     WHERE session_native_id = %s',
-                    $this->lifespan,
-                    $existingId
-                );
-            } elseif ($force) {
-                // невалидна — создадим новую запись
-                [, $newId] = self::manuallyCreateSessionInfo();
-                $this->phpSessId = $newId;
-                $this->data = '';
-            } else {
-                // удалить «битую» и cookie
-                $this->dbh->modify(QAL::DELETE, self::TABLE, null, ['session_native_id' => addslashes($existingId)]);
-                E()->getResponse()->deleteCookie(self::DEFAULT_SESSION_NAME);
-                return;
-            }
-        } elseif ($force) {
-            [, $newId] = self::manuallyCreateSessionInfo();
-            $this->phpSessId = $newId;
-            $this->data = '';
-        } else {
-            // Нет cookie и не форсируем — просто не стартуем сессию
-            return;
-        }
+        $this->handler = new ShareSessionHandler($this->dbh, $this->lifespan, $this->userAgent);
 
         // Настроим cookie с безопасными флагами
         $path   = $this->getConfigValue('site.domain') ? '/' : (E()->getSiteManager()->getCurrentSite()->root ?? '/');
         $domain = $this->getConfigValue('site.domain') ? ('.' . $this->getConfigValue('site.domain')) : '';
 
-        @session_set_cookie_params([
-            'lifetime' => $this->lifespan,
-            'path'     => $path,
-            'domain'   => $domain,
-            'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
+        $options = [
+            'cookie_lifetime' => $this->lifespan,
+            'cookie_path'     => $path,
+            'cookie_domain'   => $domain ?: null,
+            'cookie_secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            'cookie_httponly' => true,
+            'cookie_samesite' => 'lax',
+            'gc_probability'  => self::DEFAULT_PROBABILITY,
+            'gc_divisor'      => 100,
+            'gc_maxlifetime'  => $this->lifespan,
+            'name'            => self::DEFAULT_SESSION_NAME,
+            'use_strict_mode' => true,
+        ];
 
-        if ($this->phpSessId) {
-            session_id($this->phpSessId);
+        $this->storage = new NativeSessionStorage($options, $this->handler);
+        self::$session = new Session($this->storage);
+
+        $existingId = self::isOpen();
+        if ($existingId)
+        {
+            if ($this->handler->isValid($existingId))
+            {
+                self::$session->setId($existingId);
+            }
+            else
+            {
+                $this->handler->deleteById($existingId);
+                if ($force)
+                {
+                    self::$session->setId(self::createIdentifier());
+                }
+                else
+                {
+                    E()->getResponse()->deleteCookie(self::DEFAULT_SESSION_NAME);
+                    return;
+                }
+            }
+        }
+        elseif (!$force)
+        {
+            // Нет cookie и не форсируем — просто не стартуем сессию
+            return;
         }
 
-        try {
-            @session_start();
-        } catch (\Throwable $e) {
+        try
+        {
+            self::$session->start();
+        }
+        catch (\Throwable)
+        {
             // глушим, чтобы не ронять страницу — хранение всё равно в БД
         }
     }
@@ -138,21 +130,22 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
     }
 
     /**
-     * Валидна ли запись о сессии в БД; при валидности — вернуть данные.
-     *
-     * @param string $sessID
-     * @return string|false
+     * Валидна ли запись о сессии в БД.
      */
-    public static function isValid(string $sessID)
+    public static function isValid(string $sessID): bool
     {
+        $handler = self::resolveHandler();
+        if ($handler)
+        {
+            return $handler->isValid($sessID);
+        }
+
         $res = E()->getDB()->select(
-            'SELECT session_id, session_data 
-               FROM ' . self::TABLE . ' 
-              WHERE session_native_id = %s 
-                AND session_expires >= UNIX_TIMESTAMP()',
+            'SELECT session_id FROM ' . self::TABLE . ' WHERE session_native_id = %s AND session_expires >= UNIX_TIMESTAMP()',
             addslashes($sessID)
         );
-        return (is_array($res) && isset($res[0]['session_data'])) ? (string)$res[0]['session_data'] : false;
+
+        return is_array($res) && !empty($res);
     }
 
     /**
@@ -176,7 +169,8 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
             'session_ip'           => E()->getRequest()->getClientIP(true),
         ];
 
-        if ($UID) {
+        if ($UID)
+        {
             $data['u_id'] = (int)$UID;
             // совместимость с форматом PHP-хранилища (имя переменной + сериализованное значение)
             $data['session_data'] = 'userID|' . serialize((int)$UID);
@@ -195,7 +189,8 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
      */
     public static function manuallyDeleteSessionInfo(): void
     {
-        if (!empty($_COOKIE[self::DEFAULT_SESSION_NAME])) {
+        if (!empty($_COOKIE[self::DEFAULT_SESSION_NAME]))
+        {
             $sid = $_COOKIE[self::DEFAULT_SESSION_NAME];
             E()->getDB()->modify(QAL::DELETE, self::TABLE, null, ['session_native_id' => $sid]);
         }
@@ -208,7 +203,8 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
      */
     public static function start(bool $force = false): void
     {
-        if (self::$instance) {
+        if (self::$instance)
+        {
             throw new SystemException('ERR_SESSION_ALREADY_STARTED');
         }
         self::$instance = true;
@@ -220,95 +216,31 @@ final class UserSession extends DBWorker implements \SessionHandlerInterface
      */
     public static function createIdentifier(): string
     {
-        try {
+        try
+        {
             return bin2hex(random_bytes(16)); // 32 hex-символа
-        } catch (\Throwable) {
+        }
+        catch (\Throwable)
+        {
             return sha1((string)(microtime(true) . random_int(PHP_INT_MIN, PHP_INT_MAX)));
         }
     }
 
-    // ===== SessionHandlerInterface =====
-
-    public function open(string $savePath, string $sessionName): bool
+    private static function resolveHandler(): ?ShareSessionHandler
     {
-        return true;
-    }
-
-    public function close(): bool
-    {
-        return true;
-    }
-
-    /**
-     * Возвращает сериализованные данные сессии (строку) либо пустую строку.
-     */
-    public function read(string $phpSessId): string
-    {
-        // если уже знаем данные — вернём их (или пустую строку)
-        if ($this->data !== null && $this->phpSessId === $phpSessId) {
-            return $this->data;
+        if (self::$session instanceof Session)
+        {
+            $storage = self::$session->getStorage();
+            if ($storage instanceof NativeSessionStorage)
+            {
+                $handler = $storage->getSaveHandler();
+                if ($handler instanceof ShareSessionHandler)
+                {
+                    return $handler;
+                }
+            }
         }
 
-        $res = E()->getDB()->select(
-            'SELECT session_data 
-               FROM ' . self::TABLE . ' 
-              WHERE session_native_id = %s 
-                AND session_expires >= UNIX_TIMESTAMP()',
-            addslashes($phpSessId)
-        );
-
-        $this->data = (is_array($res) && isset($res[0]['session_data'])) ? (string)$res[0]['session_data'] : '';
-        return $this->data;
-    }
-
-    /**
-     * Сохраняет данные сессии. Всегда возвращает true.
-     */
-    public function write(string $phpSessId, string $data): bool
-    {
-        // Даже пустую строку стоит записать, чтобы продлить срок жизни и обновить время.
-        $payload = ['session_data' => $data];
-
-        if (isset($_SESSION['userID'])) {
-            $payload['u_id'] = (int)$_SESSION['userID'];
-        }
-
-        // Продлим жизнь
-        $payload['session_last_impression'] = time();
-        $payload['session_expires'] = time() + $this->lifespan;
-
-        // Обновим (если нет — вставим)
-        $updated = $this->dbh->modify(QAL::UPDATE, self::TABLE, $payload, ['session_native_id' => $phpSessId]);
-        if ($updated !== true) {
-            // В случае, если записи не было (нестандартный сценарий)
-            $payload['session_native_id'] = $phpSessId;
-            $payload['session_created']   = time();
-            $payload['session_ip']        = E()->getRequest()->getClientIP(true);
-            $this->dbh->modify(QAL::INSERT, self::TABLE, $payload);
-        }
-
-        $this->data = $data;
-        return true;
-    }
-
-    public function destroy(string $phpSessId): bool
-    {
-        $this->dbh->modify(QAL::DELETE, self::TABLE, null, ['session_native_id' => $phpSessId]);
-        return true;
-    }
-
-    /**
-     * Удаляет просроченные сессии. Возвращает число удалённых записей (или false при ошибке).
-     */
-    public function gc(int $max_lifetime): int|false
-    {
-        try {
-            $pdo = $this->dbh->getPDO();
-            $stmt = $pdo->prepare('DELETE FROM ' . self::TABLE . ' WHERE session_expires < UNIX_TIMESTAMP()');
-            $stmt->execute();
-            return $stmt->rowCount();
-        } catch (\Throwable) {
-            return false;
-        }
+        return null;
     }
 }

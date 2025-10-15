@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -71,12 +72,14 @@ final class ErrorDocument extends BaseObject implements IDocument
 
         $vm = E()->getController()->getViewMode();
 
-        if ($vm === DocumentController::TRANSFORM_JSON) {
+        if ($vm === DocumentController::TRANSFORM_JSON)
+        {
             // Исторически: массив ошибок — первый элемент с message, затем customMessages (если есть)
             $errors = [['message' => $ex->getMessage()]];
             $custom = $ex->getCustomMessage();
 
-            if (is_array($custom) && !empty($custom)) {
+            if (is_array($custom) && !empty($custom))
+            {
                 $errors[] = $custom;
             }
 
@@ -89,7 +92,9 @@ final class ErrorDocument extends BaseObject implements IDocument
             $errorsNode->appendChild(
                 new DOMText(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
             );
-        } else {
+        }
+        else
+        {
             // XML/HTML представление
             $errorNode = $this->doc->createElement('error');
             $errorsNode->appendChild($errorNode);
@@ -101,9 +106,12 @@ final class ErrorDocument extends BaseObject implements IDocument
 
             // Дополнительные сообщения (массивы разворачиваем)
             $custom = $ex->getCustomMessage();
-            if (is_array($custom) && !empty($custom)) {
-                foreach ($custom as $message) {
-                    if (is_array($message)) {
+            if (is_array($custom) && !empty($custom))
+            {
+                foreach ($custom as $message)
+                {
+                    if (is_array($message))
+                    {
                         $message = implode(', ', $message);
                     }
                     $errorNode->appendChild($this->doc->createElement('customMessage', (string)$message));
@@ -111,13 +119,15 @@ final class ErrorDocument extends BaseObject implements IDocument
             }
 
             // В HTML-режиме можно подменить XSLT-шаблон на спец. страницу ошибки
-            if ($vm === DocumentController::TRANSFORM_HTML) {
+            if ($vm === DocumentController::TRANSFORM_HTML)
+            {
                 E()->getController()->getTransformer()->setFileName('error_page.xslt');
             }
 
             // В debug-режиме можно добавить trace (опционально, без ломки XSLT)
             $isDebug = (bool)$this->getConfigValue('site.debug');
-            if ($isDebug) {
+            if ($isDebug)
+            {
                 $traceEl = $this->doc->createElement('trace');
                 $traceEl->appendChild(
                     $this->doc->createCDATASection($ex->getTraceAsString())
@@ -133,7 +143,8 @@ final class ErrorDocument extends BaseObject implements IDocument
     public function getResult(): DOMDocument
     {
         // На случай, если забыли вызвать build()
-        if (!$this->doc instanceof DOMDocument) {
+        if (!$this->doc instanceof DOMDocument)
+        {
             $this->build();
         }
         return $this->doc;

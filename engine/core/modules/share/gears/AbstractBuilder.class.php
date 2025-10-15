@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -47,9 +48,10 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
      * @return bool true — документ собран
      * @throws SystemException Если не заданы метаданные или не создан корневой элемент
      */
-    public function build() : bool
+    public function build(): bool
     {
-        if (!$this->dataDescription instanceof DataDescription) {
+        if (!$this->dataDescription instanceof DataDescription)
+        {
             throw new SystemException('ERR_DEV_NO_DATA_DESCRIPTION', SystemException::ERR_DEVELOPER);
         }
 
@@ -61,7 +63,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
         // Конкретная реализация должна создать корневой элемент и наполнить документ
         $this->run();
 
-        if (!$this->result->documentElement) {
+        if (!$this->result->documentElement)
+        {
             throw new SystemException('ERR_DEV_BUILDER_NO_ROOT', SystemException::ERR_DEVELOPER);
         }
 
@@ -74,7 +77,7 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
      *
      * @return DOMNode|null
      */
-    public function getResult() : mixed
+    public function getResult(): mixed
     {
         return ($this->result instanceof DOMDocument) ? $this->result->documentElement : null;
     }
@@ -110,14 +113,18 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
 
         // Если длина определена (getLength() возвращает true — значит "любой")
         $length = $fieldInfo->getLength();
-        if ($length !== true) {
+        if ($length !== true)
+        {
             $el->setAttribute('length', (string)$length);
         }
 
         // Спец-обработка некоторых типов
-        if ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_FILE) {
+        if ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_FILE)
+        {
             $this->decorateFileField($el, $fieldInfo, $fieldValue);
-        } elseif ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_SMAP_SELECTOR && $fieldValue) {
+        }
+        elseif ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_SMAP_SELECTOR && $fieldValue)
+        {
             $siteName = E()->getSiteManager()->getSiteByPage($fieldValue)->name;
             $pageName = $this->dbh->getScalar(
                 'share_sitemap_translation',
@@ -125,13 +132,18 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
                 ['smap_id' => $fieldValue, 'lang_id' => E()->getLanguage()->getCurrent()]
             );
             $el->setAttribute('smap_name', $siteName . ' : ' . $pageName);
-        } elseif ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_CAPTCHA) {
+        }
+        elseif ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_CAPTCHA)
+        {
             require_once(CORE_DIR . '/modules/share/gears/recaptchalib.php');
             $fieldValue = recaptcha_get_html($this->getConfigValue('recaptcha.public'));
-        } elseif ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_VALUE && is_array($fieldValue)) {
+        }
+        elseif ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_VALUE && is_array($fieldValue))
+        {
             // Оборачиваем значение {id, value} отдельным узлом <value>
             $valueNode = $doc->createElement('value', (string)$fieldValue['value']);
-            if (isset($fieldValue['id'])) {
+            if (isset($fieldValue['id']))
+            {
                 $valueNode->setAttribute('id', (string)$fieldValue['id']);
             }
             $fieldValue = $valueNode;
@@ -142,21 +154,38 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
             ? ['message', 'pattern']
             : [];
 
-        foreach ($fieldInfo as $propName => $propValue) {
-            if (in_array($propName, $skipPropsInRead, true)) { continue; }
-            if ($propName === 'nullable') { continue; } // обрабатывается ниже по особым правилам
-            if (is_array($propValue)) { continue; }
+        foreach ($fieldInfo as $propName => $propValue)
+        {
+            if (in_array($propName, $skipPropsInRead, true))
+            {
+                continue;
+            }
+            if ($propName === 'nullable')
+            {
+                continue;
+            } // обрабатывается ниже по особым правилам
+            if (is_array($propValue))
+            {
+                continue;
+            }
             // Не отбрасываем "0"
-            if ($propValue !== null && $propValue !== '') {
+            if ($propValue !== null && $propValue !== '')
+            {
                 $el->setAttribute($propName, (string)$propValue);
             }
         }
 
         // Дополнительные атрибуты
-        if (is_array($fieldProps)) {
-            foreach ($fieldProps as $propName => $propValue) {
-                if ($propName === 'nullable') { continue; } // обрабатывается ниже
-                if (!is_array($propValue)) {
+        if (is_array($fieldProps))
+        {
+            foreach ($fieldProps as $propName => $propValue)
+            {
+                if ($propName === 'nullable')
+                {
+                    continue;
+                } // обрабатывается ниже
+                if (!is_array($propValue))
+                {
                     $el->setAttribute($propName, ($propValue === null) ? '' : (string)$propValue);
                 }
             }
@@ -181,37 +210,47 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
     protected function buildFieldValue(DOMElement $el, FieldDescription $fieldInfo, $fieldValue)
     {
         // 1) Уже готовый DOM-узел
-        if ($fieldValue instanceof DOMNode) {
+        if ($fieldValue instanceof DOMNode)
+        {
             $this->appendNode($el, $fieldValue);
             return $el;
         }
 
         // 2) Список для текстбокса
-        if ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_TEXTBOX_LIST) {
-            if ($items = $this->createTextBoxItems($fieldValue)) {
+        if ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_TEXTBOX_LIST)
+        {
+            if ($items = $this->createTextBoxItems($fieldValue))
+            {
                 $this->appendNode($el, $items);
             }
             return $el;
         }
 
         // 3) Медиа: добавляем метаданные файла, если есть
-        if ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_MEDIA && $fieldValue) {
-            try {
+        if ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_MEDIA && $fieldValue)
+        {
+            try
+            {
                 $el->nodeValue = (string)$fieldValue;
-                if ($info = E()->FileRepoInfo->analyze($fieldValue)) {
+                if ($info = E()->FileRepoInfo->analyze($fieldValue))
+                {
                     $el->setAttribute('media_type', $info->type);
                     $el->setAttribute('mime', $info->mime);
                 }
-            } catch (SystemException $e) {
+            }
+            catch (SystemException $e)
+            {
                 // мягко игнорируем: информацию о медиа не смогли определить
             }
             return $el;
         }
 
         // 4) Обычное текстовое значение (0 и '0' считаем валидным)
-        if ($fieldValue !== false && ($fieldValue === 0 || $fieldValue === '0' || !empty($fieldValue))) {
+        if ($fieldValue !== false && ($fieldValue === 0 || $fieldValue === '0' || !empty($fieldValue)))
+        {
             // Дополнительное форматирование дат/времени
-            switch ($fieldInfo->getType()) {
+            switch ($fieldInfo->getType())
+            {
                 case FieldDescription::FIELD_TYPE_DATETIME:
                 case FieldDescription::FIELD_TYPE_DATE:
                 case FieldDescription::FIELD_TYPE_TIME:
@@ -219,8 +258,10 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
 
                     // Умный дефолт формата по типу, если не задан outputFormat
                     $fmt = $fieldInfo->getPropertyValue('outputFormat');
-                    if (!$fmt) {
-                        $fmt = match ($fieldInfo->getType()) {
+                    if (!$fmt)
+                    {
+                        $fmt = match ($fieldInfo->getType())
+                        {
                             FieldDescription::FIELD_TYPE_DATE     => '%Y-%m-%d',
                             FieldDescription::FIELD_TYPE_TIME     => '%H:%M',
                             default                               => '%Y-%m-%d %H:%M',
@@ -233,8 +274,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
                         $fieldInfo->getType()
                     );
                     break;
-                // Для строк/текста специальных преобразований не делаем:
-                // значения уйдут как есть (DOMText экранирует сам).
+                    // Для строк/текста специальных преобразований не делаем:
+                    // значения уйдут как есть (DOMText экранирует сам).
             }
 
             $el->appendChild(new DOMText((string)$fieldValue));
@@ -250,43 +291,60 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
     {
         // Кнопки «очистить/быстрая загрузка» доступны только при наличии прав и режиме редактирования
         if (E()->getDocument()->getRights() > ACCESS_READ
-            && $fieldInfo->getMode() != FieldDescription::FIELD_MODE_READ) {
+            && $fieldInfo->getMode() != FieldDescription::FIELD_MODE_READ)
+        {
             E()->getDocument()->addTranslation('TXT_CLEAR');
             E()->getDocument()->addTranslation('BTN_QUICK_UPLOAD');
 
             $quickPath  = $this->getConfigValue('repositories.quick_upload_path', 'uploads/public');
             $quickPid   = $this->dbh->getScalar('SELECT upl_id FROM share_uploads WHERE upl_path=%s LIMIT 1', $quickPath);
 
-            if ($quickPid) {
+            if ($quickPid)
+            {
                 $el->setAttribute('quickUploadPath', $quickPath);
                 $el->setAttribute('quickUploadPid', (string)$quickPid);
                 $el->setAttribute('quickUploadEnabled', '1');
             }
         }
 
-        if ($fieldValue) {
+        if ($fieldValue)
+        {
             // Репозиторий может быть secure
             $repoPath = E()->FileRepoInfo->getRepositoryRoot($fieldValue);
             $isSecure = (bool) E()->getConfigValue('repositories.ftp.' . $repoPath . '.secure', 0);
             $el->setAttribute('secure', $isSecure ? '1' : '0');
 
             // Сформируем плейлист для видео, если анализатор его знает
-            try {
-                if ($info = E()->FileRepoInfo->analyze($fieldValue)) {
+            try
+            {
+                if ($info = E()->FileRepoInfo->analyze($fieldValue))
+                {
                     $el->setAttribute('media_type', $info->type);
                     $el->setAttribute('mime', $info->mime);
 
                     $base = pathinfo($fieldValue, PATHINFO_DIRNAME) . '/' . pathinfo($fieldValue, PATHINFO_FILENAME);
                     $playlist = [];
-                    if (!empty($info->is_mp4))  { $playlist[] = $base . '.mp4'; }
-                    if (!empty($info->is_webm)) { $playlist[] = $base . '.webm'; }
-                    if (!empty($info->is_flv))  { $playlist[] = $base . '.flv'; }
+                    if (!empty($info->is_mp4))
+                    {
+                        $playlist[] = $base . '.mp4';
+                    }
+                    if (!empty($info->is_webm))
+                    {
+                        $playlist[] = $base . '.webm';
+                    }
+                    if (!empty($info->is_flv))
+                    {
+                        $playlist[] = $base . '.flv';
+                    }
 
-                    if ($playlist) {
+                    if ($playlist)
+                    {
                         $el->setAttribute('playlist', implode(',', $playlist));
                     }
                 }
-            } catch (SystemException $e) {
+            }
+            catch (SystemException $e)
+            {
                 // мягко игнорируем
             }
         }
@@ -295,9 +353,12 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
     /** Безопасно добавить дочерний DOM-узел (с импортом при необходимости). */
     private function appendNode(DOMElement $parent, DOMNode $child): void
     {
-        try {
+        try
+        {
             $parent->appendChild($child);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
             /** @var DOMDocument $doc */
             $doc = $this->result;
             $parent->appendChild($doc->importNode($child, true));
@@ -307,7 +368,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
     /** Проверка: содержит ли формат час/мин/сек (для strftime/date). */
     private static function formatHasTime(string $format, bool $isStrftime): bool
     {
-        if ($isStrftime) {
+        if ($isStrftime)
+        {
             // %H,%I,%k,%l — часы; %M — минуты; %S — секунды; %R/%T/%X — готовые время-форматы
             return (bool)preg_match('/%(H|I|k|l|M|S|R|T|X)/', $format);
         }
@@ -321,14 +383,16 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
      */
     public static function enFormatDate($date, $format = 'Y-m-d H:i', $type = FieldDescription::FIELD_TYPE_DATE)
     {
-        if (!$date) {
+        if (!$date)
+        {
             return '';
         }
 
         $ts = strtotime((string)$date);
 
         // Спец-форматы
-        if (in_array($format, ['%E', '%f', '%o', '%q'], true)) {
+        if (in_array($format, ['%E', '%f', '%o', '%q'], true))
+        {
             $result = '';
             $today            = strtotime('midnight');
             $tomorrow         = strtotime('midnight +1 day');
@@ -337,25 +401,41 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
             $yesterday        = strtotime('midnight -1 day');
             $beforeYesterday  = strtotime('midnight -2 day');
 
-            switch ($format) {
+            switch ($format)
+            {
                 case '%E':
-                    if ($ts >= $today && $ts < $tomorrow) {
+                    if ($ts >= $today && $ts < $tomorrow)
+                    {
                         $result .= date('H:i', $ts);
-                    } elseif ($ts < $today && $ts >= $yesterday) {
+                    }
+                    elseif ($ts < $today && $ts >= $yesterday)
+                    {
                         $result .= date('H:i', $ts);
-                    } elseif ($ts < $yesterday && $ts >= $beforeYesterday) {
+                    }
+                    elseif ($ts < $yesterday && $ts >= $beforeYesterday)
+                    {
                         $result .= date('H:i', $ts);
-                    } elseif ($ts >= $tomorrow && $ts < $dayAfterTomorrow) {
+                    }
+                    elseif ($ts >= $tomorrow && $ts < $dayAfterTomorrow)
+                    {
                         $result .= date('H:i', $ts);
-                    } elseif ($ts >= $dayAfterTomorrow && $ts < $tomorrowPlus3) {
+                    }
+                    elseif ($ts >= $dayAfterTomorrow && $ts < $tomorrowPlus3)
+                    {
                         $result .= date('H:i', $ts);
-                    } else {
+                    }
+                    else
+                    {
                         $w = (int)date('w', $ts);
-                        if ($w === 0) { $w = 7; }
+                        if ($w === 0)
+                        {
+                            $w = 7;
+                        }
                         $result .= DBWorker::_translate('TXT_WEEKDAY_SHORT_' . $w);
                     }
                     $result .= ', ' . date('j', $ts) . ' ' . DBWorker::_translate('TXT_MONTH_' . date('n', $ts));
-                    if (date('Y', $ts) != date('Y')) {
+                    if (date('Y', $ts) != date('Y'))
+                    {
                         $result .= ' ' . date('Y', $ts);
                     }
                     // %E уже содержит время → больше не добавляем
@@ -363,27 +443,34 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
 
                 case '%f':
                     $w = (int)date('w', $ts);
-                    if ($w === 0) { $w = 7; }
+                    if ($w === 0)
+                    {
+                        $w = 7;
+                    }
                     $result .= DBWorker::_translate('TXT_WEEKDAY_' . $w) . ', ' .
                         date('j', $ts) . ' ' . DBWorker::_translate('TXT_MONTH_' . date('n', $ts));
-                    if (date('Y', $ts) != date('Y')) {
+                    if (date('Y', $ts) != date('Y'))
+                    {
                         $result .= ' ' . date('Y', $ts);
                     }
                     break;
 
                 case '%o':
-                    if ($ts >= $today && $ts < $tomorrow) {
+                    if ($ts >= $today && $ts < $tomorrow)
+                    {
                         $result .= DBWorker::_translate('TXT_TODAY') . ', ';
                     }
                     $result .= date('j', $ts) . ' ' . DBWorker::_translate('TXT_MONTH_' . date('n', $ts));
-                    if (date('Y', $ts) != date('Y')) {
+                    if (date('Y', $ts) != date('Y'))
+                    {
                         $result .= ' ' . date('Y', $ts);
                     }
                     break;
 
                 case '%q':
                     $result .= date('j', $ts) . ' ' . DBWorker::_translate('TXT_MONTH_' . date('n', $ts));
-                    if (date('Y', $ts) != date('Y')) {
+                    if (date('Y', $ts) != date('Y'))
+                    {
                         $result .= ' ' . date('Y', $ts);
                     }
                     break;
@@ -394,7 +481,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
                 FieldDescription::FIELD_TYPE_DATETIME,
                 FieldDescription::FIELD_TYPE_TIME,
                 FieldDescription::FIELD_TYPE_HIDDEN
-            ], true)) {
+            ], true))
+            {
                 $result .= ', ' . date('G', $ts) . ':' . date('i', $ts);
             }
             return $result;
@@ -406,7 +494,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
             ? self::customStrftime((string)$format, $ts)
             : date((string)$format, $ts);
 
-        if ($out === '' || $out === false) {
+        if ($out === '' || $out === false)
+        {
             $out = (string)$date;
         }
 
@@ -416,7 +505,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
                 FieldDescription::FIELD_TYPE_DATETIME,
                 FieldDescription::FIELD_TYPE_TIME,
                 FieldDescription::FIELD_TYPE_HIDDEN
-            ], true) && !$hasTime) {
+            ], true) && !$hasTime)
+        {
             $out .= ', ' . date('G', $ts) . ':' . date('i', $ts);
         }
 
@@ -428,7 +518,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
      */
     public static function customStrftime($format, $timestamp = null)
     {
-        if ($timestamp === null) {
+        if ($timestamp === null)
+        {
             $timestamp = time();
         }
 
@@ -470,22 +561,27 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
         $optionsEl = $doc->createElement('options');
 
         $available = $fieldInfo->getAvailableValues();
-        if (is_array($available)) {
-            foreach ($available as $key => $opt) {
+        if (is_array($available))
+        {
+            foreach ($available as $key => $opt)
+            {
                 $val = isset($opt['value']) ? (string)$opt['value'] : '';
 
                 $optEl = $doc->createElement('option');
                 $optEl->appendChild(new DOMText($val));
                 $optEl->setAttribute('id', (string)$key);
 
-                if (!empty($opt['attributes']) && is_array($opt['attributes'])) {
-                    foreach ($opt['attributes'] as $attrName => $attrValue) {
+                if (!empty($opt['attributes']) && is_array($opt['attributes']))
+                {
+                    foreach ($opt['attributes'] as $attrName => $attrValue)
+                    {
                         $optEl->setAttribute($attrName, (string)$attrValue);
                     }
                 }
 
                 // Для мультиселекта отмечаем выбранные значения
-                if (is_array($data) && in_array($key, $data, true)) {
+                if (is_array($data) && in_array($key, $data, true))
+                {
                     $optEl->setAttribute('selected', 'selected');
                 }
 
@@ -499,15 +595,18 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
     /**
      * Список элементов для типа TEXTBOX_LIST.
      */
-    protected function createTextBoxItems($data = array())
+    protected function createTextBoxItems($data = [])
     {
-        if ($data === false) {
+        if ($data === false)
+        {
             return false;
         }
-        if (!is_array($data)) {
-            $data = array($data);
+        if (!is_array($data))
+        {
+            $data = [$data];
         }
-        if (empty($data)) {
+        if (empty($data))
+        {
             return false;
         }
 
@@ -515,7 +614,8 @@ abstract class AbstractBuilder extends DBWorker implements IBuilder
         $doc = $this->result;
 
         $itemsEl = $doc->createElement('items');
-        foreach ($data as $id => $val) {
+        foreach ($data as $id => $val)
+        {
             $itemEl = $doc->createElement('item', (string)$val);
             $itemEl->setAttribute('id', (string)$id);
             $itemsEl->appendChild($itemEl);

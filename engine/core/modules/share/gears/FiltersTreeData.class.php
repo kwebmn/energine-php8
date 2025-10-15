@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 class FiltersTreeData extends DBWorker
@@ -37,47 +38,136 @@ class FiltersTreeData extends DBWorker
      */
     public function buildFilterData(): bool
     {
-        // Уже построено
-        if (!empty(self::$filterData)) {
+        if (!empty(self::$filterData))
+        {
             return true;
         }
 
-        // Попытка получить из APCu
+        $cacheKey = 'filters.tree.' . $this->tableName;
+        $ttl      = $this->resolveTtl();
+        $psrCache = (function_exists('E') && E()->__isset('psrCache')) ? E()->psrCache : null;
+
+        if ($psrCache && method_exists($psrCache, 'get'))
+        {
+            try
+            {
+                $cachedTree = $psrCache->get($cacheKey, function ($item) use ($ttl)
+                {
+                    if (method_exists($item, 'expiresAfter'))
+                    {
+                        $item->expiresAfter($ttl);
+                    }
+                    if (method_exists($item, 'tag'))
+                    {
+                        $item->tag(['filters', 'filters.' . $this->tableName]);
+                    }
+
+                    return $this->loadFilterDataFromDB();
+                });
+
+                if (is_array($cachedTree))
+                {
+                    self::$filterData = $cachedTree;
+                    return true;
+                }
+            }
+            catch (\Throwable)
+            {
+                // В случае проблем с PSR-кешем продолжим с fallback-ами ниже
+            }
+        }
+
         $cached = false;
         $cachedTree = false;
-        if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_fetch')) {
+        if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_fetch'))
+        {
             $cachedTree = apcu_fetch('FILTERS_TREE', $cached);
         }
-        if ($cached && is_array($cachedTree)) {
+        if ($cached && is_array($cachedTree))
+        {
             self::$filterData = $cachedTree;
             return true;
         }
 
-        // Читаем из БД
+        self::$filterData = $this->loadFilterDataFromDB();
+
+        if (!empty(self::$filterData))
+        {
+            if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_store'))
+            {
+                apcu_store('FILTERS_TREE', self::$filterData, $ttl);
+            }
+
+            if ($psrCache && method_exists($psrCache, 'getItem'))
+            {
+                try
+                {
+                    $item = $psrCache->getItem($cacheKey);
+                    $item->set(self::$filterData);
+                    if ($ttl > 0)
+                    {
+                        $item->expiresAfter($ttl);
+                    }
+                    if (method_exists($item, 'tag'))
+                    {
+                        $item->tag(['filters', 'filters.' . $this->tableName]);
+                    }
+                    $psrCache->save($item);
+                }
+                catch (\Throwable)
+                {
+                    // Тихо игнорируем проблемы сохранения
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function resolveTtl(): int
+    {
+        $ttl = BaseObject::_getConfigValue('site.cache_default_ttl');
+        if (!is_numeric($ttl) || (int)$ttl <= 0)
+        {
+            $ttl = BaseObject::_getConfigValue('site.apcu_ttl', 3600);
+        }
+
+        $ttl = (int)$ttl;
+        return $ttl > 0 ? $ttl : 3600;
+    }
+
+    /**
+     * Загружает дерево фильтров напрямую из БД.
+     *
+     * @return array<int|string, array<int>>
+     */
+    private function loadFilterDataFromDB(): array
+    {
+        $data = [];
+
         $res = $this->dbh->select(
             $this->filterDataTableName,
             ['filter_id', 'target_id']
         );
 
-        if (is_array($res) && !empty($res)) {
-            foreach ($res as $row) {
-                $filterId = (int) $row['filter_id'];
-                $targetId = (int) $row['target_id'];
-                if (!isset(self::$filterData[$filterId])) {
-                    self::$filterData[$filterId] = [];
+        if (is_array($res) && !empty($res))
+        {
+            foreach ($res as $row)
+            {
+                $filterId = (int)$row['filter_id'];
+                $targetId = (int)$row['target_id'];
+                if (!isset($data[$filterId]))
+                {
+                    $data[$filterId] = [];
                 }
-                // Уникализируем значения
-                if (!in_array($targetId, self::$filterData[$filterId], true)) {
-                    self::$filterData[$filterId][] = $targetId;
+                if (!in_array($targetId, $data[$filterId], true))
+                {
+                    $data[$filterId][] = $targetId;
                 }
-            }
-
-            if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_store')) {
-                apcu_store('FILTERS_TREE', self::$filterData, 3600);
             }
         }
 
-        return true;
+        return $data;
     }
 
     /**
@@ -97,7 +187,8 @@ class FiltersTreeData extends DBWorker
      */
     public function intersect(array $filter1, array $filter2): array
     {
-        if (empty($filter1) || empty($filter2)) {
+        if (empty($filter1) || empty($filter2))
+        {
             return [];
         }
         return $this->nuno_array_intersect($filter1, $filter2);
@@ -109,7 +200,8 @@ class FiltersTreeData extends DBWorker
      */
     public function isCustomFilter(int|string $filter): bool
     {
-        if (isset($this->ignoreFilters[$filter])) {
+        if (isset($this->ignoreFilters[$filter]))
+        {
             return true;
         }
         $c = substr((string) $filter, 0, 1);
@@ -126,20 +218,24 @@ class FiltersTreeData extends DBWorker
     {
         $this->setFilters = $filters;
 
-        if (!empty($filters)) {
+        if (!empty($filters))
+        {
             // Базовый набор — значения первого фильтра (если он существует)
             $first = reset($filters);
             $currentFilter = isset($this->filterCurrent[$first]) ? $this->filterCurrent[$first] : [];
 
             // Пересечение с остальными фильтрами
-            foreach (array_slice($filters, 1) as $f) {
-                if (isset($this->filterCurrent[$f])) {
+            foreach (array_slice($filters, 1) as $f)
+            {
+                if (isset($this->filterCurrent[$f]))
+                {
                     $currentFilter = $this->nuno_array_intersect($currentFilter, $this->filterCurrent[$f]);
                 }
             }
 
             // Ограничиваем каждый фильтр текущей маской пересечения
-            foreach ($this->filterCurrent as $filterId => $filterData) {
+            foreach ($this->filterCurrent as $filterId => $filterData)
+            {
                 $this->filterCurrent[$filterId] = $this->nuno_array_intersect($filterData, $currentFilter);
             }
         }
@@ -156,21 +252,27 @@ class FiltersTreeData extends DBWorker
     {
         $this->setMerge = $filters;
 
-        if (empty($filters)) {
+        if (empty($filters))
+        {
             return $this;
         }
 
         $currentFilter = [];
-        foreach ($filters as $f) {
-            if (isset($this->filterCurrent[$f])) {
+        foreach ($filters as $f)
+        {
+            if (isset($this->filterCurrent[$f]))
+            {
                 $currentFilter = $this->speed_array_merge($this->filterCurrent[$f], $currentFilter);
-            } else {
+            }
+            else
+            {
                 // Если хотя бы один из указанных фильтров отсутствует — сливаемся с пустотой
                 $currentFilter = $currentFilter; // no-op; поведение как в оригинале
             }
         }
 
-        foreach ($this->filterCurrent as $filterId => $filterData) {
+        foreach ($this->filterCurrent as $filterId => $filterData)
+        {
             $this->filterCurrent[$filterId] = $this->nuno_array_intersect($filterData, $currentFilter);
         }
 
@@ -194,23 +296,30 @@ class FiltersTreeData extends DBWorker
      */
     public function getIds(int|string|null $filterId = null): array
     {
-        if ($filterId !== null) {
+        if ($filterId !== null)
+        {
             return $this->filterCurrent[$filterId] ?? [];
         }
 
         $arr = [];
 
-        if (!empty($this->setMerge)) {
-            foreach ($this->setMerge as $row) {
-                if (isset($this->filterCurrent[$row])) {
+        if (!empty($this->setMerge))
+        {
+            foreach ($this->setMerge as $row)
+            {
+                if (isset($this->filterCurrent[$row]))
+                {
                     $arr = array_merge($arr, $this->filterCurrent[$row]);
                 }
             }
         }
 
-        if (!empty($this->setFilters)) {
-            foreach ($this->setFilters as $row) {
-                if (isset($this->filterCurrent[$row])) {
+        if (!empty($this->setFilters))
+        {
+            foreach ($this->setFilters as $row)
+            {
+                if (isset($this->filterCurrent[$row]))
+                {
                     $arr = array_merge($arr, $this->filterCurrent[$row]);
                 }
             }
@@ -228,7 +337,8 @@ class FiltersTreeData extends DBWorker
      */
     private function speed_array_merge(array $array1, array $array2): array
     {
-        foreach ($array2 as $i) {
+        foreach ($array2 as $i)
+        {
             $array1[] = $i;
         }
         return $array1;
@@ -243,22 +353,27 @@ class FiltersTreeData extends DBWorker
      */
     private function nuno_array_intersect(array $array1, array $array2): array
     {
-        if (empty($array1) || empty($array2)) {
+        if (empty($array1) || empty($array2))
+        {
             return [];
         }
 
         $a1 = [];
-        foreach ($array1 as $value) {
+        foreach ($array1 as $value)
+        {
             $a1[$value] = true; // храним как set
         }
 
         $a2 = [];
-        foreach ($array2 as $value) {
+        foreach ($array2 as $value)
+        {
             $a2[$value] = true;
         }
 
-        foreach ($a1 as $value => $_) {
-            if (!isset($a2[$value])) {
+        foreach ($a1 as $value => $_)
+        {
+            if (!isset($a2[$value]))
+            {
                 unset($a1[$value]);
             }
         }

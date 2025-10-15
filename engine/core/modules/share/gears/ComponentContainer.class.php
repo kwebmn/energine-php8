@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -38,7 +39,8 @@ class ComponentContainer extends BaseObject implements IBlock, Iterator
         $this->document  = E()->getDocument();
         $this->properties = $properties;
 
-        if (!isset($this->properties['tag'])) {
+        if (!isset($this->properties['tag']))
+        {
             $this->properties['tag'] = 'container';
         }
 
@@ -65,13 +67,17 @@ class ComponentContainer extends BaseObject implements IBlock, Iterator
         $properties = [];
         $attributes = $containerDescription->attributes();
 
-        if (in_array($containerDescription->getName(), ['page', 'content'], true)) {
+        if (in_array($containerDescription->getName(), ['page', 'content'], true))
+        {
             $properties['name'] = (string)$containerDescription->getName();
-        } elseif (!isset($attributes['name'])) {
+        }
+        elseif (!isset($attributes['name']))
+        {
             throw new SystemException('ERR_NO_CONTAINER_NAME', SystemException::ERR_DEVELOPER);
         }
 
-        foreach ($attributes as $propertyName => $propertyValue) {
+        foreach ($attributes as $propertyName => $propertyValue)
+        {
             $properties[(string)$propertyName] = (string)$propertyValue;
         }
 
@@ -83,7 +89,8 @@ class ComponentContainer extends BaseObject implements IBlock, Iterator
 
         $result = new self($name, $properties);
 
-        foreach ($containerDescription->children() as $blockDescription) {
+        foreach ($containerDescription->children() as $blockDescription)
+        {
             $result->add(ComponentManager::createBlockFromDescription($blockDescription));
         }
 
@@ -133,25 +140,31 @@ class ComponentContainer extends BaseObject implements IBlock, Iterator
         $containerDOM->setAttribute('name', $this->getName());
         $doc->appendChild($containerDOM);
 
-        foreach ($this->properties as $propertyName => $propertyValue) {
-            if ($propertyName === 'tag') {
+        foreach ($this->properties as $propertyName => $propertyValue)
+        {
+            if ($propertyName === 'tag')
+            {
                 continue;
             }
             // приводим к строке (DOM атрибуты — всегда строки)
             $containerDOM->setAttribute((string)$propertyName, (string)$propertyValue);
         }
 
-        foreach ($this->blocks as $block) {
+        foreach ($this->blocks as $block)
+        {
             if (
                 $block->enabled() &&
                 ($this->document->getRights() >= $block->getCurrentStateRights())
             ) {
                 $blockDOM = $block->build();
 
-                if ($blockDOM instanceof DOMDocument) {
+                if ($blockDOM instanceof DOMDocument)
+                {
                     $node = $doc->importNode($blockDOM->documentElement, true);
                     $containerDOM->appendChild($node);
-                } elseif ($blockDOM instanceof DOMNode) {
+                }
+                elseif ($blockDOM instanceof DOMNode)
+                {
                     $node = $doc->importNode($blockDOM, true);
                     $containerDOM->appendChild($node);
                 }
@@ -166,7 +179,8 @@ class ComponentContainer extends BaseObject implements IBlock, Iterator
      */
     public function run(): void
     {
-        foreach ($this->blocks as $block) {
+        foreach ($this->blocks as $block)
+        {
             if (
                 $block->enabled() &&
                 ($this->document->getRights() >= $block->getCurrentStateRights())
@@ -211,7 +225,8 @@ class ComponentContainer extends BaseObject implements IBlock, Iterator
     public function disable(): void
     {
         $this->enabled = false;
-        foreach ($this->blocks as $block) {
+        foreach ($this->blocks as $block)
+        {
             $block->disable();
         }
     }

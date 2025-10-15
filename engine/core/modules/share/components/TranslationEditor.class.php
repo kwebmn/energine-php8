@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -23,11 +24,14 @@ class TranslationEditor extends Grid
     {
         parent::prepare();
 
-        if (in_array($this->getState(), ['add', 'edit'], true)) {
+        if (in_array($this->getState(), ['add', 'edit'], true))
+        {
             $dd = $this->getDataDescription();
-            if ($dd) {
+            if ($dd)
+            {
                 $fd = $dd->getFieldDescriptionByName('ltag_value_rtf');
-                if ($fd instanceof FieldDescription) {
+                if ($fd instanceof FieldDescription)
+                {
                     $fd->setType(FieldDescription::FIELD_TYPE_TEXT);
                 }
             }
@@ -47,7 +51,8 @@ class TranslationEditor extends Grid
             isset($_POST[$mainTable], $_POST[$mainTable]['ltag_name'])
         ) {
             $name = $_POST[$mainTable]['ltag_name'];
-            if (!is_string($name)) {
+            if (!is_string($name))
+            {
                 $name = (string)$name;
             }
             $_POST[$mainTable]['ltag_name'] = strtoupper(trim($name));
@@ -56,10 +61,13 @@ class TranslationEditor extends Grid
         // Нормализация переводов: trim (полезно при выводе в JS)
         $trTable = $this->getTranslationTableName();
         $languages = array_keys(E()->getLanguage()->getLanguages());
-        foreach ($languages as $langID) {
-            if (isset($_POST[$trTable][$langID]['ltag_value_rtf'])) {
+        foreach ($languages as $langID)
+        {
+            if (isset($_POST[$trTable][$langID]['ltag_value_rtf']))
+            {
                 $val = $_POST[$trTable][$langID]['ltag_value_rtf'];
-                if (!is_string($val)) {
+                if (!is_string($val))
+                {
                     $val = (string)$val;
                 }
                 $_POST[$trTable][$langID]['ltag_value_rtf'] = trim($val);
@@ -70,12 +78,45 @@ class TranslationEditor extends Grid
 
         // Инвалидируем кеш переводов (если включён)
         $cache = E()->getCache();
-        if ($cache && method_exists($cache, 'isEnabled') ? $cache->isEnabled() : true) {
-            if (method_exists($cache, 'dispose')) {
+        if ($cache && method_exists($cache, 'isEnabled') ? $cache->isEnabled() : true)
+        {
+            if (method_exists($cache, 'dispose'))
+            {
                 $cache->dispose(Cache::TRANSLATIONS_KEY);
-            } elseif (method_exists($cache, 'delete')) {
+            }
+            elseif (method_exists($cache, 'delete'))
+            {
                 // на случай другой реализации кеша
                 $cache->delete(Cache::TRANSLATIONS_KEY);
+            }
+        }
+
+        if (E()->__isset('psrCache'))
+        {
+            $psr = E()->psrCache;
+            if (is_object($psr))
+            {
+                if (method_exists($psr, 'invalidateTags'))
+                {
+                    try
+                    {
+                        $psr->invalidateTags(['i18n']);
+                    }
+                    catch (\Throwable)
+                    {
+                        // сохраняем совместимость: при ошибке просто продолжаем
+                    }
+                }
+                elseif (method_exists($psr, 'clear'))
+                {
+                    try
+                    {
+                        $psr->clear();
+                    }
+                    catch (\Throwable)
+                    {
+                    }
+                }
             }
         }
 

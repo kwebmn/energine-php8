@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -11,13 +12,15 @@ class FeedEditor extends LinkingEditor
      * @copydoc LinkingEditor::createDataDescription
      * Для форм поле smap_id выводим как string (read-only).
      */
-    protected function createDataDescription() : DataDescription
+    protected function createDataDescription(): DataDescription
     {
         $result = parent::createDataDescription();
 
-        if (in_array($this->getType(), [self::COMPONENT_TYPE_FORM_ADD, self::COMPONENT_TYPE_FORM_ALTER], true)) {
+        if (in_array($this->getType(), [self::COMPONENT_TYPE_FORM_ADD, self::COMPONENT_TYPE_FORM_ALTER], true))
+        {
             $field = $result->getFieldDescriptionByName('smap_id');
-            if ($field) {
+            if ($field)
+            {
                 $field->setType(FieldDescription::FIELD_TYPE_STRING);
                 $field->setMode(FieldDescription::FIELD_MODE_READ);
             }
@@ -30,22 +33,25 @@ class FeedEditor extends LinkingEditor
      * @copydoc LinkingEditor::createData
      * Определяем данные для smap_id.
      */
-    protected function createData() : Data
+    protected function createData(): Data
     {
         $result = parent::createData();
 
-        if (in_array($this->getType(), [self::COMPONENT_TYPE_FORM_ADD, self::COMPONENT_TYPE_FORM_ALTER], true)) {
+        if (in_array($this->getType(), [self::COMPONENT_TYPE_FORM_ADD, self::COMPONENT_TYPE_FORM_ALTER], true))
+        {
             $docId = $this->document->getID();
             $info  = E()->getMap()->getDocumentInfo($docId);
             $field = $result->getFieldByName('smap_id');
 
-            if ($field) {
+            if ($field)
+            {
                 $languages = E()->getLanguage()->getLanguages();
                 $segment   = E()->getMap()->getURLByID($docId);
                 $name      = $info['Name'] ?? '';
 
                 $count = is_countable($languages) ? count($languages) : 0;
-                for ($i = 0; $i < $count; $i++) {
+                for ($i = 0; $i < $count; $i++)
+                {
                     $field->setRowProperty($i, 'segment', $segment);
                     $field->setRowData($i, $name);
                 }
@@ -59,10 +65,11 @@ class FeedEditor extends LinkingEditor
      * @copydoc LinkingEditor::saveData
      * Выставляем smap_id в текущее значение документа.
      */
-    protected function saveData() : mixed
+    protected function saveData(): mixed
     {
         $table = $this->getTableName();
-        if (!isset($_POST[$table]) || !is_array($_POST[$table])) {
+        if (!isset($_POST[$table]) || !is_array($_POST[$table]))
+        {
             $_POST[$table] = [];
         }
         $_POST[$table]['smap_id'] = $this->document->getID();
@@ -73,9 +80,10 @@ class FeedEditor extends LinkingEditor
     /**
      * @copydoc LinkingEditor::changeOrder
      */
-    protected function changeOrder($direction) : void
+    protected function changeOrder($direction): void
     {
-        if (!$this->getOrderColumn()) {
+        if (!$this->getOrderColumn())
+        {
             // Если не задана колонка для пользовательской сортировки — на выход.
             throw new SystemException('ERR_NO_ORDER_COLUMN', SystemException::ERR_DEVELOPER);
         }
@@ -94,13 +102,16 @@ class FeedEditor extends LinkingEditor
         $orderDirection = ($direction === Grid::DIR_DOWN) ? QAL::ASC : QAL::DESC;
 
         $baseFilter = $this->getFilter();
-        if (!empty($baseFilter)) {
+        if (!empty($baseFilter))
+        {
             $baseFilter = ' AND ' . str_replace(
-                    'WHERE',
-                    '',
-                    $this->dbh->buildWhereCondition($this->getFilter())
-                );
-        } else {
+                'WHERE',
+                '',
+                $this->dbh->buildWhereCondition($this->getFilter())
+            );
+        }
+        else
+        {
             $baseFilter = ' AND smap_id = ' . (int) $this->document->getID() . ' ';
         }
 
@@ -114,12 +125,14 @@ class FeedEditor extends LinkingEditor
 
         $data = convertDBResult($this->dbh->selectRequest($request), 'neighborID');
 
-        if (!empty($data)) {
+        if (!empty($data))
+        {
             $row = current($data);
             $neighborID       = $row['neighborID'] ?? null;
             $neighborOrderNum = $row['neighborOrderNum'] ?? null;
 
-            if ($neighborID !== null && $neighborOrderNum !== null) {
+            if ($neighborID !== null && $neighborOrderNum !== null)
+            {
                 $this->dbh->beginTransaction();
 
                 $this->dbh->modify(

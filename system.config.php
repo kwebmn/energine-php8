@@ -274,8 +274,8 @@ return array(
 
     // ====== НОВЫЕ ОПЦИИ ДЛЯ УПРАВЛЕНИЯ СТЕКОМ ================================
 
-    // Пути ядра/сайта (читает bootstrap.php; можно не задавать — будут 'core'/'site')
-    'core_rel_dir' => 'core',
+    // Пути ядра/сайта (читает App\Bootstrap\EnergineBootstrapper; можно не задавать — будут 'engine/core'/'site')
+    'core_rel_dir' => 'engine/core',
     'site_rel_dir' => 'site',
 
     // Окружение/ENV (дублирует APP_ENV; влияет на логи/кеш/Twig)
@@ -286,6 +286,7 @@ return array(
     // Включатели подсистем (безопасно держать выключенными и подключать по частям)
     'features' => [
         'di'              => 1,
+        'symfony_di'      => 1,
         'http_foundation' => 1,   // адаптеры под твои Request/Response
         'fast_route'      => 0,   // роутер выключен
         'dbal'            => 0,   // включишь позже
@@ -299,6 +300,14 @@ return array(
         'cache_dir' => $_SERVER['DOCUMENT_ROOT'].'/var/cache/di',
         'proxy_dir' => $_SERVER['DOCUMENT_ROOT'].'/var/cache/di/proxies',
         'definitions'=> $_SERVER['DOCUMENT_ROOT'].'/app/config/definitions.php',
+    ),
+
+    // DI (Symfony DependencyInjection)
+    'symfony_di' => array(
+        'compile'     => 0,
+        'cache_file'  => $_SERVER['DOCUMENT_ROOT'].'/var/cache/symfony_container.php',
+        'cache_class' => 'CachedAppContainer',
+        'services'    => $_SERVER['DOCUMENT_ROOT'].'/app/config/services.php',
     ),
 
     // Логирование (Monolog)
@@ -382,7 +391,7 @@ return array(
     'files' => array(
         'default_adapter' => 'local', // local|s3|ftp
         'local' => array(
-            'root' => $_SERVER['DOCUMENT_ROOT'].'/var/storage',
+            'root' => $_SERVER['DOCUMENT_ROOT'],
         ),
         's3' => array(
             'key'     => 'AWS_KEY',

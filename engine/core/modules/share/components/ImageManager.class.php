@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,7 +25,8 @@ final class ImageManager extends DataSet
         $dd = parent::createDataDescription();
 
         // Конфигурируем список выравнивания, если поле существует
-        if ($fd = $dd->getFieldDescriptionByName('align')) {
+        if ($fd = $dd->getFieldDescriptionByName('align'))
+        {
             $fd->loadAvailableValues(
                 [
                     ['id' => 'bottom', 'value' => $this->translate('TXT_ALIGN_BOTTOM')],
@@ -39,7 +41,8 @@ final class ImageManager extends DataSet
         }
 
         // Тулбар (если определён конфигом)
-        if ($toolbars = $this->createToolbar()) {
+        if ($toolbars = $this->createToolbar())
+        {
             $this->addToolbar($toolbars);
         }
 

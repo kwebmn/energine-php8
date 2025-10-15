@@ -1,10 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
+use App\File\FlysystemManager;
+use League\Flysystem\FilesystemException;
+use League\Flysystem\FilesystemOperator;
+
 /**
- * Implementation of IFileRepository for local repositories (filesystem).
- *
- * Репозиторий пишет файлы напрямую в ФС, без удалённых протоколов.
+ * Implementation of IFileRepository backed by Flysystem operators.
  */
 class FileRepositoryLocal extends BaseObject implements IFileRepository
 {
@@ -19,6 +22,10 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
 
     /** Базовый путь репозитория (например, "uploads/public"). */
     protected string $base;
+
+    private ?FlysystemManager $flysystemManager = null;
+
+    private ?FilesystemOperator $filesystem = null;
 
     public function __construct($id, $base)
     {
@@ -53,81 +60,74 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         return $this->base;
     }
 
-    public function allowsCreateDir(): bool { return true; }
-    public function allowsUploadFile(): bool { return true; }
-    public function allowsEditDir(): bool   { return true; }
-    public function allowsEditFile(): bool  { return true; }
-    public function allowsDeleteDir(): bool { return true; }
-    public function allowsDeleteFile(): bool{ return true; }
+    public function allowsCreateDir(): bool
+    {
+        return true;
+    }
+    public function allowsUploadFile(): bool
+    {
+        return true;
+    }
+    public function allowsEditDir(): bool
+    {
+        return true;
+    }
+    public function allowsEditFile(): bool
+    {
+        return true;
+    }
+    public function allowsDeleteDir(): bool
+    {
+        return true;
+    }
+    public function allowsDeleteFile(): bool
+    {
+        return true;
+    }
 
-    /**
-     * @copydoc IFileRepository::uploadFile
-     *
-     * @throws SystemException 'ERR_DIR_WRITE'
-     * @throws SystemException 'ERR_COPY_UPLOADED_FILE'
-     */
     public function uploadFile($sourceFilename, $destFilename)
     {
         $source = (string)$sourceFilename;
         $dest   = (string)$destFilename;
-        $dir    = dirname($dest);
 
-        if (!is_dir($dir)) {
-            [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
-            if ($created === false && !is_dir($dir)) {
-                $context = $error !== null ? ['error' => $error] : [];
-                throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir, null, $context);
-            }
-        }
-        if (!is_writable($dir)) {
-            throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir);
-        }
-        [$copied, $copyError] = $this->callFs(static fn(): bool => copy($source, $dest));
-        if ($copied === false) {
-            $context = $copyError !== null ? ['error' => $copyError] : [];
-            throw new SystemException('ERR_COPY_UPLOADED_FILE', SystemException::ERR_CRITICAL, $dest, null, $context);
+        $info = $this->analyze($source);
+        $this->writeFromSource($source, $dest, true, true);
+
+        if (is_object($info))
+        {
+            $info->ready = true;
         }
 
-        if (is_file($source)) {
-            [$deleted, $deleteError] = $this->callFs(static fn(): bool => unlink($source));
-            if ($deleted === false) {
-                $ctx = ['file' => $source];
-                if ($deleteError !== null) { $ctx['error'] = $deleteError; }
-                $this->logWarning('FileRepositoryLocal: unable to remove source file after upload', $ctx);
-            }
-        }
-
-        return $this->analyze($destFilename);
+        return $info;
     }
 
-    /**
-     * Записать данные в файл.
-     *
-     * @throws SystemException 'ERR_DIR_WRITE'
-     * @throws SystemException 'ERR_PUT_FILE'
-     */
     public function putFile($fileData, $filePath)
     {
-        $path = (string)$filePath;
-        $dir  = dirname($path);
+        $path       = (string)$filePath;
+        $normalized = $this->normalizePath($path);
 
-        if (!is_dir($dir)) {
-            [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
-            if ($created === false && !is_dir($dir)) {
-                $context = $error !== null ? ['error' => $error] : [];
-                throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir, null, $context);
+        try
+        {
+            $filesystem = $this->getFilesystem();
+            $this->ensureDirectoryExists($filesystem, $normalized);
+            if ($filesystem->fileExists($normalized))
+            {
+                $filesystem->delete($normalized);
             }
+            $filesystem->write($normalized, (string)$fileData);
         }
-        if (!is_writable($dir)) {
-            throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir);
-        }
-        [$written, $writeError] = $this->callFs(static fn() => file_put_contents($path, $fileData));
-        if ($written === false) {
-            $context = $writeError !== null ? ['error' => $writeError] : [];
-            throw new SystemException('ERR_PUT_FILE', SystemException::ERR_CRITICAL, $dir . DIRECTORY_SEPARATOR . $path, null, $context);
+        catch (FilesystemException $e)
+        {
+            throw new SystemException(
+                'ERR_PUT_FILE',
+                SystemException::ERR_CRITICAL,
+                $path,
+                null,
+                ['error' => $e->getMessage()]
+            );
         }
 
-        return $this->analyze($filePath);
+        return $this->analyze($path);
     }
 
     public function uploadAlt($sourceFilename, $destFilename, $width, $height)
@@ -138,22 +138,14 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
             self::IMAGE_ALT_CACHE
         );
 
-        return $this->uploadFile($sourceFilename, $altPath);
+        $this->writeFromSource((string)$sourceFilename, $altPath, true, true);
+
+        return $this->analyze($altPath);
     }
 
     public function updateFile($sourceFilename, $destFilename): bool
     {
-        $source = (string)$sourceFilename;
-        $dest   = (string)$destFilename;
-
-        [$copied, $copyError] = $this->callFs(static fn(): bool => copy($source, $dest));
-        if ($copied === false) {
-            $ctx = ['src' => $source, 'dest' => $dest];
-            if ($copyError !== null) { $ctx['error'] = $copyError; }
-            $this->logWarning('FileRepositoryLocal: updateFile copy failed', $ctx);
-        }
-
-        return $copied !== false;
+        return $this->writeFromSource((string)$sourceFilename, (string)$destFilename, true, false);
     }
 
     public function updateAlt($sourceFilename, $destFilename, $width, $height): bool
@@ -169,16 +161,22 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
 
     public function deleteFile($filename): bool
     {
-        $path = (string)$filename;
-        if (!is_file($path)) {
-            return false;
-        }
+        $path       = (string)$filename;
+        $normalized = $this->normalizePath($path);
 
-        [$deleted, $deleteError] = $this->callFs(static fn(): bool => unlink($path));
-        if ($deleted === false) {
-            $ctx = ['file' => $path];
-            if ($deleteError !== null) { $ctx['error'] = $deleteError; }
-            $this->logWarning('FileRepositoryLocal: deleteFile failed', $ctx);
+        try
+        {
+            $filesystem = $this->getFilesystem();
+            if (!$filesystem->fileExists($normalized))
+            {
+                return false;
+            }
+
+            $filesystem->delete($normalized);
+        }
+        catch (FilesystemException $e)
+        {
+            $this->logWarning('FileRepositoryLocal: deleteFile failed', ['file' => $path, 'error' => $e->getMessage()]);
             return false;
         }
 
@@ -187,152 +185,144 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
 
     public function deleteAlt($filename, $width, $height): bool
     {
-        // Исторически: удаляет исходный путь, а не расчётный alt-путь.
-        // Сохраняем поведение для обратной совместимости.
         return $this->deleteFile($filename);
     }
 
     public function analyze($filename)
     {
-        $fi = E()->FileRepoInfo->analyze((string)$filename, true);
-        if (is_object($fi)) {
-            $fi->ready = true;
+        $path = (string)$filename;
+
+        $absolute = $this->resolveAbsoluteLocalPath($path);
+
+        if ($absolute !== '' && is_file($absolute))
+        {
+            $fi = E()->FileRepoInfo->analyze($absolute, true);
+            if (is_object($fi))
+            {
+                $fi->ready = true;
+            }
+            return $fi;
         }
-        return $fi;
+
+        $normalized = $this->normalizePath($path);
+
+        try
+        {
+            $filesystem = $this->getFilesystem();
+            if (!$filesystem->fileExists($normalized))
+            {
+                return E()->FileRepoInfo->analyze($path, false);
+            }
+
+            $remoteStream = $filesystem->readStream($normalized);
+            if (!is_resource($remoteStream))
+            {
+                throw new \RuntimeException('Unable to open remote stream');
+            }
+
+            $temp = tmpfile();
+            if ($temp === false)
+            {
+                throw new \RuntimeException('Unable to create temporary file');
+            }
+
+            try
+            {
+                while (!feof($remoteStream))
+                {
+                    $chunk = fread($remoteStream, 8192);
+                    if ($chunk === false)
+                    {
+                        throw new \RuntimeException('Unable to read remote chunk');
+                    }
+                    fwrite($temp, $chunk);
+                }
+
+                $meta    = stream_get_meta_data($temp);
+                $tmpPath = $meta['uri'] ?? '';
+                if ($tmpPath === '')
+                {
+                    throw new \RuntimeException('Temporary path unavailable');
+                }
+
+                $fi = E()->FileRepoInfo->analyze($tmpPath, true);
+                if (is_object($fi))
+                {
+                    $fi->ready = true;
+                }
+
+                return $fi;
+            }
+            finally
+            {
+                fclose($remoteStream);
+                fclose($temp);
+            }
+        }
+        catch (\Throwable $e)
+        {
+            $this->logWarning('FileRepositoryLocal: analyze failed', ['file' => $path, 'error' => $e->getMessage()]);
+        }
+
+        return E()->FileRepoInfo->analyze($path, false);
     }
 
-    /**
-     * @copydoc IFileRepository::createDir
-     *
-     * @throws SystemException 'ERR_DIR_CREATE'
-     */
     public function createDir($dir): bool
     {
-        $dir = (string)$dir;
-        if (is_dir($dir)) {
-            return true;
-        }
+        $path       = (string)$dir;
+        $normalized = $this->normalizePath($path);
 
-        $parentDir = dirname($dir);
-        if (!is_dir($parentDir) || !is_writable($parentDir)) {
-            throw new SystemException('ERR_DIR_CREATE', SystemException::ERR_CRITICAL, $parentDir);
-        }
+        try
+        {
+            $filesystem = $this->getFilesystem();
+            if ($filesystem->directoryExists($normalized))
+            {
+                return true;
+            }
 
-        [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir));
-        if ($created === false) {
-            $ctx = ['dir' => $dir];
-            if ($error !== null) { $ctx['error'] = $error; }
-            $this->logWarning('FileRepositoryLocal: createDir failed', $ctx);
-            return false;
+            $filesystem->createDirectory($normalized);
+        }
+        catch (FilesystemException $e)
+        {
+            throw new SystemException(
+                'ERR_DIR_CREATE',
+                SystemException::ERR_CRITICAL,
+                $path,
+                null,
+                ['error' => $e->getMessage()]
+            );
         }
 
         return true;
     }
 
-    /**
-     * @copydoc IFileRepository::renameDir
-     *
-     * @throws SystemException 'ERR_UNIMPLEMENTED_YET'
-     */
     public function renameDir($dir)
     {
         throw new SystemException('ERR_UNIMPLEMENTED_YET');
     }
 
-    /**
-     * @copydoc IFileRepository::deleteDir
-     */
     public function deleteDir($dir): bool
     {
-        return $this->rmdirRecursive((string)$dir);
-    }
+        $path       = (string)$dir;
+        $normalized = $this->normalizePath($path);
 
-    private function rmdirRecursive(string $dir): bool
-    {
-        if (!is_dir($dir)) {
-            return false;
-        }
-
-        [$items, $scanError] = $this->callFs(static fn() => scandir($dir));
-        if (!is_array($items)) {
-            if ($scanError !== null) {
-                $this->logWarning('FileRepositoryLocal: unable to read directory contents', ['dir' => $dir, 'error' => $scanError]);
-            }
-            return false;
-        }
-
-        foreach ($items as $item) {
-            if ($item === '.' || $item === '..') {
-                continue;
+        try
+        {
+            $filesystem = $this->getFilesystem();
+            if (!$filesystem->directoryExists($normalized))
+            {
+                return false;
             }
 
-            $path = $dir . DIRECTORY_SEPARATOR . $item;
-
-            if (is_dir($path) && !is_link($path)) {
-                if (!$this->rmdirRecursive($path)) {
-                    return false;
-                }
-            } else {
-                [$deleted, $deleteError] = $this->callFs(static fn(): bool => unlink($path));
-                if ($deleted === false) {
-                    $ctx = ['file' => $path];
-                    if ($deleteError !== null) { $ctx['error'] = $deleteError; }
-                    $this->logWarning('FileRepositoryLocal: unable to remove file', $ctx);
-                    return false;
-                }
-            }
+            $filesystem->deleteDirectory($normalized);
         }
-
-        [$removed, $removeError] = $this->callFs(static fn(): bool => rmdir($dir));
-        if ($removed === false) {
-            $ctx = ['dir' => $dir];
-            if ($removeError !== null) { $ctx['error'] = $removeError; }
-            $this->logWarning('FileRepositoryLocal: unable to remove directory', $ctx);
+        catch (FilesystemException $e)
+        {
+            $this->logWarning('FileRepositoryLocal: unable to remove directory', ['dir' => $path, 'error' => $e->getMessage()]);
             return false;
         }
 
         return true;
-    }
-
-    /**
-     * @return array{0:mixed,1:?string}
-     */
-    protected function callFs(callable $operation): array
-    {
-        $result = null;
-        $error  = null;
-
-        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool {
-            throw new \ErrorException($message, 0, $severity, $file, $line);
-        });
-
-        try {
-            $result = $operation();
-        } catch (\ErrorException $e) {
-            $result = false;
-            $error  = $e->getMessage();
-        } finally {
-            restore_error_handler();
-        }
-
-        return [$result, $error];
-    }
-
-    protected function logWarning(string $message, array $context = []): void
-    {
-        try {
-            if (function_exists('E')) {
-                $reg = E();
-                if (isset($reg->logger)) {
-                    $reg->logger->warning($message, $context);
-                    return;
-                }
-            }
-        } catch (\Throwable) {
-        }
-
-        $suffix = $context ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
-        error_log($message . $suffix);
     }
 
     public function prepare(&$data)
@@ -340,13 +330,205 @@ class FileRepositoryLocal extends BaseObject implements IFileRepository
         return $data;
     }
 
-    /**
-     * @copydoc IFileRepository::setPrepareFunction
-     *
-     * @throws SystemException 'ERR_NOT_USED'
-     */
     public function setPrepareFunction($func)
     {
         throw new SystemException('ERR_NOT_USED');
+    }
+
+    protected function writeFromSource(string $source, string $destination, bool $overwrite, bool $deleteSource): bool
+    {
+        if (!is_file($source))
+        {
+            throw new SystemException('ERR_COPY_UPLOADED_FILE', SystemException::ERR_CRITICAL, $destination);
+        }
+
+        $normalized = $this->normalizePath($destination);
+
+        $stream = fopen($source, 'rb');
+        if ($stream === false)
+        {
+            throw new SystemException('ERR_COPY_UPLOADED_FILE', SystemException::ERR_CRITICAL, $destination);
+        }
+
+        try
+        {
+            $filesystem = $this->getFilesystem();
+
+            $this->ensureDirectoryExists($filesystem, $normalized);
+
+            if ($overwrite && $filesystem->fileExists($normalized))
+            {
+                $filesystem->delete($normalized);
+            }
+
+            $filesystem->writeStream($normalized, $stream);
+        }
+        catch (FilesystemException $e)
+        {
+            throw new SystemException(
+                'ERR_COPY_UPLOADED_FILE',
+                SystemException::ERR_CRITICAL,
+                $destination,
+                null,
+                ['error' => $e->getMessage()]
+            );
+        }
+        finally
+        {
+            fclose($stream);
+        }
+
+        if ($deleteSource && is_file($source) && !@unlink($source))
+        {
+            $this->logWarning('FileRepositoryLocal: unable to remove source file after upload', ['file' => $source]);
+        }
+
+        return true;
+    }
+
+    protected function normalizePath(string $path): string
+    {
+        $path = str_replace('\\', '/', $path);
+
+        $docRoot = $this->getDocumentRoot();
+        if ($docRoot !== '' && str_starts_with($path, $docRoot . '/'))
+        {
+            $path = substr($path, strlen($docRoot) + 1);
+        }
+
+        $path = ltrim($path, '/');
+
+        $parts = [];
+        foreach (explode('/', $path) as $part)
+        {
+            if ($part === '' || $part === '.')
+            {
+                continue;
+            }
+            if ($part === '..')
+            {
+                array_pop($parts);
+                continue;
+            }
+            $parts[] = $part;
+        }
+
+        return implode('/', $parts);
+    }
+
+    protected function resolveAdapterName(): string
+    {
+        return 'local';
+    }
+
+    protected function resolveAbsoluteLocalPath(string $path): string
+    {
+        $sanitized = str_replace('\\', '/', $path);
+
+        if ($sanitized === '')
+        {
+            return '';
+        }
+
+        if ($sanitized[0] === '/' || preg_match('~^[A-Za-z]:/~', $sanitized) === 1)
+        {
+            return $path;
+        }
+
+        $normalized = $this->normalizePath($sanitized);
+
+        $docRoot = $this->getDocumentRoot();
+        if ($docRoot === '')
+        {
+            return $normalized;
+        }
+
+        if ($normalized === '')
+        {
+            return $docRoot;
+        }
+
+        return $docRoot . '/' . $normalized;
+    }
+
+    protected function getFilesystem(): FilesystemOperator
+    {
+        if ($this->filesystem === null)
+        {
+            $this->filesystem = $this->getFlysystemManager()->get($this->resolveAdapterName());
+        }
+
+        return $this->filesystem;
+    }
+
+    protected function ensureDirectoryExists(FilesystemOperator $filesystem, string $path): void
+    {
+        $directory = $this->normalizePath(dirname($path));
+        if ($directory === '')
+        {
+            return;
+        }
+
+        if (!$filesystem->directoryExists($directory))
+        {
+            $filesystem->createDirectory($directory);
+        }
+    }
+
+    protected function getFlysystemManager(): FlysystemManager
+    {
+        if ($this->flysystemManager === null)
+        {
+            try
+            {
+                $this->flysystemManager = container()->get(FlysystemManager::class);
+            }
+            catch (\Throwable $e)
+            {
+                throw new \RuntimeException('FlysystemManager service unavailable', 0, $e);
+            }
+        }
+
+        return $this->flysystemManager;
+    }
+
+    protected function logWarning(string $message, array $context = []): void
+    {
+        try
+        {
+            if (function_exists('E'))
+            {
+                $reg = E();
+                if (isset($reg->logger))
+                {
+                    $reg->logger->warning($message, $context);
+                    return;
+                }
+            }
+        }
+        catch (\Throwable)
+        {
+        }
+
+        $suffix = $context ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
+        error_log($message . $suffix);
+    }
+
+    private function getDocumentRoot(): string
+    {
+        static $docRoot = null;
+
+        if ($docRoot === null)
+        {
+            $value = isset($_SERVER['DOCUMENT_ROOT']) ? (string)$_SERVER['DOCUMENT_ROOT'] : '';
+            $value = str_replace('\\', '/', $value);
+            $docRoot = rtrim($value, '/');
+            if ($docRoot === '' && $value !== '')
+            {
+                $docRoot = $value;
+            }
+        }
+
+        return $docRoot;
     }
 }

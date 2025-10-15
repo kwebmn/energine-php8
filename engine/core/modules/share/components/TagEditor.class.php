@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -27,11 +28,13 @@ final class TagEditor extends Grid
         parent::main();
         $params = (array) $this->getStateParams(true);
 
-        if (!empty($params['tag_id']) && is_string($params['tag_id'])) {
+        if (!empty($params['tag_id']) && is_string($params['tag_id']))
+        {
             $decoded = urldecode($params['tag_id']);
             $this->setProperty('tag_id', $decoded);
             $ids = $this->parseIdsFromSeparatedList($decoded);
-            if ($ids !== []) {
+            if ($ids !== [])
+            {
                 $this->addFilterCondition([TagManager::TAG_TABLENAME . '.tag_id' => $ids]);
             }
         }
@@ -43,9 +46,11 @@ final class TagEditor extends Grid
     protected function getRawData(): void
     {
         $params = (array) $this->getStateParams(true);
-        if (!empty($params['tag_id']) && is_string($params['tag_id'])) {
+        if (!empty($params['tag_id']) && is_string($params['tag_id']))
+        {
             $ids = $this->parseIdsFromSeparatedList(urldecode($params['tag_id']));
-            if ($ids !== []) {
+            if ($ids !== [])
+            {
                 $this->addFilterCondition([TagManager::TAG_TABLENAME . '.tag_id' => $ids]);
             }
         }
@@ -64,16 +69,21 @@ final class TagEditor extends Grid
         $tags = $this->parseTagsFromSeparatedList($_REQUEST['tags'] ?? '');
 
         $response = [];
-        foreach ($tags as $tag) {
+        foreach ($tags as $tag)
+        {
             $tagItem = TagManager::getID($tag);
-            if (!$tagItem) {
+            if (!$tagItem)
+            {
                 $tagId = TagManager::insert($tag);
-            } else {
+            }
+            else
+            {
                 // ожидается массив вида [id => name]; берём первый ключ
                 $keys = array_keys((array) $tagItem);
                 $tagId = isset($keys[0]) ? (int) $keys[0] : 0;
             }
-            if ($tagId) {
+            if ($tagId)
+            {
                 $response[] = (int) $tagId;
             }
         }
@@ -92,9 +102,11 @@ final class TagEditor extends Grid
         $ids = $this->parseIdsFromSeparatedList($_REQUEST['tag_id'] ?? '');
 
         $tags = [];
-        if ($ids !== []) {
+        if ($ids !== [])
+        {
             $found = TagManager::getTags($ids);
-            if ($found) {
+            if ($found)
+            {
                 // TagManager::getTags может вернуть map id=>name; превратим в list значений
                 $tags = array_values((array) $found);
             }
@@ -113,18 +125,22 @@ final class TagEditor extends Grid
      */
     private function parseIdsFromSeparatedList(?string $raw): array
     {
-        if (!is_string($raw) || $raw === '') {
+        if (!is_string($raw) || $raw === '')
+        {
             return [];
         }
         $parts = explode(TagManager::TAG_SEPARATOR, $raw);
         $out = [];
-        foreach ($parts as $p) {
+        foreach ($parts as $p)
+        {
             $p = trim($p);
-            if ($p === '') {
+            if ($p === '')
+            {
                 continue;
             }
             $v = (int) $p;
-            if ($v > 0) {
+            if ($v > 0)
+            {
                 $out[$v] = $v; // через ключ исключаем дубликаты
             }
         }
@@ -140,14 +156,17 @@ final class TagEditor extends Grid
      */
     private function parseTagsFromSeparatedList(?string $raw): array
     {
-        if (!is_string($raw) || $raw === '') {
+        if (!is_string($raw) || $raw === '')
+        {
             return [];
         }
         $parts = explode(TagManager::TAG_SEPARATOR, $raw);
         $out = [];
-        foreach ($parts as $p) {
+        foreach ($parts as $p)
+        {
             $t = trim($p);
-            if ($t === '') {
+            if ($t === '')
+            {
                 continue;
             }
             $t = mb_strtolower($t, 'UTF-8');

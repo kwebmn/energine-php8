@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -42,8 +43,10 @@ class SimpleBuilder extends Builder
                      'sort',
                      'customField',
                      'default',
-                 ] as $propertyName) {
-            if (method_exists($fieldInfo, 'removeProperty')) {
+                 ] as $propertyName)
+        {
+            if (method_exists($fieldInfo, 'removeProperty'))
+            {
                 $fieldInfo->removeProperty($propertyName);
             }
         }

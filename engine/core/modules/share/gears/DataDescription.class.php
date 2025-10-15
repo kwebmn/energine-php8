@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -29,7 +30,8 @@ class DataDescription extends BaseObject implements \Iterator
      */
     public function load(array $columnsInfo): void
     {
-        foreach ($columnsInfo as $columnName => $columnInfo) {
+        foreach ($columnsInfo as $columnName => $columnInfo)
+        {
             $fd = new FieldDescription((string)$columnName);
             $fd->loadArray((array)$columnInfo);
             $this->addFieldDescription($fd);
@@ -44,10 +46,12 @@ class DataDescription extends BaseObject implements \Iterator
      */
     public function loadXML(\SimpleXMLElement $xmlDescr): void
     {
-        if (empty($xmlDescr)) {
+        if (empty($xmlDescr))
+        {
             return;
         }
-        foreach ($xmlDescr->field as $fieldXml) {
+        foreach ($xmlDescr->field as $fieldXml)
+        {
             $fd = new FieldDescription();
             $fd->loadXML($fieldXml);
             $this->addFieldDescription($fd);
@@ -74,14 +78,18 @@ class DataDescription extends BaseObject implements \Iterator
             && array_key_exists($targetFDName, $this->fieldDescriptions)
         ) {
             $result = [];
-            foreach ($this->fieldDescriptions as $key => $value) {
+            foreach ($this->fieldDescriptions as $key => $value)
+            {
                 $result[$key] = $value;
-                if ($key === $targetFDName) {
+                if ($key === $targetFDName)
+                {
                     $result[$name] = $fieldDescription;
                 }
             }
             $this->fieldDescriptions = $result;
-        } else {
+        }
+        else
+        {
             $this->fieldDescriptions[$name] = $fieldDescription;
         }
     }
@@ -130,8 +138,10 @@ class DataDescription extends BaseObject implements \Iterator
     {
         $types = is_array($types) ? $types : [$types];
         $out = [];
-        foreach ($this->fieldDescriptions as $name => $fd) {
-            if (in_array($fd->getType(), $types, true)) {
+        foreach ($this->fieldDescriptions as $name => $fd)
+        {
+            if (in_array($fd->getType(), $types, true))
+            {
                 $out[$name] = $fd;
             }
         }
@@ -159,15 +169,20 @@ class DataDescription extends BaseObject implements \Iterator
      */
     public function intersect(DataDescription $otherDataDescr): DataDescription
     {
-        if ($this->isEmpty()) {
+        if ($this->isEmpty())
+        {
             return $otherDataDescr;
         }
 
-        foreach ($this->fieldDescriptions as $name => $fd) {
+        foreach ($this->fieldDescriptions as $name => $fd)
+        {
             $other = $otherDataDescr->getFieldDescriptionByName($name);
-            if ($other instanceof FieldDescription) {
+            if ($other instanceof FieldDescription)
+            {
                 $this->fieldDescriptions[$name] = FieldDescription::intersect($fd, $other);
-            } else {
+            }
+            else
+            {
                 $this->fieldDescriptions[$name]->setProperty('customField', 'customField');
             }
         }

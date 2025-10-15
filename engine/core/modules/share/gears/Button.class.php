@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -19,17 +20,21 @@ class Button extends Control
         $this->type = 'button';
 
         // BC: в оригинале action ставился, если !== false (пустая строка допустима)
-        if ($action !== false) {
+        if ($action !== false)
+        {
             $this->setAttribute('action', (string)$action);
         }
         // Остальные — только если «есть значение»
-        if ($image !== null && $image !== false && $image !== '') {
+        if ($image !== null && $image !== false && $image !== '')
+        {
             $this->setAttribute('image', (string)$image);
         }
-        if ($title !== null && $title !== false && $title !== '') {
+        if ($title !== null && $title !== false && $title !== '')
+        {
             $this->setAttribute('title', (string)$title);
         }
-        if ($tooltip !== null && $tooltip !== false && $tooltip !== '') {
+        if ($tooltip !== null && $tooltip !== false && $tooltip !== '')
+        {
             $this->setAttribute('tooltip', (string)$tooltip);
         }
     }
@@ -75,4 +80,6 @@ class Button extends Control
  * File button (legacy alias).
  * TODO: consider removing if unused.
  */
-class File extends Button {}
+class File extends Button
+{
+}

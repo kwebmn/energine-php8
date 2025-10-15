@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -21,11 +22,16 @@ class AuthUser extends User
     public function __construct($id = null)
     {
         // Если сессия уже содержит ID пользователя — используем его
-        if (isset($_SESSION['userID']) && is_numeric($_SESSION['userID'])) {
+        if (isset($_SESSION['userID']) && is_numeric($_SESSION['userID']))
+        {
             $id = (int)$_SESSION['userID'];
-        } elseif (is_numeric($id)) {
+        }
+        elseif (is_numeric($id))
+        {
             $id = (int)$id;
-        } else {
+        }
+        else
+        {
             $id = null;
         }
 
@@ -67,31 +73,36 @@ class AuthUser extends User
             ]
         );
 
-        if (!is_array($rows) || empty($rows)) {
+        if (!is_array($rows) || empty($rows))
+        {
             return false;
         }
 
         $row = array_change_key_case((array)$rows[0], CASE_LOWER);
         $storedHash = (string)($row['u_password'] ?? '');
-        if ($storedHash === '') {
+        if ($storedHash === '')
+        {
             return false;
         }
 
         $isValid = password_verify($password, $storedHash);
         $needsRehash = $isValid && password_needs_rehash($storedHash, PASSWORD_DEFAULT);
 
-        if (!$isValid && self::isLegacyPasswordHash($storedHash)) {
+        if (!$isValid && self::isLegacyPasswordHash($storedHash))
+        {
             $isValid = hash_equals($storedHash, sha1($password));
             $needsRehash = $isValid; // обязательно обновим легаси-хеш
         }
 
-        if (!$isValid) {
+        if (!$isValid)
+        {
             return false;
         }
 
         $userID = (int)($row['u_id'] ?? 0);
 
-        if ($needsRehash && $userID > 0) {
+        if ($needsRehash && $userID > 0)
+        {
             $newHash = self::hashPassword($password);
             E()->getDB()->modify(QAL::UPDATE, 'user_users', ['u_password' => $newHash], ['u_id' => $userID]);
         }

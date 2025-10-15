@@ -1,6 +1,10 @@
 <?php
 namespace App\Image;
 
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
+use Psr\Log\LoggerInterface;
+
 /**
  * Класс ImageService.
  * Предоставляет возможности для динамической генерации изображений
@@ -16,9 +20,9 @@ final class ImageService
      */
     public function render(): void
     {
-        $cacheDir     = (string)E()->getConfigValue('images.cache');
-        $cacheMaxAge  = (int)E()->getConfigValue('images.cache_max_age');
-        $gcInterval   = (int)E()->getConfigValue('images.gc_interval');
+        $cacheDir     = (string)$this->registry()->getConfigValue('images.cache');
+        $cacheMaxAge  = (int)$this->registry()->getConfigValue('images.cache_max_age');
+        $gcInterval   = (int)$this->registry()->getConfigValue('images.gc_interval');
         $tsFile       = rtrim($cacheDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '.gc_timestamp';
 
         $lastRun = is_file($tsFile) ? (int)file_get_contents($tsFile) : 0;
@@ -91,17 +95,64 @@ final class ImageService
     private function logWarning(string $message, array $context = []): void
     {
         try {
-            if (function_exists('E')) {
-                $reg = E();
-                if (isset($reg->logger)) {
-                    $reg->logger->warning($message, $context);
-                    return;
-                }
+            if ($logger = $this->logger()) {
+                $logger->warning($message, $context);
+                return;
             }
         } catch (\Throwable) {
         }
 
         $suffix = $context ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
         error_log($message . $suffix);
+    }
+
+    private function registry(): \Registry
+    {
+        if (function_exists('\\container')) {
+            try {
+                $container = \container();
+                if ($container->has(\Registry::class)) {
+                    $registry = $container->get(\Registry::class);
+                    if ($registry instanceof \Registry) {
+                        return $registry;
+                    }
+                }
+
+                if ($container->has('registry')) {
+                    $registry = $container->get('registry');
+                    if ($registry instanceof \Registry) {
+                        return $registry;
+                    }
+                }
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                // fallback ниже
+            }
+        }
+
+        return \Registry::getInstance();
+    }
+
+    private function logger(): ?LoggerInterface
+    {
+        if (function_exists('\\container')) {
+            try {
+                $container = \container();
+                if ($container->has(LoggerInterface::class)) {
+                    $logger = $container->get(LoggerInterface::class);
+                    if ($logger instanceof LoggerInterface) {
+                        return $logger;
+                    }
+                }
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                // fallback на реестр
+            }
+        }
+
+        $registry = $this->registry();
+        if (isset($registry->logger) && $registry->logger instanceof LoggerInterface) {
+            return $registry->logger;
+        }
+
+        return null;
     }
 }

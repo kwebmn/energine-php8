@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -27,8 +28,10 @@ final class LanguageEditor extends Grid
     {
         $dd = parent::createDataDescription();
 
-        if ($this->getType() !== self::COMPONENT_TYPE_LIST) {
-            if ($fd = $dd->getFieldDescriptionByName('lang_abbr')) {
+        if ($this->getType() !== self::COMPONENT_TYPE_LIST)
+        {
+            if ($fd = $dd->getFieldDescriptionByName('lang_abbr'))
+            {
                 $fd->setProperty('pattern', '/^[a-z]{2}$/');
                 $fd->setProperty('message', 'MSG_BAD_LANG_ABBR');
             }
@@ -49,12 +52,14 @@ final class LanguageEditor extends Grid
 
         parent::add();
 
-        if ($fd = $this->getDataDescription()->getFieldDescriptionByName('lang_default')) {
+        if ($fd = $this->getDataDescription()->getFieldDescriptionByName('lang_default'))
+        {
             $fd->setType(FieldDescription::FIELD_TYPE_HIDDEN);
         }
 
         // На всякий случай нормализуем значение по умолчанию в Data
-        if ($f = $this->getData()->getFieldByName('lang_default')) {
+        if ($f = $this->getData()->getFieldByName('lang_default'))
+        {
             $f->setData('0', true); // single-value
         }
     }
@@ -64,12 +69,15 @@ final class LanguageEditor extends Grid
      *
      * В форме редактирования, если язык по умолчанию — чекбокс делаем read-only.
      */
-    public function build() : DOMDocument
+    public function build(): DOMDocument
     {
-        if ($this->getType() === self::COMPONENT_TYPE_FORM_ALTER) {
+        if ($this->getType() === self::COMPONENT_TYPE_FORM_ALTER)
+        {
             $f = $this->getData()->getFieldByName('lang_default');
-            if ($f && ($f->getRowData(0) === true || $f->getRowData(0) === '1' || $f->getRowData(0) === 1)) {
-                if ($fd = $this->getDataDescription()->getFieldDescriptionByName('lang_default')) {
+            if ($f && ($f->getRowData(0) === true || $f->getRowData(0) === '1' || $f->getRowData(0) === 1))
+            {
+                if ($fd = $this->getDataDescription()->getFieldDescriptionByName('lang_default'))
+                {
                     $fd->setMode(FieldDescription::FIELD_MODE_READ);
                 }
             }
@@ -88,8 +96,10 @@ final class LanguageEditor extends Grid
         $result = parent::loadData();
 
         // Если идёт сохранение — приводим abbr к lowercase
-        if ($this->getState() === 'save' && is_array($result) && isset($result[0])) {
-            if (array_key_exists('lang_abbr', $result[0]) && is_string($result[0]['lang_abbr'])) {
+        if ($this->getState() === 'save' && is_array($result) && isset($result[0]))
+        {
+            if (array_key_exists('lang_abbr', $result[0]) && is_string($result[0]['lang_abbr']))
+            {
                 $result[0]['lang_abbr'] = strtolower($result[0]['lang_abbr']);
             }
         }
@@ -107,7 +117,8 @@ final class LanguageEditor extends Grid
         $currentLangId = (int)$this->document->getLang();
         $defaultLangId = (int)E()->getLanguage()->getDefault();
 
-        if ($currentLangId === $id || $defaultLangId === $id) {
+        if ($currentLangId === $id || $defaultLangId === $id)
+        {
             throw new SystemException('ERR_CANT_DELETE', SystemException::ERR_CRITICAL);
         }
 
@@ -137,7 +148,8 @@ final class LanguageEditor extends Grid
         // 2) Если это сохранение "по умолчанию", очистим признак у остальных
         $isDefaultRequested = isset($_POST[$table]['lang_default']) && $_POST[$table]['lang_default'] !== '0';
 
-        if ($isDefaultRequested) {
+        if ($isDefaultRequested)
+        {
             // ВНИМАНИЕ: Grid::save() уже открыл транзакцию — мы внутри неё.
             // Снимаем default со всех перед сохранением текущей записи.
             $this->dbh->modify(QAL::UPDATE, $table, ['lang_default' => null]);
@@ -153,28 +165,34 @@ final class LanguageEditor extends Grid
 
         // 5) Если это было добавление — создаём "тени" переводов во всех *_translation таблицах,
         //    копируя с default языка.
-        if ($this->saver && $this->saver->getMode() === QAL::INSERT && $langID > 0) {
+        if ($this->saver && $this->saver->getMode() === QAL::INSERT && $langID > 0)
+        {
             $defaultLangID = (int)E()->getLanguage()->getDefault();
 
             // SHOW TABLES LIKE "%_translation"
             $translationTables = $this->dbh->selectRequest('SHOW TABLES LIKE "%_translation"');
-            if ($translationTables) {
-                foreach ($translationTables as $row) {
+            if ($translationTables)
+            {
+                foreach ($translationTables as $row)
+                {
                     $tableName = current($row);
-                    if (!is_string($tableName) || $tableName === '') {
+                    if (!is_string($tableName) || $tableName === '')
+                    {
                         continue;
                     }
 
                     // Столбцы таблицы
                     $cols = array_keys($this->dbh->getColumnsInfo($tableName));
-                    if (empty($cols) || !in_array('lang_id', $cols, true)) {
+                    if (empty($cols) || !in_array('lang_id', $cols, true))
+                    {
                         // Таблица не языковая — пропустим безопасно
                         continue;
                     }
 
                     // Собираем список колонок для INSERT и SELECT-часть, где lang_id подменён на новый $langID
                     $selectParts = [];
-                    foreach ($cols as $colName) {
+                    foreach ($cols as $colName)
+                    {
                         $selectParts[] = ($colName === 'lang_id') ? (string)$langID : $colName;
                     }
 
@@ -192,11 +210,15 @@ final class LanguageEditor extends Grid
         }
 
         // 6) Инвалидируем кеш языков, чтобы новый язык сразу появился в админке/интерфейсе
-        try {
-            if (E()->__isset('psrCache') && method_exists(E()->psrCache, 'invalidateTags')) {
+        try
+        {
+            if (E()->__isset('psrCache') && method_exists(E()->psrCache, 'invalidateTags'))
+            {
                 E()->psrCache->invalidateTags(['langs']);
             }
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             // Молча игнорируем проблемы с кешом, чтобы не мешать сохранению
         }
 

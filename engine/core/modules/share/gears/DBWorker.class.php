@@ -1,5 +1,8 @@
 <?php
+
 declare(strict_types=1);
+
+use Doctrine\DBAL\Connection as DoctrineConnection;
 
 /**
  * Предок для классов, работающих с БД.
@@ -29,7 +32,8 @@ abstract class DBWorker extends BaseObject
     {
         $this->dbh = E()->getDB();
         // Ленивая инициализация prepared statement (на всякий случай оставим и здесь)
-        if (self::$findTranslationSQL === null) {
+        if (self::$findTranslationSQL === null)
+        {
             self::prepareTranslationStatement();
         }
     }
@@ -39,7 +43,8 @@ abstract class DBWorker extends BaseObject
      */
     private static function prepareTranslationStatement(): void
     {
-        try {
+        try
+        {
             $pdo = E()->getDB()->getPDO();
             self::$findTranslationSQL = $pdo->prepare(
                 'SELECT trans.ltag_value_rtf AS translation
@@ -48,7 +53,9 @@ abstract class DBWorker extends BaseObject
                   WHERE ltag.ltag_name = ? AND trans.lang_id = ?
                   LIMIT 1'
             );
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e)
+        {
             // Если PDO недоступен, оставим null: _translate вернет исходную константу
             self::$findTranslationSQL = null;
         }
@@ -60,7 +67,8 @@ abstract class DBWorker extends BaseObject
      */
     public static function _translate(string $const, ?int $langId = null): string
     {
-        if ($const === '') {
+        if ($const === '')
+        {
             return '';
         }
 
@@ -69,7 +77,8 @@ abstract class DBWorker extends BaseObject
         $cacheKey = $langId . ':' . $key;
 
         // 1) Памятный кеш
-        if (isset(self::$translationsCache[$cacheKey])) {
+        if (isset(self::$translationsCache[$cacheKey]))
+        {
             return self::$translationsCache[$cacheKey];
         }
 
@@ -77,14 +86,19 @@ abstract class DBWorker extends BaseObject
         $psrCache = E()->__isset('psrCache') ? E()->psrCache : null;
         $ttl = (int) (BaseObject::_getConfigValue('i18n.cache_ttl', 3600));
 
-        if ($psrCache && method_exists($psrCache, 'get')) {
-            try {
+        if ($psrCache && method_exists($psrCache, 'get'))
+        {
+            try
+            {
                 /** @var string $value */
-                $value = $psrCache->get('i18n.' . md5($cacheKey), function ($item) use ($key, $langId, $ttl) {
-                    if (method_exists($item, 'expiresAfter')) {
+                $value = $psrCache->get('i18n.' . md5($cacheKey), function ($item) use ($key, $langId, $ttl)
+                {
+                    if (method_exists($item, 'expiresAfter'))
+                    {
                         $item->expiresAfter($ttl);
                     }
-                    if (method_exists($item, 'tag')) {
+                    if (method_exists($item, 'tag'))
+                    {
                         // если это TagAware — пометим
                         $item->tag(['i18n', 'i18n_' . $langId]);
                     }
@@ -92,7 +106,9 @@ abstract class DBWorker extends BaseObject
                 });
                 self::$translationsCache[$cacheKey] = $value;
                 return $value;
-            } catch (Throwable $e) {
+            }
+            catch (Throwable $e)
+            {
                 // Падаем обратно на БД/память
             }
         }
@@ -109,22 +125,28 @@ abstract class DBWorker extends BaseObject
      */
     private static function fetchTranslation(string $key, int $langId): string
     {
-        if (self::$findTranslationSQL === null) {
+        if (self::$findTranslationSQL === null)
+        {
             self::prepareTranslationStatement();
         }
         $stmt = self::$findTranslationSQL;
-        if (!$stmt) {
+        if (!$stmt)
+        {
             return $key;
         }
 
-        try {
+        try
+        {
             $ok = $stmt->execute([$key, $langId]);
-            if ($ok) {
+            if ($ok)
+            {
                 $val = $stmt->fetchColumn();
                 $stmt->closeCursor();
                 return ($val !== false && $val !== null && $val !== '') ? (string)$val : $key;
             }
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e)
+        {
             // тихо возвращаем исходную константу — пусть UI живёт
         }
         return $key;
@@ -160,5 +182,13 @@ abstract class DBWorker extends BaseObject
         $year = $month = $day = 0;
         sscanf($date, $format, $year, $month, $day);
         return self::_dateToString((int)$year, (int)$month, (int)$day);
+    }
+
+    /**
+     * Доступ к Doctrine DBAL для новых модулей.
+     */
+    protected function getDbal(): ?DoctrineConnection
+    {
+        return ($this->dbh instanceof DBA) ? $this->dbh->getDbal() : null;
     }
 }

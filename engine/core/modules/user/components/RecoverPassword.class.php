@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -47,9 +48,11 @@ class RecoverPassword extends DataSet
     {
         $data = ['result' => false];
 
-        try {
+        try
+        {
             $uName = (string)($_POST['email'] ?? '');
-            if ($uName === '') {
+            if ($uName === '')
+            {
                 throw new \Exception();
             }
 
@@ -58,7 +61,8 @@ class RecoverPassword extends DataSet
                 'u_id',
                 true
             );
-            if (!$UID) {
+            if (!$UID)
+            {
                 throw new \Exception();
             }
 
@@ -85,7 +89,9 @@ class RecoverPassword extends DataSet
 
             $data['result']  = true;
             $data['message'] = $this->translate('TXT_RECOVER_MESSAGE_SUCCESS');
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $data['message'] = $this->translate('ERR_NO_U_NAME');
         }
 
@@ -104,24 +110,29 @@ class RecoverPassword extends DataSet
             'message' => $this->translate('TXT_ERROR'),
         ];
 
-        try {
+        try
+        {
             $code = (string)($_POST['code'] ?? '');
             $res  = $this->dbh->selectRequest(
                 'SELECT u_id FROM user_users WHERE u_recovery_code = %s AND u_recovery_date > NOW()',
                 $code
             );
 
-            if (!is_array($res) || count($res) === 0) {
+            if (!is_array($res) || count($res) === 0)
+            {
                 throw new SystemException('TXT_RECOVERY_CODE_EXPIRED');
             }
 
-            if (!isset($_POST['password1'], $_POST['password2'])) {
+            if (!isset($_POST['password1'], $_POST['password2']))
+            {
                 throw new SystemException('TXT_ERROR');
             }
-            if ($_POST['password1'] !== $_POST['password2']) {
+            if ($_POST['password1'] !== $_POST['password2'])
+            {
                 throw new SystemException('MSG_PWD_MISMATCH');
             }
-            if (strlen((string)$_POST['password1']) < 6) {
+            if (strlen((string)$_POST['password1']) < 6)
+            {
                 // legacy-поведение — ограничение оставлено пустым
             }
 
@@ -137,7 +148,9 @@ class RecoverPassword extends DataSet
 
             $data['result']  = true;
             $data['message'] = $this->translate('TXT_RECOVERY_COMPLETED');
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $data['message'] = $e->getMessage();
         }
 
@@ -156,7 +169,8 @@ class RecoverPassword extends DataSet
             'SELECT u_id FROM user_users WHERE u_recovery_code = %s AND u_recovery_date > NOW()',
             (string)$code[0]
         );
-        if (!is_array($res) || count($res) === 0) {
+        if (!is_array($res) || count($res) === 0)
+        {
             throw new SystemException('ERR_403', SystemException::ERR_403);
         }
         $this->setProperty('code', (string)$code[0]);

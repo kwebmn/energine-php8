@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -36,38 +37,55 @@ class DBStructureInfo extends BaseObject
         $this->pdo = $pdo;
 
         // 1) Явно переданный кеш
-        if ($cache instanceof \Psr\SimpleCache\CacheInterface) {
+        if ($cache instanceof \Psr\SimpleCache\CacheInterface)
+        {
             $this->psrCache = $cache;
-        } elseif (is_object($cache)) {
+        }
+        elseif (is_object($cache))
+        {
             $this->legacyCache = $cache;
-        } else {
+        }
+        else
+        {
             // 2) Попробуем достать из реестра
-            try {
-                if (function_exists('E')) {
+            try
+            {
+                if (function_exists('E'))
+                {
                     $reg = E();
-                    if (isset($reg->psrCache) && $reg->psrCache instanceof \Psr\SimpleCache\CacheInterface) {
+                    if (isset($reg->psrCache) && $reg->psrCache instanceof \Psr\SimpleCache\CacheInterface)
+                    {
                         $this->psrCache = $reg->psrCache;
-                    } elseif (method_exists($reg, 'getCache')) {
+                    }
+                    elseif (method_exists($reg, 'getCache'))
+                    {
                         $lc = $reg->getCache();
-                        if (is_object($lc)) {
+                        if (is_object($lc))
+                        {
                             $this->legacyCache = $lc;
                         }
                     }
                 }
-            } catch (\Throwable) {
+            }
+            catch (\Throwable)
+            {
                 // тихо
             }
         }
 
         // 3) Попробуем загрузить из кеша (если доступен)
         $loaded = null;
-        if ($this->psrCache) {
+        if ($this->psrCache)
+        {
             $loaded = $this->psrCache->get(Cache::DB_STRUCTURE_KEY);
-        } elseif ($this->legacyCache && method_exists($this->legacyCache, 'isEnabled') && $this->legacyCache->isEnabled()) {
+        }
+        elseif ($this->legacyCache && method_exists($this->legacyCache, 'isEnabled') && $this->legacyCache->isEnabled())
+        {
             $loaded = $this->legacyCache->retrieve(Cache::DB_STRUCTURE_KEY);
         }
 
-        if (is_array($loaded)) {
+        if (is_array($loaded))
+        {
             $this->structure = $loaded;
         }
     }
@@ -78,17 +96,20 @@ class DBStructureInfo extends BaseObject
     public function tableExists(string $tableName): bool
     {
         // кэш уже что-то знает?
-        if (array_key_exists($tableName, $this->structure)) {
+        if (array_key_exists($tableName, $this->structure))
+        {
             return is_array($this->structure[$tableName]);
         }
 
         // разложим имя на БД и таблицу; если БД не указана — берём текущую
         [$db, $tbl] = array_pad(DBA::getFQTableName($tableName, true), 2, null);
-        if (!$tbl) { // пришло только имя таблицы
+        if (!$tbl) // пришло только имя таблицы
+        {
             $tbl = $db; // сдвигаем
             $db  = null;
         }
-        if (!$db) {
+        if (!$db)
+        {
             $db = (string)$this->pdo->query('SELECT DATABASE()')->fetchColumn();
         }
 
@@ -115,7 +136,8 @@ class DBStructureInfo extends BaseObject
     public function getTableMeta(string $tableName): array
     {
         // если уже есть заполненные метаданные — отдадим
-        if (isset($this->structure[$tableName]) && is_array($this->structure[$tableName]) && $this->structure[$tableName] !== []) {
+        if (isset($this->structure[$tableName]) && is_array($this->structure[$tableName]) && $this->structure[$tableName] !== [])
+        {
             return $this->structure[$tableName];
         }
 
@@ -123,12 +145,14 @@ class DBStructureInfo extends BaseObject
         $meta = $this->analyzeTable($tableName);
 
         // если пусто — возможно это VIEW
-        if (!$meta) {
+        if (!$meta)
+        {
             $meta = $this->analyzeView($tableName) ?: [];
         }
 
         // дополним tableName в каждой колонке (совместимость со старым кодом)
-        foreach ($meta as &$col) {
+        foreach ($meta as &$col)
+        {
             $col['tableName'] = $tableName;
         }
 
@@ -146,19 +170,28 @@ class DBStructureInfo extends BaseObject
     {
         $result = [];
         $stmt = $this->pdo->query('SHOW FULL TABLES');
-        if ($stmt) {
+        if ($stmt)
+        {
             // в MySQL колонка называется вроде "Tables_in_db" + "Table_type"
-            while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
+            while ($row = $stmt->fetch(PDO::FETCH_NUM))
+            {
                 $name = (string)($row[0] ?? '');
                 $type = strtolower((string)($row[1] ?? ''));
-                if ($name === '') continue;
+                if ($name === '')
+                {
+                    continue;
+                }
 
-                if ($type === 'view') {
+                if ($type === 'view')
+                {
                     $meta = $this->analyzeView($name) ?: [];
-                } else {
+                }
+                else
+                {
                     $meta = $this->analyzeTable($name) ?: [];
                 }
-                foreach ($meta as &$col) {
+                foreach ($meta as &$col)
+                {
                     $col['tableName'] = $name;
                 }
                 $result[$name] = $meta;
@@ -180,7 +213,8 @@ class DBStructureInfo extends BaseObject
         $db  = $parts[count($parts) - 2] ?? null;
 
         // если база не указана — берём текущую
-        if (!$db) {
+        if (!$db)
+        {
             $db = $this->pdo->query('SELECT DATABASE()')->fetchColumn();
         }
 
@@ -189,26 +223,36 @@ class DBStructureInfo extends BaseObject
         $cols = [];
         $idxs = [];
 
-        try {
+        try
+        {
             // основной путь — быстрый
             $colsStmt = $this->pdo->query("SHOW FULL COLUMNS FROM {$qualified}");
             $idxStmt  = $this->pdo->query("SHOW INDEX FROM {$qualified}");
-            if ($colsStmt) $cols = $colsStmt->fetchAll(PDO::FETCH_ASSOC);
-            if ($idxStmt)  $idxs = $idxStmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\PDOException $e) {
+            if ($colsStmt)
+            {
+                $cols = $colsStmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            if ($idxStmt)
+            {
+                $idxs = $idxStmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+        catch (\PDOException $e)
+        {
             // если это не 1142 — пробрасываем дальше
             $errno = $e->errorInfo[1] ?? null;
-            if ((int)$errno !== 1142) {
+            if ((int)$errno !== 1142)
+            {
                 throw $e;
             }
             // ---- Fallback через information_schema ----
-            $cSql = "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION,
+            $cSql = 'SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION,
                             IS_NULLABLE, COLUMN_DEFAULT
                      FROM information_schema.COLUMNS
-                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
-            $iSql = "SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE
+                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?';
+            $iSql = 'SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE
                      FROM information_schema.STATISTICS
-                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
+                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?';
 
             $st = $this->pdo->prepare($cSql);
             $st->execute([$db, $tbl]);
@@ -222,20 +266,28 @@ class DBStructureInfo extends BaseObject
         // разберём индексы
         $primary = [];
         $mul = [];
-        foreach ($idxs as $r) {
+        foreach ($idxs as $r)
+        {
             $col  = $r['Column_name'] ?? $r['COLUMN_NAME'] ?? null;
             $name = $r['Key_name']    ?? $r['INDEX_NAME']   ?? '';
-            if (!$col) continue;
-            if (strcasecmp($name, 'PRIMARY') === 0) {
+            if (!$col)
+            {
+                continue;
+            }
+            if (strcasecmp($name, 'PRIMARY') === 0)
+            {
                 $primary[$col] = true;
-            } else {
+            }
+            else
+            {
                 $mul[$col] = true;
             }
         }
 
         // соберём метаданные по колонкам
         $meta = [];
-        foreach ($cols as $r) {
+        foreach ($cols as $r)
+        {
             // поддержка обоих источников
             $field = $r['Field']         ?? $r['COLUMN_NAME'];
             $typeS = $r['Type']          ?? $r['DATA_TYPE'];
@@ -244,9 +296,12 @@ class DBStructureInfo extends BaseObject
 
             // длина
             $len = 0;
-            if (isset($r['Type']) && preg_match('/\(([^)]+)\)/', $r['Type'], $m)) {
+            if (isset($r['Type']) && preg_match('/\(([^)]+)\)/', $r['Type'], $m))
+            {
                 $len = (int)$m[1];
-            } else {
+            }
+            else
+            {
                 $len = (int)($r['CHARACTER_MAXIMUM_LENGTH'] ?? $r['NUMERIC_PRECISION'] ?? 0);
             }
 
@@ -271,18 +326,28 @@ class DBStructureInfo extends BaseObject
         $fq   = DBA::getFQTableName($viewName, true);
         $db   = $fq[0] ?? null;
         $tbl  = $fq[1] ?? ($fq[0] ?? null);
-        if (!$tbl) return false;
+        if (!$tbl)
+        {
+            return false;
+        }
 
         $qualified = $db ? ("`{$db}`.`{$tbl}`") : ("`{$tbl}`");
 
         $stmt = $this->pdo->query("SHOW COLUMNS FROM {$qualified}");
-        if (!$stmt) return false;
+        if (!$stmt)
+        {
+            return false;
+        }
 
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        if (!$rows) return false;
+        if (!$rows)
+        {
+            return false;
+        }
 
         $result = [];
-        foreach ($rows as $i => $r) {
+        foreach ($rows as $i => $r)
+        {
             $name    = (string)$r['Field'];
             $typeStr = strtolower((string)$r['Type']);
             $base    = $this->extractBaseType($typeStr);
@@ -309,7 +374,8 @@ class DBStructureInfo extends BaseObject
      */
     private function extractBaseType(string $typeStr): string
     {
-        if (preg_match('~^([a-z]+)~i', $typeStr, $m)) {
+        if (preg_match('~^([a-z]+)~i', $typeStr, $m))
+        {
             return strtolower($m[1]);
         }
         return strtolower($typeStr);
@@ -320,9 +386,11 @@ class DBStructureInfo extends BaseObject
      */
     private function extractLength(string $typeStr, string $base): int
     {
-        if (preg_match('~\(([^)]+)\)~', $typeStr, $m)) {
+        if (preg_match('~\(([^)]+)\)~', $typeStr, $m))
+        {
             $inside = $m[1]; // "255" или "10,2"
-            if (str_contains($inside, ',')) {
+            if (str_contains($inside, ','))
+            {
                 [$p] = explode(',', $inside, 2);
                 return (int)$p;
             }
@@ -340,11 +408,13 @@ class DBStructureInfo extends BaseObject
     {
         // Нормализация: берём базовый тип до первой скобки/пробела (INT, VARCHAR, TINYINT, …)
         $t = strtoupper(trim($mysqlRawType));
-        if (preg_match('/^([A-Z]+)/', $t, $m)) {
+        if (preg_match('/^([A-Z]+)/', $t, $m))
+        {
             $t = $m[1];
         }
 
-        return match ($t) {
+        return match ($t)
+        {
             // целые
             'TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'INTEGER', 'BIGINT', 'YEAR'
             => DBA::COLTYPE_INTEGER,
@@ -381,10 +451,25 @@ class DBStructureInfo extends BaseObject
      */
     private function persistCache(): void
     {
-        if ($this->psrCache) {
-            try { $this->psrCache->set(Cache::DB_STRUCTURE_KEY, $this->structure); } catch (\Throwable) {}
-        } elseif ($this->legacyCache && method_exists($this->legacyCache, 'isEnabled') && $this->legacyCache->isEnabled()) {
-            try { $this->legacyCache->store(Cache::DB_STRUCTURE_KEY, $this->structure); } catch (\Throwable) {}
+        if ($this->psrCache)
+        {
+            try
+            {
+                $this->psrCache->set(Cache::DB_STRUCTURE_KEY, $this->structure);
+            }
+            catch (\Throwable)
+            {
+            }
+        }
+        elseif ($this->legacyCache && method_exists($this->legacyCache, 'isEnabled') && $this->legacyCache->isEnabled())
+        {
+            try
+            {
+                $this->legacyCache->store(Cache::DB_STRUCTURE_KEY, $this->structure);
+            }
+            catch (\Throwable)
+            {
+            }
         }
     }
 }

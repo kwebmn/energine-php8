@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -45,16 +46,22 @@ class Field extends BaseObject implements \Iterator
      */
     public function setData(mixed $data, bool $setForAll = false): self
     {
-        if ($setForAll && $this->getRowCount() > 0) {
+        if ($setForAll && $this->getRowCount() > 0)
+        {
             $data = array_fill(0, $this->getRowCount(), $data);
-        } elseif ($setForAll && $this->getRowCount() === 0 && !is_array($data)) {
+        }
+        elseif ($setForAll && $this->getRowCount() === 0 && !is_array($data))
+        {
             $rowData    = $data;
             $data       = [];
             $langsCount = count(E()->getLanguage()->getLanguages());
-            for ($i = 0; $i < $langsCount; $i++) {
+            for ($i = 0; $i < $langsCount; $i++)
+            {
                 $data[$i] = $rowData;
             }
-        } elseif (!is_array($data)) {
+        }
+        elseif (!is_array($data))
+        {
             $data = [$data];
         }
 
@@ -81,11 +88,13 @@ class Field extends BaseObject implements \Iterator
      */
     public function removeRowData(int $rowIndex): void
     {
-        if (isset($this->data[$rowIndex])) {
+        if (isset($this->data[$rowIndex]))
+        {
             unset($this->data[$rowIndex]);
             $this->data = array_values($this->data);
         }
-        if (isset($this->properties[$rowIndex])) {
+        if (isset($this->properties[$rowIndex]))
+        {
             unset($this->properties[$rowIndex]);
             $this->properties = array_values($this->properties);
         }
@@ -97,9 +106,12 @@ class Field extends BaseObject implements \Iterator
      */
     public function addRowData(mixed $data, bool $toEnd = true): void
     {
-        if ($toEnd) {
+        if ($toEnd)
+        {
             $this->data[] = $data;
-        } else {
+        }
+        else
+        {
             array_unshift($this->data, $data);
             // свойства не сдвигаем автоматически — это ответственность вызывающей стороны
         }
@@ -140,7 +152,8 @@ class Field extends BaseObject implements \Iterator
     /** Задать доп. свойство для строки. */
     public function setRowProperty(int $index, string $propertyName, mixed $propertyValue): void
     {
-        if (!isset($this->properties[$index])) {
+        if (!isset($this->properties[$index]))
+        {
             $this->properties[$index] = [];
         }
         $this->properties[$index][$propertyName] = $propertyValue;

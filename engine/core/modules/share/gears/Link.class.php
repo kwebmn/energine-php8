@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -17,9 +18,18 @@ class Link extends Control
         parent::__construct($id);
         $this->type = 'link';
 
-        if ($action !== null && $action !== '')   { $this->setAttribute('action',  $action);  }
-        if ($title  !== null && $title  !== '')   { $this->setAttribute('title',   $title);   }
-        if ($tooltip !== null && $tooltip !== '') { $this->setAttribute('tooltip', $tooltip); }
+        if ($action !== null && $action !== '')
+        {
+            $this->setAttribute('action', $action);
+        }
+        if ($title  !== null && $title  !== '')
+        {
+            $this->setAttribute('title', $title);
+        }
+        if ($tooltip !== null && $tooltip !== '')
+        {
+            $this->setAttribute('tooltip', $tooltip);
+        }
     }
 
     /**

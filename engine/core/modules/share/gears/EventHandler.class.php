@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -22,10 +23,12 @@ trait EventHandler
         $base = parent::defineParams();
         $new  = $this->eDefineParams();
 
-        if (!is_array($base)) {
+        if (!is_array($base))
+        {
             $base = [];
         }
-        if (!is_array($new)) {
+        if (!is_array($new))
+        {
             $new = [];
         }
 
@@ -125,9 +128,11 @@ trait EventHandler
     public function __call(string $name, array $args): mixed
     {
         // Разрешаем только e*-вызовы как псевдо-события
-        if ($name !== '' && $name[0] === 'e') {
+        if ($name !== '' && $name[0] === 'e')
+        {
             $eventName = 'on' . ucfirst(substr($name, 1));
-            if (is_callable([$this, $eventName])) {
+            if (is_callable([$this, $eventName]))
+            {
                 return $this->$eventName(...$args);
             }
             // Отсутствие обработчика onXxx — это норма: просто ничего не делаем

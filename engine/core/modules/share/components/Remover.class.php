@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -32,13 +33,15 @@ class Remover extends Component
     protected function main(): void
     {
         $componentName = (string)$this->getParam('componentName');
-        if ($componentName === '') {
+        if ($componentName === '')
+        {
             return;
         }
 
         // Ищем целевой блок по имени
         $component = $this->document->componentManager->getBlockByName($componentName);
-        if (!$component) {
+        if (!$component)
+        {
             return;
         }
 
@@ -49,7 +52,8 @@ class Remover extends Component
         // Логика исходника:
         // - Если force=1 и у пользователя ACCESS_FULL и документ НЕ в режиме редактирования — дизейблим.
         // - Иначе, если права меньше ACCESS_FULL — дизейблим.
-        if (($force && $rights === ACCESS_FULL && !$isEditable) || ($rights !== ACCESS_FULL)) {
+        if (($force && $rights === ACCESS_FULL && !$isEditable) || ($rights !== ACCESS_FULL))
+        {
             $component->disable();
         }
     }

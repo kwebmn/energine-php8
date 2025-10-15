@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Site.
@@ -21,7 +22,8 @@ class Site;
 class Site;
 @endcode
  */
-class Site extends DBWorker {
+class Site extends DBWorker
+{
     /**
      * Site data.
      * @var array
@@ -43,23 +45,32 @@ class Site extends DBWorker {
     /**
      * @param array $data Data.
      */
-    public function __construct($data) {
+    public function __construct($data)
+    {
         parent::__construct();
         $this->data = convertFieldNames($data, 'site_');
 
         // Normalize tableExists() result to bool for typed property compatibility
-        if (self::$isPropertiesTableExists === null) {
+        if (self::$isPropertiesTableExists === null)
+        {
             $raw = $this->dbh->tableExists('share_sites_properties');
 
-            if (is_bool($raw)) {
+            if (is_bool($raw))
+            {
                 $exists = $raw;
-            } elseif (is_numeric($raw)) {
+            }
+            elseif (is_numeric($raw))
+            {
                 $exists = ((int)$raw) !== 0;
-            } elseif (is_string($raw)) {
+            }
+            elseif (is_string($raw))
+            {
                 $v = strtolower(trim($raw));
                 // cover common truthy strings returned by various DB layers
                 $exists = in_array($v, ['1', 'true', 't', 'yes', 'y'], true);
-            } else {
+            }
+            else
+            {
                 $exists = (bool)$raw;
             }
 
@@ -72,25 +83,29 @@ class Site extends DBWorker {
      *
      * @return Site[] [site_id => Site]
      */
-    public static function load() {
-        $result = array();
+    public static function load()
+    {
+        $result = [];
 
         // Base site rows
         $res = E()->getDB()->select('share_sites');
-        foreach ($res as $siteData) {
+        foreach ($res as $siteData)
+        {
             $result[$siteData['site_id']] = new Site($siteData);
         }
 
         // Translations cache
         $res = E()->getDB()->select('share_sites_translation');
-        self::$siteTranslationsData = array();
+        self::$siteTranslationsData = [];
 
-        $stripKeys = function ($row) {
+        $stripKeys = function ($row)
+        {
             unset($row['lang_id'], $row['site_id']);
             return $row;
         };
 
-        foreach ($res as $row) {
+        foreach ($res as $row)
+        {
             self::$siteTranslationsData[$row['lang_id']][$row['site_id']] = $stripKeys($row);
         }
 
@@ -102,7 +117,8 @@ class Site extends DBWorker {
      *
      * @param array $domainData
      */
-    public function setDomain($domainData) {
+    public function setDomain($domainData)
+    {
         $this->data = array_merge($this->data, $domainData);
 
         $protocol = $this->data['protocol'] ?? 'http';
@@ -111,7 +127,8 @@ class Site extends DBWorker {
         $root     = $this->data['root'] ?? '/';
 
         // Normalize root to start with "/" and without trailing slash (except "/")
-        if ($root === '' || $root[0] !== '/') {
+        if ($root === '' || $root[0] !== '/')
+        {
             $root = '/' . $root;
         }
 
@@ -124,20 +141,26 @@ class Site extends DBWorker {
      * @param string $propName
      * @return mixed
      */
-    public function __get($propName) {
+    public function __get($propName)
+    {
         $result = null;
 
-        if (isset($this->data[$propName])) {
+        if (isset($this->data[$propName]))
+        {
             // direct property from site row / domain row
             $result = $this->data[$propName];
 
-        } elseif (strtolower($propName) === 'name') {
+        }
+        elseif (strtolower($propName) === 'name')
+        {
             // translated site name
             $langId = E()->getLanguage()->getCurrent();
             $siteId = $this->data['id'];
             $result = $this->data[$propName] = self::$siteTranslationsData[$langId][$siteId]['site_name'] ?? null;
 
-        } elseif (self::$isPropertiesTableExists) {
+        }
+        elseif (self::$isPropertiesTableExists)
+        {
             // extended property from share_sites_properties (site-specific overrides first)
             $res = $this->dbh->getScalar(
                 'SELECT prop_value FROM share_sites_properties
@@ -149,7 +172,8 @@ class Site extends DBWorker {
                 $this->data['id']
             );
 
-            if ($res !== false) {
+            if ($res !== false)
+            {
                 $this->data[$propName] = $res;
                 $result = $res;
             }

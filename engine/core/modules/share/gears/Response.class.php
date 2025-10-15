@@ -1,9 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
-use Symfony\Component\HttpFoundation\Response as SResponse;
-use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\Response as SResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 /**
@@ -31,7 +32,10 @@ final class Response extends BaseObject
     /** Поддержка %lang% и %site% в ссылках для редиректа */
     public static function prepareRedirectURL($redirectURL)
     {
-        if (empty($redirectURL)) return $redirectURL;
+        if (empty($redirectURL))
+        {
+            return $redirectURL;
+        }
         $lang = E()->getLanguage();
 
         return str_replace(
@@ -60,11 +64,15 @@ final class Response extends BaseObject
     /** Cookie как и раньше (domain/path по старым правилам) */
     public function addCookie($name = UserSession::DEFAULT_SESSION_NAME, $value = '', $expire = 0, $domain = false, $path = '/')
     {
-        if (!$domain) {
-            if ($confDomain = $this->getConfigValue('site.domain')) {
+        if (!$domain)
+        {
+            if ($confDomain = $this->getConfigValue('site.domain'))
+            {
                 $domain = '.' . $confDomain;
                 $path   = '/';
-            } else {
+            }
+            else
+            {
                 $path   = E()->getSiteManager()->getCurrentSite()->root;
                 $domain = E()->getSiteManager()->getCurrentSite()->domain;
             }
@@ -91,10 +99,15 @@ final class Response extends BaseObject
     }
 
     /** В HttpFoundation куки уезжают с заголовками; оставляем для совместимости */
-    public function sendCookies() { /* no-op */ }
+    public function sendCookies()
+    { /* no-op */
+    }
 
     /** Только заголовки (без тела) */
-    public function sendHeaders() { $this->resp->sendHeaders(); }
+    public function sendHeaders()
+    {
+        $this->resp->sendHeaders();
+    }
 
     /** Удалить cookie (ставим истёкшую дату) */
     public function deleteCookie($name)
@@ -107,7 +120,8 @@ final class Response extends BaseObject
     /** Редирект и немедленный commit() */
     public function setRedirect($location, $status = 302)
     {
-        if (!in_array((int)$status, [301, 302], true)) {
+        if (!in_array((int)$status, [301, 302], true))
+        {
             throw new InvalidArgumentException('Invalid redirect status');
         }
 
@@ -122,7 +136,10 @@ final class Response extends BaseObject
     /** Редирект на текущий раздел с опциональным action */
     public function redirectToCurrentSection($action = '')
     {
-        if ($action && substr($action, -1) !== '/') { $action .= '/'; }
+        if ($action && substr($action, -1) !== '/')
+        {
+            $action .= '/';
+        }
         $request = E()->getRequest();
 
         $this->setRedirect(
@@ -143,9 +160,18 @@ final class Response extends BaseObject
     /** Назад (по return/referrer) */
     public function goBack()
     {
-        if (isset($_GET['return']))          { $url = (string)$_GET['return']; }
-        elseif (isset($_SERVER['HTTP_REFERER'])) { $url = (string)$_SERVER['HTTP_REFERER']; }
-        else                                   { $url = (string)E()->getSiteManager()->getCurrentSite()->root; }
+        if (isset($_GET['return']))
+        {
+            $url = (string)$_GET['return'];
+        }
+        elseif (isset($_SERVER['HTTP_REFERER']))
+        {
+            $url = (string)$_SERVER['HTTP_REFERER'];
+        }
+        else
+        {
+            $url = (string)E()->getSiteManager()->getCurrentSite()->root;
+        }
 
         $this->setHeader('Location', $url);
         $this->setStatus(302);
@@ -161,14 +187,18 @@ final class Response extends BaseObject
         $this->setHeader('X-Accel-Expires', '0');
     }
 
-    /** Финальная отправка (gzip — как в старом коде) */
-    public function commit()
+    /**
+     * Подготовить HttpFoundation-ответ (с учётом gzip-настроек Energine).
+     */
+    public function toHttpFoundationResponse(): SResponse
     {
-        if ($this->resp->getContent() !== $this->body) {
-            $this->resp->setContent($this->body);
-        }
+        $response = clone $this->resp;
 
-        $contents = (string)$this->resp->getContent();
+        $body = $this->body;
+        if ($response->getContent() !== $body)
+        {
+            $response->setContent($body);
+        }
 
         $shouldCompress =
             (bool)BaseObject::_getConfigValue('site.compress')
@@ -176,50 +206,73 @@ final class Response extends BaseObject
             && str_contains($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip')
             && !(bool)BaseObject::_getConfigValue('site.debug');
 
-        if ($shouldCompress) {
-            $this->resp->headers->set('Vary', 'Accept-Encoding');
-            $this->resp->headers->set('Content-Encoding', 'gzip');
-            $contents = gzencode($contents, 6);
-            $this->resp->setContent($contents);
+        if ($shouldCompress)
+        {
+            $response->headers->set('Vary', 'Accept-Encoding');
+            $response->headers->set('Content-Encoding', 'gzip');
+            $body = gzencode((string)$response->getContent(), 6);
+            $response->setContent($body);
             // при желании можно выставить Content-Length
-            // $this->resp->headers->set('Content-Length', (string)strlen($contents));
+            // $response->headers->set('Content-Length', (string)strlen($body));
         }
 
-        $this->resp->send();
+        return $response;
+    }
+
+    /** Финальная отправка (gzip — как в старом коде) */
+    public function commit()
+    {
+        $response = $this->toHttpFoundationResponse();
+        $response->send();
         session_write_close();
         exit;
     }
 
+    /** Получить «сырой» Symfony Response. */
+    public function raw(): SResponse
+    {
+        return $this->resp;
+    }
+
     /* ===== Удобные хелперы ===== */
 
-    public function text(string $content, int $status = 200): void {
+    public function text(string $content, int $status = 200): void
+    {
         $this->setStatus($status);
         $this->setHeader('Content-Type', 'text/plain; charset=utf-8');
         $this->write($content);
     }
 
-    public function html(string $content, int $status = 200): void {
+    public function html(string $content, int $status = 200): void
+    {
         $this->setStatus($status);
         $this->setHeader('Content-Type', 'text/html; charset=utf-8');
         $this->write($content);
     }
 
-    public function json(mixed $data, int $status = 200): void {
+    public function json(mixed $data, int $status = 200): void
+    {
         $this->setStatus($status);
         $this->setHeader('Content-Type', 'application/json; charset=utf-8');
-        $this->write(json_encode($data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        $this->write(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
-    public function noContent(int $status = 204): void {
+    public function noContent(int $status = 204): void
+    {
         $this->setStatus($status);
         $this->write('');
     }
 
     /** Отдать файл inline */
-    public function file(string $path): void {
+    public function file(string $path): void
+    {
         $r = new BinaryFileResponse($path);
-        foreach ($this->resp->headers->allPreserveCase() as $n => $vals) {
-            foreach ($vals as $v) { $r->headers->set($n, $v, false); }
+        foreach ($this->resp->headers->allPreserveCase() as $n => $vals)
+        {
+            foreach ($vals as $v)
+            {
+                $r->headers->set($n, $v, false);
+            }
         }
         $r->setPrivate();
         $r->prepare(\Symfony\Component\HttpFoundation\Request::createFromGlobals());
@@ -229,14 +282,19 @@ final class Response extends BaseObject
     }
 
     /** Скачать файл как attachment */
-    public function download(string $path, ?string $downloadAs = null): void {
+    public function download(string $path, ?string $downloadAs = null): void
+    {
         $r = new BinaryFileResponse($path);
         $r->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
             $downloadAs ?: basename($path),
         );
-        foreach ($this->resp->headers->allPreserveCase() as $n => $vals) {
-            foreach ($vals as $v) { $r->headers->set($n, $v, false); }
+        foreach ($this->resp->headers->allPreserveCase() as $n => $vals)
+        {
+            foreach ($vals as $v)
+            {
+                $r->headers->set($n, $v, false);
+            }
         }
         $r->prepare(\Symfony\Component\HttpFoundation\Request::createFromGlobals());
         $r->send();
@@ -245,14 +303,22 @@ final class Response extends BaseObject
     }
 
     /** Кеш-хелперы */
-    public function cacheFor(int $seconds): void { $this->setHeader('Cache-Control', "public, max-age={$seconds}"); }
-    public function setETag(string $etag): void  { $this->setHeader('ETag', $etag); }
-    public function setLastModified(\DateTimeInterface $dt): void {
+    public function cacheFor(int $seconds): void
+    {
+        $this->setHeader('Cache-Control', "public, max-age={$seconds}");
+    }
+    public function setETag(string $etag): void
+    {
+        $this->setHeader('ETag', $etag);
+    }
+    public function setLastModified(\DateTimeInterface $dt): void
+    {
         $this->setHeader('Last-Modified', gmdate('D, d M Y H:i:s', $dt->getTimestamp()).' GMT');
     }
 
     /** Vary и CORS */
-    public function vary(string ...$headers): void {
+    public function vary(string ...$headers): void
+    {
         $cur  = $this->resp->headers->get('Vary');
         $list = array_filter(array_map('trim', explode(',', (string)$cur)));
         $list = array_unique(array_merge($list, $headers));
@@ -268,20 +334,64 @@ final class Response extends BaseObject
         $this->setHeader('Access-Control-Allow-Origin', $origin);
         $this->setHeader('Access-Control-Allow-Methods', implode(',', $methods));
         $this->setHeader('Access-Control-Allow-Headers', implode(',', $headers));
-        if ($credentials) $this->setHeader('Access-Control-Allow-Credentials', 'true');
+        if ($credentials)
+        {
+            $this->setHeader('Access-Control-Allow-Credentials', 'true');
+        }
     }
 
     /** Аккуратная работа с заголовками */
-    public function setHeaderIfNotSet(string $name, string $value): void {
-        if (!$this->resp->headers->has($name)) $this->setHeader($name, $value);
+    public function setHeaderIfNotSet(string $name, string $value): void
+    {
+        if (!$this->resp->headers->has($name))
+        {
+            $this->setHeader($name, $value);
+        }
     }
-    public function clearHeader(string $name): void { $this->resp->headers->remove($name); }
-    public function clearHeaders(): void {
-        foreach (array_keys($this->resp->headers->all()) as $h) $this->resp->headers->remove($h);
+    public function clearHeader(string $name): void
+    {
+        $this->resp->headers->remove($name);
+    }
+    public function clearHeaders(): void
+    {
+        foreach (array_keys($this->resp->headers->all()) as $h)
+        {
+            $this->resp->headers->remove($h);
+        }
     }
 
     /** Быстрый текстовый ответ-ошибка */
-    public function error(int $status, string $message = 'Error'): void {
+    public function error(int $status, string $message = 'Error'): void
+    {
         $this->text($message, $status);
+    }
+
+    /** Проксируем методы HttpFoundation Response. */
+    public function __call(string $name, array $arguments): mixed
+    {
+        if (!method_exists($this->resp, $name))
+        {
+            throw new \BadMethodCallException(sprintf('Method %s::%s does not exist', self::class, $name));
+        }
+
+        return $this->resp->$name(...$arguments);
+    }
+
+    /** Доступ к публичным свойствам HttpFoundation Response. */
+    public function __get(string $name): mixed
+    {
+        if (property_exists($this->resp, $name))
+        {
+            return $this->resp->$name;
+        }
+
+        trigger_error(sprintf('Undefined property: %s::$%s', self::class, $name), E_USER_NOTICE);
+
+        return null;
+    }
+
+    public function __isset(string $name): bool
+    {
+        return property_exists($this->resp, $name) && isset($this->resp->$name);
     }
 }

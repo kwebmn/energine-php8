@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -30,13 +31,17 @@ final class RoleEditor extends Grid
      * В форме редактирования — если флажок "по умолчанию" уже установлен,
      * делаем соответствующие поля только для чтения.
      */
-    public function build() : DOMDocument
+    public function build(): DOMDocument
     {
-        if ($this->getType() === self::COMPONENT_TYPE_FORM_ALTER) {
-            foreach ($this->uniqueFields as $fieldName) {
+        if ($this->getType() === self::COMPONENT_TYPE_FORM_ALTER)
+        {
+            foreach ($this->uniqueFields as $fieldName)
+            {
                 $f = $this->getData()->getFieldByName($fieldName);
-                if ($f && ($f->getRowData(0) === true || $f->getRowData(0) === 1 || $f->getRowData(0) === '1')) {
-                    if ($fd = $this->getDataDescription()->getFieldDescriptionByName($fieldName)) {
+                if ($f && ($f->getRowData(0) === true || $f->getRowData(0) === 1 || $f->getRowData(0) === '1'))
+                {
+                    if ($fd = $this->getDataDescription()->getFieldDescriptionByName($fieldName))
+                    {
                         $fd->setMode(FieldDescription::FIELD_MODE_READ);
                     }
                 }
@@ -55,9 +60,12 @@ final class RoleEditor extends Grid
     {
         $result = parent::loadData();
 
-        if ($this->getState() === 'save' && is_array($result) && isset($result[0])) {
-            foreach ($this->uniqueFields as $fieldName) {
-                if (!empty($result[0][$fieldName])) {
+        if ($this->getState() === 'save' && is_array($result) && isset($result[0]))
+        {
+            foreach ($this->uniqueFields as $fieldName)
+            {
+                if (!empty($result[0][$fieldName]))
+                {
                     // Снимаем признак у всех перед сохранением текущей записи.
                     $this->dbh->modify(QAL::UPDATE, $this->getTableName(), [$fieldName => false]);
                 }
@@ -76,9 +84,11 @@ final class RoleEditor extends Grid
     {
         $dd = parent::createDataDescription();
 
-        if ($this->getType() !== self::COMPONENT_TYPE_LIST) {
+        if ($this->getType() !== self::COMPONENT_TYPE_LIST)
+        {
             // Все поля — на вкладку редактора ролей
-            foreach ($dd as $fd) {
+            foreach ($dd as $fd)
+            {
                 $fd->setProperty('tabName', $this->translate('TXT_ROLE_EDITOR'));
             }
 
@@ -129,7 +139,8 @@ final class RoleEditor extends Grid
             'Id'
         );
 
-        foreach ($data as $smapID => $smapInfo) {
+        foreach ($data as $smapID => $smapInfo)
+        {
             $siteId = (int)$smapInfo['Site'];
             $data[$smapID]['RightsId'] = E()->getMap($siteId)->getDocumentRights($smapID, $groupId);
             $data[$smapID]['Site']     = E()->getSiteManager()->getSiteByID($siteId)->name;
@@ -162,14 +173,16 @@ final class RoleEditor extends Grid
 
         $f = new FieldDescription('RightsId');
         $f->setType(FieldDescription::FIELD_TYPE_SELECT);
-        if ($this->getState() === 'view') {
+        if ($this->getState() === 'view')
+        {
             $f->setMode(FieldDescription::FIELD_MODE_READ);
         }
 
         // Список прав (добавляем NO_RIGHTS)
         $rights = $this->dbh->select('user_group_rights', ['right_id', 'right_const']) ?: [];
         $rights = array_merge([['right_id' => 0, 'right_const' => 'NO_RIGHTS']], $rights);
-        foreach ($rights as $k => $row) {
+        foreach ($rights as $k => $row)
+        {
             $rights[$k]['right_const'] = $this->translate('TXT_' . $row['right_const']);
         }
         $f->loadAvailableValues($rights, 'right_id', 'right_const');
@@ -191,7 +204,8 @@ final class RoleEditor extends Grid
         /** @var Data $data */
         $data = parent::createData();
 
-        if ($this->getType() !== self::COMPONENT_TYPE_LIST) {
+        if ($this->getType() !== self::COMPONENT_TYPE_LIST)
+        {
             $f = new Field('group_div_rights');
             $f->setData($this->buildDivRightsData());
             $data->addField($f);
@@ -205,7 +219,7 @@ final class RoleEditor extends Grid
      *
      * Сохраняет права на разделы из POST['div_right'].
      */
-    protected function saveData() : mixed
+    protected function saveData(): mixed
     {
         $result = parent::saveData();
 
@@ -214,11 +228,14 @@ final class RoleEditor extends Grid
         // Пересобираем права
         $this->dbh->modify(QAL::DELETE, 'share_access_level', null, ['group_id' => $roleID]);
 
-        if (!empty($_POST['div_right']) && is_array($_POST['div_right'])) {
-            foreach ($_POST['div_right'] as $smapID => $rightID) {
+        if (!empty($_POST['div_right']) && is_array($_POST['div_right']))
+        {
+            foreach ($_POST['div_right'] as $smapID => $rightID)
+            {
                 $smapID  = (int)$smapID;
                 $rightID = (int)$rightID;
-                if ($rightID > 0) {
+                if ($rightID > 0)
+                {
                     $this->dbh->modify(
                         QAL::INSERT,
                         'share_access_level',
@@ -239,16 +256,17 @@ final class RoleEditor extends Grid
     public function deleteData(int|string $id): void
     {
         $isDefault = (int)$this->dbh->getScalar(
-                'SELECT COALESCE(group_default,0) FROM ' . $this->getTableName() . ' WHERE group_id=%s',
-                $id
-            ) === 1;
+            'SELECT COALESCE(group_default,0) FROM ' . $this->getTableName() . ' WHERE group_id=%s',
+            $id
+        ) === 1;
 
         $isUserDefault = (int)$this->dbh->getScalar(
-                'SELECT COALESCE(group_user_default,0) FROM ' . $this->getTableName() . ' WHERE group_id=%s',
-                $id
-            ) === 1;
+            'SELECT COALESCE(group_user_default,0) FROM ' . $this->getTableName() . ' WHERE group_id=%s',
+            $id
+        ) === 1;
 
-        if ($isDefault || $isUserDefault) {
+        if ($isDefault || $isUserDefault)
+        {
             throw new SystemException('ERR_DEFAULT_GROUP', SystemException::ERR_NOTICE);
         }
 

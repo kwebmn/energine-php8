@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Filter
@@ -132,7 +133,8 @@ class Filter extends BaseObject
         ];
 
         // Сохранение обратной совместимости: поддерживаем автозагрузку данных из $_POST['filter']
-        if (isset($_POST[self::TAG_NAME]) && !empty($_POST[self::TAG_NAME])) {
+        if (isset($_POST[self::TAG_NAME]) && !empty($_POST[self::TAG_NAME]))
+        {
             $this->setData($_POST[self::TAG_NAME]);
         }
     }
@@ -146,10 +148,11 @@ class Filter extends BaseObject
      */
     public function setData(array $data): void
     {
-        if (!isset($data['condition']) || !in_array($data['condition'], array_keys($this->map), true)) {
+        if (!isset($data['condition']) || !in_array($data['condition'], array_keys($this->map), true))
+        {
             throw new SystemException('ERR_BAD_FILTER_DATA', SystemException::ERR_CRITICAL, $data);
         }
-        $this->condition = $data['condition'];        
+        $this->condition = $data['condition'];
         unset($data['condition']);
         $this->data = $data;
     }
@@ -162,8 +165,9 @@ class Filter extends BaseObject
      */
     public function apply(Grid $grid): void
     {
-        
-        if (!$this->data) {
+
+        if (!$this->data)
+        {
             return;
         }
 
@@ -173,7 +177,7 @@ class Filter extends BaseObject
         $tableName = key($this->data);
         $fieldName = key($this->data[$tableName]);
         $values = $this->normalizeValues($this->data[$tableName][$fieldName]);
-        
+
         if (
             !$dbh->tableExists($tableName) ||
             !($tableInfo = $dbh->getColumnsInfo($tableName)) ||
@@ -183,7 +187,8 @@ class Filter extends BaseObject
         }
 
         // FK-поле?
-        if (is_array($tableInfo[$fieldName]['key'])) {
+        if (is_array($tableInfo[$fieldName]['key']))
+        {
             $this->applyForeignKeyFilter($grid, $dbh, $tableInfo[$fieldName]['key'], $values);
             return;
         }
@@ -211,14 +216,16 @@ class Filter extends BaseObject
         // Имя поля для SQL
         $qualifiedField = ($tableName ? ($tableName . '.') : '') . $fieldName;
         $isDateType = in_array($fdType, [FieldDescription::FIELD_TYPE_DATETIME, FieldDescription::FIELD_TYPE_DATE], true);
-        if ($fdType === FieldDescription::FIELD_TYPE_DATETIME) {
+        if ($fdType === FieldDescription::FIELD_TYPE_DATETIME)
+        {
             // Сравниваем только по дате (как в оригинале)
             $qualifiedField = 'DATE(' . $qualifiedField . ')';
         }
 
         // Получаем локальную копию шаблона (НЕ мутируя $this->map)
         $pattern = $this->map[$operator]['condition'];
-        if ($isDateType) {
+        if ($isDateType)
+        {
             // Встроим оборачивание в DATE() только в ЛОКАЛЬНЫЙ шаблон
             $pattern = str_replace("'%s'", "DATE('%s')", $pattern);
         }
@@ -230,11 +237,12 @@ class Filter extends BaseObject
         $conditionSql = $qualifiedField . ' ' . vsprintf($pattern, $safeValues) . ' ';
 
         // Для LIKE-операторов добавим ESCAPE, чтобы экранирование \ работало предсказуемо
-        if (in_array($operator, ['like', 'notlike'], true)) {
+        if (in_array($operator, ['like', 'notlike'], true))
+        {
             $conditionSql .= "ESCAPE '\\\\' ";
         }
 
-        
+
         $grid->addFilterCondition($conditionSql);
     }
 
@@ -249,7 +257,8 @@ class Filter extends BaseObject
         $fkKey = $fk['fieldName'];
         $fkValueField = substr($fkKey, 0, strrpos($fkKey, '_')) . '_name';
         $fkTableInfo = $dbh->getColumnsInfo($fkTable);
-        if (!isset($fkTableInfo[$fkValueField])) {
+        if (!isset($fkTableInfo[$fkValueField]))
+        {
             $fkValueField = $fkKey; // fallback: ищем по ключу
         }
 
@@ -262,14 +271,18 @@ class Filter extends BaseObject
         $safeValues = $this->sanitizeValuesForPattern($values, FieldDescription::FIELD_TYPE_STRING, $operator, $pdo);
 
         $where = $fkTable . '.' . $fkValueField . ' ' . vsprintf($pattern, $safeValues) . ' ';
-        if (in_array($operator, ['like', 'notlike'], true)) {
+        if (in_array($operator, ['like', 'notlike'], true))
+        {
             $where .= "ESCAPE '\\\\' ";
         }
 
-        if ($res = $dbh->getColumn($fkTable, $fkKey, $where)) {
+        if ($res = $dbh->getColumn($fkTable, $fkKey, $where))
+        {
             // Передаём IN через массив (как и раньше)
             $grid->addFilterCondition([$fk['tableName'] . '.' . $fk['fieldName'] => $res]);
-        } else {
+        }
+        else
+        {
             $grid->addFilterCondition(' FALSE');
         }
     }
@@ -282,7 +295,8 @@ class Filter extends BaseObject
      */
     private function normalizeValues($values): array
     {
-        if (is_array($values)) {
+        if (is_array($values))
+        {
             return $values;
         }
         return [$values];
@@ -298,12 +312,17 @@ class Filter extends BaseObject
     private function validateOperatorValues(string $operator, array $values): void
     {
         $placeholders = substr_count($this->map[$operator]['condition'], '%s');
-        if ($operator === 'between') {
-            if (count($values) !== 2) {
+        if ($operator === 'between')
+        {
+            if (count($values) !== 2)
+            {
                 throw new SystemException('ERR_BAD_FILTER_DATA', SystemException::ERR_CRITICAL, $values);
             }
-        } else {
-            if (count($values) < 1 || count($values) > max(1, $placeholders)) {
+        }
+        else
+        {
+            if (count($values) < 1 || count($values) > max(1, $placeholders))
+            {
                 throw new SystemException('ERR_BAD_FILTER_DATA', SystemException::ERR_CRITICAL, $values);
             }
         }
@@ -323,9 +342,11 @@ class Filter extends BaseObject
     private function sanitizeValuesForPattern(array $values, string $fdType, string $operator, PDO $pdo): array
     {
         $out = [];
-        foreach ($values as $v) {
+        foreach ($values as $v)
+        {
             // Нормализация дат
-            if (in_array($fdType, [FieldDescription::FIELD_TYPE_DATE, FieldDescription::FIELD_TYPE_DATETIME], true)) {
+            if (in_array($fdType, [FieldDescription::FIELD_TYPE_DATE, FieldDescription::FIELD_TYPE_DATETIME], true))
+            {
                 $ts = strtotime((string)$v);
                 $v = ($ts !== false)
                     ? date('Y-m-d', $ts) // так как сравниваем по DATE()
@@ -333,7 +354,8 @@ class Filter extends BaseObject
             }
 
             // LIKE-поиск — экранируем спецсимволы, чтобы они не работали как шаблон
-            if (in_array($operator, ['like', 'notlike'], true)) {
+            if (in_array($operator, ['like', 'notlike'], true))
+            {
                 $v = $this->escapeForLike((string)$v);
             }
 
@@ -350,7 +372,8 @@ class Filter extends BaseObject
                 FieldDescription::FIELD_TYPE_SELECT,
                 FieldDescription::FIELD_TYPE_DATE,
                 FieldDescription::FIELD_TYPE_DATETIME,
-            ], true)) {
+            ], true))
+            {
                 $q = $pdo->quote((string)$v);
                 // PDO::quote возвращает строку в одинарных кавычках — удалим их, оставив экранирование внутренних символов
                 $q = ($q !== false && strlen($q) >= 2) ? substr($q, 1, -1) : addslashes((string)$v);
@@ -359,13 +382,20 @@ class Filter extends BaseObject
             }
 
             // Числа / bool — приводим к строке
-            if ($fdType === FieldDescription::FIELD_TYPE_INT) {
+            if ($fdType === FieldDescription::FIELD_TYPE_INT)
+            {
                 $out[] = (string)(int)$v;
-            } elseif ($fdType === FieldDescription::FIELD_TYPE_FLOAT) {
+            }
+            elseif ($fdType === FieldDescription::FIELD_TYPE_FLOAT)
+            {
                 $out[] = (string)str_replace(',', '.', (string)$v);
-            } elseif ($fdType === FieldDescription::FIELD_TYPE_BOOL) {
+            }
+            elseif ($fdType === FieldDescription::FIELD_TYPE_BOOL)
+            {
                 $out[] = ((int)(bool)$v) ? '1' : '0';
-            } else {
+            }
+            else
+            {
                 // дефолт: как строка, с экранированием
                 $q = $pdo->quote((string)$v);
                 $out[] = ($q !== false && strlen($q) >= 2) ? substr($q, 1, -1) : addslashes((string)$v);
@@ -398,7 +428,8 @@ class Filter extends BaseObject
      */
     public function detachField(FilterField $field): void
     {
-        if (!isset($this->fields[$field->getIndex()])) {
+        if (!isset($this->fields[$field->getIndex()]))
+        {
             throw new SystemException('ERR_DEV_NO_CONTROL_TO_DETACH', SystemException::ERR_DEVELOPER);
         }
         unset($this->fields[$field->getIndex()]);
@@ -412,13 +443,16 @@ class Filter extends BaseObject
      * @return void
      * @throws SystemException
      */
-    public function load(SimpleXMLElement $filterDescription, array $meta = null)
+    public function load(SimpleXMLElement $filterDescription, ?array $meta = null)
     {
-        if (empty($filterDescription)) {
+        if (empty($filterDescription))
+        {
             return;
         }
-        foreach ($filterDescription->field as $fieldDescription) {
-            if (!isset($fieldDescription['name'])) {
+        foreach ($filterDescription->field as $fieldDescription)
+        {
+            if (!isset($fieldDescription['name']))
+            {
                 throw new SystemException('ERR_BAD_FILTER_XML', SystemException::ERR_DEVELOPER);
             }
             $name = (string)$fieldDescription['name'];
@@ -453,7 +487,8 @@ class Filter extends BaseObject
      */
     public function build()
     {
-        if (!count($this->fields)) {
+        if (!count($this->fields))
+        {
             return false;
         }
 
@@ -465,9 +500,11 @@ class Filter extends BaseObject
         $filterElem->setAttribute('apply', DBWorker::_translate('BTN_APPLY_FILTER'));
         $filterElem->setAttribute('reset', DBWorker::_translate('TXT_RESET_FILTER'));
 
-        if (!empty($this->properties)) {
+        if (!empty($this->properties))
+        {
             $props = $this->doc->createElement('properties');
-            foreach ($this->properties as $propName => $propValue) {
+            foreach ($this->properties as $propName => $propValue)
+            {
                 $prop = $this->doc->createElement('property');
                 $prop->setAttribute('name', $propName);
                 $prop->appendChild($this->doc->createTextNode($propValue));
@@ -478,13 +515,15 @@ class Filter extends BaseObject
 
         // Доступные операторы + типы
         $operatorsNode = $this->doc->createElement('operators');
-        foreach ($this->map as $operatorName => $operator) {
+        foreach ($this->map as $operatorName => $operator)
+        {
             $operatorNode = $this->doc->createElement('operator');
             $operatorNode->setAttribute('title', $operator['title']);
             $operatorNode->setAttribute('name', $operatorName);
 
             $typesNode = $this->doc->createElement('types');
-            foreach ($operator['type'] as $typeName) {
+            foreach ($operator['type'] as $typeName)
+            {
                 $typesNode->appendChild($this->doc->createElement('type', $typeName));
             }
             $operatorNode->appendChild($typesNode);
@@ -493,7 +532,8 @@ class Filter extends BaseObject
         $filterElem->appendChild($operatorsNode);
 
         // Поля
-        foreach ($this->fields as $field) {
+        foreach ($this->fields as $field)
+        {
             $filterElem->appendChild($this->doc->importNode($field->build(), true));
         }
 
@@ -503,7 +543,8 @@ class Filter extends BaseObject
 
     private function translateFields(): void
     {
-        foreach ($this->fields as $field) {
+        foreach ($this->fields as $field)
+        {
             $field->translate();
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * ComponentConfig.
@@ -16,13 +17,14 @@ class ComponentConfig;
 class ComponentConfig;
 @endcode
  */
-class ComponentConfig {
+class ComponentConfig
+{
     /**
      * Site configuration directory.
      * Path to the directory, that contains configuration files for the component.
      * @var string SITE_CONFIG_DIR
      */
-    const SITE_CONFIG_DIR = '/modules/%s/config/';
+    public const SITE_CONFIG_DIR = '/modules/%s/config/';
 
     /**
      * Core configuration directory.
@@ -32,7 +34,7 @@ class ComponentConfig {
      *
      * @note @c %s will be substituted to the module name, that contains the component.
      */
-    const CORE_CONFIG_DIR = '/modules/%s/config/';
+    public const CORE_CONFIG_DIR = '/modules/%s/config/';
 
     /**
      * Configuration file.
@@ -57,22 +59,31 @@ class ComponentConfig {
      * @throws SystemException 'ERR_DEV_BAD_CONFIG_FILE'
      * @throws SystemException 'ERR_DEV_STRANGE'
      */
-    public function __construct(mixed $config, string $className, string $moduleName) {
+    public function __construct(mixed $config, string $className, string $moduleName)
+    {
         //Если это строка(с именем файла) или false
-        if (!$config || is_string($config)) {
+        if (!$config || is_string($config))
+        {
             $config = ($param = $this->getConfigPath($config, $moduleName)) ? $param
                 : $this->getConfigPath($className . '.component.xml', $moduleName);
-            if ($config) {
-                try {
+            if ($config)
+            {
+                try
+                {
                     $this->config = simplexml_load_file($config /*, 'ConfigElement'*/);
-                } catch (Exception  $e) {
+                }
+                catch (Exception  $e)
+                {
                     throw new SystemException('ERR_DEV_BAD_CONFIG_FILE', SystemException::ERR_DEVELOPER, $config);
                 }
             }
         } //А может это конфиг из шаблона?
-        elseif (is_a($config, 'SimpleXMLElement')) {
+        elseif (is_a($config, 'SimpleXMLElement'))
+        {
             $this->config = $config;
-        } else {
+        }
+        else
+        {
             //Этого не может быть
             throw new SystemException('ERR_DEV_STRANGE', SystemException::ERR_DEVELOPER, func_get_args());
             //поскольку быть этого не может никогда
@@ -88,18 +99,23 @@ class ComponentConfig {
      * @param string $moduleName Module name.
      * @return string|bool
      */
-    private function getConfigPath($configFilename, $moduleName) {
+    private function getConfigPath($configFilename, $moduleName)
+    {
         $file = false;
 
         // Новое: если это уже абсолютный путь и файл существует — берём его сразу (совместимо, не ломает старое)
-        if ($configFilename && file_exists($configFilename)) {
+        if ($configFilename && file_exists($configFilename))
+        {
             return $configFilename;
         }
 
-        if ($configFilename && !file_exists($file = $configFilename)) {
+        if ($configFilename && !file_exists($file = $configFilename))
+        {
             //Смотрим в директории текущего сайта с пользовательскими конфигами
-            if (!file_exists($file = sprintf(SITE_DIR . self::SITE_CONFIG_DIR . $configFilename, E()->getSiteManager()->getCurrentSite()->folder))) {
-                if (!file_exists($file = sprintf(CORE_DIR . self::CORE_CONFIG_DIR, $moduleName) . $configFilename)) {
+            if (!file_exists($file = sprintf(SITE_DIR . self::SITE_CONFIG_DIR . $configFilename, E()->getSiteManager()->getCurrentSite()->folder)))
+            {
+                if (!file_exists($file = sprintf(CORE_DIR . self::CORE_CONFIG_DIR, $moduleName) . $configFilename))
+                {
                     //если файла с указанным именем нет ни в папке с пользовательскими конфигами, ни в папке модуля с конфигами
                     //throw new SystemException('ERR_DEV_NO_CONFIG', SystemException::ERR_DEVELOPER, $configFilename);
                     $file = false;
@@ -116,8 +132,10 @@ class ComponentConfig {
      *
      * @throws SystemException 'ERR_NO_METHOD '
      */
-    public function setCurrentState($methodName) {
-        if (!($this->currentState = $this->getStateConfig($methodName))) {
+    public function setCurrentState($methodName)
+    {
+        if (!($this->currentState = $this->getStateConfig($methodName)))
+        {
             //inspect($this->c, $this->config->xpath(sprintf('/configuration/state[@name=\'%s\']', $methodName)));
             throw new SystemException('ERR_NO_METHOD ' . $methodName, SystemException::ERR_DEVELOPER, $methodName);
         }
@@ -130,18 +148,25 @@ class ComponentConfig {
      * @param array|string $patterns Set of patterns.
      * @param bool|int $rights Rights.
      */
-    protected function registerState($methodName, $patterns, $rights = false) {
-        if ($this->config) {
+    protected function registerState($methodName, $patterns, $rights = false)
+    {
+        if ($this->config)
+        {
             $newState = $this->config->addChild('state');
             $newState->addAttribute('name', $methodName);
             // Совместимость: оставляем как было
             $newState->addAttribute('weight', true);
-            if ($rights) {
+            if ($rights)
+            {
                 $newState->addAttribute('rights', $rights);
             }
-            if (!is_array($patterns)) $patterns = array($patterns);
+            if (!is_array($patterns))
+            {
+                $patterns = [$patterns];
+            }
             $uriPatterns = $newState->addChild('uri_patterns');
-            foreach ($patterns as $pattern) {
+            foreach ($patterns as $pattern)
+            {
                 $uriPatterns->addChild('pattern', $pattern);
             }
         }
@@ -152,7 +177,8 @@ class ComponentConfig {
      *
      * @return SimpleXMLElement
      */
-    public function getCurrentStateConfig() {
+    public function getCurrentStateConfig()
+    {
         return $this->currentState;
     }
 
@@ -161,7 +187,8 @@ class ComponentConfig {
      *
      * @return boolean
      */
-    public function isEmpty() {
+    public function isEmpty()
+    {
         return ($this->config) ? false : true;
     }
 
@@ -172,68 +199,84 @@ class ComponentConfig {
      * @param string $path URI path.
      * @return array|false
      */
-    public function getActionByURI($path) {
+    public function getActionByURI($path)
+    {
         $actionName = false;
-        $actionParams = array();
+        $actionParams = [];
         // Совместимость: без ltrim, как было
         $path = '/' . $path;
 
-        $patterns = array();
+        $patterns = [];
         //счетчик приоритета паттерна
         $weightInc = $maxWeightInc = count($this->config->state);
 
         //наша цель расставить приоритеты паттернов состояний
-        foreach ($this->config->state as $method) {
-            if (isset($method->uri_patterns->pattern)) {
+        foreach ($this->config->state as $method)
+        {
+            if (isset($method->uri_patterns->pattern))
+            {
 
                 $weightInc--;
                 //А это счетчик приоритета внутри набора паттернов
                 $maxPatternPriority = count($method->uri_patterns->pattern) - 1;
                 // в результате приоритеты выставлены как нужно
-                foreach ($method->uri_patterns->pattern as $pattern) {
-                    $patterns[(string)$pattern] = array(
+                foreach ($method->uri_patterns->pattern as $pattern)
+                {
+                    $patterns[(string)$pattern] = [
                         'method' => (string)$method['name'],
                         //'rights' => ((isset($method['rights']))?(int)$method['rights']),
                         // вес может быть дробным — НЕ теряем его
                         'weight' => ((!isset($method['weight'])) ? ($weightInc + $maxPatternPriority * 0.1) : ($maxWeightInc++))
-                    );
+                    ];
                     $maxPatternPriority--;
                 }
             }
         }
         // сортируем по приоритету (без приведения к int, чтобы не терять дробную часть)
-        uasort($patterns, function ($a, $b) {
-            if ($a['weight'] == $b['weight']) return 0;
+        uasort($patterns, function ($a, $b)
+        {
+            if ($a['weight'] == $b['weight'])
+            {
+                return 0;
+            }
             return ($a['weight'] < $b['weight']) ? 1 : -1;
         });
 
-        foreach ($patterns as $pattern => $methodInfo) {
+        foreach ($patterns as $pattern => $methodInfo)
+        {
             $methodName = $methodInfo['method'];
-            try {
+            try
+            {
                 $resPattern = preg_replace(
-                    array('/\[any\]\//', '/\//', '/\[[a-zA-Z_]+\]/'),
-                    array('(.*)', '\/', '([^\/]+)'),
+                    ['/\[any\]\//', '/\//', '/\[[a-zA-Z_]+\]/'],
+                    ['(.*)', '\/', '([^\/]+)'],
                     $pattern
                 );
-            } catch (Exception $e) {
+            }
+            catch (Exception $e)
+            {
                 $resPattern = $pattern;
             }
-            $matches = array();
+            $matches = [];
 
-            if (preg_match($resPattern = "/^$resPattern$/", $path, $matches)) {
+            if (preg_match($resPattern = "/^$resPattern$/", $path, $matches))
+            {
                 $useSegments = count(array_filter(explode('/', $pattern)));
-                if ($useSegments) {
-                    if (strpos($pattern, '[any]') !== false) {
+                if ($useSegments)
+                {
+                    if (strpos($pattern, '[any]') !== false)
+                    {
                         $useSegments--;
                     }
                     E()->getRequest()->useSegments(E()->getRequest()->getUsedSegments() + $useSegments);
                 }
                 array_shift($matches);
                 $actionName = $methodName;
-                if (!empty($matches)) {
+                if (!empty($matches))
+                {
                     preg_match($resPattern, $pattern, $varNames);
                     array_shift($varNames);
-                    $varNames = str_replace(array('[', ']'), '', $varNames);
+                    $varNames = str_replace(['[', ']'], '', $varNames);
                     $actionParams = array_combine($varNames, $matches);
                 }
 
@@ -241,11 +284,12 @@ class ComponentConfig {
             }
         }
 
-        if ($actionName == false) {
+        if ($actionName == false)
+        {
             return false;
         }
 
-        return array('name' => $actionName, 'params' => $actionParams);
+        return ['name' => $actionName, 'params' => $actionParams];
     }
 
     /**
@@ -254,11 +298,14 @@ class ComponentConfig {
      * @param string $methodName Method name.
      * @return SimpleXMLElement|false
      */
-    public function getStateConfig($methodName) {
+    public function getStateConfig($methodName)
+    {
         $result = false;
-        if (!$this->isEmpty()) {
+        if (!$this->isEmpty())
+        {
             $methodConfig = $this->config->xpath(sprintf('state[@name=\'%s\'][parent::configuration]', $methodName));
-            if (!empty($methodConfig)) {
+            if (!empty($methodConfig))
+            {
                 $result = $methodConfig[0];
             }
         }
@@ -270,12 +317,16 @@ class ComponentConfig {
      *
      * @return array|bool
      */
-    public function getCurrentStateParams() {
+    public function getCurrentStateParams()
+    {
         $result = false;
-        if ($this->currentState && !$this->isEmpty() && isset($this->currentState->params) && count($this->currentState->params->children())) {
-            $result = array();
-            foreach ($this->currentState->params->param as $tagName => $param) {
-                if (($tagName == 'param') && isset($param['name'])) {
+        if ($this->currentState && !$this->isEmpty() && isset($this->currentState->params) && count($this->currentState->params->children()))
+        {
+            $result = [];
+            foreach ($this->currentState->params->param as $tagName => $param)
+            {
+                if (($tagName == 'param') && isset($param['name']))
+                {
                     $result[(string)$param['name']] = (string)$param;
                 }
             }

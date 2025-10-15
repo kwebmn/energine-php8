@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -39,6 +40,13 @@ final class Document extends DBWorker implements IDocument
     private ?DOMDocument $doc = null;
 
     /**
+     * Cached template registry by type.
+     *
+     * @var array<string, array<string, array{path:string,module:string,origin:string}>>
+     */
+    private static array $templateRegistry = [];
+
+    /**
      * User rights for document.
      * Rights:
      *  - ACCESS_NONE = 0
@@ -76,64 +84,75 @@ final class Document extends DBWorker implements IDocument
 
         // Resolve document ID from URL segments (single-mode trims them)
         $segments = $this->request->getPath();
-        if (isset($segments[0]) && $segments[0] === self::SINGLE_SEGMENT) {
+        if (isset($segments[0]) && $segments[0] === self::SINGLE_SEGMENT)
+        {
             $segments = [];
         }
 
         $this->id = (int)$this->sitemap->getIDByURI($segments);
-        if ($this->id === 0) {
+        if ($this->id === 0)
+        {
             throw new SystemException('ERR_404', SystemException::ERR_404);
         }
 
         // Rights
         $this->rights = (int)$this->sitemap->getDocumentRights($this->getID(), $this->user->getGroups());
-        if ($this->rights === ACCESS_NONE) {
+        if ($this->rights === ACCESS_NONE)
+        {
             throw new SystemException('ERR_403', SystemException::ERR_403);
         }
 
         // Document info
         $this->documentInfo = (array)$this->sitemap->getDocumentInfo($this->getID());
-        if (!$this->documentInfo) {
+        if (!$this->documentInfo)
+        {
             throw new SystemException('ERR_404', SystemException::ERR_404);
         }
 
         // Redirect if needed
-        if (!empty($this->documentInfo['RedirectUrl'])) {
+        if (!empty($this->documentInfo['RedirectUrl']))
+        {
             E()->getResponse()->setStatus('301');
             E()->getResponse()->setRedirect(Response::prepareRedirectURL($this->documentInfo['RedirectUrl']));
         }
 
         // Common properties
-        $this->setProperty('keywords',     (string)($this->documentInfo['MetaKeywords'] ?? ''));
-        $this->setProperty('description',  (string)($this->documentInfo['MetaDescription'] ?? ''));
-        $this->setProperty('robots',       (string)($this->documentInfo['MetaRobots'] ?? ''));
-        $this->setProperty('ID',           (string)$this->getID());
-        $this->setProperty('default',      (string)((int)($this->sitemap->getDefault() == $this->getID())));
+        $this->setProperty('keywords', (string)($this->documentInfo['MetaKeywords'] ?? ''));
+        $this->setProperty('description', (string)($this->documentInfo['MetaDescription'] ?? ''));
+        $this->setProperty('robots', (string)($this->documentInfo['MetaRobots'] ?? ''));
+        $this->setProperty('ID', (string)$this->getID());
+        $this->setProperty('default', (string)((int)($this->sitemap->getDefault() == $this->getID())));
 
         // Flags: admin / user
-        if (in_array('1', E()->getAUser()->getGroups(), true)) {
+        if (in_array('1', E()->getAUser()->getGroups(), true))
+        {
             $this->setProperty('is_admin', '1');
         }
         $this->setProperty('is_user', E()->getAUser()->getID() ? '1' : '0');
 
         // SEO snippets
         $currentSite = E()->getSiteManager()->getCurrentSite();
-        if ($currentSite->isIndexed) {
-            if ($verifyCode = $this->getConfigValue('google.verify')) {
+        if ($currentSite->isIndexed)
+        {
+            if ($verifyCode = $this->getConfigValue('google.verify'))
+            {
                 $this->setProperty('google_verify', (string)$verifyCode);
             }
             $analyticsCode = $currentSite->gaCode ?: $this->getConfigValue('google.analytics');
-            if (!empty($analyticsCode)) {
+            if (!empty($analyticsCode))
+            {
                 $this->setProperty('google_analytics', (string)$analyticsCode);
             }
         }
 
         // Resolve core Energine script location for debug resource loading.
         $energineScript = $this->resolveLibrarySource('share', 'Energine');
-        if (is_string($energineScript) && $energineScript !== '') {
+        if (is_string($energineScript) && $energineScript !== '')
+        {
             $this->setProperty('energine_script', $energineScript);
             $lastSlash = strrpos($energineScript, '/');
-            if ($lastSlash !== false) {
+            if ($lastSlash !== false)
+            {
                 $this->setProperty('scripts_base', substr($energineScript, 0, $lastSlash + 1));
             }
         }
@@ -157,7 +176,8 @@ final class Document extends DBWorker implements IDocument
      */
     public function setBreadCrumbs(string $breadCrumbsClass): void
     {
-        if (!class_exists($breadCrumbsClass)) {
+        if (!class_exists($breadCrumbsClass))
+        {
             throw new SystemException('ERR_BAD_BREADCRUMBS_CLASS', SystemException::ERR_DEVELOPER, $breadCrumbsClass);
         }
         $this->breadCrumbsClass = $breadCrumbsClass;
@@ -173,16 +193,19 @@ final class Document extends DBWorker implements IDocument
         $this->setProperty('url', (string)$this->request->getURI());
         $this->doc->appendChild($root);
 
-        if (!isset($this->properties['title'])) {
+        if (!isset($this->properties['title']))
+        {
             $this->setProperty('title', strip_tags((string)($this->documentInfo['Name'] ?? '')));
         }
 
         // <properties>
         $propsNode = $this->doc->createElement('properties');
-        foreach ($this->properties as $name => $value) {
+        foreach ($this->properties as $name => $value)
+        {
             $prop = $this->doc->createElement('property');
             $prop->setAttribute('name', (string)$name);
-            if ($name === 'title') {
+            if ($name === 'title')
+            {
                 $prop->setAttribute('alt', (string)($this->documentInfo['HtmlTitle'] ?? ''));
             }
             $prop->appendChild($this->doc->createTextNode((string)($value ?? '')));
@@ -195,23 +218,25 @@ final class Document extends DBWorker implements IDocument
         $prop = $this->doc->createElement('property', $baseURL);
         $prop->setAttribute('name', 'base');
         $prop->setAttribute('static', (string)($this->getConfigValue('site.static') ?: $baseURL));
-        $prop->setAttribute('media',  (string)($this->getConfigValue('site.media')  ?: $baseURL));
-        $prop->setAttribute('resizer',(string)($this->getConfigValue('site.resizer') ?: (E()->getSiteManager()->getDefaultSite()->base . 'resizer/')));
+        $prop->setAttribute('media', (string)($this->getConfigValue('site.media') ?: $baseURL));
+        $prop->setAttribute('resizer', (string)($this->getConfigValue('site.resizer') ?: (E()->getSiteManager()->getDefaultSite()->base . 'resizer/')));
         $prop->setAttribute('folder', E()->getSiteManager()->getCurrentSite()->folder);
         $prop->setAttribute('default', E()->getSiteManager()->getDefaultSite()->base);
         $propsNode->appendChild($prop);
 
         $prop = $this->doc->createElement('property', (string)$this->getLang());
         $prop->setAttribute('name', 'lang');
-        $prop->setAttribute('abbr',     (string)$this->request->getLangSegment());
-        $prop->setAttribute('default',  (string)E()->getLanguage()->getDefault());
-        $prop->setAttribute('real_abbr',(string)E()->getLanguage()->getAbbrByID($this->getLang()));
+        $prop->setAttribute('abbr', (string)$this->request->getLangSegment());
+        $prop->setAttribute('default', (string)E()->getLanguage()->getDefault());
+        $prop->setAttribute('real_abbr', (string)E()->getLanguage()->getAbbrByID($this->getLang()));
         $propsNode->appendChild($prop);
 
         // <variables>
-        if (($docVars = $this->getConfigValue('site.vars')) && is_array($docVars)) {
+        if (($docVars = $this->getConfigValue('site.vars')) && is_array($docVars))
+        {
             $varsNode = $this->doc->createElement('variables');
-            foreach ($docVars as $varName => $varValue) {
+            foreach ($docVars as $varName => $varValue)
+            {
                 $var = $this->doc->createElement('var', (string)$varValue);
                 $var->setAttribute('name', strtoupper((string)$varName));
                 $varsNode->appendChild($var);
@@ -220,36 +245,48 @@ final class Document extends DBWorker implements IDocument
         }
 
         // Components
-        foreach ($this->componentManager as $component) {
+        foreach ($this->componentManager as $component)
+        {
             $componentResult = null;
-            try {
-                if ($component->enabled() && ($this->getRights() >= $component->getCurrentStateRights())) {
+            try
+            {
+                if ($component->enabled() && ($this->getRights() >= $component->getCurrentStateRights()))
+                {
                     $componentResult = $component->build();
                 }
-            } catch (DummyException $e) {
+            }
+            catch (DummyException $e)
+            {
                 // swallow
             }
 
-            if ($componentResult instanceof DOMDocument && $componentResult->documentElement) {
-                try {
+            if ($componentResult instanceof DOMDocument && $componentResult->documentElement)
+            {
+                try
+                {
                     $import = $this->doc->importNode($componentResult->documentElement, true);
                     $root->appendChild($import);
-                } catch (Exception $e) {
+                }
+                catch (Exception $e)
+                {
                     // ignore invalid fragment
                 }
             }
         }
 
         // <translations>
-        if (!empty($this->translations)) {
+        if (!empty($this->translations))
+        {
             $tNode = $this->doc->createElement('translations');
             $root->appendChild($tNode);
             $json = [];
-            foreach ($this->translations as $const => $componentName) {
+            foreach ($this->translations as $const => $componentName)
+            {
                 $val = $this->translate((string)$const);
                 $tr = $this->doc->createElement('translation', $val);
                 $tr->setAttribute('const', (string)$const);
-                if ($componentName !== null) {
+                if ($componentName !== null)
+                {
                     $tr->setAttribute('component', (string)$componentName);
                 }
                 $tNode->appendChild($tr);
@@ -260,20 +297,25 @@ final class Document extends DBWorker implements IDocument
 
         // Javascript dependencies
         $includes = $this->collectJavascriptIncludes();
-        if (!empty($includes)) {
+        if (!empty($includes))
+        {
             $jsNode = $this->doc->createElement('javascript');
-            foreach ($includes as $entry) {
+            foreach ($includes as $entry)
+            {
                 $path = $entry['path'];
                 $loader = $entry['loader'];
                 $lib = $this->doc->createElement('library');
                 $lib->setAttribute('path', (string)$path);
-                if ($loader) {
+                if ($loader)
+                {
                     $lib->setAttribute('loader', (string)$loader);
                 }
-                if (!empty($entry['module'])) {
+                if (!empty($entry['module']))
+                {
                     $lib->setAttribute('module', (string)$entry['module']);
                 }
-                if (!empty($entry['src'])) {
+                if (!empty($entry['src']))
+                {
                     $lib->setAttribute('src', (string)$entry['src']);
                 }
                 $jsNode->appendChild($lib);
@@ -290,8 +332,10 @@ final class Document extends DBWorker implements IDocument
             'codemirror/',
             'fancytree/',
         ];
-        foreach ($classicPrefixes as $prefix) {
-            if (strpos($path, $prefix) === 0) {
+        foreach ($classicPrefixes as $prefix)
+        {
+            if (strpos($path, $prefix) === 0)
+            {
                 return true;
             }
         }
@@ -302,8 +346,10 @@ final class Document extends DBWorker implements IDocument
             'bootstrap.bundle',
             'bootstrap.bundle.min',
         ];
-        foreach ($classicNames as $name) {
-            if ($path === $name || strpos($path, $name . '.') === 0) {
+        foreach ($classicNames as $name)
+        {
+            if ($path === $name || strpos($path, $name . '.') === 0)
+            {
                 return true;
             }
         }
@@ -333,12 +379,15 @@ final class Document extends DBWorker implements IDocument
             string $module,
             ?string $resolved
         ): void {
-            if (isset($seen[$path])) {
+            if (isset($seen[$path]))
+            {
                 $idx = $seen[$path];
-                if ($resolved !== null && $bucket[$idx]['src'] === null) {
+                if ($resolved !== null && $bucket[$idx]['src'] === null)
+                {
                     $bucket[$idx]['src'] = $resolved;
                 }
-                if ($module !== '' && $bucket[$idx]['module'] === '') {
+                if ($module !== '' && $bucket[$idx]['module'] === '')
+                {
                     $bucket[$idx]['module'] = $module;
                 }
                 return;
@@ -352,19 +401,24 @@ final class Document extends DBWorker implements IDocument
             $seen[$path] = array_key_last($bucket);
         };
 
-        if ($libraries && $libraries->length) {
+        if ($libraries && $libraries->length)
+        {
             /** @var DOMElement $library */
-            foreach ($libraries as $library) {
+            foreach ($libraries as $library)
+            {
                 $path = trim((string)$library->getAttribute('path'));
-                if (!$path) {
+                if (!$path)
+                {
                     $path = trim((string)$library->textContent);
                 }
-                if ($path === '') {
+                if ($path === '')
+                {
                     continue;
                 }
 
                 $normalizedPath = $this->normalizeLibraryPath($path);
-                if ($normalizedPath === '') {
+                if ($normalizedPath === '')
+                {
                     continue;
                 }
 
@@ -373,10 +427,14 @@ final class Document extends DBWorker implements IDocument
                 $moduleName = $this->detectElementModule($library);
                 $resolvedSrc = $this->resolveLibrarySource($moduleName, $normalizedPath);
 
-                if ($loader === 'classic') {
+                if ($loader === 'classic')
+                {
                     $registerInclude($classicIncludes, $seenClassic, $normalizedPath, 'classic', $moduleName, $resolvedSrc);
-                } else {
-                    if (isset($seenClassic[$normalizedPath])) {
+                }
+                else
+                {
+                    if (isset($seenClassic[$normalizedPath]))
+                    {
                         continue;
                     }
                     $registerInclude($moduleIncludes, $seenModule, $normalizedPath, $loader, $moduleName, $resolvedSrc);
@@ -385,21 +443,26 @@ final class Document extends DBWorker implements IDocument
         }
 
         $behaviors = $xpath->query('//component/javascript/behavior');
-        if ($behaviors && $behaviors->length) {
+        if ($behaviors && $behaviors->length)
+        {
             /** @var DOMElement $behavior */
-            foreach ($behaviors as $behavior) {
+            foreach ($behaviors as $behavior)
+            {
                 $name = trim((string)$behavior->getAttribute('name'));
-                if ($name === '') {
+                if ($name === '')
+                {
                     continue;
                 }
 
                 $path = trim((string)$behavior->getAttribute('path'));
-                if ($path !== '' && substr($path, -1) !== '/') {
+                if ($path !== '' && substr($path, -1) !== '/')
+                {
                     $path .= '/';
                 }
 
                 $fullPath = $this->normalizeLibraryPath($path . $name);
-                if ($fullPath === '') {
+                if ($fullPath === '')
+                {
                     continue;
                 }
 
@@ -407,10 +470,14 @@ final class Document extends DBWorker implements IDocument
                 $moduleName = $this->detectElementModule($behavior);
                 $resolvedSrc = $this->resolveLibrarySource($moduleName, $fullPath);
 
-                if ($loader === 'classic') {
+                if ($loader === 'classic')
+                {
                     $registerInclude($classicIncludes, $seenClassic, $fullPath, 'classic', $moduleName, $resolvedSrc);
-                } else {
-                    if (isset($seenClassic[$fullPath])) {
+                }
+                else
+                {
+                    if (isset($seenClassic[$fullPath]))
+                    {
                         continue;
                     }
                     $registerInclude($moduleIncludes, $seenModule, $fullPath, 'module', $moduleName, $resolvedSrc);
@@ -424,31 +491,37 @@ final class Document extends DBWorker implements IDocument
     protected function normalizeLibraryPath(string $path): string
     {
         $path = trim($path);
-        if ($path === '') {
+        if ($path === '')
+        {
             return '';
         }
 
-        if (preg_match('#^(?:[a-z]+:)?//#i', $path)) {
+        if (preg_match('#^(?:[a-z]+:)?//#i', $path))
+        {
             return $path;
         }
 
         $path = preg_replace('/\.(?:m|c)?js$/i', '', $path);
-        if (!is_string($path)) {
+        if (!is_string($path))
+        {
             return '';
         }
 
-        return $this->sanitizeLibraryKey($path);
+        return self::sanitizeLibraryKey($path);
     }
 
     protected function detectElementModule(DOMElement $element): string
     {
         $current = $element;
-        while ($current !== null) {
+        while ($current !== null)
+        {
             $parent = $current->parentNode;
-            if (!$parent instanceof DOMElement) {
+            if (!$parent instanceof DOMElement)
+            {
                 break;
             }
-            if ($parent->tagName === 'component') {
+            if ($parent->tagName === 'component')
+            {
                 $module = trim((string)$parent->getAttribute('module'));
                 return $module !== '' ? $module : '';
             }
@@ -461,23 +534,28 @@ final class Document extends DBWorker implements IDocument
     protected function resolveLibrarySource(?string $module, string $path): ?string
     {
         $path = trim($path);
-        if ($path === '') {
+        if ($path === '')
+        {
             return null;
         }
 
-        if (preg_match('#^(?:[a-z]+:)?//#i', $path)) {
+        if (preg_match('#^(?:[a-z]+:)?//#i', $path))
+        {
             return $path;
         }
 
-        $normalized = $this->sanitizeLibraryKey($path);
-        if ($normalized === '') {
+        $normalized = self::sanitizeLibraryKey($path);
+        if ($normalized === '')
+        {
             return null;
         }
 
         $index = $this->getScriptIndex();
-        if ($module !== null && $module !== '') {
+        if ($module !== null && $module !== '')
+        {
             $moduleKey = $module . '/' . $normalized;
-            if (isset($index[$moduleKey])) {
+            if (isset($index[$moduleKey]))
+            {
                 return $index[$moduleKey];
             }
         }
@@ -487,7 +565,8 @@ final class Document extends DBWorker implements IDocument
 
     private function getScriptIndex(): array
     {
-        if ($this->scriptIndex !== null) {
+        if ($this->scriptIndex !== null)
+        {
             return $this->scriptIndex;
         }
 
@@ -502,7 +581,8 @@ final class Document extends DBWorker implements IDocument
         $documentRoot = defined('HTDOCS_DIR')
             ? (string)HTDOCS_DIR
             : (string)($_SERVER['DOCUMENT_ROOT'] ?? '');
-        if ($documentRoot === '') {
+        if ($documentRoot === '')
+        {
             $documentRoot = getcwd() ?: '';
         }
         $documentRoot = rtrim(str_replace('\\', '/', $documentRoot), '/');
@@ -510,8 +590,10 @@ final class Document extends DBWorker implements IDocument
         $scriptDirs = [];
 
         $engineModules = $documentRoot . '/engine/core/modules';
-        if (is_dir($engineModules)) {
-            foreach (glob($engineModules . '/*/scripts', GLOB_ONLYDIR) ?: [] as $dir) {
+        if (is_dir($engineModules))
+        {
+            foreach (glob($engineModules . '/*/scripts', GLOB_ONLYDIR) ?: [] as $dir)
+            {
                 $moduleName = basename(dirname($dir));
                 $scriptDirs[] = [
                     'dir'    => $dir,
@@ -522,9 +604,11 @@ final class Document extends DBWorker implements IDocument
         }
 
         $coreBaseDir = (defined('CORE_DIR') ? (string)CORE_DIR : '') . '/modules';
-        $coreRelBase = trim((string)(defined('CORE_REL_DIR') ? CORE_REL_DIR : 'core'), '/');
-        if ($coreRelBase !== '' && is_dir($coreBaseDir)) {
-            foreach (glob($coreBaseDir . '/*/scripts', GLOB_ONLYDIR) ?: [] as $dir) {
+        $coreRelBase = trim((string)(defined('CORE_REL_DIR') ? CORE_REL_DIR : 'engine/core'), '/');
+        if ($coreRelBase !== '' && is_dir($coreBaseDir))
+        {
+            foreach (glob($coreBaseDir . '/*/scripts', GLOB_ONLYDIR) ?: [] as $dir)
+            {
                 $moduleName = basename(dirname($dir));
                 $scriptDirs[] = [
                     'dir'    => $dir,
@@ -536,8 +620,10 @@ final class Document extends DBWorker implements IDocument
 
         $siteBaseDir = (defined('SITE_DIR') ? (string)SITE_DIR : '') . '/modules';
         $siteRelBase = trim((string)(defined('SITE_REL_DIR') ? SITE_REL_DIR : 'site'), '/');
-        if ($siteRelBase !== '' && is_dir($siteBaseDir)) {
-            foreach (glob($siteBaseDir . '/*/scripts', GLOB_ONLYDIR) ?: [] as $dir) {
+        if ($siteRelBase !== '' && is_dir($siteBaseDir))
+        {
+            foreach (glob($siteBaseDir . '/*/scripts', GLOB_ONLYDIR) ?: [] as $dir)
+            {
                 $moduleName = basename(dirname($dir));
                 $scriptDirs[] = [
                     'dir'    => $dir,
@@ -548,7 +634,8 @@ final class Document extends DBWorker implements IDocument
         }
 
         $rootScripts = $documentRoot . '/scripts';
-        if (is_dir($rootScripts)) {
+        if (is_dir($rootScripts))
+        {
             $scriptDirs[] = [
                 'dir'    => $rootScripts,
                 'prefix' => 'scripts',
@@ -556,7 +643,8 @@ final class Document extends DBWorker implements IDocument
             ];
         }
 
-        foreach ($scriptDirs as $entry) {
+        foreach ($scriptDirs as $entry)
+        {
             $dir    = $entry['dir'];
             $prefix = $entry['prefix'];
             $module = $entry['module'];
@@ -565,38 +653,46 @@ final class Document extends DBWorker implements IDocument
                 new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
             );
             /** @var \SplFileInfo $fileInfo */
-            foreach ($iterator as $fileInfo) {
-                if (!$fileInfo->isFile()) {
+            foreach ($iterator as $fileInfo)
+            {
+                if (!$fileInfo->isFile())
+                {
                     continue;
                 }
                 $ext = strtolower($fileInfo->getExtension());
-                if (!in_array($ext, ['js', 'mjs', 'cjs'], true)) {
+                if (!in_array($ext, ['js', 'mjs', 'cjs'], true))
+                {
                     continue;
                 }
 
                 $relativeInside = substr($fileInfo->getPathname(), strlen($dir) + 1);
-                if ($relativeInside === false) {
+                if ($relativeInside === false)
+                {
                     continue;
                 }
                 $relativeInside = str_replace('\\', '/', $relativeInside);
 
-                $key = $this->sanitizeLibraryKey(substr($relativeInside, 0, - (strlen($ext) + 1)));
-                if ($key === '') {
+                $key = self::sanitizeLibraryKey(substr($relativeInside, 0, - (strlen($ext) + 1)));
+                if ($key === '')
+                {
                     continue;
                 }
 
                 $relativePath = $prefix . '/' . $relativeInside;
                 $relativePath = preg_replace('#/+#', '/', $relativePath);
-                if (!is_string($relativePath)) {
+                if (!is_string($relativePath))
+                {
                     continue;
                 }
                 $relativePath = ltrim($relativePath, '/');
 
-                if (!isset($index[$key])) {
+                if (!isset($index[$key]))
+                {
                     $index[$key] = $relativePath;
                 }
 
-                if ($module !== '' && !isset($index[$module . '/' . $key])) {
+                if ($module !== '' && !isset($index[$module . '/' . $key]))
+                {
                     $index[$module . '/' . $key] = $relativePath;
                 }
             }
@@ -605,16 +701,18 @@ final class Document extends DBWorker implements IDocument
         return $index;
     }
 
-    private function sanitizeLibraryKey(string $path): string
+    private static function sanitizeLibraryKey(string $path): string
     {
         $path = str_replace('\\', '/', $path);
         $path = preg_replace('#/+#', '/', $path);
-        if (!is_string($path)) {
+        if (!is_string($path))
+        {
             return '';
         }
         $path = trim($path, '/');
 
-        if ($path === '' || str_contains($path, '..')) {
+        if ($path === '' || str_contains($path, '..'))
+        {
             return '';
         }
 
@@ -635,12 +733,14 @@ final class Document extends DBWorker implements IDocument
 
         // single-mode?
         $actionParams = $this->request->getPath(Request::PATH_ACTION);
-        if (count($actionParams) > 1 && $actionParams[0] === self::SINGLE_SEGMENT) {
+        if (count($actionParams) > 1 && $actionParams[0] === self::SINGLE_SEGMENT)
+        {
             // shift path: existing segments + reserved segment + component name
             $this->request->setPathOffset($this->request->getPathOffset() + 2);
             $this->setProperty('single', 'single');
 
-            if ($actionParams[1] === 'pageToolBar') {
+            if ($actionParams[1] === 'pageToolBar')
+            {
                 $this->componentManager->add(
                     $this->componentManager->createComponent(
                         'pageToolBar',
@@ -649,16 +749,20 @@ final class Document extends DBWorker implements IDocument
                         ['state' => 'showPageToolbar']
                     )
                 );
-            } else {
+            }
+            else
+            {
                 $blockDescription =
-                    ComponentManager::findBlockByName($layoutXML,  $actionParams[1]) ?:
+                    ComponentManager::findBlockByName($layoutXML, $actionParams[1]) ?:
                         ComponentManager::findBlockByName($contentXML, $actionParams[1]);
 
-                if (!$blockDescription) {
+                if (!$blockDescription)
+                {
                     throw new SystemException('ERR_NO_SINGLE_COMPONENT', SystemException::ERR_CRITICAL, $actionParams[1]);
                 }
 
-                if (E()->getController()->getViewMode() === DocumentController::TRANSFORM_STRUCTURE_XML) {
+                if (E()->getController()->getViewMode() === DocumentController::TRANSFORM_STRUCTURE_XML)
+                {
                     $int = new IRQ();
                     $int->addBlock($blockDescription);
                     throw $int;
@@ -672,14 +776,16 @@ final class Document extends DBWorker implements IDocument
         }
 
         // structure XML preview?
-        if (E()->getController()->getViewMode() === DocumentController::TRANSFORM_STRUCTURE_XML) {
+        if (E()->getController()->getViewMode() === DocumentController::TRANSFORM_STRUCTURE_XML)
+        {
             $int = new IRQ();
             $int->addBlock($layoutXML);
             $int->addBlock($contentXML);
             throw $int;
         }
 
-        foreach ([$layoutXML, $contentXML] as $XML) {
+        foreach ([$layoutXML, $contentXML] as $XML)
+        {
             $this->componentManager->add(
                 ComponentManager::createBlockFromDescription(
                     $XML,
@@ -711,8 +817,10 @@ final class Document extends DBWorker implements IDocument
     /** Run all components */
     public function runComponents(): void
     {
-        foreach ($this->componentManager as $block) {
-            if ($block->enabled() && ($this->getRights() >= $block->getCurrentStateRights())) {
+        foreach ($this->componentManager as $block)
+        {
+            if ($block->enabled() && ($this->getRights() >= $block->getCurrentStateRights()))
+            {
                 $block->run();
             }
         }
@@ -721,7 +829,8 @@ final class Document extends DBWorker implements IDocument
     public function getResult(): DOMDocument
     {
         // ensure build() was called
-        if (!$this->doc instanceof DOMDocument) {
+        if (!$this->doc instanceof DOMDocument)
+        {
             $this->build();
         }
         return $this->doc;
@@ -758,7 +867,7 @@ final class Document extends DBWorker implements IDocument
     }
 
     /** Add translation constant */
-    public function addTranslation(string $const, Component $component = null): void
+    public function addTranslation(string $const, ?Component $component = null): void
     {
         $this->translations[$const] = $component ? $component->getName() : null;
     }
@@ -766,7 +875,8 @@ final class Document extends DBWorker implements IDocument
     /** Check if the page is editable */
     public function isEditable(): bool
     {
-        if ($this->getRights() > ACCESS_EDIT) {
+        if ($this->getRights() > ACCESS_EDIT)
+        {
             return $this->getConfigValue('site.debug') ? isset($_REQUEST['editMode']) : isset($_POST['editMode']);
         }
         return false;
@@ -781,15 +891,20 @@ final class Document extends DBWorker implements IDocument
      */
     public static function getTemplatesData(int $documentID): object
     {
-        $loadDataFromFile = static function (string $fileName, string $type) {
-            $file = self::TEMPLATES_DIR . constant('DivisionEditor::TMPL_' . strtoupper($type)) . '/' . $fileName;
-            if (!is_file($file)) {
+        $loadDataFromFile = static function (string $fileName, string $type)
+        {
+            $file = self::resolveTemplatePath($fileName, $type);
+            if (!$file || !is_file($file))
+            {
                 $raw = '';
-            } else {
+            }
+            else
+            {
                 $raw = stripslashes(trim((string)file_get_contents($file)));
             }
             $xml = @simplexml_load_string($raw);
-            if (!$xml) {
+            if (!$xml)
+            {
                 throw new SystemException('ERR_WRONG_' . strtoupper($type));
             }
             return $xml;
@@ -800,18 +915,24 @@ final class Document extends DBWorker implements IDocument
             ['smap_content_xml as content', 'smap_layout_xml as layout', 'smap_content as content_file', 'smap_layout as layout_file'],
             ['smap_id' => $documentID]
         );
-        if (!$rowset) {
+        if (!$rowset)
+        {
             throw new SystemException('ERR_BAD_DOC_ID');
         }
         [$templateData] = $rowset;
 
         libxml_use_internal_errors(true);
-        foreach ([DivisionEditor::TMPL_LAYOUT, DivisionEditor::TMPL_CONTENT] as $type) {
-            if (empty($templateData[$type])) {
+        foreach ([DivisionEditor::TMPL_LAYOUT, DivisionEditor::TMPL_CONTENT] as $type)
+        {
+            if (empty($templateData[$type]))
+            {
                 $templateData[$type] = $loadDataFromFile($templateData[$type . '_file'], $type);
-            } else {
+            }
+            else
+            {
                 $xml = @simplexml_load_string(stripslashes((string)$templateData[$type]));
-                if (!$xml) {
+                if (!$xml)
+                {
                     $templateData[$type] = $loadDataFromFile($templateData[$type . '_file'], $type);
                     // clear invalid xml in DB
                     E()->getDB()->modify(
@@ -820,7 +941,9 @@ final class Document extends DBWorker implements IDocument
                         ['smap_' . $type . '_xml' => ''],
                         ['smap_id' => $documentID]
                     );
-                } else {
+                }
+                else
+                {
                     $templateData[$type] = $xml;
                 }
             }
@@ -836,5 +959,210 @@ final class Document extends DBWorker implements IDocument
     {
         return $this->doc;
 
+    }
+
+    /**
+     * Resolve template path by stored file name.
+     */
+    public static function resolveTemplatePath(string $fileName, string $type): ?string
+    {
+        $info = self::findTemplate($fileName, $type);
+
+        return $info['path'] ?? null;
+    }
+
+    /**
+     * Find template metadata by stored file name.
+     *
+     * @return array{path:string,module:string,origin:string}|null
+     */
+    public static function findTemplate(string $fileName, string $type): ?array
+    {
+        $key = self::sanitizeLibraryKey($fileName);
+        if ($key === '')
+        {
+            return null;
+        }
+
+        $registry  = self::getTemplateRegistry($type);
+        $candidates = self::expandTemplateKeyVariants($key);
+
+        foreach ($candidates as $candidate)
+        {
+            if (isset($registry[$candidate]))
+            {
+                return $registry[$candidate];
+            }
+        }
+
+        foreach ($registry as $registeredKey => $info)
+        {
+            foreach ($candidates as $candidate)
+            {
+                if ($registeredKey === $candidate || str_ends_with($registeredKey, '/' . $candidate))
+                {
+                    return $info;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get cached template registry for template type.
+     *
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    public static function getTemplateRegistry(string $type): array
+    {
+        if (!isset(self::$templateRegistry[$type]))
+        {
+            self::$templateRegistry[$type] = self::scanTemplates($type);
+        }
+
+        return self::$templateRegistry[$type];
+    }
+
+    /**
+     * Scan filesystem for templates of specified type.
+     *
+     * @return array<string, array{path:string,module:string,origin:string}>
+     */
+    private static function scanTemplates(string $type): array
+    {
+        $result = [];
+
+        $sources = [
+            ['base' => SITE_DIR . '/modules',  'origin' => 'site'],
+            ['base' => CORE_DIR . '/modules',  'origin' => 'core'],
+        ];
+
+        foreach ($sources as $source)
+        {
+            $baseDir = $source['base'];
+            $origin  = $source['origin'];
+
+            if (!is_dir($baseDir))
+            {
+                continue;
+            }
+
+            $modules = glob($baseDir . '/*', GLOB_ONLYDIR) ?: [];
+            foreach ($modules as $moduleDir)
+            {
+                $module = basename($moduleDir);
+                $templateDir = rtrim($moduleDir, '/\\') . '/templates/' . $type;
+                if (!is_dir($templateDir))
+                {
+                    continue;
+                }
+
+                $normalizedDir = rtrim($templateDir, '/\\');
+
+                $iterator = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($normalizedDir, FilesystemIterator::SKIP_DOTS)
+                );
+
+                /** @var SplFileInfo $fileInfo */
+                foreach ($iterator as $fileInfo)
+                {
+                    if (!$fileInfo->isFile())
+                    {
+                        continue;
+                    }
+
+                    $fileName = $fileInfo->getFilename();
+                    if (!str_ends_with($fileName, '.' . $type . '.xml'))
+                    {
+                        continue;
+                    }
+
+                    $fullPath = $fileInfo->getPathname();
+                    $relative = substr($fullPath, strlen($normalizedDir) + 1);
+                    $relative = str_replace(DIRECTORY_SEPARATOR, '/', (string)$relative);
+
+                    foreach (self::buildTemplateAliases($module, $relative, $fileName, $type) as $alias)
+                    {
+                        self::registerTemplateAlias($result, $alias, $fullPath, $module, $origin);
+                    }
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Produce the full list of legacy aliases that can point to a template file.
+     *
+     * @return string[]
+     */
+    private static function buildTemplateAliases(string $module, string $relative, string $fileName, string $type): array
+    {
+        $aliases = [
+            $module . '/' . $relative,
+            $relative,
+            $fileName,
+            $type . '/' . $relative,
+            $type . '/' . $fileName,
+            'templates/' . $relative,
+            'templates/' . $type . '/' . $relative,
+            'templates/' . $type . '/' . $fileName,
+            $module . '/templates/' . $relative,
+            $module . '/templates/' . $fileName,
+            $module . '/templates/' . $type . '/' . $relative,
+            $module . '/templates/' . $type . '/' . $fileName,
+        ];
+
+        return array_values(array_unique($aliases));
+    }
+
+    /**
+     * Generate possible lookup variants for a stored template key.
+     *
+     * @return string[]
+     */
+    private static function expandTemplateKeyVariants(string $key): array
+    {
+        $variants = [];
+        $segments = explode('/', $key);
+        $segmentCount = count($segments);
+
+        if ($segmentCount === 0)
+        {
+            return [$key];
+        }
+
+        for ($i = 0; $i < $segmentCount; $i++)
+        {
+            $variant = implode('/', array_slice($segments, $i));
+            if ($variant !== '' && !in_array($variant, $variants, true))
+            {
+                $variants[] = $variant;
+            }
+        }
+
+        return $variants === [] ? [$key] : $variants;
+    }
+
+    /**
+     * Register an alias key in the template registry result.
+     *
+     * @param array<string, array{path:string,module:string,origin:string}> $result
+     */
+    private static function registerTemplateAlias(array &$result, string $key, string $path, string $module, string $origin): void
+    {
+        $key = self::sanitizeLibraryKey($key);
+        if ($key === '' || isset($result[$key]))
+        {
+            return;
+        }
+
+        $result[$key] = [
+            'path'   => $path,
+            'module' => $module,
+            'origin' => $origin,
+        ];
     }
 }

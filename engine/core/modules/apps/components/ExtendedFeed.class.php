@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -12,7 +13,7 @@ class ExtendedFeed extends Feed
      * @copydoc Feed::defineParams
      */
     #[\Override]
-    protected function defineParams() : array
+    protected function defineParams(): array
     {
         // Опция inline-редактирования по умолчанию включена
         return array_merge(
@@ -27,18 +28,20 @@ class ExtendedFeed extends Feed
      * @copydoc DBDataSet::createDataDescription
      */
     #[\Override]
-    protected function createDataDescription() : DataDescription
+    protected function createDataDescription(): DataDescription
     {
         $res = DBDataSet::createDataDescription();
 
-        if (!$res->getFieldDescriptionByName('smap_id')) {
+        if (!$res->getFieldDescriptionByName('smap_id'))
+        {
             $f = new FieldDescription('smap_id');
             $f->setType(FieldDescription::FIELD_TYPE_INT)
                 ->setProperty('tableName', $this->getTableName());
             $res->addFieldDescription($f);
         }
 
-        if (!$res->getFieldDescriptionByName('category')) {
+        if (!$res->getFieldDescriptionByName('category'))
+        {
             $f = new FieldDescription('category');
             $f->setType(FieldDescription::FIELD_TYPE_STRING);
             $res->addFieldDescription($f);
@@ -51,10 +54,11 @@ class ExtendedFeed extends Feed
      * @copydoc Feed::loadDataDescription
      */
     #[\Override]
-    protected function loadDataDescription() : array|false|null
+    protected function loadDataDescription(): array|false|null
     {
         $res = parent::loadDataDescription();
-        if (isset($res['smap_id'])) {
+        if (isset($res['smap_id']))
+        {
             $res['smap_id']['key'] = false;
         }
         return $res;
@@ -64,27 +68,31 @@ class ExtendedFeed extends Feed
      * @copydoc Feed::createData
      */
     #[\Override]
-    protected function createData() : Data
+    protected function createData(): Data
     {
         $res = parent::createData();
 
         // Убедимся, что поле category существует, если есть данные
         $categoryField = $res->getFieldByName('category');
-        if (!$res->isEmpty() && !$categoryField) {
+        if (!$res->isEmpty() && !$categoryField)
+        {
             $categoryField = new Field('category');
             $res->addField($categoryField);
         }
 
         // Заполним category из карты сайта, если присутствует smap_id
-        if ($f = $res->getFieldByName('smap_id')) {
+        if ($f = $res->getFieldByName('smap_id'))
+        {
             // На случай, если данных не было, но smap_id есть — добавим поле
-            if (!$categoryField) {
+            if (!$categoryField)
+            {
                 $categoryField = new Field('category');
                 $res->addField($categoryField);
             }
 
             $map = E()->getMap();
-            foreach ($f as $i => $row) {
+            foreach ($f as $i => $row)
+            {
                 $catInfo = $map->getDocumentInfo($row);
                 $categoryField->setRowData($i, $catInfo['Name'] ?? null);
                 $categoryField->setRowProperty($i, 'url', $map->getURLByID($row));
@@ -98,7 +106,7 @@ class ExtendedFeed extends Feed
      * @copydoc Feed::main
      */
     #[\Override]
-    protected function main() : void
+    protected function main(): void
     {
         parent::main();
 
@@ -123,7 +131,7 @@ class ExtendedFeed extends Feed
      * @copydoc Feed::view
      */
     #[\Override]
-    protected function view() : void
+    protected function view(): void
     {
         $this->addFilterCondition(['smap_id' => $this->document->getID()]);
 

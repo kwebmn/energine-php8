@@ -49,8 +49,8 @@
   ],
 
   "require": {
-    "php": "^8.3",
-    "ext-opcache": "*",
+    "php": "^8.4",
+    "ext-zend-opcache": "*",
 
     "psr/log": "^3.0",
     "psr/cache": "^3.0",
@@ -59,10 +59,13 @@
     "php-di/php-di": "^7.0",
     "monolog/monolog": "^3.7",
     "symfony/cache": "^7.1",
+    "symfony/dependency-injection": "^7.1",
     "symfony/http-foundation": "^7.1",
     "doctrine/dbal": "^4.0",
     "symfony/validator": "^7.1",
     "symfony/translation": "^7.1",
+    "symfony/runtime": "^7.1",
+    "symfony/routing": "^7.1",
 
     "google/apiclient": "*",
     "ezyang/htmlpurifier": "^4.18",
@@ -75,7 +78,12 @@
     "components/jquery": "^3.7",
     "components/jstree": "^3.3",
     "codemirror/codemirror": "^5.65",
-    "ckeditor/ckeditor": "4.22.1"
+    "ckeditor/ckeditor": "4.22.1",
+    "symfony/security-core": "^7.1",
+    "symfony/security-http": "^7.1",
+    "league/flysystem": "^3.24",
+    "league/flysystem-ftp": "^3.24",
+    "league/flysystem-aws-s3-v3": "^3.24"
   },
 
   "autoload": {
@@ -83,7 +91,7 @@
       "App\\": "app/src/"
     },
     "classmap": [
-      "core/modules",
+      "engine/core/modules",
       "site/modules"
     ],
     "files": [
@@ -92,12 +100,27 @@
   },
   "config": {
     "optimize-autoloader": true,
-    "apcu-autoloader": true
+    "apcu-autoloader": true,
+    "process-timeout": 3600,
+    "allow-plugins": {
+      "symfony/runtime": true,
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
   },
   "minimum-stability": "stable",
   "prefer-stable": true,
   "require-dev": {
     "filp/whoops": "^2.18",
-    "phpstan/phpstan": "^2.1"
+    "phpstan/phpstan": "^2.1",
+    "friendsofphp/php-cs-fixer": "^3.64",
+    "slevomat/coding-standard": "^8.0",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "shipmonk/dead-code-detector": "^0.13"
+  },
+  "scripts": {
+    "cs:fix": "php-cs-fixer fix",
+    "cs:lint": "php-cs-fixer fix --dry-run --diff",
+    "phpstan": "phpstan analyse --configuration=phpstan.neon.dist --memory-limit=8G",
+    "phpstan:dead-code": "phpstan analyse --configuration=phpstan.neon.dist --level=max --memory-limit=8G"
   }
 }

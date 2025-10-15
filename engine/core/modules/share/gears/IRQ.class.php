@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -32,9 +33,12 @@ class IRQ extends \Exception
      */
     public function addBlock(\SimpleXMLElement $block): void
     {
-        if ($block->getName() === 'page') {
+        if ($block->getName() === 'page')
+        {
             $this->layoutBlock = $block;
-        } else {
+        }
+        else
+        {
             $this->contentBlock = $block;
         }
     }

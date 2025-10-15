@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -45,16 +46,22 @@ final class UserGroup extends DBWorker
 
         // Загружаем группы из БД
         $rows = $this->dbh->select('user_groups'); // true => все поля
-        if (is_array($rows)) {
+        if (is_array($rows))
+        {
             // В проекте есть convertDBResult(). Если по какой-то причине его нет — падаем на локальный фолбэк.
-            if (function_exists('convertDBResult')) {
+            if (function_exists('convertDBResult'))
+            {
                 /** @var array<int, array<string, mixed>> $byId */
                 $byId = convertDBResult($rows, 'group_id', true);
                 $this->groups = $byId ?: [];
-            } else {
+            }
+            else
+            {
                 $byId = [];
-                foreach ($rows as $r) {
-                    if (isset($r['group_id'])) {
+                foreach ($rows as $r)
+                {
+                    if (isset($r['group_id']))
+                    {
                         $byId[(int)$r['group_id']] = $r;
                     }
                 }
@@ -78,12 +85,15 @@ final class UserGroup extends DBWorker
      */
     public function getDefaultGuestGroup(): int
     {
-        if ($this->defaultGuestGroup !== null) {
+        if ($this->defaultGuestGroup !== null)
+        {
             return $this->defaultGuestGroup;
         }
 
-        foreach ($this->groups as $groupId => $groupInfo) {
-            if (isset($groupInfo['group_default']) && (int)$groupInfo['group_default'] === 1) {
+        foreach ($this->groups as $groupId => $groupInfo)
+        {
+            if (isset($groupInfo['group_default']) && (int)$groupInfo['group_default'] === 1)
+            {
                 return $this->defaultGuestGroup = (int)$groupId;
             }
         }
@@ -98,12 +108,15 @@ final class UserGroup extends DBWorker
      */
     public function getDefaultUserGroup(): int
     {
-        if ($this->defaultUserGroup !== null) {
+        if ($this->defaultUserGroup !== null)
+        {
             return $this->defaultUserGroup;
         }
 
-        foreach ($this->groups as $groupId => $groupInfo) {
-            if (isset($groupInfo['group_user_default']) && (int)$groupInfo['group_user_default'] === 1) {
+        foreach ($this->groups as $groupId => $groupInfo)
+        {
+            if (isset($groupInfo['group_user_default']) && (int)$groupInfo['group_user_default'] === 1)
+            {
                 return $this->defaultUserGroup = (int)$groupId;
             }
         }
@@ -125,25 +138,34 @@ final class UserGroup extends DBWorker
         // Нормализуем ключ кеша (гость => 0)
         $cacheKey = $userId ? (int)$userId : 0;
 
-        if (!array_key_exists($cacheKey, $this->userGroupsCache)) {
+        if (!array_key_exists($cacheKey, $this->userGroupsCache))
+        {
             // По умолчанию — гостевая группа
             $groups = [$this->getDefaultGuestGroup()];
 
-            if (!empty($userId)) {
+            if (!empty($userId))
+            {
                 $res = $this->dbh->select('user_user_groups', ['group_id'], ['u_id' => (int)$userId]);
-                if (is_array($res)) {
-                    if (function_exists('simplifyDBResult')) {
+                if (is_array($res))
+                {
+                    if (function_exists('simplifyDBResult'))
+                    {
                         /** @var array<int> $ids */
                         $ids = simplifyDBResult($res, 'group_id');
                         $groups = $ids ?: $groups;
-                    } else {
+                    }
+                    else
+                    {
                         $ids = [];
-                        foreach ($res as $r) {
-                            if (isset($r['group_id'])) {
+                        foreach ($res as $r)
+                        {
+                            if (isset($r['group_id']))
+                            {
                                 $ids[] = (int)$r['group_id'];
                             }
                         }
-                        if ($ids) {
+                        if ($ids)
+                        {
                             $groups = $ids;
                         }
                     }
@@ -178,34 +200,46 @@ final class UserGroup extends DBWorker
         $result = [];
 
         $res = $this->dbh->select('user_user_groups', ['u_id'], ['group_id' => $groupID]);
-        if (!is_array($res)) {
+        if (!is_array($res))
+        {
             return $result;
         }
 
         // Получаем список ID пользователей
         $ids = [];
-        if (function_exists('simplifyDBResult')) {
+        if (function_exists('simplifyDBResult'))
+        {
             /** @var array<int> $ids */
             $ids = simplifyDBResult($res, 'u_id');
-        } else {
-            foreach ($res as $row) {
-                if (isset($row['u_id'])) {
+        }
+        else
+        {
+            foreach ($res as $row)
+            {
+                if (isset($row['u_id']))
+                {
                     $ids[] = (int)$row['u_id'];
                 }
             }
         }
 
-        if (!$ids) {
+        if (!$ids)
+        {
             return $result;
         }
 
-        foreach ($ids as $uid) {
-            try {
+        foreach ($ids as $uid)
+        {
+            try
+            {
                 $user = new User($uid);
-                if ((int)$user->getValue('u_is_active') === 1) {
+                if ((int)$user->getValue('u_is_active') === 1)
+                {
                     $result[] = $user;
                 }
-            } catch (\Throwable $e) {
+            }
+            catch (\Throwable $e)
+            {
                 // Если вдруг конструктор User бросит ошибку — просто пропустим.
                 continue;
             }

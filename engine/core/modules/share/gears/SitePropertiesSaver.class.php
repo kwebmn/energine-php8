@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -14,7 +15,8 @@ class SitePropertiesSaver extends ExtendedSaver
         parent::setData($data);
 
         $fPropName = $this->getData()->getFieldByName('prop_name');
-        if ($fPropName) {
+        if ($fPropName)
+        {
             $rawName = (string)$fPropName->getRowData(0);
 
             // Transliterate to ASCII with underscores, then keep only [A-Za-z0-9_]
@@ -22,7 +24,8 @@ class SitePropertiesSaver extends ExtendedSaver
             $name = preg_replace('/[^A-Za-z0-9_]/', '', $name ?? '') ?? '';
 
             // If name becomes empty after normalization, fall back to a safe placeholder
-            if ($name === '') {
+            if ($name === '')
+            {
                 $name = 'prop_' . substr(md5($rawName), 0, 6);
             }
 
@@ -51,7 +54,8 @@ class SitePropertiesSaver extends ExtendedSaver
         $siteId   = $sIdField ? (int)$sIdField->getRowData(0) : 0;
         $propName = $propField ? (string)$propField->getRowData(0) : '';
 
-        if ($siteId && $this->getMode() !== QAL::UPDATE) {
+        if ($siteId && $this->getMode() !== QAL::UPDATE)
+        {
             // Count existing properties by name for this site OR default (NULL)
             $propCount = (int)$this->dbh->getScalar(
                 'SELECT COUNT(prop_id)
@@ -62,10 +66,13 @@ class SitePropertiesSaver extends ExtendedSaver
                 $siteId
             );
 
-            if ($propCount === 0) {
+            if ($propCount === 0)
+            {
                 // No default or site-specific record exists — create a default one (NULL site_id)
                 $sIdField->setData('', true); // DB layer treats '' as NULL
-            } elseif ($propCount > 1) {
+            }
+            elseif ($propCount > 1)
+            {
                 // Default + site-specific already exist — duplication would occur
                 throw new SystemException('ERR_PROPERTY_EXIST');
             }

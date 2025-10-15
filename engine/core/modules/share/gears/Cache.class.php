@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -51,7 +52,8 @@ class Cache
         $cfgDir  = (string)(BaseObject::_getConfigValue('site.cache_dir') ?? '');
         $default = defined('HTDOCS_DIR') ? (HTDOCS_DIR . '/var/cache') : self::CACHE_DIR;
         $this->dir = rtrim($cfgDir !== '' ? $cfgDir : $default, '/\\') . DIRECTORY_SEPARATOR;
-        if (!is_dir($this->dir)) {
+        if (!is_dir($this->dir))
+        {
             $this->ensureDirectoryExists($this->dir);
         }
 
@@ -83,18 +85,28 @@ class Cache
 
     public function store(string $key, mixed $value, ?int $ttlSeconds = null): bool
     {
-        if (!$this->isEnabled()) return false;
+        if (!$this->isEnabled())
+        {
+            return false;
+        }
 
         self::$local[$key] = $value;
         $ttl = $ttlSeconds ?? $this->defaultTtl;
 
-        if ($pool = $this->getPsrPool()) {
-            try {
+        if ($pool = $this->getPsrPool())
+        {
+            try
+            {
                 $item = $pool->getItem($this->normalizeKey($key));
                 $item->set($value);
-                if ($ttl !== null) $item->expiresAfter($ttl);
+                if ($ttl !== null)
+                {
+                    $item->expiresAfter($ttl);
+                }
                 return $pool->save($item);
-            } catch (\Throwable $e) {
+            }
+            catch (\Throwable $e)
+            {
                 $this->logWarning('Cache store via PSR failed', ['key' => $key, 'err' => $e->getMessage()]);
             }
         }
@@ -104,34 +116,49 @@ class Cache
 
     public function retrieve(string $key): mixed
     {
-        if (!$this->isEnabled()) return null;
+        if (!$this->isEnabled())
+        {
+            return null;
+        }
 
-        if (array_key_exists($key, self::$local)) {
+        if (array_key_exists($key, self::$local))
+        {
             return self::$local[$key];
         }
 
-        if ($pool = $this->getPsrPool()) {
-            try {
+        if ($pool = $this->getPsrPool())
+        {
+            try
+            {
                 $item = $pool->getItem($this->normalizeKey($key));
-                if ($item->isHit()) {
+                if ($item->isHit())
+                {
                     $val = $item->get();
                     self::$local[$key] = $val;
                     return $val;
                 }
-            } catch (\Throwable $e) {
+            }
+            catch (\Throwable $e)
+            {
                 $this->logWarning('Cache retrieve via PSR failed', ['key' => $key, 'err' => $e->getMessage()]);
             }
         }
 
         $file = $this->existingFile($key);
-        if ($file === false) return null;
+        if ($file === false)
+        {
+            return null;
+        }
 
-        try {
+        try
+        {
             /** @noinspection PhpIncludeInspection */
             $val = include $file;
             self::$local[$key] = $val;
             return $val;
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $this->logWarning('Cache retrieve via file failed', ['key' => $key, 'err' => $e->getMessage()]);
             return null;
         }
@@ -141,23 +168,40 @@ class Cache
     {
         unset(self::$local[$key]);
 
-        if ($pool = $this->getPsrPool()) {
-            try { $pool->deleteItem($this->normalizeKey($key)); }
-            catch (\Throwable $e) { $this->logWarning('Cache dispose via PSR failed', ['key' => $key, 'err' => $e->getMessage()]); }
+        if ($pool = $this->getPsrPool())
+        {
+            try
+            {
+                $pool->deleteItem($this->normalizeKey($key));
+            }
+            catch (\Throwable $e)
+            {
+                $this->logWarning('Cache dispose via PSR failed', ['key' => $key, 'err' => $e->getMessage()]);
+            }
         }
 
-        if ($file = $this->existingFile($key)) {
+        if ($file = $this->existingFile($key))
+        {
             $this->removeFile($file);
         }
     }
 
     public function has(string $key): bool
     {
-        if (array_key_exists($key, self::$local)) return true;
+        if (array_key_exists($key, self::$local))
+        {
+            return true;
+        }
 
-        if ($pool = $this->getPsrPool()) {
-            try { return $pool->getItem($this->normalizeKey($key))->isHit(); }
-            catch (\Throwable) {}
+        if ($pool = $this->getPsrPool())
+        {
+            try
+            {
+                return $pool->getItem($this->normalizeKey($key))->isHit();
+            }
+            catch (\Throwable)
+            {
+            }
         }
 
         return $this->existingFile($key) !== false;
@@ -166,14 +210,18 @@ class Cache
     public function getMultiple(array $keys): array
     {
         $out = [];
-        foreach ($keys as $k) $out[$k] = $this->retrieve((string)$k);
+        foreach ($keys as $k)
+        {
+            $out[$k] = $this->retrieve((string)$k);
+        }
         return $out;
     }
 
     public function setMultiple(array $pairs, ?int $ttl = null): bool
     {
         $ok = true;
-        foreach ($pairs as $k => $v) {
+        foreach ($pairs as $k => $v)
+        {
             $ok = $this->store((string)$k, $v, $ttl) && $ok;
         }
         return $ok;
@@ -183,9 +231,16 @@ class Cache
     {
         self::$local = [];
 
-        if ($pool = $this->getPsrPool()) {
-            try { $pool->clear(); }
-            catch (\Throwable $e) { $this->logWarning('Cache clear via PSR failed', ['err' => $e->getMessage()]); }
+        if ($pool = $this->getPsrPool())
+        {
+            try
+            {
+                $pool->clear();
+            }
+            catch (\Throwable $e)
+            {
+                $this->logWarning('Cache clear via PSR failed', ['err' => $e->getMessage()]);
+            }
         }
 
         $this->flushFiles();
@@ -195,39 +250,55 @@ class Cache
     public function remember(string $key, callable $compute, ?int $ttl = null, array $tags = []): mixed
     {
         $existing = $this->retrieve($key);
-        if ($existing !== null) return $existing;
+        if ($existing !== null)
+        {
+            return $existing;
+        }
 
         $lockFile = $this->filePath($key) . '.lock';
-        [$fh, $openError] = $this->callFs(static fn() => fopen($lockFile, 'c'));
-        if (!is_resource($fh)) {
-            if ($openError !== null) {
+        [$fh, $openError] = $this->callFs(static fn () => fopen($lockFile, 'c'));
+        if (!is_resource($fh))
+        {
+            if ($openError !== null)
+            {
                 $this->logWarning('Cache remember fopen failed', ['file' => $lockFile, 'err' => $openError]);
             }
             return $this->retrieve($key);
         }
 
-        $locked = $this->runFs(static fn() => flock($fh, LOCK_EX), 'Cache remember flock failed', ['file' => $lockFile]);
-        if ($locked !== true) {
-            $this->runFs(static fn() => fclose($fh), 'Cache remember fclose failed', ['file' => $lockFile], false);
+        $locked = $this->runFs(static fn () => flock($fh, LOCK_EX), 'Cache remember flock failed', ['file' => $lockFile]);
+        if ($locked !== true)
+        {
+            $this->runFs(static fn () => fclose($fh), 'Cache remember fclose failed', ['file' => $lockFile], false);
             return $this->retrieve($key);
         }
 
-        try {
+        try
+        {
             $again = $this->retrieve($key);
-            if ($again !== null) return $again;
+            if ($again !== null)
+            {
+                return $again;
+            }
 
             $value = $compute();
-            if ($tags) {
+            if ($tags)
+            {
                 $this->storeTagged($key, $value, $tags, $ttl);
-            } else {
+            }
+            else
+            {
                 $this->store($key, $value, $ttl);
             }
             return $value;
-        } finally {
-            $this->runFs(static fn() => flock($fh, LOCK_UN), 'Cache remember unlock failed', ['file' => $lockFile], false);
-            $this->runFs(static fn() => fclose($fh), 'Cache remember fclose failed', ['file' => $lockFile], false);
-            if (is_file($lockFile)) {
-                $this->runFs(static fn() => unlink($lockFile), 'Cache remember unlink lock failed', ['file' => $lockFile]);
+        }
+        finally
+        {
+            $this->runFs(static fn () => flock($fh, LOCK_UN), 'Cache remember unlock failed', ['file' => $lockFile], false);
+            $this->runFs(static fn () => fclose($fh), 'Cache remember fclose failed', ['file' => $lockFile], false);
+            if (is_file($lockFile))
+            {
+                $this->runFs(static fn () => unlink($lockFile), 'Cache remember unlink lock failed', ['file' => $lockFile]);
             }
         }
 
@@ -236,44 +307,73 @@ class Cache
 
     public function storeTagged(string $key, mixed $value, array $tags, ?int $ttl = null): bool
     {
-        if (!$this->isEnabled()) return false;
+        if (!$this->isEnabled())
+        {
+            return false;
+        }
 
         self::$local[$key] = $value;
         $ttl ??= $this->defaultTtl;
 
         $pool = $this->getPsrPool();
-        if ($pool instanceof \Symfony\Contracts\Cache\TagAwareCacheInterface) {
-            try {
+        if ($pool instanceof \Symfony\Contracts\Cache\TagAwareCacheInterface)
+        {
+            try
+            {
                 $item = $pool->getItem($this->normalizeKey($key));
                 $item->set($value);
-                if ($ttl !== null) $item->expiresAfter($ttl);
+                if ($ttl !== null)
+                {
+                    $item->expiresAfter($ttl);
+                }
                 $item->tag($tags);
                 return $pool->save($item);
-            } catch (\Throwable $e) {
+            }
+            catch (\Throwable $e)
+            {
                 $this->logWarning('Cache storeTagged via PSR failed', ['key' => $key, 'err' => $e->getMessage()]);
             }
         }
 
         $ok = $this->fileStore($key, $value);
-        if ($ok) $this->indexTags($key, $tags);
+        if ($ok)
+        {
+            $this->indexTags($key, $tags);
+        }
         return $ok;
     }
 
     public function invalidateTags(array $tags): void
     {
         $pool = $this->getPsrPool();
-        if ($pool instanceof \Symfony\Contracts\Cache\TagAwareCacheInterface) {
-            try { $pool->invalidateTags($tags); return; }
-            catch (\Throwable $e) { $this->logWarning('Cache invalidateTags via PSR failed', ['err' => $e->getMessage()]); }
+        if ($pool instanceof \Symfony\Contracts\Cache\TagAwareCacheInterface)
+        {
+            try
+            {
+                $pool->invalidateTags($tags);
+                return;
+            }
+            catch (\Throwable $e)
+            {
+                $this->logWarning('Cache invalidateTags via PSR failed', ['err' => $e->getMessage()]);
+            }
         }
 
-        foreach ($tags as $tag) {
+        foreach ($tags as $tag)
+        {
             $idx = $this->tagsFile($tag);
-            if (!is_file($idx)) continue;
+            if (!is_file($idx))
+            {
+                continue;
+            }
             $keys = json_decode((string)file_get_contents($idx), true) ?: [];
-            foreach ($keys as $k) $this->dispose($k);
-            if (is_file($idx)) {
-                $this->runFs(static fn() => unlink($idx), 'Cache unlink tag index failed', ['file' => $idx]);
+            foreach ($keys as $k)
+            {
+                $this->dispose($k);
+            }
+            if (is_file($idx))
+            {
+                $this->runFs(static fn () => unlink($idx), 'Cache unlink tag index failed', ['file' => $idx]);
             }
         }
     }
@@ -292,49 +392,68 @@ class Cache
 
         $payload = "<?php\nreturn " . var_export($value, true) . ";\n";
 
-        [$written, $writeError] = $this->callFs(static fn() => file_put_contents($tmp, $payload, LOCK_EX));
-        if ($written === false) {
+        [$written, $writeError] = $this->callFs(static fn () => file_put_contents($tmp, $payload, LOCK_EX));
+        if ($written === false)
+        {
             $ctx = ['file' => $tmp];
-            if ($writeError !== null) { $ctx['err'] = $writeError; }
+            if ($writeError !== null)
+            {
+                $ctx['err'] = $writeError;
+            }
             $this->logWarning('Cache fileStore write failed', $ctx);
             return false;
         }
 
-        if (is_file($tmp)) {
-            $this->runFs(static fn() => chmod($tmp, 0666), 'Cache fileStore chmod failed', ['file' => $tmp], false);
+        if (is_file($tmp))
+        {
+            $this->runFs(static fn () => chmod($tmp, 0666), 'Cache fileStore chmod failed', ['file' => $tmp], false);
         }
 
-        if ($this->runFs(static fn() => rename($tmp, $file), 'Cache fileStore rename failed', ['tmp' => $tmp, 'file' => $file]) === false) {
-            if (is_file($file)) {
-                $this->runFs(static fn() => unlink($file), 'Cache unlink failed before rename', ['file' => $file]);
+        if ($this->runFs(static fn () => rename($tmp, $file), 'Cache fileStore rename failed', ['tmp' => $tmp, 'file' => $file]) === false)
+        {
+            if (is_file($file))
+            {
+                $this->runFs(static fn () => unlink($file), 'Cache unlink failed before rename', ['file' => $file]);
             }
-            if ($this->runFs(static fn() => rename($tmp, $file), 'Cache fileStore rename failed', ['tmp' => $tmp, 'file' => $file]) === false) {
-                if (is_file($tmp)) {
-                    $this->runFs(static fn() => unlink($tmp), 'Cache tmp cleanup failed', ['file' => $tmp]);
+            if ($this->runFs(static fn () => rename($tmp, $file), 'Cache fileStore rename failed', ['tmp' => $tmp, 'file' => $file]) === false)
+            {
+                if (is_file($tmp))
+                {
+                    $this->runFs(static fn () => unlink($tmp), 'Cache tmp cleanup failed', ['file' => $tmp]);
                 }
                 return false;
             }
         }
 
-        if (function_exists('opcache_invalidate')) {
-            $this->runFs(static fn() => opcache_invalidate($file, true), 'Cache opcache invalidate failed', ['file' => $file], false);
+        if (function_exists('opcache_invalidate'))
+        {
+            $this->runFs(static fn () => opcache_invalidate($file, true), 'Cache opcache invalidate failed', ['file' => $file], false);
         }
         return true;
     }
 
     private function getPsrPool(): ?\Psr\Cache\CacheItemPoolInterface
     {
-        if (!interface_exists(\Psr\Cache\CacheItemPoolInterface::class)) return null;
+        if (!interface_exists(\Psr\Cache\CacheItemPoolInterface::class))
+        {
+            return null;
+        }
 
-        try {
-            if (function_exists('E')) {
+        try
+        {
+            if (function_exists('E'))
+            {
                 $reg = E();
                 $pool = $reg->psrCache ?? null;
-                if ($pool instanceof \Psr\Cache\CacheItemPoolInterface) {
+                if ($pool instanceof \Psr\Cache\CacheItemPoolInterface)
+                {
                     return $pool;
                 }
             }
-        } catch (\Throwable) {}
+        }
+        catch (\Throwable)
+        {
+        }
 
         return null;
     }
@@ -350,7 +469,8 @@ class Cache
         $hash = sha1($safe);
 
         $path = $this->dir . substr($hash, 0, 2) . '/' . substr($hash, 2, 2) . '/';
-        if (!is_dir($path)) {
+        if (!is_dir($path))
+        {
             $this->ensureDirectoryExists($path);
         }
 
@@ -373,7 +493,8 @@ class Cache
     private function tagsDir(): string
     {
         $dir = $this->dir . 'tags/';
-        if (!is_dir($dir)) {
+        if (!is_dir($dir))
+        {
             $this->ensureDirectoryExists($dir);
         }
         return $dir;
@@ -386,14 +507,22 @@ class Cache
 
     private function indexTags(string $key, array $tags): void
     {
-        foreach ($tags as $tag) {
+        foreach ($tags as $tag)
+        {
             $file = $this->tagsFile($tag);
             $list = is_file($file) ? (json_decode((string)file_get_contents($file), true) ?: []) : [];
-            if (!in_array($key, $list, true)) $list[] = $key;
-            [$written, $writeError] = $this->callFs(static fn() => file_put_contents($file, json_encode($list), LOCK_EX));
-            if ($written === false) {
+            if (!in_array($key, $list, true))
+            {
+                $list[] = $key;
+            }
+            [$written, $writeError] = $this->callFs(static fn () => file_put_contents($file, json_encode($list), LOCK_EX));
+            if ($written === false)
+            {
                 $ctx = ['file' => $file];
-                if ($writeError !== null) { $ctx['err'] = $writeError; }
+                if ($writeError !== null)
+                {
+                    $ctx['err'] = $writeError;
+                }
                 $this->logWarning('Cache indexTags write failed', $ctx);
             }
         }
@@ -402,23 +531,31 @@ class Cache
     private function flushTagsIndex(): void
     {
         $dir = $this->tagsDir();
-        $items = $this->runFs(static fn() => scandir($dir), 'Cache flushTagsIndex scandir failed', ['dir' => $dir]);
-        if (!is_array($items)) {
+        $items = $this->runFs(static fn () => scandir($dir), 'Cache flushTagsIndex scandir failed', ['dir' => $dir]);
+        if (!is_array($items))
+        {
             return;
         }
-        foreach ($items as $f) {
-            if ($f === '.' || $f === '..') continue;
+        foreach ($items as $f)
+        {
+            if ($f === '.' || $f === '..')
+            {
+                continue;
+            }
             $path = $dir . $f;
-            if (is_file($path)) {
-                $this->runFs(static fn() => unlink($path), 'Cache flushTagsIndex unlink failed', ['file' => $path]);
+            if (is_file($path))
+            {
+                $this->runFs(static fn () => unlink($path), 'Cache flushTagsIndex unlink failed', ['file' => $path]);
             }
         }
     }
 
     private function flushFiles(): void
     {
-        $this->rrm($this->dir, function (string $path, bool $isFile): bool {
-            if ($isFile && str_ends_with($path, '.cache.php')) {
+        $this->rrm($this->dir, function (string $path, bool $isFile): bool
+        {
+            if ($isFile && str_ends_with($path, '.cache.php'))
+            {
                 $this->removeFile($path);
             }
             return true;
@@ -427,7 +564,10 @@ class Cache
 
     private function rrm(string $root, callable $fn): void
     {
-        if (!is_dir($root)) return;
+        if (!is_dir($root))
+        {
+            return;
+        }
 
         $it = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
@@ -437,14 +577,19 @@ class Cache
         $tagsRoot = $this->tagsDir();
 
         /** @var \SplFileInfo $info */
-        foreach ($it as $info) {
+        foreach ($it as $info)
+        {
             $path = $info->getPathname();
-            if ($info->isDir()) {
+            if ($info->isDir())
+            {
                 $fn($path, false);
-                if (!in_array($path, [$this->dir, $tagsRoot], true)) {
-                    $this->runFs(static fn() => rmdir($path), 'Cache rmdir failed', ['dir' => $path]);
+                if (!in_array($path, [$this->dir, $tagsRoot], true))
+                {
+                    $this->runFs(static fn () => rmdir($path), 'Cache rmdir failed', ['dir' => $path]);
                 }
-            } else {
+            }
+            else
+            {
                 $fn($path, true);
             }
         }
@@ -452,14 +597,17 @@ class Cache
 
     private function ensureDirectoryExists(string $dir): bool
     {
-        if (is_dir($dir)) {
+        if (is_dir($dir))
+        {
             return true;
         }
 
-        [$result, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
-        if ($result === false && !is_dir($dir)) {
+        [$result, $error] = $this->callFs(static fn (): bool => mkdir($dir, 0777, true));
+        if ($result === false && !is_dir($dir))
+        {
             $ctx = ['dir' => $dir];
-            if ($error !== null) {
+            if ($error !== null)
+            {
                 $ctx['err'] = $error;
             }
             $this->logWarning('Cache directory create failed', $ctx);
@@ -471,13 +619,15 @@ class Cache
 
     private function removeFile(string $file): void
     {
-        if (!is_file($file)) {
+        if (!is_file($file))
+        {
             return;
         }
 
-        $this->runFs(static fn(): bool => unlink($file), 'Cache unlink failed', ['file' => $file]);
-        if (function_exists('opcache_invalidate')) {
-            $this->runFs(static fn(): bool => opcache_invalidate($file, true), 'Cache opcache invalidate failed', ['file' => $file], false);
+        $this->runFs(static fn (): bool => unlink($file), 'Cache unlink failed', ['file' => $file]);
+        if (function_exists('opcache_invalidate'))
+        {
+            $this->runFs(static fn (): bool => opcache_invalidate($file, true), 'Cache opcache invalidate failed', ['file' => $file], false);
         }
     }
 
@@ -489,16 +639,22 @@ class Cache
         $result = null;
         $error  = null;
 
-        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool {
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool
+        {
             throw new \ErrorException($message, 0, $severity, $file, $line);
         });
 
-        try {
+        try
+        {
             $result = $operation();
-        } catch (\ErrorException $e) {
+        }
+        catch (\ErrorException $e)
+        {
             $result = false;
             $error  = $e->getMessage();
-        } finally {
+        }
+        finally
+        {
             restore_error_handler();
         }
 
@@ -508,11 +664,14 @@ class Cache
     private function runFs(callable $operation, string $message, array $context = [], bool $logWhenFalseWithoutError = true): mixed
     {
         [$result, $error] = $this->callFs($operation);
-        if ($result === false) {
-            if ($error !== null) {
+        if ($result === false)
+        {
+            if ($error !== null)
+            {
                 $context['err'] = $error;
             }
-            if ($error !== null || $logWhenFalseWithoutError) {
+            if ($error !== null || $logWhenFalseWithoutError)
+            {
                 $this->logWarning($message, $context);
             }
         }
@@ -522,13 +681,19 @@ class Cache
 
     private function logWarning(string $msg, array $ctx = []): void
     {
-        try {
-            if (function_exists('E')) {
+        try
+        {
+            if (function_exists('E'))
+            {
                 $reg = E();
-                if (isset($reg->logger)) {
+                if (isset($reg->logger))
+                {
                     $reg->logger->warning($msg, $ctx);
                 }
             }
-        } catch (\Throwable) {}
+        }
+        catch (\Throwable)
+        {
+        }
     }
 }
