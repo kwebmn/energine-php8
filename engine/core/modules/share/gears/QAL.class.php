@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Query Abstraction Layer (улучшенная версия).
  * Совместима с имеющимся кодом, новые методы — опциональны.
@@ -29,24 +30,25 @@
  *     });
  * }
  */
-final class QAL extends DBA {
+final class QAL extends DBA
+{
     // Режимы
-    const INSERT         = 'INSERT';
-    const INSERT_IGNORE  = 'INSERT IGNORE';
-    const UPDATE         = 'UPDATE';
-    const DELETE         = 'DELETE';
-    const REPLACE        = 'REPLACE';
-    const SELECT         = 'SELECT';
+    public const INSERT         = 'INSERT';
+    public const INSERT_IGNORE  = 'INSERT IGNORE';
+    public const UPDATE         = 'UPDATE';
+    public const DELETE         = 'DELETE';
+    public const REPLACE        = 'REPLACE';
+    public const SELECT         = 'SELECT';
 
     // Сортировка
-    const ASC  = 'ASC';
-    const DESC = 'DESC';
+    public const ASC  = 'ASC';
+    public const DESC = 'DESC';
 
     // Пустая строка в ваших правилах
-    const EMPTY_STRING = null;
+    public const EMPTY_STRING = null;
 
     // Сообщения
-    const ERR_BAD_QUERY_FORMAT = 'Bad query format.';
+    public const ERR_BAD_QUERY_FORMAT = 'Bad query format.';
 
     // --- НАСТРОЙКИ НИЖЕ ---
     /** Максимальный размер IN-чека */
@@ -55,14 +57,16 @@ final class QAL extends DBA {
     /** Порог “медленного запроса” (мс). Берётся из конфигурации, либо fallback. */
     private int $slowMs;
 
-    public function __construct($dsn, $username, $password, array $driverOptions, $charset = 'utf8mb4') {
+    public function __construct($dsn, $username, $password, array $driverOptions, $charset = 'utf8mb4')
+    {
         parent::__construct($dsn, $username, $password, $driverOptions, $charset);
 
         $cfg = (array) $this->getConfigValue('database', []);
 
         $this->slowMs = (int)($cfg['slow_ms'] ?? 200);
         // фиксируем отсутствие эмуляции prepared (надёжнее типизация)
-        if (defined('PDO::ATTR_EMULATE_PREPARES')) {
+        if (defined('PDO::ATTR_EMULATE_PREPARES'))
+        {
             $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
         }
     }
@@ -78,12 +82,15 @@ final class QAL extends DBA {
      * @param mixed ...$args
      * @return array|true
      */
-    public function select() {
+    public function select()
+    {
         $args = func_get_args();
-        if (empty($args)) {
+        if (empty($args))
+        {
             throw new SystemException('ERR_NO_QUERY', SystemException::ERR_DEVELOPER);
         }
-        if (!strpos($args[0], ' ')) {
+        if (!strpos($args[0], ' '))
+        {
             $args = $this->buildSQL($args);
         }
         $t0 = microtime(true);
@@ -102,23 +109,29 @@ final class QAL extends DBA {
      * @param array|string|null $condition
      * @return int|bool
      */
-    public function modify($mode, $tableName = null, $data = null, $condition = null) {
-        if (!in_array($mode, [self::INSERT, self::INSERT_IGNORE, self::REPLACE, self::DELETE, self::UPDATE], true)) {
+    public function modify($mode, $tableName = null, $data = null, $condition = null)
+    {
+        if (!in_array($mode, [self::INSERT, self::INSERT_IGNORE, self::REPLACE, self::DELETE, self::UPDATE], true))
+        {
             $t0 = microtime(true);
             $r = call_user_func_array([$this, 'modifyRequest'], func_get_args());
             $this->maybeLogQuery($this->getLastRequest(), [], $t0, (int)$r, true);
             return $r;
         }
 
-        if (empty($mode) || empty($tableName)) {
+        if (empty($mode) || empty($tableName))
+        {
             throw new SystemException(self::ERR_BAD_QUERY_FORMAT, SystemException::ERR_DB);
         }
         $tableName = DBA::getFQTableName($tableName);
         $args = [];
 
-        $buildQueryBody = function ($data, &$args) {
-            if (!empty($data)) {
-                foreach ($data as $fieldValue) {
+        $buildQueryBody = function ($data, &$args)
+        {
+            if (!empty($data))
+            {
+                foreach ($data as $fieldValue)
+                {
                     $args[] =
                         (is_int($fieldValue) && $fieldValue === 0) ? 0 :
                             (($fieldValue === self::EMPTY_STRING) ? '' :
@@ -127,26 +140,33 @@ final class QAL extends DBA {
             }
         };
 
-        switch ($mode) {
+        switch ($mode)
+        {
             case self::INSERT:
             case self::INSERT_IGNORE:
             case self::REPLACE:
-                if (!empty($data)) {
+                if (!empty($data))
+                {
                     $buildQueryBody($data, $args);
                     $sqlQuery = $mode.' INTO '.$tableName
                         .' ('.implode(', ', array_keys($data)).')'
                         .' VALUES ('.implode(', ', array_fill(0, count($data), '%s')).')';
-                } else {
+                }
+                else
+                {
                     $sqlQuery = 'INSERT INTO '.$tableName.' VALUES ()';
                 }
                 break;
 
             case self::UPDATE:
-                if (!empty($data)) {
+                if (!empty($data))
+                {
                     $buildQueryBody($data, $args);
                     $sqlQuery = 'UPDATE '.$tableName.' SET '
-                        .implode(', ', array_map(fn($f) => $f.'= %s', array_keys($data)));
-                } else {
+                        .implode(', ', array_map(fn ($f) => $f.'= %s', array_keys($data)));
+                }
+                else
+                {
                     throw new SystemException(self::ERR_BAD_QUERY_FORMAT, SystemException::ERR_DB);
                 }
                 break;
@@ -159,7 +179,8 @@ final class QAL extends DBA {
                 throw new SystemException(self::ERR_BAD_QUERY_FORMAT, SystemException::ERR_DB);
         }
 
-        if (isset($condition) && $mode !== self::INSERT) {
+        if (isset($condition) && $mode !== self::INSERT)
+        {
             $sqlQuery .= $this->buildWhereCondition($condition, $args);
         }
 
@@ -178,35 +199,46 @@ final class QAL extends DBA {
      * @param array<int,mixed>|null $args
      * @return string
      */
-    public function buildWhereCondition($condition, ?array &$args = null) {
+    public function buildWhereCondition($condition, ?array &$args = null)
+    {
         // Если вызывающий передал массив аргументов — используем плейсхолдеры
         $prepared = $args !== null;
 
-        $build = function($cond) use (&$build, $prepared, &$args) {
-            if (empty($cond)) return '';
-            
-            if (is_string($cond)) {
+        $build = function ($cond) use (&$build, $prepared, &$args)
+        {
+            if (empty($cond))
+            {
+                return '';
+            }
+
+            if (is_string($cond))
+            {
                 return ' WHERE '.$cond;
             }
 
             // массив условий c поддержкой OR/AND, LIKE, BETWEEN, IN, операторы >, <, >=, <=, !=
             $parts = [];
 
-            foreach ($cond as $key => $val) {
+            foreach ($cond as $key => $val)
+            {
                 $upper = strtoupper((string)$key);
 
                 // Группы: OR / AND => массив подусловий
-                if ($upper === 'OR' || $upper === 'AND') {
+                if ($upper === 'OR' || $upper === 'AND')
+                {
                     $sub = [];
-                    foreach ((array)$val as $item) {
+                    foreach ((array)$val as $item)
+                    {
                         $frag = trim($build($item));
-                        if ($frag !== '') {
+                        if ($frag !== '')
+                        {
                             // убрать префикс WHERE у вложенных
                             $frag = preg_replace('/^\s*WHERE\s+/i', '', $frag);
                             $sub[] = '('.$frag.')';
                         }
                     }
-                    if ($sub) {
+                    if ($sub)
+                    {
                         $parts[] = '('.implode(" {$upper} ", $sub).')';
                     }
                     continue;
@@ -217,7 +249,8 @@ final class QAL extends DBA {
                 $field = $key;
                 $op    = '=';
 
-                if (preg_match('~^(.+?)\s+(=|!=|<>|>|<|>=|<=|LIKE|NOT LIKE|IN|NOT IN|BETWEEN)$~i', $key, $m)) {
+                if (preg_match('~^(.+?)\s+(=|!=|<>|>|<|>=|<=|LIKE|NOT LIKE|IN|NOT IN|BETWEEN)$~i', $key, $m))
+                {
                     $field = $m[1];
                     $op    = strtoupper($m[2]);
                 }
@@ -226,16 +259,19 @@ final class QAL extends DBA {
                 $chunk = '';
 
                 // NULL со специальной семантикой
-                if ($val === null && ($op === '=' || $op === '!=' || $op === '<>')) {
+                if ($val === null && ($op === '=' || $op === '!=' || $op === '<>'))
+                {
                     $chunk = $identField.' '.($op === '=' ? 'IS NULL' : 'IS NOT NULL');
                     $parts[] = $chunk;
                     continue;
                 }
 
                 // IN / NOT IN
-                if ($op === 'IN' || $op === 'NOT IN') {
+                if ($op === 'IN' || $op === 'NOT IN')
+                {
                     $arr = array_values((array)$val);
-                    if (!$arr) { // пустой IN
+                    if (!$arr) // пустой IN
+                    {
                         $parts[] = ($op === 'IN') ? ' FALSE ' : ' TRUE ';
                         continue;
                     }
@@ -243,16 +279,21 @@ final class QAL extends DBA {
                     // chunking
                     $subGroups = array_chunk($arr, $this->maxInChunk);
                     $subExpr = [];
-                    foreach ($subGroups as $group) {
-                        if ($prepared) {
+                    foreach ($subGroups as $group)
+                    {
+                        if ($prepared)
+                        {
                             $placeholders = [];
-                            foreach ($group as $v) {
+                            foreach ($group as $v)
+                            {
                                 $args[] = $v;
                                 $placeholders[] = '%s';
                             }
                             $subExpr[] = $identField.' '.$op.' ('.implode(',', $placeholders).')';
-                        } else {
-                            $q = implode(',', array_map(fn($v) => $this->quote($v), $group));
+                        }
+                        else
+                        {
+                            $q = implode(',', array_map(fn ($v) => $this->quote($v), $group));
                             $subExpr[] = $identField.' '.$op.' ('.$q.')';
                         }
                     }
@@ -261,14 +302,21 @@ final class QAL extends DBA {
                 }
 
                 // BETWEEN
-                if ($op === 'BETWEEN') {
+                if ($op === 'BETWEEN')
+                {
                     $a = (array)$val;
-                    if (count($a) !== 2) continue;
-                    if ($prepared) {
+                    if (count($a) !== 2)
+                    {
+                        continue;
+                    }
+                    if ($prepared)
+                    {
                         $args[] = $a[0];
                         $args[] = $a[1];
                         $chunk = $identField.' BETWEEN %s AND %s';
-                    } else {
+                    }
+                    else
+                    {
                         $chunk = $identField.' BETWEEN '.$this->quote($a[0]).' AND '.$this->quote($a[1]);
                     }
                     $parts[] = $chunk;
@@ -276,11 +324,15 @@ final class QAL extends DBA {
                 }
 
                 // LIKE / NOT LIKE
-                if ($op === 'LIKE' || $op === 'NOT LIKE') {
-                    if ($prepared) {
+                if ($op === 'LIKE' || $op === 'NOT LIKE')
+                {
+                    if ($prepared)
+                    {
                         $args[] = $val;
                         $chunk = $identField.' '.$op.' %s';
-                    } else {
+                    }
+                    else
+                    {
                         $chunk = $identField.' '.$op.' '.$this->quote($val);
                     }
                     $parts[] = $chunk;
@@ -288,29 +340,49 @@ final class QAL extends DBA {
                 }
 
                 // Скалярные сравнения
-                if (is_array($val)) {
+                if (is_array($val))
+                {
                     // старое поведение: массив трактуем как IN
-                    $arr = array_filter($val, fn($x) => $x !== null && $x !== '');
-                    if (!$arr) { $parts[] = ' FALSE '; continue; }
-                    if ($prepared) {
+                    $arr = array_filter($val, fn ($x) => $x !== null && $x !== '');
+                    if (!$arr)
+                    {
+                        $parts[] = ' FALSE ';
+                        continue;
+                    }
+                    if ($prepared)
+                    {
                         $placeholders = [];
-                        foreach ($arr as $v) { $args[] = $v; $placeholders[] = '%s'; }
+                        foreach ($arr as $v)
+                        {
+                            $args[] = $v;
+                            $placeholders[] = '%s';
+                        }
                         $parts[] = $identField.' IN ('.implode(',', $placeholders).')';
-                    } else {
-                        $q = implode(',', array_map(fn($v) => $this->quote($v), $arr));
+                    }
+                    else
+                    {
+                        $q = implode(',', array_map(fn ($v) => $this->quote($v), $arr));
                         $parts[] = $identField.' IN ('.$q.')';
                     }
-                } else {
-                    if ($prepared) {
+                }
+                else
+                {
+                    if ($prepared)
+                    {
                         $args[] = $val;
                         $parts[] = $identField.' '.$op.' %s';
-                    } else {
+                    }
+                    else
+                    {
                         $parts[] = $identField.' '.$op.' '.$this->quote($val);
                     }
                 }
             }
 
-            if (!$parts) return '';
+            if (!$parts)
+            {
+                return '';
+            }
             return ' WHERE '.implode(' AND ', $parts);
         };
 
@@ -323,18 +395,24 @@ final class QAL extends DBA {
      * @param array|string|null $clause
      * @return string
      */
-    public function buildOrderCondition($clause) {
+    public function buildOrderCondition($clause)
+    {
         $orderClause = '';
-        if (!empty($clause)) {
+        if (!empty($clause))
+        {
             $orderClause = ' ORDER BY ';
-            if (is_array($clause)) {
+            if (is_array($clause))
+            {
                 $cls = [];
-                foreach ($clause as $fieldName => $direction) {
+                foreach ($clause as $fieldName => $direction)
+                {
                     $direction = strtoupper($direction);
                     $cls[] = "$fieldName ".constant("self::$direction");
                 }
                 $orderClause .= implode(', ', $cls);
-            } else {
+            }
+            else
+            {
                 $orderClause .= $clause;
             }
         }
@@ -347,11 +425,14 @@ final class QAL extends DBA {
      * @param array|int|null $clause
      * @return string
      */
-    public function buildLimitStatement($clause) {
+    public function buildLimitStatement($clause)
+    {
         $limitClause = '';
-        if (is_array($clause)) {
+        if (is_array($clause))
+        {
             $limitClause = " LIMIT {$clause[0]}";
-            if (isset($clause[1])) {
+            if (isset($clause[1]))
+            {
                 $limitClause .= ", {$clause[1]}";
             }
         }
@@ -364,33 +445,61 @@ final class QAL extends DBA {
      * @param array<int,mixed> $args
      * @return array{0:string}
      */
-    protected function buildSQL(array $args) {
-        if (strpos($args[0], ' ')) {
+    protected function buildSQL(array $args)
+    {
+        if (strpos($args[0], ' '))
+        {
             return $args;
         }
         $fields = true;
         $condition = $order = $limit = null;
         $tableName = $args[0];
-        if (isset($args[1])) $fields = $args[1];
-        if (isset($args[2])) $condition = $args[2];
-        if (isset($args[3])) $order = $args[3];
-        if (isset($args[4])) $limit = $args[4];
+        if (isset($args[1]))
+        {
+            $fields = $args[1];
+        }
+        if (isset($args[2]))
+        {
+            $condition = $args[2];
+        }
+        if (isset($args[3]))
+        {
+            $order = $args[3];
+        }
+        if (isset($args[4]))
+        {
+            $limit = $args[4];
+        }
 
-        if (is_array($fields) && !empty($fields)) {
+        if (is_array($fields) && !empty($fields))
+        {
             $fields = array_map('strtolower', $fields);
             $fields = implode(', ', $fields);
-        } elseif (is_string($fields)) {
+        }
+        elseif (is_string($fields))
+        {
             $fields = strtolower($fields);
-        } elseif ($fields === true) {
+        }
+        elseif ($fields === true)
+        {
             $fields = '*';
-        } else {
+        }
+        else
+        {
             throw new SystemException(self::ERR_BAD_QUERY_FORMAT, SystemException::ERR_DB, [$tableName, $fields, $condition, $order, $limit]);
         }
 
         $sqlQuery = "SELECT $fields FROM ".DBA::getFQTableName($tableName);
-        if (isset($condition)) $sqlQuery .= $this->buildWhereCondition($condition);
-        if (isset($order))     $sqlQuery .= $this->buildOrderCondition($order);
-        if (isset($limit)) {
+        if (isset($condition))
+        {
+            $sqlQuery .= $this->buildWhereCondition($condition);
+        }
+        if (isset($order))
+        {
+            $sqlQuery .= $this->buildOrderCondition($order);
+        }
+        if (isset($limit))
+        {
             $sqlQuery .= is_array($limit) ? (' LIMIT '.implode(', ', $limit)) : (" LIMIT $limit");
         }
         return [$sqlQuery];
@@ -402,11 +511,13 @@ final class QAL extends DBA {
      * @param mixed ...$args
      * @return mixed|null
      */
-    public function getScalar() {
+    public function getScalar()
+    {
         $t0 = microtime(true);
         $res = call_user_func_array([$this, 'fulfill'], $this->buildSQL(func_get_args()));
         $val = null;
-        if ($res instanceof PDOStatement) {
+        if ($res instanceof PDOStatement)
+        {
             $val = $res->fetchColumn();
         }
         $this->maybeLogQuery($this->getLastRequest(), [], $t0, $val !== null ? 1 : 0, true);
@@ -419,12 +530,15 @@ final class QAL extends DBA {
      * @param mixed ...$args
      * @return array<int,mixed>
      */
-    public function getColumn() {
+    public function getColumn()
+    {
         $t0 = microtime(true);
         $res = call_user_func_array([$this, 'fulfill'], $this->buildSQL(func_get_args()));
         $result = [];
-        if ($res instanceof PDOStatement) {
-            while ($row = $res->fetch(PDO::FETCH_NUM)) {
+        if ($res instanceof PDOStatement)
+        {
+            while ($row = $res->fetch(PDO::FETCH_NUM))
+            {
                 $result[] = $row[0];
             }
         }
@@ -441,24 +555,49 @@ final class QAL extends DBA {
      * @param string[] $allowed  список разрешённых полей
      * @param mixed    $order    строка/массив как раньше
      */
-    public function buildOrderSafe(array $allowed, $order): string {
-        if (empty($order)) return '';
+    public function buildOrderSafe(array $allowed, $order): string
+    {
+        if (empty($order))
+        {
+            return '';
+        }
         $items = [];
 
-        if (is_string($order)) {
-            foreach (explode(',', $order) as $piece) {
+        if (is_string($order))
+        {
+            foreach (explode(',', $order) as $piece)
+            {
                 $p = trim($piece);
-                if ($p === '') continue;
-                if (!preg_match('~^([a-zA-Z0-9_\.]+)\s*(ASC|DESC)?$~i', $p, $m)) continue;
-                $f = $m[1]; $dir = strtoupper($m[2] ?? 'ASC');
-                if (!in_array($f, $allowed, true)) continue;
+                if ($p === '')
+                {
+                    continue;
+                }
+                if (!preg_match('~^([a-zA-Z0-9_\.]+)\s*(ASC|DESC)?$~i', $p, $m))
+                {
+                    continue;
+                }
+                $f = $m[1];
+                $dir = strtoupper($m[2] ?? 'ASC');
+                if (!in_array($f, $allowed, true))
+                {
+                    continue;
+                }
                 $items[] = $f.' '.$dir;
             }
-        } else {
-            foreach ($order as $f => $dir) {
-                if (!in_array($f, $allowed, true)) continue;
+        }
+        else
+        {
+            foreach ($order as $f => $dir)
+            {
+                if (!in_array($f, $allowed, true))
+                {
+                    continue;
+                }
                 $dir = strtoupper($dir);
-                if ($dir !== 'ASC' && $dir !== 'DESC') $dir = 'ASC';
+                if ($dir !== 'ASC' && $dir !== 'DESC')
+                {
+                    $dir = 'ASC';
+                }
                 $items[] = $f.' '.$dir;
             }
         }
@@ -466,49 +605,73 @@ final class QAL extends DBA {
     }
 
     /** Вернуть первую строку (или null). */
-    public function selectRow(string $table, $fields = true, $cond = null, $order = null) {
+    public function selectRow(string $table, $fields = true, $cond = null, $order = null)
+    {
         $rows = $this->select($table, $fields, $cond, $order, [0,1]);
-        if ($rows === true) return null;
+        if ($rows === true)
+        {
+            return null;
+        }
         return $rows[0] ?? null;
     }
 
     /** Вернуть скаляр из одной колонки (или null). */
-    public function selectOne(string $table, string $field, $cond = null, $order = null) {
+    public function selectOne(string $table, string $field, $cond = null, $order = null)
+    {
         $row = $this->selectRow($table, [$field], $cond, $order);
         return $row[$field] ?? null;
     }
 
     /** Вернуть пары key=>value. */
-    public function selectPairs(string $table, string $keyField, string $valField, $cond = null, $order = null): array {
+    public function selectPairs(string $table, string $keyField, string $valField, $cond = null, $order = null): array
+    {
         $rows = $this->select($table, [$keyField, $valField], $cond, $order);
-        if ($rows === true) return [];
+        if ($rows === true)
+        {
+            return [];
+        }
         $res = [];
-        foreach ($rows as $r) {
+        foreach ($rows as $r)
+        {
             $res[$r[$keyField]] = $r[$valField];
         }
         return $res;
     }
 
     /** Проверка наличия записей по условию. */
-    public function exists(string $table, $cond = null): bool {
+    public function exists(string $table, $cond = null): bool
+    {
         $sql = 'SELECT 1 FROM '.DBA::getFQTableName($table);
         $args = [];
-        if ($cond !== null) $sql .= $this->buildWhereCondition($cond, $args);
+        if ($cond !== null)
+        {
+            $sql .= $this->buildWhereCondition($cond, $args);
+        }
         $sql .= ' LIMIT 1';
 
         $res = call_user_func_array([$this,'selectRequest'], array_merge([$sql], $args));
-        if ($res === true) return false;
+        if ($res === true)
+        {
+            return false;
+        }
         return !empty($res);
     }
 
     /** Подсчёт строк. */
-    public function count(string $table, $cond = null): int {
+    public function count(string $table, $cond = null): int
+    {
         $sql = 'SELECT COUNT(*) AS c FROM '.DBA::getFQTableName($table);
         $args = [];
-        if ($cond !== null) $sql .= $this->buildWhereCondition($cond, $args);
+        if ($cond !== null)
+        {
+            $sql .= $this->buildWhereCondition($cond, $args);
+        }
 
         $res = call_user_func_array([$this,'selectRequest'], array_merge([$sql], $args));
-        if ($res === true) return 0;
+        if ($res === true)
+        {
+            return 0;
+        }
         return (int)($res[0]['c'] ?? 0);
     }
 
@@ -516,7 +679,8 @@ final class QAL extends DBA {
      * Пагинация.
      * @return array{data:array, total:int, page:int, perPage:int, pages:int}
      */
-    public function paginate(string $table, $fields = true, $cond = null, $order = null, int $page = 1, int $perPage = 20): array {
+    public function paginate(string $table, $fields = true, $cond = null, $order = null, int $page = 1, int $perPage = 20): array
+    {
         $page = max(1, $page);
         $perPage = max(1, $perPage);
 
@@ -525,7 +689,10 @@ final class QAL extends DBA {
         $offset = ($page - 1) * $perPage;
 
         $rows = $this->select($table, $fields, $cond, $order, [$offset, $perPage]);
-        if ($rows === true) $rows = [];
+        if ($rows === true)
+        {
+            $rows = [];
+        }
 
         return [
             'data'    => $rows,
@@ -540,31 +707,42 @@ final class QAL extends DBA {
      * UPSERT: INSERT ... ON DUPLICATE KEY UPDATE ...
      * $updateOnDup: ['col'=>'VALUES(col)'] или ['col'=>$value] или [] (тогда все non-PK из $data)
      */
-    public function upsert(string $table, array $data, array $updateOnDup = []): bool {
-        if (!$data) return true;
+    public function upsert(string $table, array $data, array $updateOnDup = []): bool
+    {
+        if (!$data)
+        {
+            return true;
+        }
         $t = DBA::getFQTableName($table);
         $cols = array_keys($data);
 
         $args = [];
         $placeholders = array_fill(0, count($cols), '%s');
-        foreach ($data as $v) {
+        foreach ($data as $v)
+        {
             $args[] = $v;
         }
         $values = '('.implode(',', $placeholders).')';
 
-        if (!$updateOnDup) {
+        if (!$updateOnDup)
+        {
             // по умолчанию обновляем все поля из $data (кроме явных PK — определить трудно без схемы,
             // поэтому оставляем как есть; при необходимости можно передать $updateOnDup явно)
-            foreach ($cols as $c) {
+            foreach ($cols as $c)
+            {
                 $updateOnDup[$c] = 'VALUES('.$c.')';
             }
         }
 
         $setParts = [];
-        foreach ($updateOnDup as $c => $v) {
-            if (is_string($v) && preg_match('~^VALUES\(.+\)$~i', $v)) {
+        foreach ($updateOnDup as $c => $v)
+        {
+            if (is_string($v) && preg_match('~^VALUES\(.+\)$~i', $v))
+            {
                 $setParts[] = $c.' = '.$v;
-            } else {
+            }
+            else
+            {
                 $args[] = $v;
                 $setParts[] = $c.' = %s';
             }
@@ -581,17 +759,24 @@ final class QAL extends DBA {
      * Bulk INSERT (батчами).
      * @return int количество вставленных строк (по сумме батчей)
      */
-    public function insertMany(string $table, array $rows, int $chunk = 1000): int {
-        if (!$rows) return 0;
+    public function insertMany(string $table, array $rows, int $chunk = 1000): int
+    {
+        if (!$rows)
+        {
+            return 0;
+        }
         $t = DBA::getFQTableName($table);
         $cols = array_keys(reset($rows));
         $inserted = 0;
-        foreach (array_chunk($rows, $chunk) as $batch) {
+        foreach (array_chunk($rows, $chunk) as $batch)
+        {
             $args = [];
             $valuesSqlParts = [];
-            foreach ($batch as $row) {
+            foreach ($batch as $row)
+            {
                 $vals = [];
-                foreach ($cols as $c) {
+                foreach ($cols as $c)
+                {
                     $args[] = $row[$c];
                     $vals[] = '%s';
                 }
@@ -612,40 +797,63 @@ final class QAL extends DBA {
      * @param string $keyField имя PK/уникального столбца
      * @return int количество обработанных строк (оценочно)
      */
-    public function updateMany(string $table, array $rows, string $keyField, int $chunk = 1000): int {
-        if (!$rows) return 0;
+    public function updateMany(string $table, array $rows, string $keyField, int $chunk = 1000): int
+    {
+        if (!$rows)
+        {
+            return 0;
+        }
         $t = DBA::getFQTableName($table);
         $count = 0;
-        foreach (array_chunk($rows, $chunk) as $batch) {
+        foreach (array_chunk($rows, $chunk) as $batch)
+        {
             // собрать список обновляемых колонок
             $allCols = [];
-            foreach ($batch as $r) { $allCols = array_unique(array_merge($allCols, array_keys($r))); }
+            foreach ($batch as $r)
+            {
+                $allCols = array_unique(array_merge($allCols, array_keys($r)));
+            }
             $cols = array_values(array_diff($allCols, [$keyField]));
-            if (!$cols) continue;
+            if (!$cols)
+            {
+                continue;
+            }
 
             // строим CASE по каждой колонке
             $args = [];
             $sets = [];
-            foreach ($cols as $col) {
+            foreach ($cols as $col)
+            {
                 $cases = [];
-                foreach ($batch as $r) {
-                    if (!array_key_exists($col, $r) || !array_key_exists($keyField, $r)) continue;
+                foreach ($batch as $r)
+                {
+                    if (!array_key_exists($col, $r) || !array_key_exists($keyField, $r))
+                    {
+                        continue;
+                    }
                     $args[] = $r[$keyField];
                     $args[] = $r[$col];
                     $cases[] = 'WHEN %s THEN %s';
                 }
-                if ($cases) {
+                if ($cases)
+                {
                     // UPDATE t SET col = CASE key WHEN k1 THEN v1 ... ELSE col END
                     $sets[] = $col.' = CASE '.$keyField.' '.implode(' ', $cases).' ELSE '.$col.' END';
                 }
             }
 
-            if (!$sets) continue;
+            if (!$sets)
+            {
+                continue;
+            }
 
             // WHERE key IN (...)
             $keys = array_column($batch, $keyField);
-            $keys = array_values(array_filter($keys, fn($v) => $v !== null));
-            if (!$keys) continue;
+            $keys = array_values(array_filter($keys, fn ($v) => $v !== null));
+            if (!$keys)
+            {
+                continue;
+            }
 
             $whereArgs = [];
             $where = $this->buildWhereCondition([$keyField.' IN' => $keys], $whereArgs);
@@ -666,22 +874,30 @@ final class QAL extends DBA {
      * @param int $retries сколько раз повторять при дедлоке
      * @param string|null $isolation 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE'
      */
-    public function transaction(callable $fn, int $retries = 1, ?string $isolation = null) {
-        if ($isolation) {
+    public function transaction(callable $fn, int $retries = 1, ?string $isolation = null)
+    {
+        if ($isolation)
+        {
             $this->pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL '.$isolation);
         }
         $this->beginTransaction();
-        try {
+        try
+        {
             $r = $fn($this);
             $this->commit();
             return $r;
-        } catch (\PDOException $e) {
+        }
+        catch (\PDOException $e)
+        {
             $this->rollback();
-            if ($this->isDeadlock($e) && $retries > 0) {
+            if ($this->isDeadlock($e) && $retries > 0)
+            {
                 return $this->transaction($fn, $retries - 1, $isolation);
             }
             throw $e;
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $this->rollback();
             throw $e;
         }
@@ -692,7 +908,8 @@ final class QAL extends DBA {
     // ---------------------------------------------------------------------
 
     /** Определение дедлока по SQLSTATE/тексту. */
-    private function isDeadlock(\PDOException $e): bool {
+    private function isDeadlock(\PDOException $e): bool
+    {
         $sqlState = $e->getCode(); // '40001' (InnoDB) или пусто
         return $sqlState === '40001'
             || str_contains($e->getMessage(), '1213') // Deadlock found
@@ -707,10 +924,20 @@ final class QAL extends DBA {
      * @param int $rows
      * @param bool $ok
      */
-    private function maybeLogQuery(string $sql, array $params, float $t0, int $rows, bool $ok): void {
+    private function maybeLogQuery(string $sql, array $params, float $t0, int $rows, bool $ok): void
+    {
         $logger = null;
-        try { $logger = E()->logger ?? null; } catch (\Throwable $e) {}
-        if (!$logger) return;
+        try
+        {
+            $logger = E()->logger ?? null;
+        }
+        catch (\Throwable $e)
+        {
+        }
+        if (!$logger)
+        {
+            return;
+        }
 
         $ms = (int)round((microtime(true) - $t0) * 1000);
         $context = [
@@ -718,11 +945,17 @@ final class QAL extends DBA {
             'rows'        => $rows,
             'sql'         => $sql,
         ];
-        if ($params) $context['params'] = $params;
+        if ($params)
+        {
+            $context['params'] = $params;
+        }
 
-        if ($ms >= $this->slowMs) {
+        if ($ms >= $this->slowMs)
+        {
             $logger->warning('Slow query', $context);
-        } else {
+        }
+        else
+        {
             //$logger->info('Query', $context);
         }
     }
@@ -760,8 +993,10 @@ final class QAL extends DBA {
 
         // Колонка для сортировки (первая *_order_num)
         $order = '';
-        foreach (array_keys($columns) as $col) {
-            if (strpos($col, '_order_num') !== false) {
+        foreach (array_keys($columns) as $col)
+        {
+            if (strpos($col, '_order_num') !== false)
+            {
                 $order = $col . ' ' . self::ASC;
                 break;
             }
@@ -771,20 +1006,23 @@ final class QAL extends DBA {
         $transTableName = $this->getTranslationTablename($fkTableName);
 
         // --- Вариант 1: берём значение из основной таблицы
-        if (isset($columns[$fkValueName]) || !$transTableName) {
+        if (isset($columns[$fkValueName]) || !$transTableName)
+        {
             // Не тянем TEXT-поля, чтобы не раздувать ответ
             $cols = array_keys(array_filter(
                 $columns,
-                fn($meta) => ($meta['type'] ?? null) !== self::COLTYPE_TEXT
+                fn ($meta) => ($meta['type'] ?? null) !== self::COLTYPE_TEXT
             ));
 
             $sql  = 'SELECT ' . implode(', ', $cols) . ' FROM ' . DBA::getFQTableName($fkTableName);
             $args = [];
 
-            if ($filter) {
+            if ($filter)
+            {
                 $sql .= $this->buildWhereCondition($filter, $args);
             }
-            if ($order) {
+            if ($order)
+            {
                 $sql .= ' ORDER BY ' . $order;
             }
 
@@ -794,7 +1032,8 @@ final class QAL extends DBA {
 
         // --- Вариант 2: значение берём из таблицы переводов
         $transCols = $this->getColumnsInfo($transTableName);
-        if (!isset($transCols[$fkValueName])) {
+        if (!isset($transCols[$fkValueName]))
+        {
             // Если и в переводах поля нет — используем ключевое
             $fkValueName = $fkKeyName;
         }
@@ -808,22 +1047,28 @@ final class QAL extends DBA {
          FROM %2$s 
          LEFT JOIN %3$s ON %3$s.%4$s = %2$s.%4$s 
          WHERE %3$s.lang_id = %%s',
-            $fkValueName, $tMain, $tTr, $fkKeyName
+            $fkValueName,
+            $tMain,
+            $tTr,
+            $fkKeyName
         );
         $args = [$currentLangID];
 
         // Дополнительный фильтр
-        if ($filter) {
+        if ($filter)
+        {
             // buildWhereCondition вернёт " WHERE ...", нам нужно " AND ..."
             $argsExtra = [];
             $where = $this->buildWhereCondition($filter, $argsExtra);
-            if ($where) {
+            if ($where)
+            {
                 $sql  .= ' AND ' . ltrim(preg_replace('/^\s*WHERE\s+/i', '', $where));
                 $args  = array_merge($args, $argsExtra);
             }
         }
 
-        if ($order) {
+        if ($order)
+        {
             $sql .= ' ORDER BY ' . $order;
         }
 

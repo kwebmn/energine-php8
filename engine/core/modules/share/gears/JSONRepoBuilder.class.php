@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -29,7 +30,8 @@ final class JSONRepoBuilder extends JSONBuilder
      */
     public function build(): bool
     {
-        if ($this->dataDescription === false) {
+        if ($this->dataDescription === false)
+        {
             throw new SystemException('ERR_DEV_NO_DATA_DESCRIPTION', SystemException::ERR_DEVELOPER);
         }
 
@@ -42,7 +44,8 @@ final class JSONRepoBuilder extends JSONBuilder
         ];
 
         // ------- META -------
-        foreach ($this->dataDescription as $fieldName => $fieldInfo) {
+        foreach ($this->dataDescription as $fieldName => $fieldInfo)
+        {
             /** @var FieldDescription $fieldInfo */
             $table = (string)$fieldInfo->getPropertyValue('tableName');
             $isKey = (bool)$fieldInfo->getPropertyValue('key') && ((string)$fieldInfo->getPropertyValue('index') === 'PRI');
@@ -61,22 +64,28 @@ final class JSONRepoBuilder extends JSONBuilder
         }
 
         // ------- DATA -------
-        if ($this->data instanceof Data && !$this->data->isEmpty()) {
+        if ($this->data instanceof Data && !$this->data->isEmpty())
+        {
             $rows = $this->data->getRowCount();
 
-            for ($i = 0; $i < $rows; $i++) {
-                foreach ($this->dataDescription as $fieldName => $fieldInfo) {
+            for ($i = 0; $i < $rows; $i++)
+            {
+                foreach ($this->dataDescription as $fieldName => $fieldInfo)
+                {
                     /** @var FieldDescription $fieldInfo */
                     $value = null;
 
-                    if ($field = $this->data->getFieldByName($fieldName)) {
+                    if ($field = $this->data->getFieldByName($fieldName))
+                    {
                         $value = $field->getRowData($i);
-                        if ($value === null) {
+                        if ($value === null)
+                        {
                             $value = '';
                         }
 
                         // Спец-формат для даты публикации
-                        if ($fieldName === 'upl_publication_date' && $value !== '') {
+                        if ($fieldName === 'upl_publication_date' && $value !== '')
+                        {
                             $value = self::enFormatDate(
                                 (string)$value,
                                 (string)$fieldInfo->getPropertyValue('outputFormat'),

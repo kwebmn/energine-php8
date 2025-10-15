@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * HTTP status codes and their short descriptions.
@@ -16,7 +17,7 @@ array(
  * @note This file was created because of the big information overhead of all headers by debugging.
  */
 
-return array(
+return [
         100 => 'Continue',
         101 => 'Switching Protocols',
         200 => 'OK',
@@ -57,4 +58,4 @@ return array(
         503 => 'Service Unavailable',
         504 => 'Gateway Time-out',
         505 => 'HTTP Version not supported'
-    );
+    ];

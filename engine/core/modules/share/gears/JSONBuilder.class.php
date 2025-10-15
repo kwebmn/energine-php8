@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -29,7 +30,8 @@ class JSONBuilder extends AbstractBuilder
      */
     public function build(): bool
     {
-        if (!$this->dataDescription) {
+        if (!$this->dataDescription)
+        {
             throw new SystemException('ERR_DEV_NO_DATA_DESCRIPTION', SystemException::ERR_DEVELOPER);
         }
 
@@ -39,7 +41,8 @@ class JSONBuilder extends AbstractBuilder
         ];
 
         // meta
-        foreach ($this->dataDescription as $fieldName => $fieldInfo) {
+        foreach ($this->dataDescription as $fieldName => $fieldInfo)
+        {
             $out['meta'][$fieldName] = [
                 'title'   => $fieldInfo->getPropertyValue('title'),
                 'type'    => $fieldInfo->getType(),
@@ -55,23 +58,29 @@ class JSONBuilder extends AbstractBuilder
 
         // data
 
-        if ($this->data instanceof Data && !$this->data->isEmpty()) {
+        if ($this->data instanceof Data && !$this->data->isEmpty())
+        {
             $rows = $this->data->getRowCount();
 
-            for ($i = 0; $i < $rows; $i++) {
-                foreach ($this->dataDescription as $fieldName => $fieldInfo) {
+            for ($i = 0; $i < $rows; $i++)
+            {
+                foreach ($this->dataDescription as $fieldName => $fieldInfo)
+                {
                     $value = '';
                     $type  = $fieldInfo->getType();
 
-                    if ($f = $this->data->getFieldByName($fieldName)) {
+                    if ($f = $this->data->getFieldByName($fieldName))
+                    {
                         $value = $f->getRowData($i);
 
-                        switch ($type) {
+                        switch ($type)
+                        {
 
                             case FieldDescription::FIELD_TYPE_DATETIME:
                             case FieldDescription::FIELD_TYPE_DATE:
                             case FieldDescription::FIELD_TYPE_TIME:
-                                if (!empty($value)) {
+                                if (!empty($value))
+                                {
                                     $value = self::enFormatDate(
                                         (string)$value,
                                         (string)$fieldInfo->getPropertyValue('outputFormat'),
@@ -82,17 +91,21 @@ class JSONBuilder extends AbstractBuilder
 
                             case FieldDescription::FIELD_TYPE_SELECT:
                                 $avail = $fieldInfo->getAvailableValues();
-                                if (isset($avail[$value])) {
+                                if (isset($avail[$value]))
+                                {
                                     $value = $avail[$value]['value'];
                                 }
                                 break;
 
                             case FieldDescription::FIELD_TYPE_MULTI:
-                                if (is_array($value) && !empty($value)) {
+                                if (is_array($value) && !empty($value))
+                                {
                                     $labels = [];
                                     $avail  = $fieldInfo->getAvailableValues();
-                                    foreach ($value as $val) {
-                                        if (isset($avail[$val])) {
+                                    foreach ($value as $val)
+                                    {
+                                        if (isset($avail[$val]))
+                                        {
                                             $labels[] = $avail[$val]['value'];
                                         }
                                     }
@@ -107,7 +120,8 @@ class JSONBuilder extends AbstractBuilder
                                 break;
                         }
 
-                        if ($value === null) {
+                        if ($value === null)
+                        {
                             $value = '';
                         }
                     }
@@ -133,7 +147,8 @@ class JSONBuilder extends AbstractBuilder
     {
         $result = is_array($this->result) ? $this->result : [];
 
-        if ($this->pager instanceof Pager) {
+        if ($this->pager instanceof Pager)
+        {
             $result['pager'] = [
                 'current' => $this->pager->getCurrentPage(),
                 'count'   => $this->pager->getNumPages(),

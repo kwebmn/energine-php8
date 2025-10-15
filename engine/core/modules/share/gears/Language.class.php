@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -37,29 +38,39 @@ final class Language extends DBWorker
         $ttl = (int) BaseObject::_getConfigValue('language.cache_ttl', 3600);
         $psr = E()->__isset('psrCache') ? E()->psrCache : null;
 
-        if ($psr && method_exists($psr, 'get')) {
-            try {
+        if ($psr && method_exists($psr, 'get'))
+        {
+            try
+            {
                 /** @var array<int,array<string,mixed>> $langs */
-                $langs = $psr->get(self::CACHE_KEY, function ($item) use ($ttl) {
-                    if (method_exists($item, 'expiresAfter')) {
+                $langs = $psr->get(self::CACHE_KEY, function ($item) use ($ttl)
+                {
+                    if (method_exists($item, 'expiresAfter'))
+                    {
                         $item->expiresAfter($ttl);
                     }
-                    if (method_exists($item, 'tag')) {
+                    if (method_exists($item, 'tag'))
+                    {
                         $item->tag([self::CACHE_TAG]);
                     }
                     return $this->loadLanguagesFromDB();
                 });
                 $this->languages = $langs;
-            } catch (\Throwable) {
+            }
+            catch (\Throwable)
+            {
                 // в случае проблем с кешом — просто идём в БД
                 $this->languages = $this->loadLanguagesFromDB();
             }
-        } else {
+        }
+        else
+        {
             // 2) Без внешнего кеша — просто загрузим из БД
             $this->languages = $this->loadLanguagesFromDB();
         }
 
-        if (!$this->languages) {
+        if (!$this->languages)
+        {
             throw new SystemException('ERR_NO_LANG_INFO', SystemException::ERR_CRITICAL, $this->dbh->getLastRequest());
         }
     }
@@ -76,12 +87,15 @@ final class Language extends DBWorker
 
         // Раньше: select('share_languages', true, null, ['lang_order_num'=>QAL::ASC])
         $rows = $this->dbh->select('share_languages', true, null, ['lang_order_num' => QAL::ASC]);
-        if (!is_array($rows)) {
+        if (!is_array($rows))
+        {
             throw new SystemException('ERR_NO_LANG_INFO', SystemException::ERR_CRITICAL, $this->dbh->getLastRequest());
         }
 
-        foreach ($rows as $row) {
-            if (!isset($row['lang_id'])) {
+        foreach ($rows as $row)
+        {
+            if (!isset($row['lang_id']))
+            {
                 // пропустим бракованные строки
                 continue;
             }
@@ -109,10 +123,13 @@ final class Language extends DBWorker
     public function setCurrent(int $currentLangID): bool
     {
         $ok = false;
-        foreach ($this->languages as $langID => $langInfo) {
-            if ($langID === $currentLangID) {
+        foreach ($this->languages as $langID => $langInfo)
+        {
+            if ($langID === $currentLangID)
+            {
                 // setlocale может вернуть false — игнорируем молча, чтобы не рушить логику
-                if (!empty($langInfo['lang_locale'])) {
+                if (!empty($langInfo['lang_locale']))
+                {
                     @setlocale(LC_ALL, (string)$langInfo['lang_locale']);
                 }
                 $ok = true;
@@ -120,7 +137,8 @@ final class Language extends DBWorker
             }
         }
 
-        if (!$ok) {
+        if (!$ok)
+        {
             throw new SystemException('ERR_404', SystemException::ERR_LANG, $currentLangID);
         }
 
@@ -135,8 +153,10 @@ final class Language extends DBWorker
      */
     public function getDefault(): int
     {
-        foreach ($this->languages as $langID => $langInfo) {
-            if ((int)($langInfo['lang_default'] ?? 0) === 1) {
+        foreach ($this->languages as $langID => $langInfo)
+        {
+            if ((int)($langInfo['lang_default'] ?? 0) === 1)
+            {
                 return (int)$langID;
             }
         }
@@ -149,11 +169,14 @@ final class Language extends DBWorker
      */
     public function getIDByAbbr(string $abbr, bool $useDefaultIfEmpty = false)
     {
-        if ($abbr === '' && $useDefaultIfEmpty) {
+        if ($abbr === '' && $useDefaultIfEmpty)
+        {
             return $this->getDefault();
         }
-        foreach ($this->languages as $langID => $langInfo) {
-            if (isset($langInfo['lang_abbr']) && $langInfo['lang_abbr'] === $abbr) {
+        foreach ($this->languages as $langID => $langInfo)
+        {
+            if (isset($langInfo['lang_abbr']) && $langInfo['lang_abbr'] === $abbr)
+            {
                 return (int)$langID;
             }
         }
@@ -167,7 +190,8 @@ final class Language extends DBWorker
      */
     public function getAbbrByID(int $id): string
     {
-        if (isset($this->languages[$id]) && isset($this->languages[$id]['lang_abbr'])) {
+        if (isset($this->languages[$id]) && isset($this->languages[$id]['lang_abbr']))
+        {
             return (string)$this->languages[$id]['lang_abbr'];
         }
         throw new SystemException('ERR_BAD_LANG_ID', SystemException::ERR_LANG, $id);
@@ -180,7 +204,8 @@ final class Language extends DBWorker
      */
     public function getNameByID(int $id): string
     {
-        if (isset($this->languages[$id]) && isset($this->languages[$id]['lang_name'])) {
+        if (isset($this->languages[$id]) && isset($this->languages[$id]['lang_name']))
+        {
             return (string)$this->languages[$id]['lang_name'];
         }
         throw new SystemException('ERR_BAD_LANG_ID', SystemException::ERR_LANG, $id);
@@ -209,8 +234,10 @@ final class Language extends DBWorker
      */
     public function isValidLangAbbr(string $abbr): bool
     {
-        foreach ($this->languages as $langInfo) {
-            if (isset($langInfo['lang_abbr']) && $langInfo['lang_abbr'] === $abbr) {
+        foreach ($this->languages as $langInfo)
+        {
+            if (isset($langInfo['lang_abbr']) && $langInfo['lang_abbr'] === $abbr)
+            {
                 return true;
             }
         }

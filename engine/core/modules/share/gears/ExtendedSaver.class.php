@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,8 +25,10 @@ class ExtendedSaver extends Saver
     {
         parent::setDataDescription($dd);
 
-        foreach ($dd as $fieldName => $fieldInfo) {
-            if ($fieldInfo->getPropertyValue('key') === true) {
+        foreach ($dd as $fieldName => $fieldInfo)
+        {
+            if ($fieldInfo->getPropertyValue('key') === true)
+            {
                 $this->pk            = (string)$fieldName;
                 $this->mainTableName = (string)$fieldInfo->getPropertyValue('tableName');
                 break;
@@ -40,7 +43,8 @@ class ExtendedSaver extends Saver
      */
     protected function getTableName(): string
     {
-        if (!$this->mainTableName) {
+        if (!$this->mainTableName)
+        {
             throw new SystemException('ERR_DEV_NO_TABLE_NAME', SystemException::ERR_DEVELOPER);
         }
         return $this->mainTableName;
@@ -53,7 +57,8 @@ class ExtendedSaver extends Saver
      */
     protected function getPK(): string
     {
-        if (!$this->pk) {
+        if (!$this->pk)
+        {
             throw new SystemException('ERR_DEV_NO_PRIMARY_KEY', SystemException::ERR_DEVELOPER);
         }
         return $this->pk;
@@ -80,19 +85,22 @@ class ExtendedSaver extends Saver
         // Сохранение тегов (если доступны DD и Data)
         $dd = $this->getDataDescription();
         $data = $this->getData();
-        if ($entityID && $dd && $data) {
+        if ($entityID && $dd && $data)
+        {
             $tm = new TagManager($dd, $data, $table);
             $tm->save($entityID);
         }
 
         // --- Привязка загруженных файлов из *_uploads (pk = NULL -> pk = entityID) по session_id
-        if ($result && $this->dbh->tableExists($table . AttachmentManager::ATTACH_TABLE_SUFFIX)) {
+        if ($result && $this->dbh->tableExists($table . AttachmentManager::ATTACH_TABLE_SUFFIX))
+        {
             // Совместимость: если parent::save() вернул не int, возьмём $entityID или POST-фоллбек
             $id = is_int($result)
                 ? $result
                 : ($entityID ?: (int)($_POST[$table][$pkName] ?? 0));
 
-            if ($id) {
+            if ($id)
+            {
                 $this->dbh->modify(
                     QAL::UPDATE,
                     $table . AttachmentManager::ATTACH_TABLE_SUFFIX,
@@ -103,12 +111,14 @@ class ExtendedSaver extends Saver
         }
 
         // --- Привязка записей из *_filter_data (target_id = NULL -> target_id = entityID) по session_id
-        if ($result && $this->dbh->tableExists($table . FilterManager::FILTER_DATA_TABLE_SUFFIX)) {
+        if ($result && $this->dbh->tableExists($table . FilterManager::FILTER_DATA_TABLE_SUFFIX))
+        {
             $id = is_int($result)
                 ? $result
                 : ($entityID ?: (int)($_POST[$table][$pkName] ?? 0));
 
-            if ($id) {
+            if ($id)
+            {
                 $this->dbh->modify(
                     QAL::UPDATE,
                     $table . FilterManager::FILTER_DATA_TABLE_SUFFIX,

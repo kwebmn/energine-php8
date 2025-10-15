@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 class FiltersTree extends DataSet
@@ -16,7 +17,8 @@ class FiltersTree extends DataSet
     {
         $base = (string)$this->getParam('tableName');
         // валидное имя таблицы: буква/подчёркивание, далее буквы/цифры/подчёркивания
-        if ($base === '' || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $base)) {
+        if ($base === '' || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $base))
+        {
             return null;
         }
         return $base;
@@ -30,7 +32,10 @@ class FiltersTree extends DataSet
     public function getFiltersChilds(int $filterId): array
     {
         $base = $this->resolveBaseTable();
-        if ($base === null) return [];
+        if ($base === null)
+        {
+            return [];
+        }
 
         $tableName      = $base . FilterManager::FILTER_TABLE_SUFFIX;
         $tableNameTrans = $tableName . '_translation';
@@ -45,10 +50,17 @@ class FiltersTree extends DataSet
             $filterId
         );
 
-        if (!is_array($rows) || !$rows) return [];
-        foreach ($rows as $row) {
+        if (!is_array($rows) || !$rows)
+        {
+            return [];
+        }
+        foreach ($rows as $row)
+        {
             $children = $this->getFiltersChilds((int)$row['filter_id']);
-            if (!empty($children)) $rows = array_merge($rows, $children);
+            if (!empty($children))
+            {
+                $rows = array_merge($rows, $children);
+            }
         }
         return $rows;
     }
@@ -56,7 +68,10 @@ class FiltersTree extends DataSet
     public function getFilters(): array
     {
         $base = $this->resolveBaseTable();
-        if ($base === null) return [];
+        if ($base === null)
+        {
+            return [];
+        }
 
         $tableName      = $base . FilterManager::FILTER_TABLE_SUFFIX;
         $tableNameData  = $tableName . '_data';
@@ -64,7 +79,8 @@ class FiltersTree extends DataSet
         $langId         = (int)E()->getLanguage()->getCurrent();
 
         $const = $this->getParam('const');
-        if (is_string($const) && $const !== '') {
+        if (is_string($const) && $const !== '')
+        {
             $rows = $this->dbh->select(
                 'SELECT filter_id, filter_pid, filter_name, filter_seo_url
                    FROM ' . $tableName . ' INNER JOIN ' . $tableNameTrans . ' USING(filter_id)
@@ -73,10 +89,17 @@ class FiltersTree extends DataSet
                 $langId,
                 $const
             );
-            if (!is_array($rows) || !$rows) return [];
-            foreach ($rows as $row) {
+            if (!is_array($rows) || !$rows)
+            {
+                return [];
+            }
+            foreach ($rows as $row)
+            {
                 $children = $this->getFiltersChilds((int)$row['filter_id']);
-                if (!empty($children)) $rows = array_merge($rows, $children);
+                if (!empty($children))
+                {
+                    $rows = array_merge($rows, $children);
+                }
             }
             return $rows;
         }

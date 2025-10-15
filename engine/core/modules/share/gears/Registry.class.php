@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 /**
  * @file
@@ -20,8 +21,10 @@ declare(strict_types=1);
  * E[nergine] shortcut.
  * @return Registry
  */
-if (!function_exists('E')) {
-    function E() {
+if (!function_exists('E'))
+{
+    function E()
+    {
         return \Registry::getInstance();
     }
 }
@@ -39,7 +42,8 @@ use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 
-final class Registry extends BaseObject {
+final class Registry extends BaseObject
+{
     /**
      * Instance of this class.
      * @var Registry|null
@@ -67,8 +71,10 @@ final class Registry extends BaseObject {
     /**
      * @throws SystemException
      */
-    public function __construct() {
-        if (is_null(self::$flag)) {
+    public function __construct()
+    {
+        if (is_null(self::$flag))
+        {
             throw new SystemException('ERR_PRIVATE_CONSTRUCTOR', SystemException::ERR_DEVELOPER);
         }
         self::$flag = null;
@@ -77,7 +83,9 @@ final class Registry extends BaseObject {
     /**
      * Disable cloning.
      */
-    private function __clone() {}
+    private function __clone()
+    {
+    }
 
     /**
      * Get instance.
@@ -85,8 +93,10 @@ final class Registry extends BaseObject {
      * @return Registry
      * @final
      */
-    public static final function getInstance() {
-        if (is_null(self::$instance)) {
+    final public static function getInstance()
+    {
+        if (is_null(self::$instance))
+        {
             self::$flag = true;
             self::$instance = new Registry();
         }
@@ -96,14 +106,16 @@ final class Registry extends BaseObject {
     /**
      * Attach DI container.
      */
-    public static function setContainer(?ContainerInterface $container): void {
+    public static function setContainer(?ContainerInterface $container): void
+    {
         self::$container = $container;
     }
 
     /**
      * Get DI container.
      */
-    public static function getContainer(): ?ContainerInterface {
+    public static function getContainer(): ?ContainerInterface
+    {
         return self::$container;
     }
 
@@ -114,8 +126,10 @@ final class Registry extends BaseObject {
      * @return mixed
      * @throws Exception 'Use Registry::getMap($siteID) instead.'
      */
-    public function __get($className) {
-        if ($className == 'Sitemap') {
+    public function __get($className)
+    {
+        if ($className == 'Sitemap')
+        {
             throw new Exception('Use Registry::getMap($siteID) instead.');
         }
         return $this->get($className);
@@ -127,27 +141,35 @@ final class Registry extends BaseObject {
      * @param string $className Class name.
      * @return mixed
      */
-    private function get($className) {
-        if (isset($this->entities[$className])) {
+    private function get($className)
+    {
+        if (isset($this->entities[$className]))
+        {
             return $this->entities[$className];
         }
 
-        if (self::$container instanceof ContainerInterface) {
-            try {
-                if (self::$container->has($className)) {
+        if (self::$container instanceof ContainerInterface)
+        {
+            try
+            {
+                if (self::$container->has($className))
+                {
                     $resolved = self::$container->get($className);
                     $this->entities[$className] = $resolved;
 
                     return $resolved;
                 }
 
-                if (self::$container instanceof FactoryInterface) {
+                if (self::$container instanceof FactoryInterface)
+                {
                     $resolved = self::$container->make($className);
                     $this->entities[$className] = $resolved;
 
                     return $resolved;
                 }
-            } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
+            }
+            catch (NotFoundExceptionInterface|ContainerExceptionInterface $e)
+            {
                 // Fallback ниже
             }
         }
@@ -162,7 +184,8 @@ final class Registry extends BaseObject {
     /**
      * Container accessor for helpers.
      */
-    public function getContainerInstance(): ?ContainerInterface {
+    public function getContainerInstance(): ?ContainerInterface
+    {
         return self::$container;
     }
 
@@ -172,8 +195,10 @@ final class Registry extends BaseObject {
      * @param string $className Class name.
      * @param mixed  $object    Object.
      */
-    public function __set($className, $object) {
-        if (!isset($this->entities[$className])) {
+    public function __set($className, $object)
+    {
+        if (!isset($this->entities[$className]))
+        {
             $this->entities[$className] = $object;
         }
     }
@@ -184,7 +209,8 @@ final class Registry extends BaseObject {
      * @param string $entityName
      * @return bool
      */
-    public function __isset($entityName) {
+    public function __isset($entityName)
+    {
         return isset($this->entities[$entityName]);
     }
 
@@ -193,7 +219,8 @@ final class Registry extends BaseObject {
      *
      * @param string $entityName Entity name.
      */
-    public function __unset($entityName) {
+    public function __unset($entityName)
+    {
         // intentionally no-op
     }
 
@@ -202,7 +229,8 @@ final class Registry extends BaseObject {
      *
      * @return AuthUser
      */
-    public function getAUser() {
+    public function getAUser()
+    {
         return $this->get('AuthUser');
     }
 
@@ -213,9 +241,11 @@ final class Registry extends BaseObject {
      *
      * @throws Exception 'AuthUser object is already used. You can not substitute it here.'
      */
-    public function setAUser($anotherAuthUserObject) {
-        if (isset($this->entities['AuthUser'])) {
-            throw new Exception ('AuthUser object is already used. You can not substitute it here.');
+    public function setAUser($anotherAuthUserObject)
+    {
+        if (isset($this->entities['AuthUser']))
+        {
+            throw new Exception('AuthUser object is already used. You can not substitute it here.');
         }
         $this->entities['AuthUser'] = $anotherAuthUserObject;
     }
@@ -225,7 +255,8 @@ final class Registry extends BaseObject {
      *
      * @return Request
      */
-    public function getRequest() {
+    public function getRequest()
+    {
         return $this->get('Request');
     }
 
@@ -234,7 +265,8 @@ final class Registry extends BaseObject {
      *
      * @return Response
      */
-    public function getResponse() {
+    public function getResponse()
+    {
         return $this->get('Response');
     }
 
@@ -243,7 +275,8 @@ final class Registry extends BaseObject {
      *
      * @return Document
      */
-    public function getDocument() {
+    public function getDocument()
+    {
         return $this->get('Document');
     }
 
@@ -252,7 +285,8 @@ final class Registry extends BaseObject {
      *
      * @return OGObject
      */
-    public function getOGObject() {
+    public function getOGObject()
+    {
         return $this->get('OGObject');
     }
 
@@ -261,7 +295,8 @@ final class Registry extends BaseObject {
      *
      * @return Language
      */
-    public function getLanguage() {
+    public function getLanguage()
+    {
         return $this->get('Language');
     }
 
@@ -270,7 +305,8 @@ final class Registry extends BaseObject {
      *
      * @return SiteManager
      */
-    public function getSiteManager() {
+    public function getSiteManager()
+    {
         return $this->get('SiteManager');
     }
 
@@ -282,18 +318,27 @@ final class Registry extends BaseObject {
      *
      * @note In fact, several objects of this class exist.
      */
-    public function getMap($siteID = false) {
-        if (!$siteID) {
+    public function getMap($siteID = false)
+    {
+        if (!$siteID)
+        {
             $siteID = E()->getSiteManager()->getCurrentSite()->id;
         }
-        if (!isset($this->entities['Sitemap'][$siteID])) {
-            if (self::$container instanceof FactoryInterface) {
-                try {
+        if (!isset($this->entities['Sitemap'][$siteID]))
+        {
+            if (self::$container instanceof FactoryInterface)
+            {
+                try
+                {
                     $this->entities['Sitemap'][$siteID] = self::$container->make(Sitemap::class, ['siteID' => $siteID]);
-                } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                }
+                catch (NotFoundExceptionInterface|ContainerExceptionInterface)
+                {
                     $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
                 }
-            } else {
+            }
+            else
+            {
                 $this->entities['Sitemap'][$siteID] = new Sitemap($siteID);
             }
         }
@@ -305,7 +350,8 @@ final class Registry extends BaseObject {
      *
      * @return DocumentController
      */
-    public function getController() {
+    public function getController()
+    {
         return $this->get('DocumentController');
     }
 
@@ -314,8 +360,10 @@ final class Registry extends BaseObject {
      *
      * @return QAL
      */
-    public function getDB() {
-        if (!isset($this->entities['QAL'])) {
+    public function getDB()
+    {
+        if (!isset($this->entities['QAL']))
+        {
             $this->entities['QAL'] = new QAL(
                 sprintf(
                     'mysql:host=%s;port=%s;dbname=%s',
@@ -340,7 +388,8 @@ final class Registry extends BaseObject {
      *
      * @return Cache
      */
-    public function getCache() {
+    public function getCache()
+    {
         return $this->get('Cache');
     }
 }

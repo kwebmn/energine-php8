@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * OGObject.
@@ -15,19 +16,19 @@
 class OGObject extends BaseObject
 {
     /** Ширина изображения по умолчанию. */
-    const DEFAULT_WIDTH  = 640;
+    public const DEFAULT_WIDTH  = 640;
     /** Высота изображения по умолчанию. */
-    const DEFAULT_HEIGHT = 360;
+    public const DEFAULT_HEIGHT = 360;
 
     /** @var array[] Список изображений: [ [url, width, height], ... ] */
-    private $images = array();
+    private $images = [];
 
     /**
      * Данные видео-объекта.
      * Ключи: url, duration (секунды), type (og-type, напр. video.other), mime, width, height
      * @var array
      */
-    private $video = array();
+    private $video = [];
 
     /** @var string og:title */
     private $title = '';
@@ -43,11 +44,11 @@ class OGObject extends BaseObject
      */
     public function addImage($imageURL, $width = self::DEFAULT_WIDTH, $height = self::DEFAULT_HEIGHT)
     {
-        $this->images[] = array(
+        $this->images[] = [
             'url'    => $imageURL,
             'width'  => (int)$width ?: self::DEFAULT_WIDTH,
             'height' => (int)$height ?: self::DEFAULT_HEIGHT,
-        );
+        ];
     }
 
     /**
@@ -55,11 +56,11 @@ class OGObject extends BaseObject
      */
     public function setImage($imageURL, $width = self::DEFAULT_WIDTH, $height = self::DEFAULT_HEIGHT)
     {
-        $this->images = array(array(
+        $this->images = [[
             'url'    => $imageURL,
             'width'  => (int)$width ?: self::DEFAULT_WIDTH,
             'height' => (int)$height ?: self::DEFAULT_HEIGHT,
-        ));
+        ]];
     }
 
     /**
@@ -100,14 +101,14 @@ class OGObject extends BaseObject
      */
     public function setVideo($url, $duration, $mime, $width = self::DEFAULT_WIDTH, $height = self::DEFAULT_HEIGHT, $type = 'video.other')
     {
-        $this->video = array(
+        $this->video = [
             'url'      => (string)$url,
             'duration' => $this->parseDuration($duration),
             'type'     => $type ?: 'video.other',
             'mime'     => (string)$mime,
             'width'    => (int)$width ?: self::DEFAULT_WIDTH,
             'height'   => (int)$height ?: self::DEFAULT_HEIGHT,
-        );
+        ];
     }
 
     /**
@@ -118,9 +119,11 @@ class OGObject extends BaseObject
     public function build()
     {
         // Заголовок по умолчанию — из Document
-        if ($this->title === '') {
+        if ($this->title === '')
+        {
             $docTitle = E()->getDocument()->getProperty('title');
-            if ($docTitle) {
+            if ($docTitle)
+            {
                 $this->setTitle($docTitle);
             }
         }
@@ -129,46 +132,54 @@ class OGObject extends BaseObject
         $result = $doc->createElement('og');
 
         // title
-        if ($this->title !== '') {
+        if ($this->title !== '')
+        {
             $this->appendProperty($doc, $result, 'title', $this->title);
         }
 
         // description
-        if ($this->description !== '') {
+        if ($this->description !== '')
+        {
             $this->appendProperty($doc, $result, 'description', $this->description);
         }
 
         // url (если задан)
-        if ($this->url !== '') {
+        if ($this->url !== '')
+        {
             $this->appendProperty($doc, $result, 'url', $this->url);
         }
 
         // Изображения
-        if (!empty($this->images)) {
-            foreach ($this->images as $img) {
+        if (!empty($this->images))
+        {
+            foreach ($this->images as $img)
+            {
                 $imgUrl = $this->resolveImageUrl($img['url'], $img['width'], $img['height']);
                 $this->appendProperty($doc, $result, 'image', $imgUrl);
-                $this->appendProperty($doc, $result, 'image:width',  (string)$img['width']);
+                $this->appendProperty($doc, $result, 'image:width', (string)$img['width']);
                 $this->appendProperty($doc, $result, 'image:height', (string)$img['height']);
             }
         }
 
         // Видео
         $pageType = 'website';
-        if (!empty($this->video)) {
+        if (!empty($this->video))
+        {
             $mediaBase = $this->getConfigValue('site.media');
-            if (!$mediaBase) {
+            if (!$mediaBase)
+            {
                 $mediaBase = E()->getSiteManager()->getDefaultSite()->base;
             }
             $videoUrl = $this->isAbsoluteUrl($this->video['url'])
                 ? $this->video['url']
                 : $mediaBase . ltrim($this->video['url'], '/');
 
-            $this->appendProperty($doc, $result, 'video',        $videoUrl);
-            $this->appendProperty($doc, $result, 'video:width',  (string)$this->video['width']);
+            $this->appendProperty($doc, $result, 'video', $videoUrl);
+            $this->appendProperty($doc, $result, 'video:width', (string)$this->video['width']);
             $this->appendProperty($doc, $result, 'video:height', (string)$this->video['height']);
             // Совместимость: оставим как раньше plain "duration"
-            if ($this->video['duration'] !== '') {
+            if ($this->video['duration'] !== '')
+            {
                 $this->appendProperty($doc, $result, 'duration', (string)$this->video['duration']);
                 // И современный вариант:
                 $this->appendProperty($doc, $result, 'video:duration', (string)$this->video['duration']);
@@ -193,7 +204,8 @@ class OGObject extends BaseObject
      */
     private function appendProperty(DOMDocument $doc, DOMElement $root, $name, $value)
     {
-        if ($value === null || $value === '') {
+        if ($value === null || $value === '')
+        {
             return;
         }
         $prop = $doc->createElement('property');
@@ -209,12 +221,14 @@ class OGObject extends BaseObject
      */
     private function resolveImageUrl($path, $width, $height)
     {
-        if ($this->isAbsoluteUrl($path)) {
+        if ($this->isAbsoluteUrl($path))
+        {
             return $path;
         }
 
         $resizer = $this->getConfigValue('site.resizer');
-        if (!$resizer) {
+        if (!$resizer)
+        {
             $resizer = E()->getSiteManager()->getDefaultSite()->base . 'resizer/';
         }
 
@@ -237,23 +251,27 @@ class OGObject extends BaseObject
      */
     private function parseDuration($duration)
     {
-        if ($duration === null || $duration === '') {
+        if ($duration === null || $duration === '')
+        {
             return '';
         }
 
-        if (is_numeric($duration)) {
+        if (is_numeric($duration))
+        {
             return (string)max(0, (int)$duration);
         }
 
         $parts = array_map('trim', explode(':', (string)$duration));
         $parts = array_map('intval', $parts);
 
-        if (count($parts) === 2) {
+        if (count($parts) === 2)
+        {
             // mm:ss
             list($m, $s) = $parts;
             return (string)max(0, $m * 60 + $s);
         }
-        if (count($parts) === 3) {
+        if (count($parts) === 3)
+        {
             // hh:mm:ss
             list($h, $m, $s) = $parts;
             return (string)max(0, $h * 3600 + $m * 60 + $s);

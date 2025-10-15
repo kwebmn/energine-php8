@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -33,19 +34,22 @@ class TagManager extends DBWorker
      * @param Data            $data
      * @param string          $tableName  Имя «главной» таблицы без суффикса (_tags будет добавлен автоматически)
      */
-    public function __construct(DataDescription $dataDescription,  $data, string $tableName)
+    public function __construct(DataDescription $dataDescription, $data, string $tableName)
     {
         parent::__construct();
 
         $this->tableName = $tableName . self::TAGS_TABLE_SUFFIX;
         $this->isActive  = (bool)$this->dbh->tableExists($this->tableName);
 
-        if ($this->isActive) {
+        if ($this->isActive)
+        {
             $this->dataDescription = $dataDescription;
             $this->data            = $data;
 
-            foreach ($this->dataDescription as $fd) {
-                if ($fd->getPropertyValue('key')) {
+            foreach ($this->dataDescription as $fd)
+            {
+                if ($fd->getPropertyValue('key'))
+                {
                     $this->pk = $fd;
                     break;
                 }
@@ -58,12 +62,14 @@ class TagManager extends DBWorker
      */
     public function createFieldDescription(): void
     {
-        if (!$this->isActive || !$this->dataDescription) {
+        if (!$this->isActive || !$this->dataDescription)
+        {
             return;
         }
 
         $fd = $this->dataDescription->getFieldDescriptionByName('tags');
-        if (!$fd) {
+        if (!$fd)
+        {
             $fd = new FieldDescription('tags');
             $this->dataDescription->addFieldDescription($fd);
         }
@@ -80,23 +86,30 @@ class TagManager extends DBWorker
      */
     public function createField($initialValue = null): void
     {
-        if (!$this->isActive || !$this->data) {
+        if (!$this->isActive || !$this->data)
+        {
             return;
         }
 
         $field = new Field('tags');
 
-        if ($initialValue === null) {
-            if (!$this->data->isEmpty() && $this->pk) {
+        if ($initialValue === null)
+        {
+            if (!$this->data->isEmpty() && $this->pk)
+            {
                 $currentData = $this->data->getFieldByName($this->pk->getName());
-                if ($currentData) {
+                if ($currentData)
+                {
                     $pulled = $this->pull($currentData->getData(), $this->tableName);
                     $field->setData($pulled);
                 }
             }
-        } else {
+        }
+        else
+        {
             $rowCount = max(1, $this->data->getRowCount());
-            for ($i = 0; $i < $rowCount; $i++) {
+            for ($i = 0; $i < $rowCount; $i++)
+            {
                 $field->setRowData($i, is_array($initialValue) ? $initialValue : [$initialValue]);
             }
         }
@@ -110,13 +123,16 @@ class TagManager extends DBWorker
      */
     public function save(int $id, ?string $tags = null): void
     {
-        if (!$this->isActive) {
+        if (!$this->isActive)
+        {
             return;
         }
-        if ($tags === null && isset($_POST['tags'])) {
+        if ($tags === null && isset($_POST['tags']))
+        {
             $tags = (string)$_POST['tags'];
         }
-        if ($tags === null) {
+        if ($tags === null)
+        {
             return;
         }
 
@@ -137,14 +153,15 @@ class TagManager extends DBWorker
      */
     public function bind($tags, int $mapValue, string $mapTableName): array
     {
-        if (!$this->dbh->tableExists($mapTableName)) {
+        if (!$this->dbh->tableExists($mapTableName))
+        {
             throw new SystemException('ERR_WRONG_TABLE_NAME', SystemException::ERR_DEVELOPER, $mapTableName);
         }
 
         // Нормализация входа
         $names = is_array($tags) ? $tags : explode(self::TAG_SEPARATOR, (string)$tags);
         $names = array_values(array_filter(array_map(
-            static fn(string $t): string => mb_convert_case(trim($t), MB_CASE_LOWER, 'UTF-8'),
+            static fn (string $t): string => mb_convert_case(trim($t), MB_CASE_LOWER, 'UTF-8'),
             $names
         )));
         $names = array_unique($names);
@@ -153,29 +170,34 @@ class TagManager extends DBWorker
         $columns      = array_keys($this->dbh->getColumnsInfo($mapTableName));
         $candidates   = array_values(array_diff($columns, ['tag_id']));
         $mapFieldName = $candidates[0] ?? null;
-        if (!$mapFieldName) {
+        if (!$mapFieldName)
+        {
             throw new SystemException('ERR_WRONG_TABLE_NAME', SystemException::ERR_DEVELOPER, $mapTableName);
         }
 
         $pdo         = $this->dbh->getPDO();
         $startedHere = false;
 
-        if (!$pdo->inTransaction()) {
+        if (!$pdo->inTransaction())
+        {
             $pdo->beginTransaction();
             $startedHere = true;
         }
 
-        try {
+        try
+        {
             // Удаляем старые связи
             $this->dbh->modify(QAL::DELETE, $mapTableName, null, [$mapFieldName => $mapValue]);
 
-            if (!empty($names)) {
+            if (!empty($names))
+            {
                 // 1) Существующие tag_id по именам
                 $existing = self::fetchTagIdsByNames($names); // ['name' => tag_id]
 
                 // 2) Создаём отсутствующие
                 $missing = array_values(array_diff($names, array_keys($existing)));
-                if ($missing) {
+                if ($missing)
+                {
                     $this->insertTagsBatch($missing);
                     // Добираем id для только что вставленных
                     $created  = self::fetchTagIdsByNames($missing);
@@ -183,9 +205,11 @@ class TagManager extends DBWorker
                 }
 
                 // 3) Вставляем связи (INSERT IGNORE для идемпотентности)
-                foreach ($names as $name) {
+                foreach ($names as $name)
+                {
                     $tagId = (int)($existing[$name] ?? 0);
-                    if ($tagId > 0) {
+                    if ($tagId > 0)
+                    {
                         $this->dbh->modify(
                             QAL::INSERT_IGNORE,
                             $mapTableName,
@@ -195,11 +219,15 @@ class TagManager extends DBWorker
                 }
             }
 
-            if ($startedHere) {
+            if ($startedHere)
+            {
                 $pdo->commit();
             }
-        } catch (\Throwable $e) {
-            if ($startedHere && $pdo->inTransaction()) {
+        }
+        catch (\Throwable $e)
+        {
+            if ($startedHere && $pdo->inTransaction())
+            {
                 $pdo->rollBack();
             }
             throw $e;
@@ -220,7 +248,8 @@ class TagManager extends DBWorker
      */
     public function pull($mapValue, string $mapTableName, bool $asString = false)
     {
-        if (!$this->dbh->tableExists($mapTableName)) {
+        if (!$this->dbh->tableExists($mapTableName))
+        {
             throw new SystemException('ERR_WRONG_TABLE_NAME', SystemException::ERR_DEVELOPER, $mapTableName);
         }
 
@@ -230,11 +259,13 @@ class TagManager extends DBWorker
         $columns      = array_keys($this->dbh->getColumnsInfo($mapTableName));
         $candidates   = array_values(array_diff($columns, ['tag_id']));
         $mapFieldName = $candidates[0] ?? null;
-        if (!$mapFieldName) {
+        if (!$mapFieldName)
+        {
             throw new SystemException('ERR_WRONG_TABLE_NAME', SystemException::ERR_DEVELOPER, $mapTableName);
         }
 
-        if (empty($values)) {
+        if (empty($values))
+        {
             return $asString ? '' : [];
         }
 
@@ -246,14 +277,17 @@ class TagManager extends DBWorker
         );
 
         $byTarget = [];
-        if (is_array($res)) {
-            foreach ($res as $row) {
+        if (is_array($res))
+        {
+            foreach ($res as $row)
+            {
                 $byTarget[(int)$row['target_id']][] = (int)$row['tag_id'];
             }
         }
 
         $result = [];
-        foreach ($values as $targetId) {
+        foreach ($values as $targetId)
+        {
             $ids   = $byTarget[$targetId] ?? [];
             $names = self::getTags($ids, $asString);
             $result[] = $names;
@@ -276,12 +310,14 @@ class TagManager extends DBWorker
     {
         $names = is_array($tag) ? $tag : explode(self::TAG_SEPARATOR, (string)$tag);
         $names = array_values(array_filter(array_map('trim', $names)));
-        if (!$names) {
+        if (!$names)
+        {
             return [];
         }
 
         $q = [];
-        foreach ($names as $t) {
+        foreach ($names as $t)
+        {
             $q[] = E()->getDB()->quote($t);
         }
 
@@ -296,8 +332,10 @@ class TagManager extends DBWorker
         );
 
         $out = [];
-        if (is_array($res)) {
-            foreach ($res as $row) {
+        if (is_array($res))
+        {
+            foreach ($res as $row)
+            {
                 $out[(int)$row['tag_id']] = (string)$row['tag_name'];
             }
         }
@@ -334,7 +372,8 @@ class TagManager extends DBWorker
     {
         $ids = is_array($tagID) ? array_values($tagID) : [$tagID];
         $ids = array_map('intval', $ids);
-        if (!$ids) {
+        if (!$ids)
+        {
             return $asString ? '' : [];
         }
 
@@ -350,8 +389,10 @@ class TagManager extends DBWorker
         );
 
         $out = [];
-        if (is_array($res)) {
-            foreach ($res as $row) {
+        if (is_array($res))
+        {
+            foreach ($res as $row)
+            {
                 $out[(int)$row['tag_id']] = (string)$row['tag_name'];
             }
         }
@@ -371,25 +412,29 @@ class TagManager extends DBWorker
      */
     public static function getFilter($tags, string $mapTableName, bool $matchAll = false): array
     {
-        if (!E()->getDB()->tableExists($mapTableName)) {
+        if (!E()->getDB()->tableExists($mapTableName))
+        {
             throw new SystemException('ERR_WRONG_TABLE_NAME', SystemException::ERR_DEVELOPER, $mapTableName);
         }
 
         $idsByName = self::getID($tags); // id => name
-        if (!$idsByName) {
+        if (!$idsByName)
+        {
             return [];
         }
 
         $columns      = array_keys(E()->getDB()->getColumnsInfo($mapTableName));
         $candidates   = array_values(array_diff($columns, ['tag_id']));
         $mapFieldName = $candidates[0] ?? null;
-        if (!$mapFieldName) {
+        if (!$mapFieldName)
+        {
             throw new SystemException('ERR_WRONG_TABLE_NAME', SystemException::ERR_DEVELOPER, $mapTableName);
         }
 
         $tagIds = implode(',', array_map('intval', array_keys($idsByName)));
 
-        if ($matchAll) {
+        if ($matchAll)
+        {
             // AND: target_id, где найдено столько разных tag_id, сколько искали
             $res = E()->getDB()->select(
                 "SELECT {$mapFieldName} AS target_id
@@ -398,7 +443,9 @@ class TagManager extends DBWorker
                  GROUP BY {$mapFieldName}
                  HAVING COUNT(DISTINCT tag_id) = " . count($idsByName)
             );
-        } else {
+        }
+        else
+        {
             // OR: любой из тегов
             $res = E()->getDB()->select(
                 "SELECT DISTINCT {$mapFieldName} AS target_id
@@ -423,14 +470,17 @@ class TagManager extends DBWorker
 
         // id по tag_code
         $rowId = E()->getDB()->getScalar(self::TAG_TABLENAME, 'tag_id', ['tag_code' => $code]);
-        if (!$rowId) {
+        if (!$rowId)
+        {
             return false;
         }
 
         // Переводы для всех языков
         $langs = E()->getLanguage()->getLanguages();
-        if ($langs) {
-            foreach ($langs as $lang_id => $lang_info) {
+        if ($langs)
+        {
+            foreach ($langs as $lang_id => $lang_info)
+            {
                 E()->getDB()->modify(
                     QAL::INSERT_IGNORE,
                     self::TAG_TABLENAME_TRANSLATION,
@@ -454,12 +504,14 @@ class TagManager extends DBWorker
      */
     private static function fetchTagIdsByNames(array $namesLower): array
     {
-        if (!$namesLower) {
+        if (!$namesLower)
+        {
             return [];
         }
 
         $q = [];
-        foreach ($namesLower as $n) {
+        foreach ($namesLower as $n)
+        {
             $q[] = E()->getDB()->quote($n);
         }
 
@@ -473,8 +525,10 @@ class TagManager extends DBWorker
         );
 
         $out = [];
-        if (is_array($res)) {
-            foreach ($res as $row) {
+        if (is_array($res))
+        {
+            foreach ($res as $row)
+            {
                 $out[(string)$row['tag_name_lc']] = (int)$row['tag_id'];
             }
         }
@@ -488,7 +542,8 @@ class TagManager extends DBWorker
      */
     private function insertTagsBatch(array $missingLowerCase): void
     {
-        foreach ($missingLowerCase as $nameLc) {
+        foreach ($missingLowerCase as $nameLc)
+        {
             // В отображаемое имя кладём то, что пришло (здесь уже lower),
             // код (tag_code) — тоже в нижнем регистре.
             self::insert($nameLc);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -58,7 +59,8 @@ abstract class DBA extends BaseObject
         array  $driverOptions,
         string $charset = 'utf8mb4'
     ) {
-        try {
+        try
+        {
             // Современные значения по умолчанию
             $driverOptions[PDO::ATTR_ERRMODE]            = PDO::ERRMODE_EXCEPTION;
             $driverOptions[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_ASSOC;
@@ -73,7 +75,9 @@ abstract class DBA extends BaseObject
 
             // Кэш структуры БД
             $this->dbCache = new DBStructureInfo($this->pdo);
-        } catch (PDOException $e) {
+        }
+        catch (PDOException $e)
+        {
             // Сообщение оставляем совместимым
             throw new SystemException(
                 'Unable to connect. The site is temporarily unavailable.',
@@ -104,7 +108,8 @@ abstract class DBA extends BaseObject
     {
         $stmt = $this->fulfill(...func_get_args());
 
-        if (!($stmt instanceof PDOStatement)) {
+        if (!($stmt instanceof PDOStatement))
+        {
             $errorInfo = $this->pdo->errorInfo();
             throw new SystemException($errorInfo[2] ?? 'DB error', SystemException::ERR_DB, [$this->getLastRequest()]);
         }
@@ -126,7 +131,8 @@ abstract class DBA extends BaseObject
     {
         $stmt = $this->fulfill(...func_get_args());
 
-        if (!($stmt instanceof PDOStatement)) {
+        if (!($stmt instanceof PDOStatement))
+        {
             $errorInfo = $this->pdo->errorInfo();
             throw new SystemException($errorInfo[2] ?? 'DB error', SystemException::ERR_DB, [$this->getLastRequest()]);
         }
@@ -145,7 +151,8 @@ abstract class DBA extends BaseObject
      */
     public function call(string $name, ?array &$args = null, bool $answer = true): array|bool
     {
-        if (!$args) {
+        if (!$args)
+        {
             $stmt = $this->pdo->query("CALL {$name}()");
             return $answer ? ($stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : false) : (bool)$stmt;
         }
@@ -153,7 +160,8 @@ abstract class DBA extends BaseObject
         $placeholders = implode(',', array_fill(0, count($args), '?'));
         $stmt = $this->pdo->prepare("CALL {$name}({$placeholders})");
 
-        foreach ($args as $i => &$v) {
+        foreach ($args as $i => &$v)
+        {
             // биндим «как есть»; при желании можно добавить типизацию
             $stmt->bindParam($i + 1, $v);
         }
@@ -180,12 +188,14 @@ abstract class DBA extends BaseObject
     protected function fulfill(string $request /* , ...args */): bool|PDOStatement
     {
         $args = func_get_args();
-        if (empty($args) || !is_string($request) || $request === '') {
+        if (empty($args) || !is_string($request) || $request === '')
+        {
             return false;
         }
 
         $stmt = $this->runQuery($args);
-        if ($stmt instanceof PDOStatement) {
+        if ($stmt instanceof PDOStatement)
+        {
             $this->lastQuery = $this->interpolateQuery($request, array_slice($args, 1));
         }
 
@@ -297,17 +307,19 @@ abstract class DBA extends BaseObject
         $result = [];
         $tableName = str_replace('`', '', $tableName);
 
-        if ($pos = strpos($tableName, '.')) {
+        if ($pos = strpos($tableName, '.'))
+        {
             $result[] = substr($tableName, 0, $pos);
             $tableName = substr($tableName, $pos + 1);
         }
         $result[] = $tableName;
 
-        if ($returnAsArray) {
+        if ($returnAsArray)
+        {
             return $result;
         }
 
-        return implode('.', array_map(static fn($p) => '`' . $p . '`', $result));
+        return implode('.', array_map(static fn ($p) => '`' . $p . '`', $result));
     }
 
     /**
@@ -317,9 +329,11 @@ abstract class DBA extends BaseObject
      */
     protected function constructQuery(array $args): string
     {
-        if (count($args) > 1) {
+        if (count($args) > 1)
+        {
             $query = array_shift($args);
-            foreach ($args as &$arg) {
+            foreach ($args as &$arg)
+            {
                 $arg = is_null($arg) ? 'NULL' : $this->pdo->quote((string)$arg);
             }
             array_unshift($args, $query);
@@ -342,7 +356,8 @@ abstract class DBA extends BaseObject
      */
     protected function runQuery(array $args): PDOStatement
     {
-        if (empty($args)) {
+        if (empty($args))
+        {
             throw new SystemException(self::ERR_BAD_REQUEST);
         }
 
@@ -351,25 +366,34 @@ abstract class DBA extends BaseObject
 
         $data = [];
         // Поддержка sprintf-плейсхолдеров вида %s / %1$s
-        if (!empty($args) && preg_match_all('~%(?:(\d+)\$)?s~', $query, $m)) {
+        if (!empty($args) && preg_match_all('~%(?:(\d+)\$)?s~', $query, $m))
+        {
             $query = preg_replace('~%(?:(\d+)\$)?s~', '?', $query);
             $argIndex = 0;
-            foreach ($m[1] as $pos) {
-                if ($pos = (int)$pos) {
+            foreach ($m[1] as $pos)
+            {
+                if ($pos = (int)$pos)
+                {
                     $data[] = $args[$pos - 1] ?? null;
-                } else {
+                }
+                else
+                {
                     $data[] = $args[$argIndex++] ?? null;
                 }
             }
-        } else {
+        }
+        else
+        {
             $data = $args;
         }
 
         $stmt = $this->pdo->prepare($query);
-        if (!$stmt) {
+        if (!$stmt)
+        {
             throw new SystemException('ERR_PREPARE_REQUEST', SystemException::ERR_DB, $query);
         }
-        if (!$stmt->execute($data)) {
+        if (!$stmt->execute($data))
+        {
             throw new SystemException('ERR_EXECUTE_REQUEST', SystemException::ERR_DB, [$query, $data]);
         }
 
@@ -381,23 +405,29 @@ abstract class DBA extends BaseObject
      */
     private function interpolateQuery(string $query, array $params): string
     {
-        if ($params === []) {
+        if ($params === [])
+        {
             return $query;
         }
 
-        $quoted = array_map(function ($value) {
-            if ($value === null) {
+        $quoted = array_map(function ($value)
+        {
+            if ($value === null)
+            {
                 return 'NULL';
             }
             return $this->pdo->quote((string)$value);
         }, $params);
 
-        if (preg_match('~%(?:(\d+)\$)?s~', $query)) {
+        if (preg_match('~%(?:(\d+)\$)?s~', $query))
+        {
             return vsprintf($query, $quoted);
         }
 
-        if (str_contains($query, '?')) {
-            foreach ($quoted as $replacement) {
+        if (str_contains($query, '?'))
+        {
+            foreach ($quoted as $replacement)
+            {
                 $query = preg_replace('/\?/', $replacement, $query, 1);
             }
         }

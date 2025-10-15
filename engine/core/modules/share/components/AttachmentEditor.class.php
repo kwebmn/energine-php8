@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -19,10 +20,14 @@ final class AttachmentEditor extends Grid
         $pk       = $this->getParam('pk');
 
         // Не вмешиваемся в save, чтобы не испортить фильтры сейвера
-        if ($this->getState() !== 'save') {
-            if ($linkedID) {
+        if ($this->getState() !== 'save')
+        {
+            if ($linkedID)
+            {
                 $this->addFilterCondition([$pk => $linkedID]);
-            } else {
+            }
+            else
+            {
                 $this->addFilterCondition([$pk => null, 'session_id' => session_id()]);
             }
         }
@@ -67,23 +72,29 @@ final class AttachmentEditor extends Grid
     {
         parent::prepare();
 
-        if (in_array($this->getState(), ['add', 'edit'], true)) {
+        if (in_array($this->getState(), ['add', 'edit'], true))
+        {
             // upl_id как INT
             $fd = $this->getDataDescription()->getFieldDescriptionByName('upl_id');
-            if ($fd instanceof FieldDescription) {
+            if ($fd instanceof FieldDescription)
+            {
                 $fd->setType(FieldDescription::FIELD_TYPE_INT);
 
-                if ($this->getState() === 'edit') {
+                if ($this->getState() === 'edit')
+                {
                     $uplField = $this->getData()->getFieldByName('upl_id');
-                    if ($uplField instanceof Field) {
+                    if ($uplField instanceof Field)
+                    {
                         $uplId  = (int) $uplField->getRowData(0);
-                        if ($uplId) {
+                        if ($uplId)
+                        {
                             $uplPath = (string) $this->dbh->getScalar(
                                 'share_uploads',
                                 'upl_path',
                                 ['upl_id' => $uplId]
                             );
-                            if ($uplPath !== '') {
+                            if ($uplPath !== '')
+                            {
                                 $fd->setProperty('upl_path', $uplPath);
                             }
                         }
@@ -94,13 +105,15 @@ final class AttachmentEditor extends Grid
             // PK = linkedID
             $pkName  = (string) $this->getParam('pk');
             $pkField = $pkName ? $this->getData()->getFieldByName($pkName) : null;
-            if ($pkField instanceof Field) {
+            if ($pkField instanceof Field)
+            {
                 $pkField->setData($this->getParam('linkedID'), true);
             }
 
             // session_id
             $sessField = $this->getData()->getFieldByName('session_id');
-            if ($sessField instanceof Field) {
+            if ($sessField instanceof Field)
+            {
                 $sessField->setData(session_id(), true);
             }
         }
@@ -117,17 +130,22 @@ final class AttachmentEditor extends Grid
 
         // Скрываем PK основной таблицы и session_id
         $pkName = (string) $this->getParam('pk');
-        if ($pkName) {
-            if ($fd = $dd->getFieldDescriptionByName($pkName)) {
+        if ($pkName)
+        {
+            if ($fd = $dd->getFieldDescriptionByName($pkName))
+            {
                 $fd->setType(FieldDescription::FIELD_TYPE_HIDDEN);
             }
         }
-        if ($fd = $dd->getFieldDescriptionByName('session_id')) {
+        if ($fd = $dd->getFieldDescriptionByName('session_id'))
+        {
             $fd->setType(FieldDescription::FIELD_TYPE_HIDDEN);
         }
 
-        if (in_array($this->getState(), ['getRawData', 'main'], true)) {
-            if ($fd = $dd->getFieldDescriptionByName('upl_id')) {
+        if (in_array($this->getState(), ['getRawData', 'main'], true))
+        {
+            if ($fd = $dd->getFieldDescriptionByName('upl_id'))
+            {
                 $fd->setType(FieldDescription::FIELD_TYPE_HIDDEN);
             }
 
@@ -155,12 +173,15 @@ final class AttachmentEditor extends Grid
     protected function loadDataDescription(): array|false|null
     {
         $r = parent::loadDataDescription();
-        if (is_array($r)) {
-            if (isset($r['upl_id'])) {
+        if (is_array($r))
+        {
+            if (isset($r['upl_id']))
+            {
                 $r['upl_id']['key'] = false;
             }
             $pkName = (string) $this->getParam('pk');
-            if ($pkName && isset($r[$pkName])) {
+            if ($pkName && isset($r[$pkName]))
+            {
                 $r[$pkName]['key'] = false;
             }
         }
@@ -176,28 +197,34 @@ final class AttachmentEditor extends Grid
     {
         $data = parent::loadData();
 
-        if ($this->getState() === 'getRawData' && is_array($data) && $data !== []) {
+        if ($this->getState() === 'getRawData' && is_array($data) && $data !== [])
+        {
             $inverted = inverseDBResult($data);
             $uplIds   = array_map('intval', $inverted['upl_id'] ?? []);
             $uplIds   = array_values(array_filter($uplIds));
 
-            if ($uplIds !== []) {
+            if ($uplIds !== [])
+            {
                 $res = $this->dbh->select(
                     'share_uploads',
                     ['upl_id', 'upl_path', 'upl_title as upl_name', 'upl_duration'],
                     ['upl_id' => $uplIds]
                 );
 
-                if (is_array($res) && $res !== []) {
+                if (is_array($res) && $res !== [])
+                {
                     // Сопоставление upl_id => row
                     $byId = [];
-                    foreach ($res as $row2) {
+                    foreach ($res as $row2)
+                    {
                         $byId[(int) $row2['upl_id']] = $row2;
                     }
 
-                    foreach ($data as $i => $row) {
+                    foreach ($data as $i => $row)
+                    {
                         $uid = (int) ($row['upl_id'] ?? 0);
-                        if ($uid && isset($byId[$uid])) {
+                        if ($uid && isset($byId[$uid]))
+                        {
                             $data[$i]['upl_path'] = $byId[$uid]['upl_path'] ?? null;
                             $data[$i]['upl_name'] = $byId[$uid]['upl_name'] ?? null;
                         }
@@ -218,7 +245,8 @@ final class AttachmentEditor extends Grid
     protected function savequickupload(): void
     {
         $inTx = $this->dbh->beginTransaction();
-        try {
+        try
+        {
             $upl_id = isset($_POST['upl_id']) ? (int) $_POST['upl_id'] : 0;
 
             $orderFieldName = $this->detectOrderField($this->getTableName());
@@ -229,7 +257,8 @@ final class AttachmentEditor extends Grid
                 'upl_id'                       => $upl_id,
             ];
 
-            if ($orderFieldName) {
+            if ($orderFieldName)
+            {
                 // Часто порядок совпадает с upl_id
                 $data[$orderFieldName] = $upl_id;
             }
@@ -241,21 +270,26 @@ final class AttachmentEditor extends Grid
             );
 
             // Если есть языковая таблица — создаём пустые записи
-            if ($result && ($langTable = $this->dbh->getTranslationTablename($this->getTableName()))) {
+            if ($result && ($langTable = $this->dbh->getTranslationTablename($this->getTableName())))
+            {
                 $langColumns = $this->dbh->getColumnsInfo($langTable);
 
                 $fields = [$this->getPK() => $result];
-                if (is_array($langColumns)) {
-                    foreach ($langColumns as $colName => $colProps) {
+                if (is_array($langColumns))
+                {
+                    foreach ($langColumns as $colName => $colProps)
+                    {
                         $isPrimary = !empty($colProps['index']) && $colProps['index'] === 'PRI';
-                        if (!$isPrimary) {
+                        if (!$isPrimary)
+                        {
                             $fields[(string) $colName] = '';
                         }
                     }
                 }
 
                 $langs = E()->getLanguage()->getLanguages();
-                foreach (array_keys($langs) as $lang_id) {
+                foreach (array_keys($langs) as $lang_id)
+                {
                     $this->dbh->modify(
                         QAL::INSERT,
                         $langTable,
@@ -273,13 +307,19 @@ final class AttachmentEditor extends Grid
                 'mode'   => is_int($result) ? 'insert' : 'update',
             ]);
             $this->setBuilder($b);
-        } catch (SystemException $e) {
-            if ($inTx) {
+        }
+        catch (SystemException $e)
+        {
+            if ($inTx)
+            {
                 $this->dbh->rollback();
             }
             throw $e;
-        } catch (\Exception $e) {
-            if ($inTx) {
+        }
+        catch (\Exception $e)
+        {
+            if ($inTx)
+            {
                 $this->dbh->rollback();
             }
             throw $e;
@@ -302,19 +342,23 @@ final class AttachmentEditor extends Grid
         ) {
             $mode = self::COMPONENT_TYPE_FORM_ALTER;
             $this->setFilter([$this->getPK() => $_POST[$this->getTableName()][$this->getPK()]]);
-        } else {
+        }
+        else
+        {
             $mode = self::COMPONENT_TYPE_FORM_ADD;
         }
 
         // Описание данных из конфига
         $dataDescriptionObject = new DataDescription();
 
-        if (!method_exists($this, $this->getPreviousState())) {
+        if (!method_exists($this, $this->getPreviousState()))
+        {
             throw new SystemException('ERR_NO_ACTION', SystemException::ERR_CRITICAL);
         }
 
         $configDataDescription = $this->getConfig()->getStateConfig($this->getPreviousState());
-        if (isset($configDataDescription->fields)) {
+        if (isset($configDataDescription->fields))
+        {
             $dataDescriptionObject->loadXML($configDataDescription->fields);
         }
 
@@ -342,11 +386,14 @@ final class AttachmentEditor extends Grid
         $saver->setDataDescription($this->getDataDescription());
         $saver->setData($this->getData());
 
-        if ($saver->validate() === true) {
+        if ($saver->validate() === true)
+        {
             $saver->setFilter($this->getFilter());
             $saver->save();
             $result = $saver->getResult();
-        } else {
+        }
+        else
+        {
             throw new SystemException(
                 'ERR_VALIDATE_FORM',
                 SystemException::ERR_WARNING,
@@ -355,17 +402,21 @@ final class AttachmentEditor extends Grid
         }
 
         // Если только что вставили — выставим order_num
-        if (($orderColumn = $this->getOrderColumn()) && ($mode === self::COMPONENT_TYPE_FORM_ADD)) {
+        if (($orderColumn = $this->getOrderColumn()) && ($mode === self::COMPONENT_TYPE_FORM_ADD))
+        {
             $linkedID = $this->getParam('linkedID');
             $pk       = (string) $this->getParam('pk');
 
-            if ($linkedID) {
+            if ($linkedID)
+            {
                 $newOrderNum = $this->dbh->getScalar(
                     'SELECT max(' . $orderColumn . ') as max_order_num
                      FROM ' . $this->getTableName() . ' WHERE `' . $pk . '` = %s',
                     $linkedID
                 );
-            } else {
+            }
+            else
+            {
                 $newOrderNum = $this->dbh->getScalar(
                     'SELECT max(' . $orderColumn . ') as max_order_num
                      FROM ' . $this->getTableName() . ' WHERE `' . $pk . '` IS NULL AND session_id = %s',
@@ -395,7 +446,8 @@ final class AttachmentEditor extends Grid
         $enabled = $this->checkQuickUploadColumns($table);
 
         $langTable = $this->dbh->getTranslationTablename($table);
-        if ($enabled && $langTable) {
+        if ($enabled && $langTable)
+        {
             $enabled = $this->checkQuickUploadColumns($langTable);
         }
         return $enabled;
@@ -408,15 +460,18 @@ final class AttachmentEditor extends Grid
     private function checkQuickUploadColumns(string $table): bool
     {
         $columns = $this->dbh->getColumnsInfo($table);
-        if (!is_array($columns)) {
+        if (!is_array($columns))
+        {
             return true; // по умолчанию не запрещаем
         }
 
-        foreach ($columns as $colName => $colProps) {
+        foreach ($columns as $colName => $colProps)
+        {
             $isPrimary = !empty($colProps['index']) && $colProps['index'] === 'PRI';
             $nullable  = $colProps['nullable'] ?? true;
 
-            if (!$isPrimary && $colName !== 'upl_id' && !str_contains((string) $colName, 'order_num') && !$nullable) {
+            if (!$isPrimary && $colName !== 'upl_id' && !str_contains((string) $colName, 'order_num') && !$nullable)
+            {
                 return false;
             }
         }
@@ -427,11 +482,14 @@ final class AttachmentEditor extends Grid
     private function detectOrderField(string $table): ?string
     {
         $columns = $this->dbh->getColumnsInfo($table);
-        if (!is_array($columns)) {
+        if (!is_array($columns))
+        {
             return null;
         }
-        foreach ($columns as $colName => $_) {
-            if (str_contains((string) $colName, 'order_num')) {
+        foreach ($columns as $colName => $_)
+        {
+            if (str_contains((string) $colName, 'order_num'))
+            {
                 return (string) $colName;
             }
         }

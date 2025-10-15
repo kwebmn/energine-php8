@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -30,7 +31,8 @@ abstract class BaseObject
      */
     public function stopTimer(): float
     {
-        if ($this->executionTime === null) {
+        if ($this->executionTime === null)
+        {
             return 0.0;
         }
         $elapsed = microtime(true) - $this->executionTime;
@@ -71,7 +73,8 @@ abstract class BaseObject
      */
     public static function _getConfigValue(string $paramPath, mixed $initial = null): mixed
     {
-        if (self::$systemConfig === null) {
+        if (self::$systemConfig === null)
+        {
             // system.config.php must return an array
             /** @var array $cfg */
             $cfg = include self::CONFIG_FILE;
@@ -79,10 +82,14 @@ abstract class BaseObject
         }
 
         $result = self::$systemConfig;
-        foreach (explode('.', $paramPath) as $segment) {
-            if (is_array($result) && array_key_exists($segment, $result)) {
+        foreach (explode('.', $paramPath) as $segment)
+        {
+            if (is_array($result) && array_key_exists($segment, $result))
+            {
                 $result = $result[$segment];
-            } else {
+            }
+            else
+            {
                 return $initial;
             }
         }
@@ -112,7 +119,8 @@ abstract class BaseObject
      */
     public static function getConfigArray(): array
     {
-        if (self::$systemConfig === null) {
+        if (self::$systemConfig === null)
+        {
             /** @var array $cfg */
             $cfg = include self::CONFIG_FILE;
             self::setConfigArray($cfg);

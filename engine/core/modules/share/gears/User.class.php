@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -39,7 +40,8 @@ class User extends DBWorker
         $ug = E()->UserGroup;
         $this->userGroup = $ug;
 
-        if (is_numeric($id) && (int)$id > 0) {
+        if (is_numeric($id) && (int)$id > 0)
+        {
             $this->loadInfo((int)$id);
         }
     }
@@ -50,7 +52,8 @@ class User extends DBWorker
     protected function loadInfo(int $UID): void
     {
         $result = $this->dbh->select(self::USER_TABLE_NAME, true, ['u_id' => $UID]);
-        if (is_array($result) && !empty($result)) {
+        if (is_array($result) && !empty($result))
+        {
             $this->id = $UID;
             // Маскируем пароль (совместимость со старым поведением)
             $row = $result[0];
@@ -115,42 +118,51 @@ class User extends DBWorker
         $necessaryFields = [];
         $uniqueFields    = [];
 
-        foreach ($tableInfo as $columnName => $columnInfo) {
+        foreach ($tableInfo as $columnName => $columnInfo)
+        {
             $nullable = (bool)($columnInfo['nullable'] ?? false);
             $index    = $columnInfo['index']    ?? null;
             $default  = $columnInfo['default']  ?? null;
 
             // NOT NULL, не PK, без дефолта => обязательно к передаче
-            if (!$nullable && $index !== DBA::PRIMARY_INDEX && empty($default)) {
+            if (!$nullable && $index !== DBA::PRIMARY_INDEX && empty($default))
+            {
                 $necessaryFields[] = $columnName;
             }
             // Уникальные поля
-            if ($index === DBA::UNIQUE_INDEX) {
+            if ($index === DBA::UNIQUE_INDEX)
+            {
                 $uniqueFields[] = $columnName;
             }
         }
 
         // 2) Проверим, что все обязательные поля присутствуют
-        if ($undefined = array_diff($necessaryFields, array_keys($data))) {
+        if ($undefined = array_diff($necessaryFields, array_keys($data)))
+        {
             throw new SystemException('ERR_INSUFFICIENT_DATA', SystemException::ERR_WARNING, $undefined);
         }
 
         // 3) Проверим уникальные поля
-        if (!empty($uniqueFields)) {
+        if (!empty($uniqueFields))
+        {
             $parts = [];
-            foreach ($uniqueFields as $field) {
-                if (array_key_exists($field, $data)) {
+            foreach ($uniqueFields as $field)
+            {
+                if (array_key_exists($field, $data))
+                {
                     $parts[] = $field . ' = "' . $data[$field] . '"';
                 }
             }
-            if ($parts) {
+            if ($parts)
+            {
                 $cond = implode(' OR ', $parts);
                 $cnt  = simplifyDBResult(
                     $this->dbh->select(self::USER_TABLE_NAME, 'COUNT(u_id) as num', $cond),
                     'num',
                     true
                 );
-                if ((int)$cnt > 0) {
+                if ((int)$cnt > 0)
+                {
                     throw new SystemException('ERR_NOT_UNIQUE_DATA', SystemException::ERR_WARNING);
                 }
             }
@@ -158,7 +170,8 @@ class User extends DBWorker
 
         // 4) Сохраняем; пароль — password_hash (современная схема хранения)
         $this->info = $data;
-        if (array_key_exists('u_password', $data)) {
+        if (array_key_exists('u_password', $data))
+        {
             $plainPassword = (string)$data['u_password'];
             $data['u_password'] = self::hashPassword($plainPassword);
             $this->info['u_password'] = true; // маскируем пароль в info
@@ -175,7 +188,8 @@ class User extends DBWorker
     public static function hashPassword(string $password): string
     {
         $hash = password_hash(trim($password), PASSWORD_DEFAULT);
-        if ($hash === false) {
+        if ($hash === false)
+        {
             throw new \RuntimeException('Unable to hash password');
         }
 
@@ -195,7 +209,8 @@ class User extends DBWorker
      */
     public function update(array $data): bool
     {
-        if (!$this->getID()) {
+        if (!$this->getID())
+        {
             return false;
         }
         return (bool)$this->dbh->modify(QAL::UPDATE, self::USER_TABLE_NAME, $data, ['u_id' => $this->getID()]);
@@ -217,20 +232,25 @@ class User extends DBWorker
      */
     public function setGroups($groups): void
     {
-        if (!$this->getID()) {
+        if (!$this->getID())
+        {
             return;
         }
         $groups = is_array($groups) ? $groups : [(int)$groups];
 
-        try {
+        try
+        {
             $this->dbh->modify(QAL::DELETE, self::GROUP_TABLE_NAME, null, ['u_id' => $this->getID()]);
-            foreach ($groups as $gid) {
+            foreach ($groups as $gid)
+            {
                 $this->dbh->modify(QAL::INSERT, self::GROUP_TABLE_NAME, [
                     'u_id'     => $this->getID(),
                     'group_id' => (int)$gid,
                 ]);
             }
-        } catch (SystemException $e) {
+        }
+        catch (SystemException $e)
+        {
             throw new SystemException($e->getMessage(), $e->getCode(), $e->getCustomMessage());
         }
     }
@@ -259,7 +279,8 @@ class User extends DBWorker
         $chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $max   = strlen($chars) - 1;
         $pwd   = '';
-        for ($i = 0; $i < $length; $i++) {
+        for ($i = 0; $i < $length; $i++)
+        {
             $pwd .= $chars[random_int(0, $max)];
         }
         return $pwd;

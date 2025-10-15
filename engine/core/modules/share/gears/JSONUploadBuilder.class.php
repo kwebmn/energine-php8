@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -35,7 +36,8 @@ class JSONUploadBuilder extends JSONBuilder
      */
     public function getCurrentDirectory(): string
     {
-        if ($this->currentDirectory === null || $this->currentDirectory === '') {
+        if ($this->currentDirectory === null || $this->currentDirectory === '')
+        {
             throw new SystemException('ERR_DEV_NO_CURR_DIR', SystemException::ERR_DEVELOPER);
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -43,12 +44,15 @@ class EnergineSignIn extends DataSet
     {
         $data = ['result' => false];
 
-        try {
+        try
+        {
             $this->dbh->beginTransaction();
             $payload = (array)($_POST['signup_fast'] ?? []);
             $data = E()->SignInUpApi->signUpFast($payload);
             $this->dbh->commit();
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $this->dbh->rollback();
             $data['result']  = false;
             $data['message'] = $e->getMessage();
@@ -66,12 +70,15 @@ class EnergineSignIn extends DataSet
     {
         $data = ['result' => false];
 
-        try {
+        try
+        {
             $this->dbh->beginTransaction();
             $payload = (array)($_POST['signup'] ?? []);
             $data = E()->SignInUpApi->signUp($payload);
             $this->dbh->commit();
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $this->dbh->rollback();
             $data['result']  = false;
             $data['message'] = $e->getMessage();
@@ -89,10 +96,13 @@ class EnergineSignIn extends DataSet
     {
         $data = ['result' => false];
 
-        try {
+        try
+        {
             $payload = (array)($_POST['signin'] ?? []);
             $data = E()->SignInUpApi->signIn($payload);
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $data['result']  = false;
             $data['message'] = $e->getMessage();
         }
@@ -123,11 +133,14 @@ class EnergineSignIn extends DataSet
     {
         $data = ['result' => false];
 
-        try {
+        try
+        {
             $data = E()->SignInUpApi->logout();
             $data['result']  = true;
             $data['message'] = $this->translate('TXT_LOGOUT_TEXT');
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             $data['result']  = false;
             $data['message'] = $e->getMessage();
         }
@@ -152,7 +165,8 @@ class EnergineSignIn extends DataSet
         $client->setRedirectUri(BaseObject::_getConfigValue('auth.google.redirectUrl'));
         $client->setScopes(['email', 'profile']);
 
-        if (isset($_GET['code'])) {
+        if (isset($_GET['code']))
+        {
             $client->authenticate((string)$_GET['code']);
             $res          = (array)$client->getAccessToken();
             $access_token = $res['access_token'] ?? '';
@@ -161,7 +175,8 @@ class EnergineSignIn extends DataSet
             exit;
         }
 
-        if (!isset($_COOKIE['access_token'])) {
+        if (!isset($_COOKIE['access_token']))
+        {
             $authUrl = $client->createAuthUrl();
             header('Location: ' . filter_var($authUrl, FILTER_SANITIZE_URL));
             exit;
@@ -177,7 +192,8 @@ class EnergineSignIn extends DataSet
         $uName = (string)$userInfo->getEmail();
 
         // Если пользователя нет — создаём (если разрешена регистрация)
-        if (!($user = User::getGoogleUser($uName)) && BaseObject::_getConfigValue('auth.google.allowRegister')) {
+        if (!($user = User::getGoogleUser($uName)) && BaseObject::_getConfigValue('auth.google.allowRegister'))
+        {
             $user     = new User();
             $password = User::generatePassword();
             $fullName = (string)$userInfo->getName();
@@ -186,7 +202,7 @@ class EnergineSignIn extends DataSet
                 'u_name'     => $uName,
                 'u_password' => $password,
                 'u_fullname' => $fullName,
-                'u_is_active'=> 1,
+                'u_is_active' => 1,
             ]);
 
             $msgData = [

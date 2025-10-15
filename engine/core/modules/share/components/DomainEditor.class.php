@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 class DomainEditor extends Grid
@@ -10,7 +11,8 @@ class DomainEditor extends Grid
 
         $filter = ' (domain_id NOT IN (SELECT domain_id FROM share_domain2site)) ';
         $siteID = $this->getParam('siteID');
-        if ($siteID) {
+        if ($siteID)
+        {
             $filter .= ' OR (domain_id IN (SELECT domain_id FROM share_domain2site WHERE site_id = ' . (int)$siteID . '))';
         }
         $this->setFilter($filter);
@@ -20,13 +22,15 @@ class DomainEditor extends Grid
     {
         parent::prepare();
 
-        if (!in_array($this->getState(), ['add', 'edit'], true)) {
+        if (!in_array($this->getState(), ['add', 'edit'], true))
+        {
             return;
         }
 
         $fdProtocol = $this->getDataDescription()->getFieldOrNull('domain_protocol')
             ?: $this->getDataDescription()->getFieldDescriptionByName('domain_protocol');
-        if ($fdProtocol instanceof FieldDescription) {
+        if ($fdProtocol instanceof FieldDescription)
+        {
             $fdProtocol->setType(FieldDescription::FIELD_TYPE_SELECT);
             $fdProtocol->loadAvailableValues(
                 [
@@ -38,7 +42,8 @@ class DomainEditor extends Grid
             );
         }
 
-        if ($this->getState() === 'add') {
+        if ($this->getState() === 'add')
+        {
             $this->getData()->getFieldByName('domain_port')?->setData(80, true);
             $this->getData()->getFieldByName('domain_root')?->setData('/', true);
         }
@@ -59,8 +64,10 @@ class DomainEditor extends Grid
     protected function saveData() // ← убран : bool
     {
         $table = $this->getTableName();
-        if (isset($_POST[$table]['domain_root']) && $_POST[$table]['domain_root'] !== '') {
-            if (substr($_POST[$table]['domain_root'], -1) !== '/') {
+        if (isset($_POST[$table]['domain_root']) && $_POST[$table]['domain_root'] !== '')
+        {
+            if (substr($_POST[$table]['domain_root'], -1) !== '/')
+            {
                 $_POST[$table]['domain_root'] .= '/';
             }
         }

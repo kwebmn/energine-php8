@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -79,7 +80,8 @@ class FilterField extends BaseObject
      */
     public function getIndex(): int
     {
-        if ($this->index === null) {
+        if ($this->index === null)
+        {
             throw new SystemException('ERR_DEV_NO_CONTROL_INDEX', SystemException::ERR_DEVELOPER);
         }
         return $this->index;
@@ -97,8 +99,10 @@ class FilterField extends BaseObject
         // Собираем атрибуты из XML безопасно
         $attrs = [];
         $xmlAttrs = $description->attributes();
-        if ($xmlAttrs) {
-            foreach ($xmlAttrs as $key => $value) {
+        if ($xmlAttrs)
+        {
+            foreach ($xmlAttrs as $key => $value)
+            {
                 $attrs[(string)$key] = (string)$value;
             }
         }
@@ -106,8 +110,10 @@ class FilterField extends BaseObject
         unset($attrs['name']);
 
         // Если есть метаданные колонки — дополним тип/заголовок/имя таблицы
-        if ($meta) {
-            if (!isset($attrs['title'])) {
+        if ($meta)
+        {
+            if (!isset($attrs['title']))
+            {
                 $attrs['title'] = 'FIELD_' . (string)$this->getAttribute('name');
             }
             // convertType: (dbType, fieldName, length, metaRow)
@@ -117,18 +123,23 @@ class FilterField extends BaseObject
                 $meta['length'] ?? null,
                 $meta
             );
-            if (isset($meta['tableName'])) {
+            if (isset($meta['tableName']))
+            {
                 $attrs['tableName'] = $meta['tableName'];
             }
         }
 
         // Присваиваем свойства/атрибуты
-        foreach ($attrs as $key => $value) {
-            if (property_exists($this, $key)) {
+        foreach ($attrs as $key => $value)
+        {
+            if (property_exists($this, $key))
+            {
                 // сейчас это актуально только для $type
                 /** @phpstan-ignore-next-line */
                 $this->$key = $value;
-            } else {
+            }
+            else
+            {
                 $this->setAttribute($key, $value);
             }
         }
@@ -170,7 +181,8 @@ class FilterField extends BaseObject
     {
         $controlElem = $this->doc->createElement(self::TAG_NAME);
 
-        foreach ($this->attributes as $attrName => $attrValue) {
+        foreach ($this->attributes as $attrName => $attrValue)
+        {
             $controlElem->setAttribute($attrName, (string)$attrValue);
         }
         $controlElem->setAttribute('type', $this->getType());
@@ -186,9 +198,11 @@ class FilterField extends BaseObject
      */
     public function translate(array $attrs = ['title']): void
     {
-        foreach ($attrs as $attrName) {
+        foreach ($attrs as $attrName)
+        {
             $attrValue = (string)$this->getAttribute($attrName);
-            if ($attrValue !== '') {
+            if ($attrValue !== '')
+            {
                 $this->setAttribute($attrName, DBWorker::_translate($attrValue));
             }
         }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -38,37 +39,46 @@ final class SiteManager extends DBWorker implements Iterator
         // Pull domains either from config (dev override) or from DB
         $domains = $this->loadDomains();
 
-        if (empty($domains)) {
+        if (empty($domains))
+        {
             throw new SystemException('ERR_NO_SITE', SystemException::ERR_DEVELOPER);
         }
 
         // Prime each site with its first domain as "default" base,
         // and detect which site matches current request.
-        foreach ($domains as $row) {
+        foreach ($domains as $row)
+        {
             // Normalize keys: domain_protocol => protocol, domain_host => host, etc.
             $domain = convertFieldNames($row, 'domain_');
 
             $siteId = isset($domain['site']) ? (int)$domain['site'] : null;
-            if ($siteId && isset($this->data[$siteId])) {
+            if ($siteId && isset($this->data[$siteId]))
+            {
                 // Set the first encountered domain as site base (if not set yet)
-                if (!isset($this->data[$siteId]->base) || $this->data[$siteId]->base === null) {
+                if (!isset($this->data[$siteId]->base) || $this->data[$siteId]->base === null)
+                {
                     $this->data[$siteId]->setDomain($this->extractDomainProps($domain));
                 }
             }
 
             // If this domain matches the current request, fix the current site
-            if ($this->domainMatchesRequest($domain, $uri)) {
+            if ($this->domainMatchesRequest($domain, $uri))
+            {
                 $this->currentSiteID = $siteId;
-                if ($siteId && isset($this->data[$siteId])) {
+                if ($siteId && isset($this->data[$siteId]))
+                {
                     $this->data[$siteId]->setDomain($this->extractDomainProps($domain));
                 }
             }
         }
 
         // Fall back to default site if no exact domain match
-        if ($this->currentSiteID === null) {
-            foreach ($this->data as $siteID => $site) {
-                if ((int)$site->isDefault === 1) {
+        if ($this->currentSiteID === null)
+        {
+            foreach ($this->data as $siteID => $site)
+            {
+                if ((int)$site->isDefault === 1)
+                {
                     $this->currentSiteID = (int)$siteID;
                     break;
                 }
@@ -76,12 +86,14 @@ final class SiteManager extends DBWorker implements Iterator
         }
 
         // Still nothing? No site to serve.
-        if ($this->currentSiteID === null || !isset($this->data[$this->currentSiteID])) {
+        if ($this->currentSiteID === null || !isset($this->data[$this->currentSiteID]))
+        {
             throw new SystemException('ERR_NO_SITE', SystemException::ERR_DEVELOPER);
         }
 
         // Block inactive sites
-        if (!(int)$this->data[$this->currentSiteID]->isActive) {
+        if (!(int)$this->data[$this->currentSiteID]->isActive)
+        {
             throw new SystemException('ERR_403', SystemException::ERR_403);
         }
     }
@@ -93,7 +105,8 @@ final class SiteManager extends DBWorker implements Iterator
      */
     public function getSiteByID(int $siteID): Site
     {
-        if (!isset($this->data[$siteID])) {
+        if (!isset($this->data[$siteID]))
+        {
             throw new SystemException('ERR_NO_SITE', SystemException::ERR_DEVELOPER, $siteID);
         }
         return $this->data[$siteID];
@@ -124,8 +137,10 @@ final class SiteManager extends DBWorker implements Iterator
      */
     public function getDefaultSite(): Site
     {
-        foreach ($this->data as $site) {
-            if ((int)$site->isDefault === 1) {
+        foreach ($this->data as $site)
+        {
+            if ((int)$site->isDefault === 1)
+            {
                 return $site;
             }
         }
@@ -178,7 +193,8 @@ final class SiteManager extends DBWorker implements Iterator
         $debug      = (bool)$this->getConfigValue('site.debug');
         $devDomains = $this->getConfigValue('site.dev_domains');
 
-        if ($debug && is_array($devDomains) && !empty($devDomains)) {
+        if ($debug && is_array($devDomains) && !empty($devDomains))
+        {
             // Expect same shape as DB rows (domain_* fields and domain_site mapping)
             return $devDomains;
         }
@@ -212,7 +228,8 @@ final class SiteManager extends DBWorker implements Iterator
         $rootSegments = $this->splitPath((string)($domain['root'] ?? ''));
         $reqSegments  = $uri->getPath(false); // assumed to be array of segments
 
-        if (!is_array($reqSegments)) {
+        if (!is_array($reqSegments))
+        {
             // be defensive if URI implementation changes
             $reqSegments = $this->splitPath((string)$uri->getPath(true));
         }
@@ -245,9 +262,10 @@ final class SiteManager extends DBWorker implements Iterator
     private function splitPath(string $path): array
     {
         $trimmed = trim($path, '/');
-        if ($trimmed === '') {
+        if ($trimmed === '')
+        {
             return [];
         }
-        return array_values(array_filter(explode('/', $trimmed), static fn($s) => $s !== ''));
+        return array_values(array_filter(explode('/', $trimmed), static fn ($s) => $s !== ''));
     }
 }

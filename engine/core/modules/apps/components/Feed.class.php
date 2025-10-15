@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -25,7 +26,8 @@ class Feed extends DBDataSet
         parent::__construct($name, $module, $params);
 
         // Если title не указан — ставим дефолтный из переводов.
-        if (!$this->getProperty('title')) {
+        if (!$this->getProperty('title'))
+        {
             $this->setProperty(
                 'title',
                 $this->translate('TXT_' . strtoupper($this->getName()))
@@ -35,18 +37,22 @@ class Feed extends DBDataSet
         $this->setProperty('exttype', 'feed');
         $this->setParam('onlyCurrentLang', true);
 
-        if ($this->getParam('editable') && $this->document->isEditable()) {
+        if ($this->getParam('editable') && $this->document->isEditable())
+        {
             $this->setProperty('editable', 'editable');
         }
 
         // Ограничения и настройки только для состояния 'main'.
-        if ($this->getState() === 'main') {
+        if ($this->getState() === 'main')
+        {
             $filterID = $this->getParam('id') ?: $this->document->getID();
 
-            if ($this->getParam('showAll')) {
+            if ($this->getParam('showAll'))
+            {
                 $par = E()->getMap()->getTree()->getNodeById($filterID);
                 $descendants = [];
-                if ($par) {
+                if ($par)
+                {
                     $descendants = array_keys($par->getDescendants()->asList(false));
                 }
                 $filterID = array_merge([$filterID], $descendants);
@@ -54,17 +60,23 @@ class Feed extends DBDataSet
             $this->filterID = $filterID;
 
             // Сортировка: orderField может быть строкой или [поле, направление].
-            if ($orderParam = $this->getParam('orderField')) {
-                if (is_array($orderParam)) {
+            if ($orderParam = $this->getParam('orderField'))
+            {
+                if (is_array($orderParam))
+                {
                     $field = $orderParam[0] ?? null;
                     $dir   = strtoupper((string)($orderParam[1] ?? QAL::ASC));
-                } else {
+                }
+                else
+                {
                     $field = $orderParam;
                     $dir   = QAL::ASC;
                 }
 
-                if ($field) {
-                    if (!in_array($dir, [QAL::ASC, QAL::DESC], true)) {
+                if ($field)
+                {
+                    if (!in_array($dir, [QAL::ASC, QAL::DESC], true))
+                    {
                         $dir = QAL::ASC;
                     }
                     $this->setOrder([$field => $dir]);
@@ -75,11 +87,14 @@ class Feed extends DBDataSet
             $this->addFilterCondition(['smap_id' => $this->filterID]);
 
             // Лимит записей.
-            if ($limit = $this->getParam('limit')) {
+            if ($limit = $this->getParam('limit'))
+            {
                 $this->setLimit([0, (int)$limit]);
                 $this->setParam('recordsPerPage', false);
             }
-        } else {
+        }
+        else
+        {
             $this->filterID = null;
         }
     }
@@ -90,10 +105,11 @@ class Feed extends DBDataSet
      * Якщо у конфігі є smap_id, то прибираємо ознаку ключа,
      * щоб не тягнути share_sitemap — тут нам потрібен лише int.
      */
-    protected function loadDataDescription() : array|false|null
+    protected function loadDataDescription(): array|false|null
     {
         $result = parent::loadDataDescription();
-        if (isset($result['smap_id'])) {
+        if (isset($result['smap_id']))
+        {
             $result['smap_id']['key'] = false;
         }
         return $result;
@@ -109,8 +125,10 @@ class Feed extends DBDataSet
     {
         $result = parent::createDataDescription();
 
-        if ($this->getState() === 'main') {
-            if (!($fd = $result->getFieldDescriptionByName('smap_id'))) {
+        if ($this->getState() === 'main')
+        {
+            if (!($fd = $result->getFieldDescriptionByName('smap_id')))
+            {
                 $fd = new FieldDescription('smap_id');
                 $fd->setProperty('tableName', $this->getTableName());
                 $result->addFieldDescription($fd);
@@ -127,12 +145,14 @@ class Feed extends DBDataSet
      * Проставляем каждому smap_id вычисленный URL (row property 'url'),
      * чтобы корректно собирать ссылки при разных smap_id на одной странице.
      */
-    protected function main() : void
+    protected function main(): void
     {
         parent::main();
 
-        if ($f = $this->getData()->getFieldByName('smap_id')) {
-            foreach ($f as $key => $value) {
+        if ($f = $this->getData()->getFieldByName('smap_id'))
+        {
+            foreach ($f as $key => $value)
+            {
                 $f->setRowProperty($key, 'url', E()->getMap()->getURLByID((int)$value));
             }
         }
@@ -143,7 +163,7 @@ class Feed extends DBDataSet
      *
      * Добавляем фильтр по текущему разделу и крошку.
      */
-    protected function view() : void
+    protected function view(): void
     {
         parent::view();
         $this->addFilterCondition(['smap_id' => $this->document->getID()]);
@@ -155,7 +175,7 @@ class Feed extends DBDataSet
      *
      * Делаем компонент активным и задаём дефолтные параметры.
      */
-    protected function defineParams() : array
+    protected function defineParams(): array
     {
         return array_merge(
             parent::defineParams(),

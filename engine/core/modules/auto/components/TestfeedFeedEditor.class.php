@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Testfeed feed editor component.
  *
@@ -33,8 +34,10 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
      *
      * @return DOMDocument Построенный DOM-документ.
      */
-    public function build() : DOMDocument {
-        switch ($this->getState()) {
+    public function build(): DOMDocument
+    {
+        switch ($this->getState())
+        {
             case 'showSmapSelector':
                 $result = $this->divisionEditor->build();
                 break;
@@ -51,17 +54,19 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
      *
      * @return array|false|null Загруженные данные.
      */
-    public function loadData() : array|false|null
+    public function loadData(): array|false|null
     {
         $res = parent::loadData();
         if ($this->getState() == 'add')
         {
 
             if (is_array($res))
+            {
                 foreach ($res as $key => $row)
                 {
                     $res[$key]['smap_id'] = $this->document->getID();
                 }
+            }
         }
         return $res;
     }
@@ -69,10 +74,12 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
     /**
      * Display site map selector for choosing division.
      */
-    protected function showSmapSelector() {
+    protected function showSmapSelector()
+    {
         $this->request->shiftPath(1);
         $this->divisionEditor = ComponentManager::createBlockFromDescription(
-            ComponentManager::getDescriptionFromFile('engine/core/modules/apps/templates/content/site_div_selector.container.xml'));
+            ComponentManager::getDescriptionFromFile('engine/core/modules/apps/templates/content/site_div_selector.container.xml')
+        );
         $this->divisionEditor->run();
     }
 
@@ -81,10 +88,11 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
      *
      * @return DataDescription Описание полей данных.
      */
-    protected function createDataDescription() : DataDescription
+    protected function createDataDescription(): DataDescription
     {
         $dd = LinkingEditor::createDataDescription();
-        if (in_array($this->getState(), array('add', 'edit'))) {
+        if (in_array($this->getState(), ['add', 'edit']))
+        {
             $dd->getFieldDescriptionByName('smap_id')->setType(FieldDescription::FIELD_TYPE_SMAP_SELECTOR);
         }
         return $dd;
@@ -93,14 +101,17 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
     /**
      * Fill site map names for editing state.
      */
-    protected function edit() : void
+    protected function edit(): void
     {
         parent::edit();
         $smapField = $this->getData()->getFieldByName('smap_id');
 
-        for ($i = 0; $i < count(E()->getLanguage()->getLanguages()); $i++) {
+        for ($i = 0; $i < count(E()->getLanguage()->getLanguages()); $i++)
+        {
             $smapField->setRowProperty($i, 'smap_name', $this->dbh->getScalar(
-                'SELECT CONCAT(site_name, ":", smap_name) as smap_name FROM share_sitemap sm LEFT JOIN share_sitemap_translation smt USING(smap_id) LEFT JOIN share_sites_translation s ON (s.site_id = sm.site_id) AND (s.lang_id = %s) WHERE sm.smap_id = %s AND smt.lang_id= %1$s', $this->document->getLang(), $smapField->getRowData(0)
+                'SELECT CONCAT(site_name, ":", smap_name) as smap_name FROM share_sitemap sm LEFT JOIN share_sitemap_translation smt USING(smap_id) LEFT JOIN share_sites_translation s ON (s.site_id = sm.site_id) AND (s.lang_id = %s) WHERE sm.smap_id = %s AND smt.lang_id= %1$s',
+                $this->document->getLang(),
+                $smapField->getRowData(0)
             ));
 
         }
@@ -112,7 +123,7 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
      *
      * @return Data Подготовленные данные.
      */
-    protected function createData() : Data
+    protected function createData(): Data
     {
         return LinkingEditor::createData();
     }
@@ -122,7 +133,7 @@ class TestfeedFeedEditor extends ExtendedFeedEditor
      *
      * @return mixed Результат сохранения.
      */
-    protected function saveData() : mixed
+    protected function saveData(): mixed
     {
         return LinkingEditor::saveData();
     }

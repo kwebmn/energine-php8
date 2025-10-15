@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -34,14 +35,16 @@ final class JSONTransformer implements ITransformer
      */
     public function transform(): string
     {
-        if (!$this->document instanceof DOMDocument) {
+        if (!$this->document instanceof DOMDocument)
+        {
             throw new \SystemException('ERR_DEV_NO_DOCUMENT', \SystemException::ERR_DEVELOPER);
         }
 
         // Ищем элемент с id="result".
         // getElementById() работает только для атрибутов типа ID, поэтому делаем XPath-фолбэк.
         $node = $this->document->getElementById('result') ?: $this->findByIdXPath('result');
-        if (!$node) {
+        if (!$node)
+        {
             throw new \SystemException(
                 'ERR_BAD_OPERATION_RESULT',
                 \SystemException::ERR_CRITICAL,
@@ -53,7 +56,8 @@ final class JSONTransformer implements ITransformer
         $json = trim($node->textContent ?? '');
 
 
-        if ($json === '') {
+        if ($json === '')
+        {
             throw new \SystemException(
                 'ERR_BAD_OPERATION_RESULT',
                 \SystemException::ERR_CRITICAL,
@@ -65,13 +69,18 @@ final class JSONTransformer implements ITransformer
         $json = preg_replace('/^\xEF\xBB\xBF/', '', $json) ?? $json;
 
         // Валидируем JSON
-        if (function_exists('json_validate')) {
-            if (!json_validate($json)) {
+        if (function_exists('json_validate'))
+        {
+            if (!json_validate($json))
+            {
                 $this->throwBadJson($json);
             }
-        } else {
+        }
+        else
+        {
             json_decode($json);
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            if (json_last_error() !== JSON_ERROR_NONE)
+            {
                 $this->throwBadJson($json);
             }
         }
@@ -79,7 +88,8 @@ final class JSONTransformer implements ITransformer
         // «Красивый» JSON в DEV или при document.pretty_json=true
         $prettyFlag = (bool)\BaseObject::_getConfigValue('document.pretty_json', false);
         $isDebug    = (defined('DEBUG') && DEBUG) || filter_var(getenv('APP_DEBUG') ?: '0', FILTER_VALIDATE_BOOL);
-        if ($prettyFlag || $isDebug) {
+        if ($prettyFlag || $isDebug)
+        {
             $decoded = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
             $json    = json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
@@ -111,7 +121,8 @@ final class JSONTransformer implements ITransformer
         $detail  = function_exists('json_last_error_msg') ? json_last_error_msg() : 'Invalid JSON';
         $msg     = "Invalid JSON payload: {$detail}. Snippet: {$snippet}";
 
-        if (isset(E()->logger)) {
+        if (isset(E()->logger))
+        {
             E()->logger->error($msg, ['component' => 'json-transformer']);
         }
 

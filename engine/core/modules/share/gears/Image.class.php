@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Image
@@ -21,7 +22,8 @@ class Image;
 class Image;
 @endcode
  */
-class Image extends Object {
+class Image extends Object
+{
     /**
      * Default memory limit.
      * 16 Mb.
@@ -29,25 +31,25 @@ class Image extends Object {
      *
      * @note If compiled without @c memory-limit.
      */
-    const DEFAULT_MEMORY_LIMIT = 16777216;
+    public const DEFAULT_MEMORY_LIMIT = 16777216;
 
     // Тип изображения:
     /**
      * Unknown image type.
      */
-    const TYPE_UNKNOWN = 0;
+    public const TYPE_UNKNOWN = 0;
     /**
      * PNG (Portable Network Graphics) image.
      */
-    const TYPE_PNG     = 1;
+    public const TYPE_PNG     = 1;
     /**
      * GIF (Graphics Interchange Format) image.
      */
-    const TYPE_GIF     = 2;
+    public const TYPE_GIF     = 2;
     /**
      * JPEG (Joint Photographic Experts Group) image.
      */
-    const TYPE_JPEG    = 3;
+    public const TYPE_JPEG    = 3;
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -55,13 +57,13 @@ class Image extends Object {
      * Map of file extensions with image types.
      * @var array $extensions
      */
-    private $extensions = array(
+    private $extensions = [
     'png'  => self::TYPE_PNG,
     'gif'  => self::TYPE_GIF,
     'jpg'  => self::TYPE_JPEG,
     'jpe'  => self::TYPE_JPEG,
     'jpeg' => self::TYPE_JPEG
-    );
+    ];
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -96,13 +98,15 @@ class Image extends Object {
     /**
      * Create an image by defined width and height.
      *
-	 * @param int $width Width.
-	 * @param int $height Height.
-	 *
+     * @param int $width Width.
+     * @param int $height Height.
+     *
      * @throws SystemException 'ERR_MEMORY_NOT_AVAILABLE'
-	 */
-    public function create($width, $height) {
-        if (!$this->checkAvailableMemory($width, $height)) {
+     */
+    public function create($width, $height)
+    {
+        if (!$this->checkAvailableMemory($width, $height))
+        {
             throw new SystemException('ERR_MEMORY_NOT_AVAILABLE', SystemException::ERR_NOTICE);
         }
 
@@ -121,14 +125,17 @@ class Image extends Object {
      * @param int $height Image height.
      * @return bool
      */
-    private function checkAvailableMemory($width, $height) {
+    private function checkAvailableMemory($width, $height)
+    {
         $isMemoryAvailable = true;
         $memoryLimit = ini_get('memory_limit');
 
-        if ($memoryLimit != -1) {
+        if ($memoryLimit != -1)
+        {
             $memoryLimit = $this->convertSizeToBytes($memoryLimit);
             $memoryNeeded = $width * $height * 4/*B = 32BPP*/ * 1.5; // 1.5 - Хрен Его Знает Что За Фактор :)
-            if (function_exists('memory_get_usage')) {
+            if (function_exists('memory_get_usage'))
+            {
                 /*
                 * если мы можем узнать занимаемую скриптом память,
                 * проверяем количество свободной памяти простым вичитанием
@@ -147,17 +154,23 @@ class Image extends Object {
      * @param int $size Image size.
      * @return int
      */
-    private function convertSizeToBytes($size) {
-        if (!empty($size)) {
+    private function convertSizeToBytes($size)
+    {
+        if (!empty($size))
+        {
             $size = trim($size);
-            $measurement = strtolower($size[strlen($size)-1]);
-            switch($measurement) {
+            $measurement = strtolower($size[strlen($size) - 1]);
+            switch ($measurement)
+            {
                 case 'g': $size *= 1024;
+                    // no break
                 case 'm': $size *= 1024;
+                    // no break
                 case 'k': $size *= 1024;
             }
         }
-        else {
+        else
+        {
             $size = self::DEFAULT_MEMORY_LIMIT;
         }
 
@@ -171,7 +184,8 @@ class Image extends Object {
      *
      * @return int
      */
-    public function getWidth() {
+    public function getWidth()
+    {
         return $this->width;
     }
 
@@ -180,7 +194,8 @@ class Image extends Object {
      *
      * @return int
      */
-    public function getHeight() {
+    public function getHeight()
+    {
         return $this->height;
     }
 
@@ -196,36 +211,47 @@ class Image extends Object {
      * @throws SystemException 'ERR_BAD_FILE_FORMAT'
      * @throws SystemException 'ERR_MEMORY_NOT_AVAILABLE'
      */
-    public function loadFromFile($filename, $type = self::TYPE_UNKNOWN) {
-        if (!file_exists($filename)) {
+    public function loadFromFile($filename, $type = self::TYPE_UNKNOWN)
+    {
+        if (!file_exists($filename))
+        {
             throw new SystemException('ERR_DEV_FILE_DOESNT_EXISTS', SystemException::ERR_DEVELOPER, $filename);
         }
 
-        if ($type == self::TYPE_UNKNOWN) {
+        if ($type == self::TYPE_UNKNOWN)
+        {
             // пробуем определить тип по расширению
             $ext = $this->getExtension($filename);
-            if (!array_key_exists($ext, $this->extensions)) {
+            if (!array_key_exists($ext, $this->extensions))
+            {
                 throw new SystemException('ERR_CANNOT_DETERMINE_IMAGE_TYPE', SystemException::ERR_WARNING, $filename);
             }
             $type = $this->extensions[$ext];
         }
 
-        if (!$imageSize = @getimagesize($filename)) {
+        if (!$imageSize = @getimagesize($filename))
+        {
             throw new SystemException('ERR_BAD_FILE_FORMAT', SystemException::ERR_WARNING, $filename);
         }
-        if (!$this->checkAvailableMemory($imageSize[0], $imageSize[1])) {
+        if (!$this->checkAvailableMemory($imageSize[0], $imageSize[1]))
+        {
             throw new SystemException('ERR_MEMORY_NOT_AVAILABLE', SystemException::ERR_NOTICE);
         }
 
         $image = null;
-        switch ($type) {
-            case self::TYPE_PNG:  $image = @imagecreatefrompng($filename);  break;
-            case self::TYPE_GIF:  $image = @imagecreatefromgif($filename);  break;
-            case self::TYPE_JPEG: $image = @imagecreatefromjpeg($filename); break;
+        switch ($type)
+        {
+            case self::TYPE_PNG:  $image = @imagecreatefrompng($filename);
+                break;
+            case self::TYPE_GIF:  $image = @imagecreatefromgif($filename);
+                break;
+            case self::TYPE_JPEG: $image = @imagecreatefromjpeg($filename);
+                break;
             default: // unreachable
         }
 
-        if (!$image) {
+        if (!$image)
+        {
             throw new SystemException('ERR_BAD_FILE_FORMAT', SystemException::ERR_WARNING, $filename);
         }
 
@@ -247,54 +273,69 @@ class Image extends Object {
      * @throws SystemException 'ERR_CANNOT_DETERMINE_IMAGE_TYPE'
      * @throws SystemException 'ERR_CANT_SAVE_FILE'
      */
-    public function saveToFile($filename, $type = self::TYPE_UNKNOWN) {
-        if (!$this->image) {
+    public function saveToFile($filename, $type = self::TYPE_UNKNOWN)
+    {
+        if (!$this->image)
+        {
             throw new SystemException('ERR_DEV_NO_IMAGE_TO_SAVE', SystemException::ERR_DEVELOPER, $filename);
         }
 
-        if ($type == self::TYPE_UNKNOWN) {
+        if ($type == self::TYPE_UNKNOWN)
+        {
             $ext = $this->getExtension($filename);
-            if (array_key_exists($ext, $this->extensions)) {
+            if (array_key_exists($ext, $this->extensions))
+            {
                 $type = $this->extensions[$ext];
             }
-            elseif ($this->type != self::TYPE_UNKNOWN) {
+            elseif ($this->type != self::TYPE_UNKNOWN)
+            {
                 $type = $this->type;
             }
-            else {
+            else
+            {
                 throw new SystemException('ERR_CANNOT_DETERMINE_IMAGE_TYPE', SystemException::ERR_WARNING, $filename);
             }
         }
 
         $saveError = null;
-        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$saveError): bool {
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$saveError): bool
+        {
             $saveError = $message;
             return true;
         });
 
         $success = false;
-        switch ($type) {
-            case self::TYPE_PNG:  $success = imagepng($this->image, $filename); break;
-            case self::TYPE_GIF:  $success = imagegif($this->image, $filename); break;
-            case self::TYPE_JPEG: $success = imagejpeg($this->image, $filename); break;
+        switch ($type)
+        {
+            case self::TYPE_PNG:  $success = imagepng($this->image, $filename);
+                break;
+            case self::TYPE_GIF:  $success = imagegif($this->image, $filename);
+                break;
+            case self::TYPE_JPEG: $success = imagejpeg($this->image, $filename);
+                break;
             default: // unreachable
         }
 
         restore_error_handler();
 
-        if (!$success) {
+        if (!$success)
+        {
             $context = $saveError !== null ? ['error' => $saveError] : [];
             throw new SystemException('ERR_CANT_SAVE_FILE', SystemException::ERR_WARNING, $filename, null, $context);
         }
 
-        if (is_file($filename)) {
+        if (is_file($filename))
+        {
             $chmodError = null;
-            set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$chmodError): bool {
+            set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$chmodError): bool
+            {
                 $chmodError = $message;
                 return true;
             });
             $chmodOk = chmod($filename, 0666);
             restore_error_handler();
-            if ($chmodOk === false && $chmodError !== null) {
+            if ($chmodOk === false && $chmodError !== null)
+            {
                 error_log('Image: unable to chmod file ' . $filename . ': ' . $chmodError);
             }
         }
@@ -312,17 +353,21 @@ class Image extends Object {
      *
      * @throws SystemException 'ERR_MEMORY_NOT_AVAILABLE'
      */
-    public function resize($newWidth, $newHeight, $crop = false) {
-    	if (!$this->checkAvailableMemory($newWidth, $newHeight)) {
+    public function resize($newWidth, $newHeight, $crop = false)
+    {
+        if (!$this->checkAvailableMemory($newWidth, $newHeight))
+        {
             throw new SystemException('ERR_MEMORY_NOT_AVAILABLE', SystemException::ERR_NOTICE);
         }
 
-    	if($crop){
-			$resizedImage = $this->crop($newWidth, $newHeight);
-    	}
-    	else{
-			$resizedImage = $this->resizeWithMargins($newWidth, $newHeight);
-    	}
+        if ($crop)
+        {
+            $resizedImage = $this->crop($newWidth, $newHeight);
+        }
+        else
+        {
+            $resizedImage = $this->resizeWithMargins($newWidth, $newHeight);
+        }
 
 
         imagedestroy($this->image);
@@ -340,42 +385,43 @@ class Image extends Object {
      * @param int $newHeight New height.
      * @return resource
      */
-    private function crop($newWidth, $newHeight){
-		list($width,$height)= array($this->width, $this->height);
-		$OldImage = $this->image;
+    private function crop($newWidth, $newHeight)
+    {
+        list($width, $height) = [$this->width, $this->height];
+        $OldImage = $this->image;
 
         // check if ratios match
-        $_ratio=array($width/$height,$newWidth/$newHeight);
-        if ($_ratio[0] != $_ratio[1]) { // crop image
-
-            // find the right scale to use
-            $_scale=min((float)($width/$newWidth),(float)($height/$newHeight));
+        $_ratio = [$width / $height,$newWidth / $newHeight];
+        if ($_ratio[0] != $_ratio[1]) // crop image
+        {// find the right scale to use
+            $_scale = min((float)($width / $newWidth), (float)($height / $newHeight));
 
             // coords to crop
-            $cropX=(float)($width-($_scale*$newWidth));
-            $cropY=(float)($height-($_scale*$newHeight));
+            $cropX = (float)($width - ($_scale * $newWidth));
+            $cropY = (float)($height - ($_scale * $newHeight));
 
             // cropped image size
-            $cropW=(float)($width-$cropX);
-            $cropH=(float)($height-$cropY);
+            $cropW = (float)($width - $cropX);
+            $cropH = (float)($height - $cropY);
 
-            $crop=ImageCreateTrueColor($cropW,$cropH);
+            $crop = ImageCreateTrueColor($cropW, $cropH);
             // crop the middle part of the image to fit proportions
             ImageCopy(
                 $crop,
                 $OldImage,
                 0,
                 0,
-                (int)($cropX/2),
-                (int)($cropY/2),
+                (int)($cropX / 2),
+                (int)($cropY / 2),
                 $cropW,
                 $cropH
             );
         }
 
         // do the thumbnail
-        $NewThumb=ImageCreateTrueColor($newWidth,$newHeight);
-        if (isset($crop)) { // been cropped
+        $NewThumb = ImageCreateTrueColor($newWidth, $newHeight);
+        if (isset($crop)) // been cropped
+        {
             ImageCopyResampled(
                 $NewThumb,
                 $crop,
@@ -389,8 +435,9 @@ class Image extends Object {
                 $cropH
             );
             ImageDestroy($crop);
-        } else { // ratio match, regular resize
-            //todo VZ: $w and $h (i.e. destination width and height) are not defined.
+        }
+        else // ratio match, regular resize
+        {//todo VZ: $w and $h (i.e. destination width and height) are not defined.
             ImageCopyResampled(
                 $NewThumb,
                 $OldImage,
@@ -408,7 +455,7 @@ class Image extends Object {
         $result = $NewThumb;
 
         return $result;
-	}
+    }
 
     /**
      * Resize the image with margins.
@@ -417,8 +464,9 @@ class Image extends Object {
      * @param int $newHeight New height.
      * @return resource
      */
-    private function resizeWithMargins($newWidth, $newHeight){
-		$posX = $posY = 0;
+    private function resizeWithMargins($newWidth, $newHeight)
+    {
+        $posX = $posY = 0;
 
         $lowend = 0.8;
         $highend = 1.25;
@@ -431,7 +479,7 @@ class Image extends Object {
         $newCanvasHeight = $newHeight;
 
         $scaleR = $scaleX / $scaleY;
-        if($scaleR < $lowend || $scaleR > $highend)
+        if ($scaleR < $lowend || $scaleR > $highend)
         {
             $newCanvasWidth = (int)($scale * $this->width + 0.5);
             $newCanvasHeight = (int)($scale * $this->height + 0.5);
@@ -445,14 +493,20 @@ class Image extends Object {
         imagefill($resizedImage, 0, 0, $bgColor);
 
         imagecopyresampled(
-        $resizedImage, $this->image,
-        $posX, $posY, 0, 0,
-        $newCanvasWidth, $newCanvasHeight,
-        $this->width, $this->height
+            $resizedImage,
+            $this->image,
+            $posX,
+            $posY,
+            0,
+            0,
+            $newCanvasWidth,
+            $newCanvasHeight,
+            $this->width,
+            $this->height
         );
 
         return $resizedImage;
-	}
+    }
 
     /**
      * Get file extension.
@@ -460,12 +514,15 @@ class Image extends Object {
      * @param string $filename Filename.
      * @return string
      */
-    private function getExtension($filename) {
+    private function getExtension($filename)
+    {
         return substr(strrchr($filename, '.'), 1);
     }
 
-    public function __destruct() {
-        if ($this->image) {
+    public function __destruct()
+    {
+        if ($this->image)
+        {
             imagedestroy($this->image);
         }
     }
@@ -473,8 +530,10 @@ class Image extends Object {
     /**
      * Show image.
      */
-    public function show() {
-        switch ($this->type){
+    public function show()
+    {
+        switch ($this->type)
+        {
             case self::TYPE_PNG:
                 $contentType = 'image/png';
                 $funcName = 'imagepng';
@@ -499,4 +558,3 @@ class Image extends Object {
         $response->commit();
     }
 }
-

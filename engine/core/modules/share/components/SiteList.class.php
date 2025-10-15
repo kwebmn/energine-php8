@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -38,17 +39,21 @@ class SiteList extends DataSet
         $filteredIDs = true;
 
         $tags = (string)$this->getParam('tags');
-        if ($tags !== '') {
+        if ($tags !== '')
+        {
             $filteredIDs = TagManager::getFilter($tags, 'share_sites_tags');
         }
 
-        if (empty($filteredIDs)) {
+        if (empty($filteredIDs))
+        {
             return [];
         }
 
-        foreach (E()->getSiteManager() as $siteID => $site) {
+        foreach (E()->getSiteManager() as $siteID => $site)
+        {
             // Если включён фильтр и текущий сайт не в нём — пропускаем
-            if ($filteredIDs !== true && !in_array($siteID, $filteredIDs, true)) {
+            if ($filteredIDs !== true && !in_array($siteID, $filteredIDs, true))
+            {
                 continue;
             }
 

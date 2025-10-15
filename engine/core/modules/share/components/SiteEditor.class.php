@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -30,7 +31,8 @@ class SiteEditor extends Grid
      */
     protected function getConfig(): ComponentConfig
     {
-        if (!$this->config) {
+        if (!$this->config)
+        {
             $this->config = new SiteEditorConfig(
                 $this->getParam('config'),
                 static::class,
@@ -47,7 +49,8 @@ class SiteEditor extends Grid
     {
         parent::prepare();
 
-        if (!in_array($this->getState(), ['add', 'edit'], true)) {
+        if (!in_array($this->getState(), ['add', 'edit'], true))
+        {
             return;
         }
 
@@ -69,17 +72,20 @@ class SiteEditor extends Grid
         // Селект с папками сайта
         $fdFolder = $this->getDataDescription()->getFieldOrNull('site_folder')
             ?: $this->getDataDescription()->getFieldDescriptionByName('site_folder'); // BC
-        if ($fdFolder instanceof FieldDescription) {
+        if ($fdFolder instanceof FieldDescription)
+        {
             $fdFolder->setType(FieldDescription::FIELD_TYPE_SELECT);
             $fdFolder->loadAvailableValues($this->loadFoldersData(), 'key', 'value');
         }
 
         // Если сайт по умолчанию — делаем флаг только для чтения
         $siteIsDefaultField = $this->getData()->getFieldByName('site_is_default');
-        if ($siteIsDefaultField && (int)$siteIsDefaultField->getRowData(0) === 1) {
+        if ($siteIsDefaultField && (int)$siteIsDefaultField->getRowData(0) === 1)
+        {
             $fdDefault = $this->getDataDescription()->getFieldOrNull('site_is_default')
                 ?: $this->getDataDescription()->getFieldDescriptionByName('site_is_default');
-            if ($fdDefault instanceof FieldDescription) {
+            if ($fdDefault instanceof FieldDescription)
+            {
                 $fdDefault->setMode(FieldDescription::FIELD_MODE_READ);
             }
         }
@@ -90,7 +96,8 @@ class SiteEditor extends Grid
         $fdTags->removeProperty('pattern');
         $this->getDataDescription()->addFieldDescription($fdTags);
 
-        if ($state === 'add') {
+        if ($state === 'add')
+        {
             // Значения по умолчанию
             $this->getData()->getFieldByName('site_is_active')?->setData(1, true);
             $this->getData()->getFieldByName('site_is_indexed')?->setData(1, true);
@@ -107,11 +114,14 @@ class SiteEditor extends Grid
             );
             $fdCopy->loadAvailableValues($rows, 'site_id', 'site_name');
             $this->getDataDescription()->addFieldDescription($fdCopy);
-        } else {
+        }
+        else
+        {
             // PK — readonly
             $pkFD = $this->getDataDescription()->getFieldOrNull($this->getPK())
                 ?: $this->getDataDescription()->getFieldDescriptionByName($this->getPK());
-            if ($pkFD instanceof FieldDescription) {
+            if ($pkFD instanceof FieldDescription)
+            {
                 $pkFD->setType(FieldDescription::FIELD_TYPE_HIDDEN)
                     ->setMode(FieldDescription::FIELD_MODE_READ);
             }
@@ -141,10 +151,13 @@ class SiteEditor extends Grid
         $sp = $this->getStateParams(true);
         $params = [];
 
-        if (isset($sp['site_id'])) {
+        if (isset($sp['site_id']))
+        {
             $this->request->shiftPath(2);
             $params = ['siteID' => $sp['site_id']];
-        } else {
+        }
+        else
+        {
             $this->request->shiftPath(1);
         }
 
@@ -165,7 +178,8 @@ class SiteEditor extends Grid
         $sp = $this->getStateParams(true);
         $params = [];
 
-        if (isset($sp['site_id'])) {
+        if (isset($sp['site_id']))
+        {
             $this->request->shiftPath(2);
             $params = ['siteID' => $sp['site_id']];
         }
@@ -184,7 +198,8 @@ class SiteEditor extends Grid
      */
     public function build(): DOMDocument
     {
-        return match ($this->getState()) {
+        return match ($this->getState())
+        {
             'reset'      => $this->divEditor?->build() ?? parent::build(),
             'domains'    => $this->domainEditor?->build() ?? parent::build(),
             'properties' => $this->propertiesEditor?->build() ?? parent::build(),
@@ -202,7 +217,8 @@ class SiteEditor extends Grid
         $result = [];
         $base = SITE_DIR . '/modules/';
 
-        foreach (glob($base . '*', GLOB_ONLYDIR) ?: [] as $folderPath) {
+        foreach (glob($base . '*', GLOB_ONLYDIR) ?: [] as $folderPath)
+        {
             $folder = str_replace($base, '', $folderPath);
             $result[] = ['key' => $folder, 'value' => $folder];
         }
@@ -228,7 +244,8 @@ class SiteEditor extends Grid
             $siteID
         );
 
-        if (!$url) {
+        if (!$url)
+        {
             throw new SystemException(
                 'ERR_BAD_URL',
                 SystemException::ERR_CRITICAL,

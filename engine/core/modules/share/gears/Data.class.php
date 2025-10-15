@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -26,19 +27,25 @@ class Data extends BaseObject
      */
     public function load(array $data): void
     {
-        if ($data === []) {
+        if ($data === [])
+        {
             return;
         }
 
-        if (function_exists('inverseDBResult')) {
+        if (function_exists('inverseDBResult'))
+        {
             $data = inverseDBResult($data);
-        } elseif (array_is_list($data)) {
+        }
+        elseif (array_is_list($data))
+        {
             $data = $this->rowsToColumns($data);
         }
 
-        foreach ($data as $name => $values) {
+        foreach ($data as $name => $values)
+        {
             $field = $this->getFieldByName((string)$name);
-            if ($field === false) {
+            if ($field === false)
+            {
                 $field = new Field((string)$name);
                 $this->addField($field);
             }
@@ -54,9 +61,11 @@ class Data extends BaseObject
      */
     public function addRow(array $rowData): void
     {
-        foreach ($rowData as $name => $value) {
+        foreach ($rowData as $name => $value)
+        {
             $field = $this->getFieldByName((string)$name);
-            if ($field !== false) {
+            if ($field !== false)
+            {
                 $field->addRowData($value);
             }
         }
@@ -66,7 +75,8 @@ class Data extends BaseObject
     /** Удалить строку по индексу во всех полях. */
     public function removeRow(int $rowIndex): void
     {
-        foreach ($this->fields as $field) {
+        foreach ($this->fields as $field)
+        {
             $field->removeRowData($rowIndex);
         }
         $this->ensureAligned();
@@ -79,9 +89,11 @@ class Data extends BaseObject
     public function changeRow(int $rowIndex, array $rowData): bool
     {
         $result = false;
-        foreach ($rowData as $name => $value) {
+        foreach ($rowData as $name => $value)
+        {
             $field = $this->getFieldByName((string)$name);
-            if ($field !== false) {
+            if ($field !== false)
+            {
                 $result = $field->setRowData($rowIndex, $value);
             }
         }
@@ -100,7 +112,8 @@ class Data extends BaseObject
     public function removeField(Field $field): void
     {
         $name = $field->getName();
-        if (isset($this->fields[$name])) {
+        if (isset($this->fields[$name]))
+        {
             unset($this->fields[$name]);
             $this->length--;
             $this->rows = $this->length > 0 ? $this->firstField()->getRowCount() : 0;
@@ -137,9 +150,12 @@ class Data extends BaseObject
     /** Кол-во строк (по первой колонке). */
     public function getRowCount(): int
     {
-        if ($this->length > 0) {
+        if ($this->length > 0)
+        {
             $this->rows = $this->firstField()->getRowCount();
-        } else {
+        }
+        else
+        {
             $this->rows = 0;
         }
         return $this->rows;
@@ -153,19 +169,23 @@ class Data extends BaseObject
     public function asArray(bool $groupedByFields = false): array
     {
         $columns = [];
-        foreach ($this->fields as $name => $field) {
+        foreach ($this->fields as $name => $field)
+        {
             $columns[$name] = $field->getData();
         }
-        if ($groupedByFields) {
+        if ($groupedByFields)
+        {
             return $columns;
         }
 
         $rows = $this->getRowCount();
         $names = array_keys($this->fields);
         $out = [];
-        for ($i = 0; $i < $rows; $i++) {
+        for ($i = 0; $i < $rows; $i++)
+        {
             $row = [];
-            foreach ($names as $n) {
+            foreach ($names as $n)
+            {
                 $row[$n] = $columns[$n][$i] ?? null;
             }
             $out[$i] = $row;
@@ -179,12 +199,15 @@ class Data extends BaseObject
     private function ensureAligned(): void
     {
         $max = 0;
-        foreach ($this->fields as $f) {
+        foreach ($this->fields as $f)
+        {
             $max = max($max, $f->getRowCount());
         }
-        foreach ($this->fields as $f) {
+        foreach ($this->fields as $f)
+        {
             $data = array_values($f->getData());
-            if (count($data) < $max) {
+            if (count($data) < $max)
+            {
                 $data = array_pad($data, $max, null);
             }
             $f->setData($data);
@@ -196,20 +219,26 @@ class Data extends BaseObject
     private function rowsToColumns(array $rows): array
     {
         $names = [];
-        foreach ($rows as $r) {
-            if (is_array($r)) {
-                foreach ($r as $k => $_) {
+        foreach ($rows as $r)
+        {
+            if (is_array($r))
+            {
+                foreach ($r as $k => $_)
+                {
                     $names[$k] = true;
                 }
             }
         }
         $cols = [];
-        foreach (array_keys($names) as $n) {
+        foreach (array_keys($names) as $n)
+        {
             $cols[$n] = [];
         }
-        foreach ($rows as $r) {
+        foreach ($rows as $r)
+        {
             $r = (array)$r;
-            foreach ($cols as $n => $_) {
+            foreach ($cols as $n => $_)
+            {
                 $cols[$n][] = $r[$n] ?? null;
             }
         }

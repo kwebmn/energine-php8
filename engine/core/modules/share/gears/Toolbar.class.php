@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -92,7 +93,8 @@ class Toolbar extends BaseObject
     public function detachControl(Control $control): void
     {
         $i = $control->getIndex();
-        if (!isset($this->controls[$i])) {
+        if (!isset($this->controls[$i]))
+        {
             throw new SystemException('ERR_DEV_NO_CONTROL_TO_DETACH', SystemException::ERR_DEVELOPER);
         }
         unset($this->controls[$i]); // оставляем «дыру» как в исходной логике
@@ -105,8 +107,10 @@ class Toolbar extends BaseObject
      */
     public function getControlByID(string $id)
     {
-        foreach ($this->controls as $control) {
-            if ($control && method_exists($control, 'getID') && $control->getID() === $id) {
+        foreach ($this->controls as $control)
+        {
+            if ($control && method_exists($control, 'getID') && $control->getID() === $id)
+            {
                 return $control;
             }
         }
@@ -121,23 +125,28 @@ class Toolbar extends BaseObject
      */
     public function loadXML(SimpleXMLElement $toolbarDescription): void
     {
-        if (empty($toolbarDescription)) {
+        if (empty($toolbarDescription))
+        {
             return;
         }
 
-        foreach ($toolbarDescription->control as $controlDescription) {
-            if (!isset($controlDescription['type'])) {
+        foreach ($toolbarDescription->control as $controlDescription)
+        {
+            if (!isset($controlDescription['type']))
+            {
                 throw new SystemException('ERR_DEV_NO_CONTROL_TYPE', SystemException::ERR_DEVELOPER);
             }
 
             $type = (string)$controlDescription['type'];
             $controlClassName = ucfirst($type);
-            if ($controlClassName === 'Togglebutton') {
+            if ($controlClassName === 'Togglebutton')
+            {
                 // историческая совместимость
                 $controlClassName = 'Switcher';
             }
 
-            if (!class_exists($controlClassName, true)) {
+            if (!class_exists($controlClassName, true))
+            {
                 throw new SystemException('ERR_DEV_NO_CONTROL_CLASS', SystemException::ERR_DEVELOPER, $controlClassName);
             }
 
@@ -187,16 +196,19 @@ class Toolbar extends BaseObject
      */
     public function build(): DOMNode|false
     {
-        if (count($this->controls) === 0) {
+        if (count($this->controls) === 0)
+        {
             return false;
         }
 
         $toolbarElem = $this->doc->createElement(self::TAG_NAME);
         $toolbarElem->setAttribute('name', $this->name);
 
-        if (!empty($this->properties)) {
+        if (!empty($this->properties))
+        {
             $props = $this->doc->createElement('properties');
-            foreach ($this->properties as $propName => $propValue) {
+            foreach ($this->properties as $propName => $propValue)
+            {
                 $prop = $this->doc->createElement('property');
                 $prop->setAttribute('name', (string)$propName);
                 $prop->appendChild($this->doc->createTextNode((string)$propValue));
@@ -205,8 +217,12 @@ class Toolbar extends BaseObject
             $toolbarElem->appendChild($props);
         }
 
-        foreach ($this->controls as $control) {
-            if (!$control) continue;
+        foreach ($this->controls as $control)
+        {
+            if (!$control)
+            {
+                continue;
+            }
             $toolbarElem->appendChild($this->doc->importNode($control->build(), true));
         }
 
@@ -219,8 +235,10 @@ class Toolbar extends BaseObject
      */
     public function translate(): void
     {
-        foreach ($this->controls as $control) {
-            if ($control) {
+        foreach ($this->controls as $control)
+        {
+            if ($control)
+            {
                 $control->translate();
             }
         }

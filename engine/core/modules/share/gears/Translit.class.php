@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,7 +25,9 @@ final class Translit
         'shh','sh','ch','c','ju','ja','zh','a','b','v','g','d','je','jo','z','i','j','k','l','m','n','o','p','r','s','t','u','f','kh','y','y','','e','je','ji','i',
     ];
 
-    private function __construct() {}
+    private function __construct()
+    {
+    }
 
     /**
      * Транслитерация строки.
@@ -53,7 +56,8 @@ final class Translit
         ], $options);
 
         // 0) Нормализация (если доступно).
-        if ($opts['normalize'] && class_exists('\Normalizer')) {
+        if ($opts['normalize'] && class_exists('\Normalizer'))
+        {
             /** @noinspection PhpFullyQualifiedNameUsageInspection */
             $string = \Normalizer::normalize($string, \Normalizer::FORM_C) ?? $string;
         }
@@ -80,13 +84,15 @@ final class Translit
             $string
         );
 
-        if (!empty($opts['initialJToY'])) {
+        if (!empty($opts['initialJToY']))
+        {
             // Начальное j/J в слове → y/Y
             $string = (string)preg_replace('/\bj/u', 'y', $string);
             $string = (string)preg_replace('/\bJ/u', 'Y', $string);
         }
 
-        if (!empty($opts['khSimplify'])) {
+        if (!empty($opts['khSimplify']))
+        {
             // Гласные (ASCII) + Kh → h; начальное Kh → H/h
             $vowels = 'eyuioaEYUIOA';
             $string = (string)preg_replace("/([{$vowels}]+)[Kk]h/u", '$1h', $string);
@@ -97,7 +103,8 @@ final class Translit
         $string = trim($string);
 
         // 3) Работа с разделителем слов.
-        if ($wordSeparator !== '') {
+        if ($wordSeparator !== '')
+        {
             $sepQuoted = preg_quote($wordSeparator, '/');
 
             // Заменяем любые пробельные последовательности на разделитель.
@@ -111,12 +118,14 @@ final class Translit
         }
 
         // 4) Жёсткая очистка для URL.
-        if ($clean) {
+        if ($clean)
+        {
             $string = mb_strtolower($string, 'UTF-8');
 
             // Разрешаем: латиницу/цифры/подчёркивание + текущий разделитель.
             $allowed = '_';
-            if ($wordSeparator !== '' && !ctype_alnum($wordSeparator)) {
+            if ($wordSeparator !== '' && !ctype_alnum($wordSeparator))
+            {
                 // Добавляем разделитель в класс разрешённых символов.
                 $allowed .= preg_quote($wordSeparator, '/');
             }
@@ -124,14 +133,16 @@ final class Translit
             $string = (string)preg_replace('/[^a-z0-9' . $allowed . ']+/u', '', $string);
 
             // Схлопываем повтор разделителя (на случай, если осталось что-то лишнее).
-            if ($wordSeparator !== '') {
+            if ($wordSeparator !== '')
+            {
                 $sepQuoted = preg_quote($wordSeparator, '/');
                 $string = (string)preg_replace('/(?:' . $sepQuoted . ')+/u', $wordSeparator, $string);
                 $string = trim($string, $wordSeparator);
             }
 
             // Для дефиса дополнительно схлопнем цепочки.
-            if ($wordSeparator === '-') {
+            if ($wordSeparator === '-')
+            {
                 $string = (string)preg_replace('/-+/u', '-', $string);
             }
         }
@@ -167,12 +178,14 @@ final class Translit
     private static function buildMap(string $softSignMode): array
     {
         $map = array_combine(self::CYR, self::LAT);
-        if ($map === false) {
+        if ($map === false)
+        {
             // На всякий — не должен сработать, длины массивов равны.
             return [];
         }
 
-        if ($softSignMode === 'drop') {
+        if ($softSignMode === 'drop')
+        {
             $map['Ь'] = '';
             $map['ь'] = '';
         }

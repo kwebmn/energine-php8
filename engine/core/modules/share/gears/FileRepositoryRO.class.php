@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -14,12 +15,30 @@ class FileRepositoryRO extends FileRepositoryLocal implements IFileRepository
         return 'ro';
     }
 
-    public function allowsCreateDir(): bool  { return false; }
-    public function allowsUploadFile(): bool { return false; }
-    public function allowsEditDir(): bool    { return true; }   // как в оригинале
-    public function allowsEditFile(): bool   { return true; }   // как в оригинале
-    public function allowsDeleteDir(): bool  { return false; }
-    public function allowsDeleteFile(): bool { return false; }
+    public function allowsCreateDir(): bool
+    {
+        return false;
+    }
+    public function allowsUploadFile(): bool
+    {
+        return false;
+    }
+    public function allowsEditDir(): bool
+    {
+        return true;
+    }   // как в оригинале
+    public function allowsEditFile(): bool
+    {
+        return true;
+    }   // как в оригинале
+    public function allowsDeleteDir(): bool
+    {
+        return false;
+    }
+    public function allowsDeleteFile(): bool
+    {
+        return false;
+    }
 
     /**
      * Полная загрузка файла запрещена.
@@ -46,17 +65,20 @@ class FileRepositoryRO extends FileRepositoryLocal implements IFileRepository
         );
 
         $dir = \dirname($altPath);
-        if (!is_dir($dir)) {
-            [$created, $error] = $this->callFs(static fn(): bool => mkdir($dir, 0777, true));
-            if ($created === false && !is_dir($dir)) {
+        if (!is_dir($dir))
+        {
+            [$created, $error] = $this->callFs(static fn (): bool => mkdir($dir, 0777, true));
+            if ($created === false && !is_dir($dir))
+            {
                 $context = $error !== null ? ['error' => $error] : [];
                 throw new SystemException('ERR_DIR_WRITE', SystemException::ERR_CRITICAL, $dir, null, $context);
             }
         }
 
         $source = (string)$sourceFilename;
-        [$copied, $copyError] = $this->callFs(static fn(): bool => copy($source, $altPath));
-        if ($copied === false) {
+        [$copied, $copyError] = $this->callFs(static fn (): bool => copy($source, $altPath));
+        if ($copied === false)
+        {
             $context = $copyError !== null ? ['error' => $copyError] : [];
             throw new SystemException('ERR_COPY_UPLOADED_FILE', SystemException::ERR_CRITICAL, $altPath, null, $context);
         }

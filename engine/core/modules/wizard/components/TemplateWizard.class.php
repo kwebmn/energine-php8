@@ -1,19 +1,21 @@
 <?php
+
 declare(strict_types=1);
 
 class TemplateWizard extends Grid
 {
-    const TABLE_PREFIX = 'auto_';
-    const WIZARD_PATH = 'engine/core/modules/wizard/';
-    const TEMPLATES_PATH = 'engine/core/modules/auto/';
+    public const TABLE_PREFIX = 'auto_';
+    public const WIZARD_PATH = 'engine/core/modules/wizard/';
+    public const TEMPLATES_PATH = 'engine/core/modules/auto/';
 
     protected $templateHelper;
 
-    public function __construct(string $name, string $module, ?array $params = null) {
+    public function __construct(string $name, string $module, ?array $params = null)
+    {
         parent::__construct($name, $module, $params);
 
         $this->setTableName('site_generator');
-        $this->setOrder(array('sg_date' => QAL::DESC));
+        $this->setOrder(['sg_date' => QAL::DESC]);
 
         $this->templateHelper = new TemplateHelper();
     }
@@ -25,13 +27,12 @@ class TemplateWizard extends Grid
         $this->dbh->modify(
             QAL::UPDATE,
             'site_generator',
-            array(
+            [
                 'sg_date' => date('Y-m-d H:i:s')
-            ),
-            array(
+            ],
+            [
                 'sg_id' => $id
-            )
-
+            ]
         );
         return $id;
     }

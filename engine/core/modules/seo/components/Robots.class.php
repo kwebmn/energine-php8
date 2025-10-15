@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 /**
  * @file
@@ -22,7 +23,8 @@ class Robots;
 class Robots;
 @endcode
  */
-class Robots extends DataSet {
+class Robots extends DataSet
+{
     /**
      * Initialize robots component and set plain text headers.
      *
@@ -30,7 +32,8 @@ class Robots extends DataSet {
      * @param string     $module Имя модуля.
      * @param array|null $params Параметры компонента.
      */
-    public function __construct(string $name, string $module, ?array $params = null) {
+    public function __construct(string $name, string $module, ?array $params = null)
+    {
         parent::__construct($name, $module, $params);
         E()->getResponse()->setHeader('Content-Type', 'text/plain; charset=utf-8');
     }
@@ -38,7 +41,8 @@ class Robots extends DataSet {
     /**
      * Main state for robots.txt generation.
      */
-    protected function main(){
+    protected function main()
+    {
         E()->getController()->getTransformer()->setFileName('engine/core/modules/seo/transformers/robots_txt.xslt', true);
         parent::main();
         $this->setBuilder(new SimpleBuilder());
@@ -63,13 +67,17 @@ class Robots extends DataSet {
      *
      * @return bool {@c true}, если конфигурация присутствует.
      */
-    protected function isSeoConfigured() {
+    protected function isSeoConfigured()
+    {
         $cfg = E()->getConfigArray();
-        if (!array_key_exists('seo', $cfg)) {
+        if (!array_key_exists('seo', $cfg))
+        {
             return false;
         }
-        foreach (array('sitemapSegment', 'sitemapTemplate', 'maxVideosInMap') as $seoParam) {
-            if (!array_key_exists($seoParam, $cfg['seo'])) {
+        foreach (['sitemapSegment', 'sitemapTemplate', 'maxVideosInMap'] as $seoParam)
+        {
+            if (!array_key_exists($seoParam, $cfg['seo']))
+            {
                 return false;
             }
         }
@@ -81,18 +89,25 @@ class Robots extends DataSet {
      *
      * @return array|false Массив ID сегментов или false, если они отсутствуют.
      */
-    protected function getSitemapSegmentIds() {
+    protected function getSitemapSegmentIds()
+    {
 
         $res = $this->dbh->select(
-            'share_sitemap', 'smap_id', array(
+            'share_sitemap',
+            'smap_id',
+            [
                 'smap_segment' => E()->getConfigValue('seo.sitemapSegment')
-            )
+            ]
         );
 
-        if (!is_array($res)) return false;
+        if (!is_array($res))
+        {
+            return false;
+        }
 
-        $result = array();
-        foreach ($res as $row) {
+        $result = [];
+        foreach ($res as $row)
+        {
             $result[] = $row['smap_id'];
         }
 
@@ -103,10 +118,14 @@ class Robots extends DataSet {
      * Create sitemap segments and assign read-only access for guests.
      * Segment name must be set in configuration file.
      */
-    protected function createSitemapSegment() {
+    protected function createSitemapSegment()
+    {
 
         $smap_ids = $this->getSitemapSegmentIds();
-        if ($smap_ids) return;
+        if ($smap_ids)
+        {
+            return;
+        }
 
         // вставка нового сегмента в sitemap на основании конфига
         $this->dbh->selectRequest(
@@ -127,8 +146,10 @@ class Robots extends DataSet {
 
         $smap_ids = $this->getSitemapSegmentIds();
 
-        if ($smap_ids) {
-            foreach($smap_ids as $smap_id) {
+        if ($smap_ids)
+        {
+            foreach ($smap_ids as $smap_id)
+            {
 
                 // права доступа
                 $this->dbh->selectRequest(
@@ -153,35 +174,41 @@ class Robots extends DataSet {
      *
      * @return array|false|null Строки robots.txt.
      */
-    protected function loadData(): array|false|null {
-        $entries = array();
+    protected function loadData(): array|false|null
+    {
+        $entries = [];
 
-        if (!$this->isSeoConfigured()) {
+        if (!$this->isSeoConfigured())
+        {
 
-            array_push($entries, array('entry' => 'User-agent: *' . PHP_EOL . 'Disallow: /'));
+            array_push($entries, ['entry' => 'User-agent: *' . PHP_EOL . 'Disallow: /']);
 
-        } else {
+        }
+        else
+        {
 
-            array_push($entries, array('entry' => 'User-agent: *' . PHP_EOL . 'Allow: /'));
+            array_push($entries, ['entry' => 'User-agent: *' . PHP_EOL . 'Allow: /']);
 
             $this->createSitemapSegment();
 
             $domainsInfo = $this->dbh->selectRequest(
-               'SELECT ss.site_id, sd.domain_protocol, sd.domain_host, sd.domain_root ' .
+                'SELECT ss.site_id, sd.domain_protocol, sd.domain_host, sd.domain_root ' .
                'FROM share_sites ss ' .
                'INNER JOIN share_domain2site d2s ON ss.site_id = d2s.site_id ' .
                'INNER JOIN share_domains sd ON  sd.domain_id = d2s.domain_id ' .
                'WHERE ss.site_is_indexed'
             );
 
-            if (is_array($domainsInfo)) {
-                foreach($domainsInfo as $row) {
+            if (is_array($domainsInfo))
+            {
+                foreach ($domainsInfo as $row)
+                {
                     array_push(
                         $entries,
-                        array('entry' =>
+                        ['entry' =>
                             'Sitemap: ' . $row['domain_protocol'] . '://' . $row['domain_host'] .
                             $row['domain_root'] . E()->getConfigValue('seo.sitemapSegment')
-                        )
+                        ]
                     );
                 }
             }

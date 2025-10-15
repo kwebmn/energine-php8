@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -55,7 +56,8 @@ class FileRepoInfo extends DBWorker
      */
     public function analyze(string $filename, bool $forceReadFromFile = false): object
     {
-        try {
+        try
+        {
             $result = null;
 
             if (
@@ -65,13 +67,18 @@ class FileRepoInfo extends DBWorker
                 ($row = $this->getFInfoSQL->fetch(PDO::FETCH_ASSOC))
             ) {
                 $result = $row;
-            } else {
+            }
+            else
+            {
                 $result = $this->getFileInfoData($filename);
-                if (!$result) {
+                if (!$result)
+                {
                     throw new \RuntimeException('Unable to read file info');
                 }
             }
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e)
+        {
             // Гарантированный безопасный ответ
             $result = [
                 'type'    => self::META_TYPE_UNKNOWN,
@@ -98,14 +105,20 @@ class FileRepoInfo extends DBWorker
         ];
 
         // Преобразуем width/height к числам, если пришли строками
-        if ($result['width'] !== null && $result['width'] !== '') {
+        if ($result['width'] !== null && $result['width'] !== '')
+        {
             $result['width'] = (int)$result['width'];
-        } else {
+        }
+        else
+        {
             $result['width'] = null;
         }
-        if ($result['height'] !== null && $result['height'] !== '') {
+        if ($result['height'] !== null && $result['height'] !== '')
+        {
             $result['height'] = (int)$result['height'];
-        } else {
+        }
+        else
+        {
             $result['height'] = null;
         }
 
@@ -138,16 +151,19 @@ class FileRepoInfo extends DBWorker
         ];
 
         // Временный хотфикc (как в исходнике): окружение без поддержки https://
-        if (strpos($filename, 'https://') === 0) {
+        if (strpos($filename, 'https://') === 0)
+        {
             return $result; // оставляем UNKNOWN
         }
 
-        if (is_dir($filename)) {
+        if (is_dir($filename))
+        {
             $result['type'] = self::META_TYPE_FOLDER;
             return $result;
         }
 
-        if (!file_exists($filename)) {
+        if (!file_exists($filename))
+        {
             // Файл не найден
             return $result;
         }
@@ -156,44 +172,51 @@ class FileRepoInfo extends DBWorker
         $mime = $this->finfo->file($filename) ?: 'unknown/mime-type';
         $result['mime'] = $mime;
 
-        switch ($mime) {
+        switch ($mime)
+        {
             // Изображения
             case 'image/webp':
             case 'image/jpeg':
             case 'image/png':
             case 'image/gif': {
                 $img = @getimagesize($filename);
-                if (is_array($img)) {
+                if (is_array($img))
+                {
                     $result['type']   = self::META_TYPE_IMAGE;
                     $result['width']  = (int)$img[0];
                     $result['height'] = (int)$img[1];
-                } else {
+                }
+                else
+                {
                     $result['type'] = self::META_TYPE_IMAGE;
                 }
                 break;
             }
 
-            // Видео (минимальный набор, как в исходнике)
+                // Видео (минимальный набор, как в исходнике)
             case 'video/x-flv':
             case 'video/mp4': {
                 $result['type'] = self::META_TYPE_VIDEO;
                 // Проставим флаги форматов по mime
-                if ($mime === 'video/x-flv') {
+                if ($mime === 'video/x-flv')
+                {
                     $result['is_flv'] = true;
-                } elseif ($mime === 'video/mp4') {
+                }
+                elseif ($mime === 'video/mp4')
+                {
                     $result['is_mp4'] = true;
                 }
                 break;
             }
 
-            // Текст
+                // Текст
             case 'text/csv':
             case 'text/plain': {
                 $result['type'] = self::META_TYPE_TEXT;
                 break;
             }
 
-            // Архив
+                // Архив
             case 'application/zip': {
                 $result['type'] = self::META_TYPE_ZIP;
                 break;
@@ -239,7 +262,8 @@ class FileRepoInfo extends DBWorker
     public function getRepositoryRoot(string $upl_path): string
     {
         $upl_junks = explode('/', $upl_path, 3);
-        if (empty($upl_junks[1])) {
+        if (empty($upl_junks[1]))
+        {
             // Совместимость: возвращаем пустую строку, как в исходнике.
             return '';
         }
@@ -260,12 +284,15 @@ class FileRepoInfo extends DBWorker
         $repo_id = (int)$this->dbh->getScalar('share_uploads', 'upl_id', ['upl_path' => $upl_root]);
         $cfg = E()->getConfigValue('repositories.mapping');
 
-        if ($cfg) {
+        if ($cfg)
+        {
             $repo_mime = (string)$this->dbh->getScalar('share_uploads', 'upl_mime_type', ['upl_id' => $repo_id]);
-            if (!empty($cfg[$repo_mime])) {
+            if (!empty($cfg[$repo_mime]))
+            {
                 $repo_class_name = $cfg[$repo_mime];
                 $instance = new $repo_class_name($repo_id, $upl_root);
-                if ($instance instanceof IFileRepository) {
+                if ($instance instanceof IFileRepository)
+                {
                     return $instance;
                 }
             }

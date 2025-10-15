@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -32,10 +33,11 @@ final class EmptyBuilder implements IBuilder
      *
      * @return mixed DOMNode|null
      */
-    public function getResult() : mixed
+    public function getResult(): mixed
     {
         // Ленивая инициализация на случай, если build() не вызывали явно
-        if (!$this->result instanceof DOMDocument) {
+        if (!$this->result instanceof DOMDocument)
+        {
             $this->build();
         }
         return $this->result->documentElement ?? null;

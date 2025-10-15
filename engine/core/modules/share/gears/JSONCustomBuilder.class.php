@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -22,11 +23,13 @@ final class JSONCustomBuilder extends BaseObject implements IBuilder
      */
     public function build(): bool
     {
-        if (!array_key_exists('result', $this->properties)) {
+        if (!array_key_exists('result', $this->properties))
+        {
             $this->properties['result'] = true;
         }
 
-        if (!array_key_exists('mode', $this->properties)) {
+        if (!array_key_exists('mode', $this->properties))
+        {
             $this->properties['mode'] = QAL::SELECT;
         }
 
@@ -54,7 +57,8 @@ final class JSONCustomBuilder extends BaseObject implements IBuilder
      */
     public function setProperties(array $properties): self
     {
-        foreach ($properties as $name => $value) {
+        foreach ($properties as $name => $value)
+        {
             $this->setProperty((string)$name, $value);
         }
         return $this;

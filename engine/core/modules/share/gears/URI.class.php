@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -45,13 +46,15 @@ final class URI extends BaseObject
      */
     public function __construct(string $uri)
     {
-        if (self::$trick === null) {
+        if (self::$trick === null)
+        {
             throw new SystemException('ERR_PRIVATE_CONSTRUCTOR', SystemException::ERR_DEVELOPER);
         }
         // закрываем «окно» сразу, чтобы нельзя было new URI() второй раз напрямую
         self::$trick = null;
 
-        if ($uri !== '' && ($matches = self::validate($uri))) {
+        if ($uri !== '' && ($matches = self::validate($uri)))
+        {
             // Порядок совместим с прежним конструктором:
             // [0]=scheme, [1]=host, [2]=port, [3]=path, [4]=query, [5]=fragment
             $this->setScheme($matches[0]);
@@ -60,7 +63,9 @@ final class URI extends BaseObject
             $this->setPath($matches[3]);
             $this->setQuery($matches[4] ?? '');
             $this->setFragment($matches[5] ?? '');
-        } else {
+        }
+        else
+        {
             $this->scheme = '';
             $this->host = '';
             $this->path = [];
@@ -86,28 +91,34 @@ final class URI extends BaseObject
     public static function validate(string $uri)
     {
         $parts = self::parseUrlSafe($uri);
-        if ($parts === false) {
+        if ($parts === false)
+        {
             return false;
         }
 
         $scheme = isset($parts['scheme']) ? strtolower((string)$parts['scheme']) : '';
-        $host   = isset($parts['host'])   ? strtolower((string)$parts['host'])   : '';
-        $port   = isset($parts['port'])   ? (int)$parts['port']                  : 0;
+        $host   = isset($parts['host']) ? strtolower((string)$parts['host']) : '';
+        $port   = isset($parts['port']) ? (int)$parts['port'] : 0;
         $path   = (string)($parts['path'] ?? '/');
         $query  = (string)($parts['query'] ?? '');
         $frag   = (string)($parts['fragment'] ?? '');
 
-        if ($scheme === '' || $host === '') {
+        if ($scheme === '' || $host === '')
+        {
             return false;
         }
 
-        if ($path === '') {
+        if ($path === '')
+        {
             $path = '/';
-        } elseif ($path[0] !== '/') {
+        }
+        elseif ($path[0] !== '/')
+        {
             $path = '/' . $path;
         }
 
-        if ($port <= 0) {
+        if ($port <= 0)
+        {
             // совместимость: по умолчанию 80
             $port = 80;
         }
@@ -120,7 +131,8 @@ final class URI extends BaseObject
     {
         $error = null;
 
-        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$error): bool {
+        set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0) use (&$error): bool
+        {
             $error = $message;
             return true;
         });
@@ -129,10 +141,14 @@ final class URI extends BaseObject
 
         restore_error_handler();
 
-        if ($parts === false || $error !== null) {
-            if ($error !== null) {
+        if ($parts === false || $error !== null)
+        {
+            if ($error !== null)
+            {
                 error_log(sprintf('URI::validate(): parse_url failed for "%s": %s', $uri, $error));
-            } elseif ($parts === false) {
+            }
+            elseif ($parts === false)
+            {
                 error_log(sprintf('URI::validate(): parse_url returned false for "%s"', $uri));
             }
             return false;
@@ -148,7 +164,8 @@ final class URI extends BaseObject
     {
         self::$trick = true;
 
-        if ($uriString === '') {
+        if ($uriString === '')
+        {
             // Схема с учётом обратного проксирования
             $https  = $_SERVER['HTTPS'] ?? '';
             $proto  = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
@@ -158,7 +175,8 @@ final class URI extends BaseObject
             // Хост может содержать порт (host:port)
             $hostHeader = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost');
             $hostHeader = trim((string)$hostHeader);
-            if ($hostHeader === '') {
+            if ($hostHeader === '')
+            {
                 $hostHeader = 'localhost';
             }
 
@@ -166,29 +184,40 @@ final class URI extends BaseObject
             $hostOnly = $hostHeader;
             $port = null;
 
-            if ($hostHeader !== '') {
-                if ($hostHeader[0] === '[') {
+            if ($hostHeader !== '')
+            {
+                if ($hostHeader[0] === '[')
+                {
                     $closingBracket = strpos($hostHeader, ']');
-                    if ($closingBracket !== false) {
+                    if ($closingBracket !== false)
+                    {
                         $hostOnly = substr($hostHeader, 0, $closingBracket + 1);
                         $portPart = substr($hostHeader, $closingBracket + 1);
-                        if ($portPart !== '' && $portPart[0] === ':') {
+                        if ($portPart !== '' && $portPart[0] === ':')
+                        {
                             $portDigits = substr($portPart, 1);
-                            if ($portDigits !== '' && ctype_digit($portDigits)) {
+                            if ($portDigits !== '' && ctype_digit($portDigits))
+                            {
                                 $candidate = (int)$portDigits;
-                                if ($candidate > 0) {
+                                if ($candidate > 0)
+                                {
                                     $port = $candidate;
                                 }
                             }
                         }
                     }
-                } else {
+                }
+                else
+                {
                     $colonPos = strrpos($hostHeader, ':');
-                    if ($colonPos !== false) {
+                    if ($colonPos !== false)
+                    {
                         $portPart = substr($hostHeader, $colonPos + 1);
-                        if ($portPart !== '' && ctype_digit($portPart)) {
+                        if ($portPart !== '' && ctype_digit($portPart))
+                        {
                             $candidate = (int)$portPart;
-                            if ($candidate > 0) {
+                            if ($candidate > 0)
+                            {
                                 $hostOnly = substr($hostHeader, 0, $colonPos);
                                 $port = $candidate;
                             }
@@ -197,24 +226,32 @@ final class URI extends BaseObject
                 }
             }
 
-            if ($hostOnly === '') {
+            if ($hostOnly === '')
+            {
                 $hostOnly = 'localhost';
             }
 
-            if ($port === null) {
+            if ($port === null)
+            {
                 // если порт не пришёл в HTTP_HOST, берём SERVER_PORT
                 $serverPort = (int)($_SERVER['SERVER_PORT'] ?? 0);
-                if ($serverPort > 0) {
+                if ($serverPort > 0)
+                {
                     $port = $serverPort;
-                } else {
+                }
+                else
+                {
                     $port = ($scheme === 'https') ? 443 : 80;
                 }
             }
 
             $requestUri = (string)($_SERVER['REQUEST_URI'] ?? '/');
-            if ($requestUri === '') {
+            if ($requestUri === '')
+            {
                 $requestUri = '/';
-            } elseif ($requestUri[0] !== '/' && $requestUri[0] !== '?') {
+            }
+            elseif ($requestUri[0] !== '/' && $requestUri[0] !== '?')
+            {
                 $requestUri = '/' . $requestUri;
             }
 
@@ -251,7 +288,8 @@ final class URI extends BaseObject
      */
     public function setPort(int $port): void
     {
-        if ($port <= 0) {
+        if ($port <= 0)
+        {
             $port = 80;
         }
         $this->port = $port;
@@ -267,10 +305,13 @@ final class URI extends BaseObject
      */
     public function setPath($path): void
     {
-        if (!is_array($path)) {
+        if (!is_array($path))
+        {
             // строку → сегменты, убираем пустые
             $segments = array_values(array_filter(explode('/', $path), 'strlen'));
-        } else {
+        }
+        else
+        {
             $segments = array_values(array_filter($path, 'strlen'));
         }
         $this->path = $segments;
@@ -285,19 +326,25 @@ final class URI extends BaseObject
     {
         $path = $this->path;
 
-        if ($asString) {
+        if ($asString)
+        {
             $s = empty($path) ? '/' : '/' . implode('/', $path) . '/';
 
             // Поддержка legacy-мэппинга через конфиг: 'uri.legacy_path_map' => ['/Тарпан/' => '/products/']
-            try {
+            try
+            {
                 $map = BaseObject::_getConfigValue('uri.legacy_path_map');
-                if (is_array($map) && $map) {
+                if (is_array($map) && $map)
+                {
                     $decoded = urldecode($s);
-                    if (isset($map[$decoded])) {
+                    if (isset($map[$decoded]))
+                    {
                         return (string)$map[$decoded];
                     }
                 }
-            } catch (\Throwable) {
+            }
+            catch (\Throwable)
+            {
                 // игнорируем, если конфиг недоступен
             }
 
@@ -342,7 +389,8 @@ final class URI extends BaseObject
      */
     public function __toString(): string
     {
-        if ($this->scheme !== '' && $this->host !== '') {
+        if ($this->scheme !== '' && $this->host !== '')
+        {
             return $this->scheme . '://' . $this->host
                 . (empty($this->path) ? '/' : $this->getPath(true))
                 . ($this->query !== '' ? ('?' . $this->query) : '')

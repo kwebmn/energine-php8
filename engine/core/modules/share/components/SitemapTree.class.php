@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * SitemapTree
@@ -22,7 +23,8 @@ class SitemapTree;
 class SitemapTree;
 @endcode
  */
-class SitemapTree extends DataSet {
+class SitemapTree extends DataSet
+{
     //todo VZ: This can be removed.
     /**
      * Initialize site map dataset.
@@ -31,7 +33,8 @@ class SitemapTree extends DataSet {
      * @param string     $module Имя модуля.
      * @param array|null $params Параметры компонента.
      */
-    public function __construct(string $name, string $module, ?array $params = null) {
+    public function __construct(string $name, string $module, ?array $params = null)
+    {
         parent::__construct($name, $module, $params);
 
     }
@@ -41,12 +44,14 @@ class SitemapTree extends DataSet {
      *
      * @return array|false|null Массив узлов дерева сайта.
      */
-    protected function loadData(): array|false|null {
+    protected function loadData(): array|false|null
+    {
         $sitemap = E()->getMap();
         $res = $sitemap->getInfo();
         $result = [];
 
-        foreach ($res as $id => $info) {
+        foreach ($res as $id => $info)
+        {
             $result[] = [
                 'Id' => $id,
                 'Pid' => $info['Pid'],
@@ -63,7 +68,8 @@ class SitemapTree extends DataSet {
      *
      * @return TreeBuilder Настроенный построитель дерева.
      */
-    protected function createBuilder(): AbstractBuilder {
+    protected function createBuilder(): AbstractBuilder
+    {
         $builder  = new TreeBuilder();
         $builder->setTree(E()->getMap()->getTree());
         return $builder;

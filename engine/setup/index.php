@@ -9,7 +9,8 @@ define('CHARSET', 'UTF-8');
 //Минимальная версия РНР
 define('MIN_PHP_VERSION', 5.3);
 
-$safeRealpath = static function ($path) {
+$safeRealpath = static function ($path)
+{
     $resolved = @realpath($path);
 
     return ($resolved !== false) ? $resolved : null;
@@ -21,22 +22,27 @@ $rootCandidates = [
 ];
 
 $projectRoot = $rootCandidates[0];
-foreach ($rootCandidates as $candidate) {
-    if ($candidate && is_file($candidate . '/system.config.php')) {
+foreach ($rootCandidates as $candidate)
+{
+    if ($candidate && is_file($candidate . '/system.config.php'))
+    {
         $projectRoot = $candidate;
         break;
     }
 }
 
-if (!defined('HTDOCS_DIR')) {
+if (!defined('HTDOCS_DIR'))
+{
     define('HTDOCS_DIR', $projectRoot);
 }
 
 $bootstrapConfig = [];
 $configPath = HTDOCS_DIR . '/system.config.php';
-if (is_file($configPath)) {
+if (is_file($configPath))
+{
     $loadedConfig = include $configPath;
-    if (is_array($loadedConfig)) {
+    if (is_array($loadedConfig))
+    {
         $bootstrapConfig = $loadedConfig;
     }
 }
@@ -44,10 +50,12 @@ if (is_file($configPath)) {
 $coreRel = defined('CORE_REL_DIR') ? CORE_REL_DIR : (string)($bootstrapConfig['core_rel_dir'] ?? 'engine/core');
 $siteRel = defined('SITE_REL_DIR') ? SITE_REL_DIR : (string)($bootstrapConfig['site_rel_dir'] ?? 'site');
 
-if (!defined('CORE_REL_DIR')) {
+if (!defined('CORE_REL_DIR'))
+{
     define('CORE_REL_DIR', $coreRel);
 }
-if (!defined('SITE_REL_DIR')) {
+if (!defined('SITE_REL_DIR'))
+{
     define('SITE_REL_DIR', $siteRel);
 }
 
@@ -56,21 +64,24 @@ $coreDir = $safeRealpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . CORE_REL_DIR)
 $siteDir = $safeRealpath(HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR)
     ?: HTDOCS_DIR . DIRECTORY_SEPARATOR . SITE_REL_DIR;
 
-if (!defined('CORE_DIR')) {
+if (!defined('CORE_DIR'))
+{
     define('CORE_DIR', $coreDir);
 }
-if (!defined('SITE_DIR')) {
+if (!defined('SITE_DIR'))
+{
     define('SITE_DIR', $siteDir);
 }
 
-if (!defined('SETUP_DIR')) {
+if (!defined('SETUP_DIR'))
+{
     define('SETUP_DIR', __DIR__);
 }
 
 //Название директории в которой содержатся модули(как ядра, так и модули проекта)
 define('MODULES', 'modules');
 
-$acceptableActions = array(
+$acceptableActions = [
     'install',
     'linker',
     'clearCache',
@@ -80,7 +91,7 @@ $acceptableActions = array(
     'exportTrans',
     'untranslated',
     'minify',
-);
+];
 
 //вариант запуска приложения
 $isConsole = false;
@@ -90,33 +101,38 @@ $action = 'install';
 
 //Смотрим а как запущен сетап(консоль/веб)
 //Ориентируемся на наличие $argv - как показатель
-if (isset($argv)) {
+if (isset($argv))
+{
     $args = $argv;
     //консоль
     $isConsole = true;
     array_shift($args); // имя скрипта (index.php)
     array_shift($args); // ключевое слово setup
 }
-else {
+else
+{
     //веб
     $args = array_keys($_GET);
 }
 
-$additionalArgs  = array();
+$additionalArgs  = [];
 //если нам в параметрах пришло что то очень похожее на допустимое действие
 //то считаем, что это оно и есть
-if (!empty($args)) {
+if (!empty($args))
+{
     list($action) = $args;
 
 
-    if(count($args)>1){
+    if (count($args) > 1)
+    {
         $additionalArgs = $args;
         unset($additionalArgs[0]);
     }
 }
 
 
-try {
+try
+{
     require_once('Setup.class.php');
     $setup = new Setup($isConsole);
     $setup->execute($action, $additionalArgs);
@@ -131,13 +147,20 @@ try {
     //впрочем наверное возможны варианты
 
 }
-catch (Exception $e) {
-    if(ob_get_length()) ob_end_clean();
+catch (Exception $e)
+{
+    if (ob_get_length())
+    {
+        ob_end_clean();
+    }
     echo 'При установке все пошло не так.', PHP_EOL, 'А точнее :', PHP_EOL, $e->getMessage();
 }
 
 $data = ob_get_contents();
-if(ob_get_length())ob_end_clean();
+if (ob_get_length())
+{
+    ob_end_clean();
+}
 
 echo PHP_EOL, $data, PHP_EOL, PHP_EOL;
 exit;

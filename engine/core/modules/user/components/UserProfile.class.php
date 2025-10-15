@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,7 +25,8 @@ final class UserProfile extends DBDataSet
      */
     protected function main(): void
     {
-        if (!$this->document->user->isAuthenticated()) {
+        if (!$this->document->user->isAuthenticated())
+        {
             throw new SystemException('ERR_DEV_NO_AUTH_USER', SystemException::ERR_DEVELOPER);
         }
 
@@ -59,35 +61,43 @@ final class UserProfile extends DBDataSet
             'message' => $this->translate('TXT_ERROR'),
         ];
 
-        try {
+        try
+        {
             $user = E()->getAUser(); // актуальный пользователь (модель)
 
             // Блок смены пароля (опционально)
-            if (isset($_POST[$this->getTableName()]['u_password'])) {
+            if (isset($_POST[$this->getTableName()]['u_password']))
+            {
                 $pwd  = (string)($_POST[$this->getTableName()]['u_password'] ?? '');
                 $pwd2 = (string)($_POST[$this->getTableName()]['u_password2'] ?? '');
 
-                if ($pwd !== '' || $pwd2 !== '') {
-                    if ($pwd !== $pwd2) {
+                if ($pwd !== '' || $pwd2 !== '')
+                {
+                    if ($pwd !== $pwd2)
+                    {
                         throw new SystemException('MSG_PWD_MISMATCH');
                     }
                     $_POST[$this->getTableName()]['u_password'] = User::hashPassword($pwd);
                     unset($_POST[$this->getTableName()]['u_password2']);
-                } else {
+                }
+                else
+                {
                     // Пустые поля — пароль не меняем
                     unset($_POST[$this->getTableName()]['u_password'], $_POST[$this->getTableName()]['u_password2']);
                 }
             }
 
             // Проверка уникальности u_name (email/логин)
-            if (isset($_POST[$this->getTableName()]['u_name'])) {
+            if (isset($_POST[$this->getTableName()]['u_name']))
+            {
                 $newName = (string)$_POST[$this->getTableName()]['u_name'];
                 $res = $this->dbh->selectRequest(
                     'SELECT u_id FROM user_users WHERE u_name LIKE "%s" AND u_id != %s',
                     $newName,
                     $user->getID()
                 );
-                if (is_array($res) && count($res) > 0) {
+                if (is_array($res) && count($res) > 0)
+                {
                     throw new SystemException('ERR_NO_U_NAME');
                 }
             }
@@ -101,7 +111,9 @@ final class UserProfile extends DBDataSet
 
             $response['result']  = true;
             $response['message'] = $this->translate('TXT_SAVED');
-        } catch (SystemException $e) {
+        }
+        catch (SystemException $e)
+        {
             $response['message'] = $e->getMessage();
         }
 
@@ -119,12 +131,14 @@ final class UserProfile extends DBDataSet
         $result = parent::createDataDescription();
 
         // Скрываем флаг активности
-        if ($fd = $result->getFieldDescriptionByName('u_is_active')) {
+        if ($fd = $result->getFieldDescriptionByName('u_is_active'))
+        {
             $result->removeFieldDescription($fd);
         }
 
         // Добавляем поле подтверждения пароля рядом с u_password (если оно есть в метаданных)
-        if ($result->getFieldDescriptionByName('u_password')) {
+        if ($result->getFieldDescriptionByName('u_password'))
+        {
             $pwd2 = new FieldDescription('u_password2');
             $pwd2->setType(FieldDescription::FIELD_TYPE_PWD);
             $pwd2->setProperty('customField', true);
@@ -134,13 +148,16 @@ final class UserProfile extends DBDataSet
 
             // Помещаем сразу после u_password, если у DataDescription есть такая возможность,
             // иначе просто добавим в конец
-            if (method_exists($result, 'addFieldDescription')) {
+            if (method_exists($result, 'addFieldDescription'))
+            {
                 $result->addFieldDescription(
                     $pwd2,
                     DataDescription::FIELD_POSITION_AFTER,
                     'u_password'
                 );
-            } else {
+            }
+            else
+            {
                 $result->addFieldDescription($pwd2);
             }
         }
@@ -156,7 +173,8 @@ final class UserProfile extends DBDataSet
     {
         $data = parent::createData();
 
-        if ($pwd = $data->getFieldByName('u_password')) {
+        if ($pwd = $data->getFieldByName('u_password'))
+        {
             $pwd->setData(''); // пустое значение — пользователь вводит новый пароль при необходимости
         }
 

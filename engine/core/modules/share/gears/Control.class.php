@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -74,7 +75,8 @@ abstract class Control extends BaseObject
      */
     public function getIndex(): int
     {
-        if ($this->index === null) {
+        if ($this->index === null)
+        {
             throw new SystemException('ERR_DEV_NO_CONTROL_INDEX', SystemException::ERR_DEVELOPER);
         }
         return $this->index;
@@ -87,7 +89,8 @@ abstract class Control extends BaseObject
      */
     public function loadFromXml(SimpleXMLElement $description): void
     {
-        if (!isset($description['type'])) {
+        if (!isset($description['type']))
+        {
             throw new SystemException('ERR_DEV_NO_CONTROL_TYPE', SystemException::ERR_DEVELOPER);
         }
 
@@ -95,7 +98,8 @@ abstract class Control extends BaseObject
 
         // mode рассчитываем сразу, как и в исходнике
         $toolbar = $this->getToolbar();
-        if ($toolbar) {
+        if ($toolbar)
+        {
             $mode = FieldDescription::computeRights(
                 $toolbar->getComponent()->document->getRights(),
                 isset($attr['ro_rights']) ? (int)$attr['ro_rights'] : null,
@@ -106,16 +110,19 @@ abstract class Control extends BaseObject
 
         unset($attr['ro_rights'], $attr['fc_rights']);
 
-        foreach ($attr as $key => $value) {
+        foreach ($attr as $key => $value)
+        {
             $k = (string)$key;
             $v = (string)$value;
 
             // В свойства пишем только то, что реально является свойствами
-            if ($k === 'type') {
+            if ($k === 'type')
+            {
                 $this->type = $v;
                 continue;
             }
-            if ($k === 'disabled') {
+            if ($k === 'disabled')
+            {
                 $this->disabled = in_array(strtolower($v), ['1', 'true', 'yes', 'disabled'], true);
                 continue;
             }
@@ -144,7 +151,8 @@ abstract class Control extends BaseObject
      */
     public function getType(): string
     {
-        if ($this->type === null || $this->type === '') {
+        if ($this->type === null || $this->type === '')
+        {
             throw new SystemException('ERR_DEV_NO_CONTROL_TYPE', SystemException::ERR_DEVELOPER);
         }
         return $this->type;
@@ -177,10 +185,12 @@ abstract class Control extends BaseObject
     {
         $controlElem = $this->doc->createElement(self::TAG_NAME);
 
-        foreach ($this->attributes as $attrName => $attrValue) {
+        foreach ($this->attributes as $attrName => $attrValue)
+        {
             $controlElem->setAttribute($attrName, (string)$attrValue);
         }
-        if ($this->disabled) {
+        if ($this->disabled)
+        {
             $controlElem->setAttribute('disabled', 'disabled');
         }
 
@@ -197,9 +207,11 @@ abstract class Control extends BaseObject
      */
     public function translate(array $attrs = ['title', 'tooltip']): void
     {
-        foreach ($attrs as $attrName) {
+        foreach ($attrs as $attrName)
+        {
             $attrValue = (string)$this->getAttribute($attrName);
-            if ($attrValue !== '') {
+            if ($attrValue !== '')
+            {
                 $this->setAttribute($attrName, DBWorker::_translate($attrValue));
             }
         }

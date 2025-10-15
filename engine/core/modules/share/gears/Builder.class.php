@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,7 +25,8 @@ class Builder extends AbstractBuilder
         $doc = $this->result;
 
         $dom_recordSet = $doc->createElement('recordset');
-        if ($this->title !== '') {
+        if ($this->title !== '')
+        {
             $dom_recordSet->setAttribute('title', $this->title);
         }
         $doc->appendChild($dom_recordSet);
@@ -33,7 +35,8 @@ class Builder extends AbstractBuilder
         $hasData  = ($this->data instanceof Data) && !$this->data->isEmpty();
         $rowCount = $hasData ? (int)$this->data->getRowCount() : 0;
 
-        if ($rowCount === 0) {
+        if ($rowCount === 0)
+        {
             // Сообщение об отсутствии данных на уровне recordset
             $dom_recordSet->setAttribute('empty', $this->translate('MSG_EMPTY_RECORDSET'));
         }
@@ -42,18 +45,22 @@ class Builder extends AbstractBuilder
         // BC: если пусто — всё равно строим один <record> как каркас
         $iterations = max(1, $rowCount);
 
-        for ($i = 0; $i < $iterations; $i++) {
+        for ($i = 0; $i < $iterations; $i++)
+        {
             $dom_record = $doc->createElement('record');
 
             // ВАЖНО для XSLT: при пустом наборе помечаем сам <record>
-            if ($rowCount === 0 && $i === 0) {
+            if ($rowCount === 0 && $i === 0)
+            {
                 $dom_record->setAttribute('empty', $this->translate('MSG_EMPTY_RECORDSET'));
             }
 
-            foreach ($this->dataDescription as $fieldName => $fieldInfo) {
+            foreach ($this->dataDescription as $fieldName => $fieldInfo)
+            {
                 // tabName по умолчанию — через props, НЕ мутируем FieldDescription
                 $fieldProps = [];
-                if ($fieldInfo->getPropertyValue('tabName') === null && $this->title !== '') {
+                if ($fieldInfo->getPropertyValue('tabName') === null && $this->title !== '')
+                {
                     $fieldProps['tabName'] = $this->title;
                 }
 
@@ -64,24 +71,31 @@ class Builder extends AbstractBuilder
                     $fieldInfo->getType(),
                     [FieldDescription::FIELD_TYPE_MULTI, FieldDescription::FIELD_TYPE_SELECT],
                     true
-                )) {
+                ))
+                {
                     $f = $hasData ? $this->data->getFieldByName($fieldName) : null;
-                    if ($f) {
+                    if ($f)
+                    {
                         $dataForOpts = ($fieldInfo->getType() == FieldDescription::FIELD_TYPE_SELECT)
                             ? [$f->getRowData($i)]
                             : $f->getRowData($i);
-                    } else {
+                    }
+                    else
+                    {
                         $dataForOpts = false;
                     }
                     $fieldValue = $this->createOptions($fieldInfo, $dataForOpts);
                 }
                 // Обычные поля: берём значение и props строки
-                elseif ($hasData) {
+                elseif ($hasData)
+                {
                     $f = $this->data->getFieldByName($fieldName);
-                    if ($f) {
+                    if ($f)
+                    {
                         // Мержим props из DataField, если есть
                         $rowProps = $f->getRowProperties($i);
-                        if (is_array($rowProps) && $rowProps) {
+                        if (is_array($rowProps) && $rowProps)
+                        {
                             $fieldProps = $fieldProps ? ($fieldProps + $rowProps) : $rowProps;
                         }
                         $fieldValue = $f->getRowData($i);
