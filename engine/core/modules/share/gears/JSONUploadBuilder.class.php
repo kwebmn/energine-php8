@@ -22,7 +22,7 @@ class JSONUploadBuilder extends JSONBuilder
      *
      * @return mixed
      */
-    public function getResult(): mixed
+    public function getResult(): string
     {
         // Ensure currentDirectory is defined
         $this->result['currentDirectory'] = $this->getCurrentDirectory();
