@@ -412,7 +412,7 @@ class Filter extends BaseObject
      * @return void
      * @throws SystemException
      */
-    public function load(SimpleXMLElement $filterDescription, array $meta = null)
+    public function load(SimpleXMLElement $filterDescription, ?array $meta = null)
     {
         if (empty($filterDescription)) {
             return;
