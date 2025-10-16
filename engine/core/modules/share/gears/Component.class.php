@@ -39,13 +39,13 @@ class Component extends DBWorker implements IBlock
     private bool $enabled = true;
 
     /**
-     * Реестр модальных состояний для компонента.
+     * Реестр дочерних (встраиваемых) состояний для компонента.
      *
      * @var array<string, callable|array>
      */
     private ?array $modalRegistry = null;
 
-    /** Текущий активный модальный блок/компонент (если состояние модальное). */
+    /** Текущий активный дочерний блок/компонент (если состояние встраиваемое). */
     private ?IBlock $activeModalComponent = null;
 
     /**
@@ -484,7 +484,7 @@ class Component extends DBWorker implements IBlock
     }
 
     /**
-     * Карта URI-паттернов для модальных состояний.
+     * Карта URI-паттернов для дочерних состояний.
      *
      * Потомки могут вернуть массив вида
      * `['stateName' => ['/pattern/', '/another/']]` либо
@@ -499,7 +499,7 @@ class Component extends DBWorker implements IBlock
     }
 
     /**
-     * Переопределяемый метод регистрации модальных состояний.
+     * Переопределяемый метод регистрации дочерних (встраиваемых) состояний.
      *
      * @return array<string, callable|array>
      */
@@ -514,25 +514,25 @@ class Component extends DBWorker implements IBlock
         return $this->request;
     }
 
-    /** Установить активный модальный блок/компонент. */
+    /** Установить активный дочерний блок/компонент. */
     final protected function setActiveModalComponent(IBlock $component): void
     {
         $this->activeModalComponent = $component;
     }
 
-    /** Возвращает активный модальный блок/компонент (если есть). */
+    /** Возвращает активный дочерний блок/компонент (если есть). */
     final protected function getActiveModalComponent(): ?IBlock
     {
         return $this->activeModalComponent;
     }
 
-    /** Сбросить активный модальный компонент. */
+    /** Сбросить активный дочерний компонент. */
     final protected function clearActiveModalComponent(): void
     {
         $this->activeModalComponent = null;
     }
 
-    /** Создать, запустить и сделать активным модальный компонент. */
+    /** Создать, запустить и сделать активным дочерний компонент. */
     final protected function activateModalComponent(
         string $name,
         string $module,
@@ -546,7 +546,7 @@ class Component extends DBWorker implements IBlock
         return $component;
     }
 
-    /** Получить нормализованный реестр модальных состояний. */
+    /** Получить нормализованный реестр дочерних состояний. */
     private function getModalRegistry(): array
     {
         if ($this->modalRegistry === null)
@@ -558,7 +558,7 @@ class Component extends DBWorker implements IBlock
         return $this->modalRegistry;
     }
 
-    /** Проверить и обработать модальное состояние. */
+    /** Проверить и обработать дочернее состояние. */
     private function handleModalState(string $state): bool
     {
         $registry = $this->getModalRegistry();

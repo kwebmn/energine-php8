@@ -1,11 +1,17 @@
-# Реестр модальных компонентов Energine
+# Реестр дочерних (встраиваемых) компонентов Energine
 
 ## Обзор
 
-Начиная с текущей версии, система модальных состояний реализована централизованно в
-базовом классе `Component`. Реестр модалок объявляется в коде компонента через
-`registerModals()`, а запуск дочерних окон полностью берёт на себя базовая логика —
-дополнительные методы вроде `attachments()` или `fileLibrary()` больше не требуются.
+Начиная с текущей версии, система дочерних состояний реализована централизованно в
+базовом классе `Component`. Реестр встраиваемых компонентов объявляется в коде
+компонента через `registerModals()`, а запуск вложенных редакторов полностью берёт
+на себя базовая логика — дополнительные методы вроде `attachments()` или
+`fileLibrary()` больше не требуются.
+
+Термин «встраиваемый компонент» подчёркивает, что речь идёт не просто о визуальной
+модалке, а о полноценном дочернем `Component`/`IBlock`, который запускается внутри
+родителя. Такой блок может отображаться как всплывающее окно, вкладка или секция —
+архитектура едина независимо от выбранного интерфейсного паттерна.
 Обратная совместимость с предыдущим ручным способом не поддерживается: состояния,
 которые не зарегистрированы в реестре, рассматриваются как обычные методы и должны
 быть переписаны на новый формат.【F:engine/core/modules/share/gears/Component.class.php†L79-L153】【F:engine/core/modules/share/gears/Component.class.php†L317-L347】
@@ -20,27 +26,29 @@
 * `getModalRoutePatterns(): array` — статический метод, который возвращает карту
   `state => [uri-паттерны]`. `ComponentConfig` вызывает его автоматически и добавляет
   состояния в конфиг, поэтому паттерны больше не нужно дублировать вручную.
-* `run()` очищает предыдущий активный модал, проверяет реестр и, при совпадении,
+* `run()` очищает предыдущий активный дочерний блок, проверяет реестр и, при совпадении,
   создаёт дочерний компонент (через массив или замыкание), запускает его и сохраняет
   ссылку для дальнейшего использования.【F:engine/core/modules/share/gears/Component.class.php†L317-L347】【F:engine/core/modules/share/gears/Component.class.php†L483-L600】
-* `build()` отдаёт результат активного модального компонента, если он существует,
+* `build()` отдаёт результат активного встраиваемого компонента, если он существует,
   иначе использует стандартный билдер родителя.【F:engine/core/modules/share/gears/Component.class.php†L412-L448】
 * Хелперы: `getRequest()` для доступа к текущему `Request`, `activateModalComponent()`
-  для быстрого создания/запуска модалки, а также методы работы с активным компонентом
-  (`setActiveModalComponent()`, `getActiveModalComponent()`, `clearActiveModalComponent()`).
-  Они упрощают регистрацию и позволяют сохранять логику смещения URI внутри замыканий.【F:engine/core/modules/share/gears/Component.class.php†L488-L524】
+  для быстрого создания/запуска вложенного компонента, а также методы работы с
+  активным экземпляром (`setActiveModalComponent()`, `getActiveModalComponent()`,
+  `clearActiveModalComponent()`). Они упрощают регистрацию и позволяют сохранять
+  логику смещения URI внутри замыканий.【F:engine/core/modules/share/gears/Component.class.php†L488-L524】
 
 ## Реестры в стандартных компонентах
 
 ### `DataSet`
 
-`DataSet::registerModals()` подключает стандартные модалки формы: файловую библиотеку,
-менеджер изображений и режим просмотра исходного текста. Каждая запись сдвигает URI
-(если нужно) и вызывает `activateModalComponent(...)`, чтобы создать и запустить
-нужный компонент. Дополнительно `DataSet::getModalRoutePatterns()` возвращает те же
+`DataSet::registerModals()` подключает стандартные вложенные редакторы формы:
+файловую библиотеку, менеджер изображений и режим просмотра исходного текста.
+Каждая запись сдвигает URI (если нужно) и вызывает `activateModalComponent(...)`,
+чтобы создать и запустить нужный компонент. Дополнительно
+`DataSet::getModalRoutePatterns()` возвращает те же
 состояния, поэтому `DataSetConfig` сам регистрирует паттерны URI и не требует
 ручного перечисления. `DataSet::build()` больше не содержит `switch` по состояниям —
-результат модалки возвращается автоматически.【F:engine/core/modules/share/components/DataSet.class.php†L37-L129】【F:engine/core/modules/share/gears/DataSetConfig.class.php†L21-L48】【F:engine/core/modules/share/components/DataSet.class.php†L383-L451】
+результат вложенного редактора возвращается автоматически.【F:engine/core/modules/share/components/DataSet.class.php†L37-L129】【F:engine/core/modules/share/gears/DataSetConfig.class.php†L21-L48】【F:engine/core/modules/share/components/DataSet.class.php†L383-L451】
 
 ### `Grid`
 
@@ -50,22 +58,23 @@
 наличия `id`, выбор конфигурационного файла для редактора тегов. Для `fkEditor`
 используется вспомогательный метод `spawnFkEditor()`, а маршруты объявлены через
 `Grid::getModalRoutePatterns()`, поэтому `GridConfig` больше не содержит дублирующих
-регистраций модальных состояний.【F:engine/core/modules/share/components/Grid.class.php†L100-L213】【F:engine/core/modules/share/components/Grid.class.php†L401-L490】【F:engine/core/modules/share/gears/GridConfig.class.php†L15-L25】
+регистраций дочерних состояний.【F:engine/core/modules/share/components/Grid.class.php†L100-L213】【F:engine/core/modules/share/components/Grid.class.php†L401-L490】【F:engine/core/modules/share/gears/GridConfig.class.php†L15-L25】
 
 ### `DivisionEditor`
 
-Редактор разделов регистрирует все дочерние модальные окна (`showTransEditor`,
+Редактор разделов регистрирует все дочерние встроенные редакторы (`showTransEditor`,
 `showUserEditor`, `showRoleEditor`, `showLangEditor`, `showSiteEditor`, `fileLibrary`).
 Каждое состояние смещает URI на один сегмент и использует `activateModalComponent`
 с нужным модулем/классом и конфигурацией. Метод `build()` обрабатывает особый кейс
-`showPageToolbar`, а в остальных случаях полагается на базовый механизм модалок.【F:engine/core/modules/share/components/DivisionEditor.class.php†L22-L80】【F:engine/core/modules/share/components/DivisionEditor.class.php†L213-L249】
+`showPageToolbar`, а в остальных случаях полагается на базовый механизм встраиваемых компонентов.【F:engine/core/modules/share/components/DivisionEditor.class.php†L22-L80】【F:engine/core/modules/share/components/DivisionEditor.class.php†L213-L249】
 
 ### `SiteEditor`
 
-`SiteEditor` регистрирует состояния `reset`, `domains` и `properties`. Внутри замыканий
-инкапсулировано смещение пути (2 сегмента, если передан `site_id`) и передача
-параметров дочерним редакторам (`DivisionEditor`, `DomainEditor`, `SitePropertiesEditor`).
-Метод `build()` теперь просто проверяет наличие активной модалки.【F:engine/core/modules/share/components/SiteEditor.class.php†L13-L60】【F:engine/core/modules/share/components/SiteEditor.class.php†L177-L185】
+`SiteEditor` регистрирует состояния `reset`, `domains` и `properties`. Внутри
+замыканий инкапсулировано смещение пути (2 сегмента, если передан `site_id`) и
+передача параметров дочерним редакторам (`DivisionEditor`, `DomainEditor`,
+`SitePropertiesEditor`). Метод `build()` теперь просто проверяет наличие активного
+встраиваемого компонента.【F:engine/core/modules/share/components/SiteEditor.class.php†L13-L60】【F:engine/core/modules/share/components/SiteEditor.class.php†L177-L185】
 
 ### Расширенные редакторы лент (`DefaultTemplateFeedEditor`, `TestfeedFeedEditor`)
 
@@ -93,12 +102,13 @@
   методы `Component`.
 * `Component::run()` больше не вызывает такие методы автоматически, поэтому оставленные
   ранее реализации будут проигнорированы, если не добавить запись в реестр.
-* При добавлении новых модальных окон достаточно дописать замыкание или описание в
+* При добавлении новых встроенных редакторов достаточно дописать замыкание или описание в
   `registerModals()`: базовый класс возьмёт на себя создание, запуск и возврат результата.
 
 ## Итог
 
-Централизованный реестр модальных компонентов снижает объём шаблонного кода, устраняет
-дублирование и делает добавление новых состояний декларативным. Компоненты продолжают
-использовать привычный конвейер `prepare()` → `build()`, а модальные окна теперь
-объявляются в одном месте и автоматически встроены в жизненный цикл `Component`.
+Централизованный реестр встраиваемых компонентов снижает объём шаблонного кода,
+устраняет дублирование и делает добавление новых состояний декларативным.
+Компоненты продолжают использовать привычный конвейер `prepare()` → `build()`, а
+встроенные редакторы теперь объявляются в одном месте и автоматически включены в
+жизненный цикл `Component`.
