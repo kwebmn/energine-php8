@@ -79,52 +79,52 @@ class SeoHelper extends DBWorker
             }
             catch (\Throwable)
             {
-                // Переходим к fallback ниже
+                // Если кеш не сработал, продолжим без него
             }
         }
 
-        $cached = false;
-        $cachedData = false;
-        if (BaseObject::_getConfigValue('site.apcu') == 1 && function_exists('apcu_fetch'))
+        if ($psrCache && method_exists($psrCache, 'getItem'))
         {
-            $cachedData = apcu_fetch(self::TABLE_CONST_CACHE, $cached);
-        }
-
-        if ($cached && is_array($cachedData))
-        {
-            $this->table = $cachedData;
-            return true;
+            try
+            {
+                $item = $psrCache->getItem($cacheKey);
+                if ($item->isHit())
+                {
+                    $cachedData = $item->get();
+                    if (is_array($cachedData))
+                    {
+                        $this->table = $cachedData;
+                        return true;
+                    }
+                }
+            }
+            catch (\Throwable)
+            {
+                // Переходим к пересборке данных ниже
+            }
         }
 
         $this->table = $this->getTable();
 
-        if (!empty($this->table))
+        if (!empty($this->table) && $psrCache && method_exists($psrCache, 'getItem'))
         {
-            if (BaseObject::_getConfigValue('site.apcu') == 1 && function_exists('apcu_store'))
+            try
             {
-                apcu_store(self::TABLE_CONST_CACHE, $this->table, $ttl);
+                $item = $psrCache->getItem($cacheKey);
+                $item->set($this->table);
+                if ($ttl > 0)
+                {
+                    $item->expiresAfter($ttl);
+                }
+                if (method_exists($item, 'tag'))
+                {
+                    $item->tag(['seo', 'seo.table']);
+                }
+                $psrCache->save($item);
             }
-
-            if ($psrCache && method_exists($psrCache, 'getItem'))
+            catch (\Throwable)
             {
-                try
-                {
-                    $item = $psrCache->getItem($cacheKey);
-                    $item->set($this->table);
-                    if ($ttl > 0)
-                    {
-                        $item->expiresAfter($ttl);
-                    }
-                    if (method_exists($item, 'tag'))
-                    {
-                        $item->tag(['seo', 'seo.table']);
-                    }
-                    $psrCache->save($item);
-                }
-                catch (\Throwable)
-                {
-                    // Игнорируем проблемы сохранения
-                }
+                // Игнорируем проблемы сохранения
             }
         }
     }

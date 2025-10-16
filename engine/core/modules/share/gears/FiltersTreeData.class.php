@@ -77,47 +77,48 @@ class FiltersTreeData extends DBWorker
             }
         }
 
-        $cached = false;
-        $cachedTree = false;
-        if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_fetch'))
+        if ($psrCache && method_exists($psrCache, 'getItem'))
         {
-            $cachedTree = apcu_fetch('FILTERS_TREE', $cached);
-        }
-        if ($cached && is_array($cachedTree))
-        {
-            self::$filterData = $cachedTree;
-            return true;
+            try
+            {
+                $item = $psrCache->getItem($cacheKey);
+                if ($item->isHit())
+                {
+                    $cachedTree = $item->get();
+                    if (is_array($cachedTree))
+                    {
+                        self::$filterData = $cachedTree;
+                        return true;
+                    }
+                }
+            }
+            catch (\Throwable)
+            {
+                // Переходим к пересборке данных ниже
+            }
         }
 
         self::$filterData = $this->loadFilterDataFromDB();
 
-        if (!empty(self::$filterData))
+        if (!empty(self::$filterData) && $psrCache && method_exists($psrCache, 'getItem'))
         {
-            if ((int) BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_store'))
+            try
             {
-                apcu_store('FILTERS_TREE', self::$filterData, $ttl);
+                $item = $psrCache->getItem($cacheKey);
+                $item->set(self::$filterData);
+                if ($ttl > 0)
+                {
+                    $item->expiresAfter($ttl);
+                }
+                if (method_exists($item, 'tag'))
+                {
+                    $item->tag(['filters', 'filters.' . $this->tableName]);
+                }
+                $psrCache->save($item);
             }
-
-            if ($psrCache && method_exists($psrCache, 'getItem'))
+            catch (\Throwable)
             {
-                try
-                {
-                    $item = $psrCache->getItem($cacheKey);
-                    $item->set(self::$filterData);
-                    if ($ttl > 0)
-                    {
-                        $item->expiresAfter($ttl);
-                    }
-                    if (method_exists($item, 'tag'))
-                    {
-                        $item->tag(['filters', 'filters.' . $this->tableName]);
-                    }
-                    $psrCache->save($item);
-                }
-                catch (\Throwable)
-                {
-                    // Тихо игнорируем проблемы сохранения
-                }
+                // Тихо игнорируем проблемы сохранения
             }
         }
 

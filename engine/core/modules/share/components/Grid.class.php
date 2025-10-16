@@ -597,11 +597,6 @@ class Grid extends DBDataSet
 
     private function flushGlobalCaches(): void
     {
-        if ((int)BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_clear_cache'))
-        {
-            apcu_clear_cache();
-        }
-
         if (function_exists('E') && E()->__isset('psrCache'))
         {
             $cache = E()->psrCache;
