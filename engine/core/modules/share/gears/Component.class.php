@@ -310,6 +310,14 @@ class Component extends DBWorker implements IBlock
     }
 
     /**
+     * Имя модуля, к которому относится компонент.
+     */
+    final public function getModule(): string
+    {
+        return $this->module;
+    }
+
+    /**
      * Запуск метода текущего состояния.
      *
      * @throws SystemException
@@ -473,6 +481,21 @@ class Component extends DBWorker implements IBlock
             $this->stateParams = [];
         }
         $this->stateParams[$paramName] = $paramValue;
+    }
+
+    /**
+     * Карта URI-паттернов для модальных состояний.
+     *
+     * Потомки могут вернуть массив вида
+     * `['stateName' => ['/pattern/', '/another/']]` либо
+     * `['stateName' => ['patterns' => [...], 'rights' => 3]]`, чтобы
+     * `ComponentConfig` автоматически зарегистрировал необходимые состояния.
+     *
+     * @return array<string, array<int, string>|array{patterns: array<int, string>, rights?: int}>
+     */
+    public static function getModalRoutePatterns(): array
+    {
+        return [];
     }
 
     /**

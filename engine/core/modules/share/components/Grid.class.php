@@ -122,11 +122,27 @@ class Grid extends DBDataSet
         return array_merge(parent::defineParams(), $params);
     }
 
+    public static function getModalRoutePatterns(): array
+    {
+        return array_merge(
+            parent::getModalRoutePatterns(),
+            [
+                'fkEditor'          => ['/[field]-[class]/crud/[any]/'],
+                'attachments'       => ['/attachments/[any]/', '/[id]/attachments/[any]/'],
+                'tags'              => ['/tags/[any]/', '/[id]/tags/[any]/'],
+                'filtersTreeEditor' => ['/filtersTree/[any]/', '/[id]/filtersTree/[any]/'],
+            ]
+        );
+    }
+
     protected function registerModals(): array
     {
         return array_merge(
             parent::registerModals(),
             [
+                'fkEditor' => function (Grid $grid, array $stateParams): Component {
+                    return $grid->spawnFkEditor($stateParams);
+                },
                 'attachments' => function (Grid $grid, array $stateParams): Component {
                     $shift = isset($stateParams['id']) ? 2 : 1;
                     $grid->getRequest()->shiftPath($shift);
@@ -394,27 +410,37 @@ class Grid extends DBDataSet
     }
 
     /**
-     * Single mode state that show Grid for select field values
+     * Создать модальный редактор для выбора значения внешнего ключа.
+     *
+     * @param array<int|string, mixed> $stateParams
      */
-    protected function fkEditor()
+    protected function spawnFkEditor(array $stateParams): Component
     {
-        list($fkField, $className) = $this->getStateParams();
+        $values = array_values($stateParams);
+
+        $fkField = $stateParams['field'] ?? ($values[0] ?? null);
+        $className = $stateParams['class'] ?? ($values[1] ?? null);
+
+        if (!is_string($fkField) || !is_string($className))
+        {
+            throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER, 'fkEditor');
+        }
+
         $className = explode('\\', urldecode($className));
 
         if (count($className) > 1)
         {
-            list($module, $class) = $className;
+            [$module, $class] = $className;
         }
         else
         {
-            $module = $this->module;
-            list($class) = $className;
+            $module = $this->getModule();
+            [$class] = $className;
         }
-        unset($className);
 
         $params = [];
 
-        if ($class == 'Grid')
+        if ($class === 'Grid')
         {
             $cols = $this->dbh->getColumnsInfo($this->getTableName());
             if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
@@ -448,18 +474,20 @@ class Grid extends DBDataSet
             }
         }
 
-        // Search for modal component config
-        if (!file_exists($config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . 'Modal.component.xml'))
+        $config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . 'Modal.component.xml';
+        if (!file_exists($config))
         {
-            if (!file_exists($config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . '.component.xml'))
+            $config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . '.component.xml';
+            if (!file_exists($config))
             {
                 $config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, 'share') . 'GridModal.component.xml';
             }
         }
         $params['config'] = $config;
 
-        $this->request->shiftPath(2);
-        $this->activateModalComponent('fkEditor', $module, $class, $params);
+        $this->getRequest()->shiftPath(2);
+
+        return $this->activateModalComponent('fkEditor', $module, $class, $params);
     }
 
     /**

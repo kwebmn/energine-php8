@@ -17,6 +17,9 @@
   `class`, `params`) либо замыкание, которое само создаёт компонент **или любой `IBlock`
   (например, `ComponentContainer`)**. Если состояние не объявлено, `Component::run()`
   продолжает искать метод состояния как раньше.
+* `getModalRoutePatterns(): array` — статический метод, который возвращает карту
+  `state => [uri-паттерны]`. `ComponentConfig` вызывает его автоматически и добавляет
+  состояния в конфиг, поэтому паттерны больше не нужно дублировать вручную.
 * `run()` очищает предыдущий активный модал, проверяет реестр и, при совпадении,
   создаёт дочерний компонент (через массив или замыкание), запускает его и сохраняет
   ссылку для дальнейшего использования.【F:engine/core/modules/share/gears/Component.class.php†L317-L347】【F:engine/core/modules/share/gears/Component.class.php†L483-L600】
@@ -34,17 +37,20 @@
 `DataSet::registerModals()` подключает стандартные модалки формы: файловую библиотеку,
 менеджер изображений и режим просмотра исходного текста. Каждая запись сдвигает URI
 (если нужно) и вызывает `activateModalComponent(...)`, чтобы создать и запустить
-нужный компонент. `DataSet::build()` больше не содержит `switch` по состояниям —
-результат модалки возвращается автоматически.【F:engine/core/modules/share/components/DataSet.class.php†L104-L127】【F:engine/core/modules/share/components/DataSet.class.php†L383-L451】
+нужный компонент. Дополнительно `DataSet::getModalRoutePatterns()` возвращает те же
+состояния, поэтому `DataSetConfig` сам регистрирует паттерны URI и не требует
+ручного перечисления. `DataSet::build()` больше не содержит `switch` по состояниям —
+результат модалки возвращается автоматически.【F:engine/core/modules/share/components/DataSet.class.php†L37-L129】【F:engine/core/modules/share/gears/DataSetConfig.class.php†L21-L48】【F:engine/core/modules/share/components/DataSet.class.php†L383-L451】
 
 ### `Grid`
 
-`Grid` расширяет базовый реестр, добавляя состояния `attachments`, `filtersTreeEditor`
-и `tags`. В замыканиях повторяется прежняя бизнес-логика: вычисление имени таблицы
-для вложений/фильтров, смещение пути в зависимости от наличия `id`, выбор
-конфигурационного файла для редактора тегов. Состояние `fkEditor` осталось методом,
-но теперь использует `activateModalComponent`, поэтому общий механизм строит модальные
-ответы без дополнительных свойств или `switch` в `build()`.【F:engine/core/modules/share/components/Grid.class.php†L125-L185】【F:engine/core/modules/share/components/Grid.class.php†L821-L845】
+`Grid` расширяет базовый реестр, добавляя состояния `fkEditor`, `attachments`,
+`filtersTreeEditor` и `tags`. В замыканиях повторяется прежняя бизнес-логика:
+вычисление имени таблицы для вложений/фильтров, смещение пути в зависимости от
+наличия `id`, выбор конфигурационного файла для редактора тегов. Для `fkEditor`
+используется вспомогательный метод `spawnFkEditor()`, а маршруты объявлены через
+`Grid::getModalRoutePatterns()`, поэтому `GridConfig` больше не содержит дублирующих
+регистраций модальных состояний.【F:engine/core/modules/share/components/Grid.class.php†L100-L213】【F:engine/core/modules/share/components/Grid.class.php†L401-L490】【F:engine/core/modules/share/gears/GridConfig.class.php†L15-L25】
 
 ### `DivisionEditor`
 

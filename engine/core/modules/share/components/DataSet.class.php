@@ -101,6 +101,18 @@ abstract class DataSet extends Component
         }
     }
 
+    public static function getModalRoutePatterns(): array
+    {
+        return array_merge(
+            parent::getModalRoutePatterns(),
+            [
+                'fileLibrary'  => ['/file-library/', '/file-library/[any]/'],
+                'imageManager' => ['/imagemanager/'],
+                'source'       => ['/source/'],
+            ]
+        );
+    }
+
     protected function registerModals(): array
     {
         return array_merge(
