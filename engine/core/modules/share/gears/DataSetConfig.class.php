@@ -21,10 +21,27 @@ class DataSetConfig extends ComponentConfig
     {
         parent::__construct($config, $className, $moduleName);
 
-        // Сохраняем прежние паттерны
-        $this->registerState('source', ['/source/']);
-        $this->registerState('imageManager', ['/imagemanager/']);
-        $this->registerState('fileLibrary', ['/file-library/', '/file-library/[any]/']);
-        $this->registerState('embedPlayer', ['/embed-player/[uplId]/']);
+        if (class_exists($className) && is_subclass_of($className, Component::class))
+        {
+            foreach ($className::getModalRoutePatterns() as $state => $definition)
+            {
+                $patterns = $definition;
+                $rights   = false;
+
+                if (is_array($definition) && array_key_exists('patterns', $definition))
+                {
+                    $patterns = $definition['patterns'];
+                    $rights   = $definition['rights'] ?? false;
+                }
+
+                if (!is_array($patterns))
+                {
+                    $patterns = [$patterns];
+                }
+
+                $this->registerState($state, $patterns, $rights);
+            }
+        }
+
     }
 }

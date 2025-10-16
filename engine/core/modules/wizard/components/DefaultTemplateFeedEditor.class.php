@@ -10,13 +10,6 @@
 class DefaultTemplateFeedEditor extends ExtendedFeedEditor
 {
     /**
-     * Instance of division selector component created on demand.
-     *
-     * @var Component|null
-     */
-    private Component|ComponentContainer|null $divisionEditor = null;
-
-    /**
      * Construct default template feed editor.
      *
      * @param string     $name   Имя компонента.
@@ -29,24 +22,22 @@ class DefaultTemplateFeedEditor extends ExtendedFeedEditor
         $this->setTableName('DefaultTemplateTableName');
     }
 
-    /**
-     * Build component output.
-     *
-     * @return DOMDocument Построенный DOM-документ.
-     */
-    public function build(): DOMDocument
+    protected function registerModals(): array
     {
-        switch ($this->getState())
-        {
-            case 'showSmapSelector':
-                $result = $this->divisionEditor->build();
-                break;
+        return array_merge(
+            parent::registerModals(),
+            [
+                'showSmapSelector' => function (DefaultTemplateFeedEditor $editor): IBlock {
+                    $editor->getRequest()->shiftPath(1);
 
-            default:
-                $result = parent::build();
-                break;
-        }
-        return $result;
+                    return ComponentManager::createBlockFromDescription(
+                        ComponentManager::getDescriptionFromFile(
+                            'engine/core/modules/apps/templates/content/site_div_selector.container.xml'
+                        )
+                    );
+                },
+            ]
+        );
     }
 
     /**
@@ -69,18 +60,6 @@ class DefaultTemplateFeedEditor extends ExtendedFeedEditor
             }
         }
         return $res;
-    }
-
-    /**
-     * Display site map selector for choosing division.
-     */
-    protected function showSmapSelector()
-    {
-        $this->request->shiftPath(1);
-        $this->divisionEditor = ComponentManager::createBlockFromDescription(
-            ComponentManager::getDescriptionFromFile('engine/core/modules/apps/templates/content/site_div_selector.container.xml')
-        );
-        $this->divisionEditor->run();
     }
 
     /**
