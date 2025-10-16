@@ -31,6 +31,7 @@ class DBDataSet extends DataSet
             parent::defineParams(),
             [
                 'tableName'       => false,
+                'keyFieldName'    => false,
                 'onlyCurrentLang' => false,
                 'editable'        => false,
             ]
@@ -598,7 +599,10 @@ class DBDataSet extends DataSet
             {
                 foreach ($res as $fieldName => $fieldInfo)
                 {
-                    if (($fieldInfo['key'] ?? null) === true)
+                    $isPrimaryKey = (($fieldInfo['key'] ?? null) === true)
+                        || (($fieldInfo['index'] ?? null) === 'PRI');
+
+                    if ($isPrimaryKey)
                     {
                         $this->pk = $fieldName;
                     }

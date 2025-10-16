@@ -456,11 +456,18 @@ class Grid extends DBDataSet
                 throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
             }
 
-            if (!is_array($cols[$fkField]['key']))
+            
+            $keyInfo = $cols[$fkField]['key'] ?? null;
+            if (!is_array($keyInfo) || empty($keyInfo['tableName']))
             {
                 throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
             }
-            $params['tableName'] = $cols[$fkField]['key']['tableName'];
+
+            $params['tableName'] = $keyInfo['tableName'];
+            if (!empty($keyInfo['fieldName']))
+            {
+                $params['keyFieldName'] = $keyInfo['fieldName'];
+            }
         }
         else
         {
@@ -517,10 +524,33 @@ class Grid extends DBDataSet
         }
 
         $builder = new JSONCustomBuilder();
-        $builder->setProperty(
-            'result',
-            $this->getFKData($cols[$fkField]['key']['tableName'], $cols[$fkField]['key']['fieldName'])
+        $fkData = $this->getFKData(
+            $cols[$fkField]['key']['tableName'],
+            $cols[$fkField]['key']['fieldName']
         );
+
+        if (
+            ($cols[$fkField]['nullable'] ?? false)
+            && is_array($fkData)
+            && isset($fkData[0], $fkData[1], $fkData[2])
+        ) {
+            $rows = $fkData[0];
+            if ($rows === true || $rows === false || $rows === null) {
+                $rows = [];
+            }
+            if (!is_array($rows)) {
+                $rows = [];
+            }
+
+            array_unshift($rows, [
+                $fkData[1] => '',
+                $fkData[2] => '',
+            ]);
+
+            $fkData[0] = array_values($rows);
+        }
+
+        $builder->setProperty('result', $fkData);
         $this->setBuilder($builder);
     }
 

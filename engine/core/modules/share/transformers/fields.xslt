@@ -289,31 +289,38 @@
             </xsl:if>
             <xsl:apply-templates mode="field_input"/>
         </select>
+        
+        
     </xsl:template>
 
     <xsl:template match="field[@type='select' and @editor][ancestor::component[@exttype='grid' or @exttype='feed']]" mode="field_input">
-        <xsl:variable name="FIELD_ID">
-            <xsl:value-of select="@name"/>
-            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
-        </xsl:variable>
-        <select id="{$FIELD_ID}">
-            <xsl:attribute name="class">
-                <xsl:text>form-select</xsl:text>
-                <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
-            </xsl:attribute>
-            <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
-            <xsl:attribute name="name"><xsl:choose>
-                <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
-                <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
-            </xsl:choose></xsl:attribute>
-            <xsl:if test="@nullable!='1'">
-                <xsl:attribute name="required">required</xsl:attribute>
-            </xsl:if>
-            <xsl:if test="@nullable='1'">
-                <option></option>
-            </xsl:if>
-            <xsl:apply-templates mode="field_input"/>
-        </select>
+        <div class="input-group">
+            <xsl:variable name="FIELD_ID">
+                <xsl:value-of select="@name"/>
+                <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+            </xsl:variable>
+            <select id="{$FIELD_ID}">
+                <xsl:attribute name="class">
+                    <xsl:text>form-select</xsl:text>
+                    <xsl:if test="error"><xsl:text> is-invalid</xsl:text></xsl:if>
+                </xsl:attribute>
+                <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
+                <xsl:attribute name="name"><xsl:choose>
+                    <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
+                </xsl:choose></xsl:attribute>
+                <xsl:if test="@nullable!='1'">
+                    <xsl:attribute name="required">required</xsl:attribute>
+                </xsl:if>
+                <xsl:if test="@nullable='1'">
+                    <option></option>
+                </xsl:if>
+                <xsl:apply-templates mode="field_input"/>
+            </select>
+            <button class="btn btn-outline-secondary" type="button" data-action="crud" data-field="{@name}" data-editor="{@editor}">
+                <xsl:text>...</xsl:text>            
+            </button>
+        </div>
     </xsl:template>
     <xsl:template match="option[ancestor::field[@type='select'][ancestor::component[@type='form']]]" mode="field_input">
         <option value="{@id}">
