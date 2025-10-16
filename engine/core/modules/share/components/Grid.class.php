@@ -28,22 +28,6 @@ class Grid extends DBDataSet
     public const DIR_DOWN = '>';
 
     /**
-     * @var FiltersTreeEditor
-     */
-    protected $filtersTree;
-
-    /**
-     * @var AttachmentEditor
-     */
-    protected $attachmentEditor;
-
-    /**
-     * Tag editor.
-     * @var TagEditor
-     */
-    protected $tagEditor;
-
-    /**
      * Saver.
      * @var Saver
      */
@@ -60,12 +44,6 @@ class Grid extends DBDataSet
      * @var Filter
      */
     protected $filter_control;
-
-    /**
-     * Grid for select fields
-     * @var Grid|null
-     */
-    protected $fkCRUDEditor = null;
 
     /**
      * @copydoc DBDataSet::__construct
@@ -142,6 +120,69 @@ class Grid extends DBDataSet
         $params['order'] = false;
 
         return array_merge(parent::defineParams(), $params);
+    }
+
+    protected function registerModals(): array
+    {
+        return array_merge(
+            parent::registerModals(),
+            [
+                'attachments' => function (Grid $grid, array $stateParams): Component {
+                    $shift = isset($stateParams['id']) ? 2 : 1;
+                    $grid->getRequest()->shiftPath($shift);
+
+                    $params = [
+                        'origTableName' => $grid->getTableName(),
+                        'pk'            => $grid->getPK(),
+                        'tableName'     => $grid->getTableName() . AttachmentManager::ATTACH_TABLE_SUFFIX,
+                    ];
+
+                    if (isset($stateParams['id']))
+                    {
+                        $params['linkedID'] = $stateParams['id'];
+                    }
+
+                    return $grid->activateModalComponent(
+                        'attachmentEditor',
+                        'share',
+                        'AttachmentEditor',
+                        $params
+                    );
+                },
+                'filtersTreeEditor' => function (Grid $grid, array $stateParams): Component {
+                    $shift = isset($stateParams['id']) ? 2 : 1;
+                    $grid->getRequest()->shiftPath($shift);
+
+                    $params = [
+                        'origTableName' => $grid->getTableName(),
+                        'pk'            => $grid->getPK(),
+                        'tableName'     => $grid->getTableName() . FilterManager::FILTER_TABLE_SUFFIX,
+                    ];
+
+                    if (isset($stateParams['id']))
+                    {
+                        $params['linkedID'] = $stateParams['id'];
+                    }
+
+                    return $grid->activateModalComponent(
+                        'filtersTreeEditor',
+                        'share',
+                        'FiltersTreeEditor',
+                        $params
+                    );
+                },
+                'tags' => function (Grid $grid): Component {
+                    $grid->getRequest()->shiftPath(1);
+
+                    return $grid->activateModalComponent(
+                        'tageditor',
+                        'share',
+                        'TagEditor',
+                        ['config' => 'engine/core/modules/share/config/TagEditorModal.component.xml']
+                    );
+                },
+            ]
+        );
     }
 
     /**
@@ -418,8 +459,7 @@ class Grid extends DBDataSet
         $params['config'] = $config;
 
         $this->request->shiftPath(2);
-        $this->fkCRUDEditor = $this->document->componentManager->createComponent('fkEditor', $module, $class, $params);
-        $this->fkCRUDEditor->run();
+        $this->activateModalComponent('fkEditor', $module, $class, $params);
     }
 
     /**
@@ -780,18 +820,9 @@ class Grid extends DBDataSet
      */
     public function build(): DOMDocument
     {
-        switch ($this->getState())
+        if ($modal = $this->getActiveModalComponent())
         {
-            case 'attachments':
-                return $this->attachmentEditor->build();
-            case 'tags':
-                return $this->tagEditor->build();
-            case 'fkEditor':
-                return $this->fkCRUDEditor->build();
-            case 'filtersTreeEditor':
-                return $this->filtersTree->build();
-            default:
-                // do nothing
+            return $modal->build();
         }
 
         if ($this->getType() == self::COMPONENT_TYPE_LIST)
@@ -861,80 +892,6 @@ class Grid extends DBDataSet
         }
 
         return $result;
-    }
-
-    /**
-     * Show component: attachments.
-     */
-    protected function attachments()
-    {
-        $sp = $this->getStateParams(true);
-        $attachmentEditorParams = [
-            'origTableName' => $this->getTableName(),
-            'pk' => $this->getPK(),
-            'tableName' => $this->getTableName() . AttachmentManager::ATTACH_TABLE_SUFFIX,
-        ];
-
-        if (isset($sp['id']))
-        {
-            $this->request->shiftPath(2);
-            $attachmentEditorParams['linkedID'] = $sp['id'];
-        }
-        else
-        {
-            $this->request->shiftPath(1);
-        }
-
-        $this->attachmentEditor = $this->document->componentManager->createComponent(
-            'attachmentEditor',
-            'share',
-            'AttachmentEditor',
-            $attachmentEditorParams
-        );
-        $this->attachmentEditor->run();
-    }
-
-    protected function filtersTreeEditor()
-    {
-        $sp = $this->getStateParams(true);
-        $filtersTreeEditorParams = [
-            'origTableName' => $this->getTableName(),
-            'pk' => $this->getPK(),
-            'tableName' => $this->getTableName() . FilterManager::FILTER_TABLE_SUFFIX,
-        ];
-
-        if (isset($sp['id']))
-        {
-            $this->request->shiftPath(2);
-            $filtersTreeEditorParams['linkedID'] = $sp['id'];
-        }
-        else
-        {
-            $this->request->shiftPath(1);
-        }
-
-        $this->filtersTree = $this->document->componentManager->createComponent(
-            'filtersTreeEditor',
-            'share',
-            'FiltersTreeEditor',
-            $filtersTreeEditorParams
-        );
-        $this->filtersTree->run();
-    }
-
-    /**
-     * Show component: tag editor.
-     */
-    protected function tags()
-    {
-        $this->request->setPathOffset($this->request->getPathOffset() + 1);
-        $this->tagEditor = $this->document->componentManager->createComponent(
-            'tageditor',
-            'share',
-            'TagEditor',
-            ['config' => 'engine/core/modules/share/config/TagEditorModal.component.xml']
-        );
-        $this->tagEditor->run();
     }
 
     /**

@@ -16,14 +16,6 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
     /** Тип шаблона: layout. */
     public const TMPL_LAYOUT  = 'layout';
 
-    /** Модальные дочерние редакторы (создаются по требованию). */
-    private ?Component $siteEditor   = null;
-    private ?Component $transEditor  = null;
-    protected ?Component $userEditor = null;
-    private ?Component $roleEditor   = null;
-    private ?Component $langEditor   = null;
-
-
     /**
      * Конструктор: настраиваем базовую таблицу и дефолтные параметры.
      */
@@ -36,6 +28,55 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
 
         // Для дерева разделов пагинация не нужна
         $this->setParam('recordsPerPage', false);
+    }
+
+    protected function registerModals(): array
+    {
+        return array_merge(
+            parent::registerModals(),
+            [
+                'showTransEditor' => function (DivisionEditor $editor): Component {
+                    $editor->getRequest()->shiftPath(1);
+
+                    return $editor->activateModalComponent('transEditor', 'share', 'TranslationEditor');
+                },
+                'showUserEditor' => function (DivisionEditor $editor): Component {
+                    $editor->getRequest()->shiftPath(1);
+
+                    return $editor->activateModalComponent('userEditor', 'user', 'UserEditor');
+                },
+                'showRoleEditor' => function (DivisionEditor $editor): Component {
+                    $editor->getRequest()->shiftPath(1);
+
+                    return $editor->activateModalComponent('roleEditor', 'user', 'RoleEditor');
+                },
+                'showLangEditor' => function (DivisionEditor $editor): Component {
+                    $editor->getRequest()->shiftPath(1);
+
+                    return $editor->activateModalComponent('langEditor', 'share', 'LanguageEditor');
+                },
+                'showSiteEditor' => function (DivisionEditor $editor): Component {
+                    $editor->getRequest()->shiftPath(1);
+
+                    return $editor->activateModalComponent(
+                        'siteEditor',
+                        'share',
+                        'SiteEditor',
+                        ['config' => 'engine/core/modules/share/config/SiteEditorModal.component.xml']
+                    );
+                },
+                'fileLibrary' => function (DivisionEditor $editor): Component {
+                    $editor->getRequest()->shiftPath(1);
+
+                    return $editor->activateModalComponent(
+                        'filelibrary',
+                        'share',
+                        'FileRepository',
+                        ['config' => 'engine/core/modules/share/config/FileRepositoryModal.component.xml']
+                    );
+                },
+            ]
+        );
     }
 
     /* =========================================================
@@ -171,53 +212,41 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
      */
     public function build(): DOMDocument
     {
-        switch ($this->getState())
+        if ($this->getState() === 'showPageToolbar')
         {
-            case 'showPageToolbar': {
-                /** @var DOMDocument|false $doc */
-                $doc = Component::build();
-                if ($doc instanceof DOMDocument)
+            /** @var DOMDocument|false $doc */
+            $doc = Component::build();
+            if ($doc instanceof DOMDocument)
+            {
+                $js = $this->buildJS();
+                if ($js instanceof DOMNode)
                 {
-                    $js = $this->buildJS();
-                    if ($js instanceof DOMNode)
+                    $doc->documentElement->appendChild($doc->importNode($js, true));
+                }
+                $toolbars = $this->getToolbar();
+                if (!empty($toolbars))
+                {
+                    foreach ($toolbars as $tb)
                     {
-                        $doc->documentElement->appendChild($doc->importNode($js, true));
-                    }
-                    $toolbars = $this->getToolbar();
-                    if (!empty($toolbars))
-                    {
-                        foreach ($toolbars as $tb)
+                        $built = $tb->build();
+                        if ($built instanceof DOMNode)
                         {
-                            $built = $tb->build();
-                            if ($built instanceof DOMNode)
-                            {
-                                $doc->documentElement->appendChild($doc->importNode($built, true));
-                            }
+                            $doc->documentElement->appendChild($doc->importNode($built, true));
                         }
                     }
-                    return $doc;
                 }
-                // fallback — стандартный билд
-                return parent::build();
+                return $doc;
             }
-            case 'showTransEditor':
-                return $this->transEditor?->build() ?? parent::build();
 
-            case 'showUserEditor':
-                return $this->userEditor?->build() ?? parent::build();
-
-            case 'showRoleEditor':
-                return $this->roleEditor?->build() ?? parent::build();
-
-            case 'showLangEditor':
-                return $this->langEditor?->build() ?? parent::build();
-
-            case 'showSiteEditor':
-                return $this->siteEditor?->build() ?? parent::build();
-
-            default:
-                return parent::build();
+            return parent::build();
         }
+
+        if ($modal = $this->getActiveModalComponent())
+        {
+            return $modal->build();
+        }
+
+        return parent::build();
     }
 
     /* =========================================================
@@ -1021,59 +1050,6 @@ final class DivisionEditor extends Grid implements SampleDivisionEditor
         {
             $this->getToolbar('main_toolbar')->getControlByID('editMode')->setState(1);
         }
-    }
-
-    /** Показ модальных редакторов. */
-    protected function showTransEditor(): void
-    {
-        $this->request->shiftPath(1);
-        $this->transEditor = $this->document->componentManager
-            ->createComponent('transEditor', 'share', 'TranslationEditor', null);
-        $this->transEditor->run();
-    }
-
-    protected function showUserEditor(): void
-    {
-        $this->request->shiftPath(1);
-        $this->userEditor = $this->document->componentManager
-            ->createComponent('userEditor', 'user', 'UserEditor', null);
-        $this->userEditor->run();
-    }
-
-    protected function showRoleEditor(): void
-    {
-        $this->request->shiftPath(1);
-        $this->roleEditor = $this->document->componentManager
-            ->createComponent('roleEditor', 'user', 'RoleEditor', null);
-        $this->roleEditor->run();
-    }
-
-    protected function showLangEditor(): void
-    {
-        $this->request->shiftPath(1);
-        $this->langEditor = $this->document->componentManager
-            ->createComponent('langEditor', 'share', 'LanguageEditor', null);
-        $this->langEditor->run();
-    }
-
-    protected function showSiteEditor(): void
-    {
-        $this->request->shiftPath(1);
-        $this->siteEditor = $this->document->componentManager
-            ->createComponent('siteEditor', 'share', 'SiteEditor', [
-                'config' => 'engine/core/modules/share/config/SiteEditorModal.component.xml'
-            ]);
-        $this->siteEditor->run();
-    }
-
-    protected function fileLibrary(): void
-    {
-        $this->request->shiftPath(1);
-        $this->fileLibrary = $this->document->componentManager
-            ->createComponent('filelibrary', 'share', 'FileRepository', [
-                'config' => 'engine/core/modules/share/config/FileRepositoryModal.component.xml'
-            ]);
-        $this->fileLibrary->run();
     }
 
     /** Сброс изменённых шаблонов у выбранного узла/сайта. */

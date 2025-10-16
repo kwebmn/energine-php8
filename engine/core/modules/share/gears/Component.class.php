@@ -39,6 +39,16 @@ class Component extends DBWorker implements IBlock
     private bool $enabled = true;
 
     /**
+     * Реестр модальных состояний для компонента.
+     *
+     * @var array<string, callable|array>
+     */
+    private ?array $modalRegistry = null;
+
+    /** Текущий активный модальный компонент (если состояние модальное). */
+    private ?Component $activeModalComponent = null;
+
+    /**
      * Параметры состояния (из URI/конфига).
      * null — если параметров нет.
      *
@@ -306,7 +316,14 @@ class Component extends DBWorker implements IBlock
      */
     public function run(): void
     {
+        $this->clearActiveModalComponent();
+
         $params = $this->getStateParams() ?: [];
+
+        if ($this->handleModalState($this->getState()))
+        {
+            return;
+        }
 
         // Приоритет у методов с суффиксом "State"
         $methodState = $this->getState() . 'State';
@@ -394,6 +411,11 @@ class Component extends DBWorker implements IBlock
      */
     public function build(): DOMDocument
     {
+        if ($modal = $this->getActiveModalComponent())
+        {
+            return $modal->build();
+        }
+
         $root = $this->doc->createElement('component');
         $root->setAttribute('name', $this->getName());
         $root->setAttribute('module', $this->module);
@@ -451,6 +473,130 @@ class Component extends DBWorker implements IBlock
             $this->stateParams = [];
         }
         $this->stateParams[$paramName] = $paramValue;
+    }
+
+    /**
+     * Переопределяемый метод регистрации модальных состояний.
+     *
+     * @return array<string, callable|array>
+     */
+    protected function registerModals(): array
+    {
+        return [];
+    }
+
+    /** Получить текущий HTTP-запрос. */
+    final protected function getRequest(): Request
+    {
+        return $this->request;
+    }
+
+    /** Установить активный модальный компонент. */
+    final protected function setActiveModalComponent(Component $component): void
+    {
+        $this->activeModalComponent = $component;
+    }
+
+    /** Возвращает активный модальный компонент (если есть). */
+    final protected function getActiveModalComponent(): ?Component
+    {
+        return $this->activeModalComponent;
+    }
+
+    /** Сбросить активный модальный компонент. */
+    final protected function clearActiveModalComponent(): void
+    {
+        $this->activeModalComponent = null;
+    }
+
+    /** Создать, запустить и сделать активным модальный компонент. */
+    final protected function activateModalComponent(
+        string $name,
+        string $module,
+        string $class,
+        ?array $params = null
+    ): Component {
+        $component = $this->document->componentManager->createComponent($name, $module, $class, $params);
+        $component->run();
+        $this->setActiveModalComponent($component);
+
+        return $component;
+    }
+
+    /** Получить нормализованный реестр модальных состояний. */
+    private function getModalRegistry(): array
+    {
+        if ($this->modalRegistry === null)
+        {
+            $registry = $this->registerModals();
+            $this->modalRegistry = is_array($registry) ? $registry : [];
+        }
+
+        return $this->modalRegistry;
+    }
+
+    /** Проверить и обработать модальное состояние. */
+    private function handleModalState(string $state): bool
+    {
+        $registry = $this->getModalRegistry();
+
+        if (!array_key_exists($state, $registry))
+        {
+            return false;
+        }
+
+        $stateParams = $this->getStateParams(true) ?? [];
+        $definition = $registry[$state];
+
+        if (is_callable($definition))
+        {
+            $component = $definition($this, $stateParams);
+
+            if (!$component instanceof Component)
+            {
+                throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER, $state);
+            }
+
+            if ($this->getActiveModalComponent() !== $component)
+            {
+                $component->run();
+                $this->setActiveModalComponent($component);
+            }
+
+            return true;
+        }
+
+        if (!is_array($definition) || !isset($definition['class']))
+        {
+            throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER, $state);
+        }
+
+        $name = $definition['name'] ?? $state;
+        $module = $definition['module'] ?? $this->module;
+        $params = $definition['params'] ?? null;
+
+        if (is_callable($params))
+        {
+            $params = $params($this, $stateParams);
+        }
+
+        if ($params !== null && !is_array($params))
+        {
+            $params = (array)$params;
+        }
+
+        /** @var Component $component */
+        $component = $this->document->componentManager->createComponent($name, $module, $definition['class'], $params);
+
+        if (isset($definition['configure']) && is_callable($definition['configure']))
+        {
+            $definition['configure']($this, $component, $stateParams);
+        }
+
+        $component->run();
+        $this->setActiveModalComponent($component);
+
+        return true;
     }
 }
 
