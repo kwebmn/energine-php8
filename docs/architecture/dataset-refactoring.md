@@ -31,6 +31,15 @@ architecture for data driven components in Energine.
 * `DBDataSet` now respects an injected data provider.  When present it
   reuses the new plumbing in `DataSet` while keeping the legacy logic as
   a fallback.
+* Filter, sort and pagination parameters are now mirrored to
+  `QueryOptions`, so database-backed providers receive the same context
+  as the legacy SQL implementation.
+
+## Grid integration
+
+* `Grid` adopts the new build lifecycle hooks, moving translation and
+  filter DOM wiring into `beforeBuildView` / `afterBuildView` so custom
+  providers benefit from the shared pipeline.
 
 These changes keep the existing public API intact yet introduce
 extension points required for the full migration described in the

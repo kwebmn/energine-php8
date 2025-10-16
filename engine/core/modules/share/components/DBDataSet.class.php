@@ -15,8 +15,12 @@ class DBDataSet extends DataSet
     /** @var array<string, mixed> */
     private array $filter = [];
 
+    private ?FilterCollection $filterCollection = null;
+
     /** @var array<string, string>|false|null */
     private array|false|null $order = null;
+
+    private ?SortCollection $sortCollection = null;
 
     private ?array $limit = null;
     private ?string $previousState = null;
@@ -308,6 +312,57 @@ class DBDataSet extends DataSet
         $data = $this->modify($raw);
 
         return $data;
+    }
+
+    protected function createQueryOptions(): QueryOptions
+    {
+        $options = parent::createQueryOptions();
+
+        $filters = $this->getFilter();
+        if ($filters !== [])
+        {
+            $options->getFilters()->merge($filters);
+        }
+
+        $order = $this->getOrder();
+        if (is_array($order) && $order !== [])
+        {
+            $options->getSorting()->merge($order);
+        }
+
+        if ($this->pager instanceof Pager)
+        {
+            [$offset, $limit] = $this->pager->getLimit();
+            $options->setOffset($offset);
+            $options->setLimit($limit);
+        }
+        elseif (($limit = $this->getLimit()) !== null)
+        {
+            $limitValues = array_values($limit);
+            $offset      = null;
+            $records     = null;
+
+            if (isset($limitValues[1]))
+            {
+                [$offset, $records] = [$limitValues[0], $limitValues[1]];
+            }
+            elseif (isset($limitValues[0]))
+            {
+                $records = $limitValues[0];
+            }
+
+            if ($records !== null)
+            {
+                $options->setLimit((int)$records);
+            }
+
+            if ($offset !== null)
+            {
+                $options->setOffset((int)$offset);
+            }
+        }
+
+        return $options;
     }
 
     protected function getDataLanguage(): int|string|false
@@ -727,38 +782,55 @@ class DBDataSet extends DataSet
         return (string)$this->getParam('tableName');
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     */
     final public function getFilter(): array
     {
-        return $this->filter;
+        return $this->getFilterCollection()->all();
     }
 
-    /** @param array<string,mixed>|string|int $filter */
+    /**
+     * @param array<string,mixed>|string|int $filter
+     */
     final protected function setFilter(array|string|int $filter): void
     {
-        $this->clearFilter();
+        $collection = $this->getFilterCollection();
+        $collection->clear();
+        $this->filter = [];
+
         if (!empty($filter))
         {
             $this->addFilterCondition($filter);
         }
     }
 
-    /** @param array<string,mixed>|string|int $filter */
+    /**
+     * @param array<string,mixed>|string|int $filter
+     */
     public function addFilterCondition(array|string|int $filter): void
     {
+        $collection = $this->getFilterCollection();
+
         if (is_numeric($filter))
         {
-            $filter = [$this->getTableName() . '.' . $this->getPK() => $filter];
+            $collection->add($this->getTableName() . '.' . $this->getPK(), $filter);
         }
         elseif (is_string($filter))
         {
-            $filter = [$filter];
+            $collection->push($filter);
         }
-        $this->filter = array_merge($this->filter, $filter);
+        elseif (is_array($filter))
+        {
+            $collection->merge($filter);
+        }
+
+        $this->filter = $collection->all();
     }
 
     final protected function clearFilter(): void
     {
+        $this->getFilterCollection()->clear();
         $this->filter = [];
     }
 
@@ -782,13 +854,48 @@ class DBDataSet extends DataSet
             }
         }
 
-        return $this->order;
+        if ($this->order === false)
+        {
+            return false;
+        }
+
+        return $this->getSortCollection()->all();
     }
 
     /** @param array<string,string> $order */
     final protected function setOrder(array $order): void
     {
         $this->order = $order;
+
+        $collection = $this->getSortCollection();
+        $collection->clear();
+        $collection->merge($order);
+    }
+
+    private function getFilterCollection(): FilterCollection
+    {
+        if (!$this->filterCollection instanceof FilterCollection)
+        {
+            $this->filterCollection = new FilterCollection($this->filter);
+        }
+
+        return $this->filterCollection;
+    }
+
+    private function getSortCollection(): SortCollection
+    {
+        if (!$this->sortCollection instanceof SortCollection)
+        {
+            $initial = [];
+            if (is_array($this->order))
+            {
+                $initial = $this->order;
+            }
+
+            $this->sortCollection = new SortCollection($initial);
+        }
+
+        return $this->sortCollection;
     }
 
     final protected function getLimit(): ?array

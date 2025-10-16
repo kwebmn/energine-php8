@@ -821,16 +821,24 @@ class Grid extends DBDataSet
             return $legacy;
         }
 
+        return parent::build();
+    }
+
+    protected function beforeBuildView(): void
+    {
+        parent::beforeBuildView();
+
         if ($this->getType() == self::COMPONENT_TYPE_LIST)
         {
             $this->addListTranslations();
         }
+    }
 
-        $result = parent::build();
+    protected function afterBuildView(DOMDocument $document): void
+    {
+        parent::afterBuildView($document);
 
-        $this->appendFilterNode($result);
-
-        return $result;
+        $this->appendFilterNode($document);
     }
 
     /**
