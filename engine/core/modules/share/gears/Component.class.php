@@ -45,8 +45,8 @@ class Component extends DBWorker implements IBlock
      */
     private ?array $modalRegistry = null;
 
-    /** Текущий активный модальный компонент (если состояние модальное). */
-    private ?Component $activeModalComponent = null;
+    /** Текущий активный модальный блок/компонент (если состояние модальное). */
+    private ?IBlock $activeModalComponent = null;
 
     /**
      * Параметры состояния (из URI/конфига).
@@ -491,14 +491,14 @@ class Component extends DBWorker implements IBlock
         return $this->request;
     }
 
-    /** Установить активный модальный компонент. */
-    final protected function setActiveModalComponent(Component $component): void
+    /** Установить активный модальный блок/компонент. */
+    final protected function setActiveModalComponent(IBlock $component): void
     {
         $this->activeModalComponent = $component;
     }
 
-    /** Возвращает активный модальный компонент (если есть). */
-    final protected function getActiveModalComponent(): ?Component
+    /** Возвращает активный модальный блок/компонент (если есть). */
+    final protected function getActiveModalComponent(): ?IBlock
     {
         return $this->activeModalComponent;
     }
@@ -552,7 +552,7 @@ class Component extends DBWorker implements IBlock
         {
             $component = $definition($this, $stateParams);
 
-            if (!$component instanceof Component)
+            if (!$component instanceof IBlock)
             {
                 throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER, $state);
             }

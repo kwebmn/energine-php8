@@ -14,11 +14,12 @@
 
 * `registerModals(): array` — переопределяется в наследнике и возвращает карту
   `state => definition`. В определении можно передать массив с параметрами (`module`,
-  `class`, `params`) либо замыкание, которое само создаёт компонент. Если состояние
-  не объявлено, `Component::run()` продолжает искать метод состояния как раньше.
+  `class`, `params`) либо замыкание, которое само создаёт компонент **или любой `IBlock`
+  (например, `ComponentContainer`)**. Если состояние не объявлено, `Component::run()`
+  продолжает искать метод состояния как раньше.
 * `run()` очищает предыдущий активный модал, проверяет реестр и, при совпадении,
   создаёт дочерний компонент (через массив или замыкание), запускает его и сохраняет
-  ссылку для дальнейшего использования.【F:engine/core/modules/share/gears/Component.class.php†L317-L347】【F:engine/core/modules/share/gears/Component.class.php†L478-L600】
+  ссылку для дальнейшего использования.【F:engine/core/modules/share/gears/Component.class.php†L317-L347】【F:engine/core/modules/share/gears/Component.class.php†L483-L600】
 * `build()` отдаёт результат активного модального компонента, если он существует,
   иначе использует стандартный билдер родителя.【F:engine/core/modules/share/gears/Component.class.php†L412-L448】
 * Хелперы: `getRequest()` для доступа к текущему `Request`, `activateModalComponent()`
@@ -59,6 +60,14 @@
 инкапсулировано смещение пути (2 сегмента, если передан `site_id`) и передача
 параметров дочерним редакторам (`DivisionEditor`, `DomainEditor`, `SitePropertiesEditor`).
 Метод `build()` теперь просто проверяет наличие активной модалки.【F:engine/core/modules/share/components/SiteEditor.class.php†L13-L60】【F:engine/core/modules/share/components/SiteEditor.class.php†L177-L185】
+
+### Расширенные редакторы лент (`DefaultTemplateFeedEditor`, `TestfeedFeedEditor`)
+
+Редакторы лент, собранные на `ExtendedFeedEditor`, используют контейнер
+`site_div_selector.container.xml` для выбора раздела. Состояние `showSmapSelector`
+регистрируется через замыкание, которое возвращает `ComponentContainer`; базовый
+механизм теперь умеет работать с любым `IBlock`, поэтому дополнительные свойства и
+перегрузки `build()` больше не нужны.【F:engine/core/modules/wizard/components/DefaultTemplateFeedEditor.class.php†L13-L86】【F:engine/core/modules/auto/components/TestfeedFeedEditor.class.php†L13-L92】
 
 ## Работа с путями и параметрами
 
