@@ -43,6 +43,5 @@ class DataSetConfig extends ComponentConfig
             }
         }
 
-        $this->registerState('embedPlayer', ['/embed-player/[uplId]/']);
     }
 }

@@ -734,65 +734,6 @@ abstract class DataSet extends Component
     }
 
     /**
-     * Player for embedding in text areas.
-     */
-    protected function embedPlayer(): void
-    {
-        $sp = $this->getStateParams();
-        [$uplId] = $sp;
-
-        $fileInfo = $this->dbh->select(
-            'share_uploads',
-            [
-                'upl_path',
-                'upl_name',
-            ],
-            [
-                'upl_id'            => (int)$uplId,
-                'upl_internal_type' => FileRepoInfo::META_TYPE_VIDEO,
-            ]
-        );
-
-        if (!is_array($fileInfo))
-        {
-            throw new SystemException('ERROR_NO_VIDEO_FILE', SystemException::ERR_404);
-        }
-
-        // Using array_values to transform associative index to key index
-        [$file, $name] = array_values($fileInfo[0]);
-
-        $dd = new DataDescription();
-        foreach ([
-                     'file' => FieldDescription::FIELD_TYPE_STRING,
-                     'name' => FieldDescription::FIELD_TYPE_STRING,
-                 ] as $fName => $fType)
-        {
-            $fd = new FieldDescription($fName);
-            $fd->setType($fType);
-            $dd->addFieldDescription($fd);
-        }
-
-        $this->setBuilder(new SimpleBuilder());
-        $this->setDataDescription($dd);
-
-        $data = new Data();
-        $data->load([
-            [
-                'file' => $file,
-                'name' => $name,
-            ],
-        ]);
-        $this->setData($data);
-
-        $this->js = $this->buildJS();
-
-        E()->getController()->getTransformer()->setFileName(
-            'engine/core/modules/share/transformers/embed_player.xslt',
-            true
-        );
-    }
-
-    /**
      * Remove malicious and redundant HTML code.
      */
     public static function cleanupHTML(string $data): string
