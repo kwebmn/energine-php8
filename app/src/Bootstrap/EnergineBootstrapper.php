@@ -52,6 +52,7 @@ final class EnergineBootstrapper
         }
 
         $projectRoot = self::resolveProjectRoot();
+        $docRoot     = self::normaliseDocumentRoot($projectRoot);
 
         self::includeAutoload($projectRoot);
 
@@ -73,7 +74,7 @@ final class EnergineBootstrapper
 
         self::initialiseCore($config);
         self::registerWhoops();
-        self::configureRegistry($config);
+        self::configureRegistry($config, $docRoot);
 
         self::$config = $config;
         self::$booted = true;
@@ -126,6 +127,27 @@ final class EnergineBootstrapper
         }
 
         throw new LogicException('Не найден конфигурационный файл system.config.php.');
+    }
+
+    private static function normaliseDocumentRoot(string $projectRoot): string
+    {
+        $docRoot = (string)($_SERVER['DOCUMENT_ROOT'] ?? '');
+        $docRoot = $docRoot !== '' ? rtrim($docRoot, DIRECTORY_SEPARATOR) : '';
+
+        if ($docRoot !== '') {
+            $resolved = realpath($docRoot) ?: $docRoot;
+            if (!is_file($resolved . DIRECTORY_SEPARATOR . 'system.config.php')) {
+                $docRoot = rtrim($projectRoot, DIRECTORY_SEPARATOR);
+            } else {
+                $docRoot = rtrim($resolved, DIRECTORY_SEPARATOR);
+            }
+        } else {
+            $docRoot = rtrim($projectRoot, DIRECTORY_SEPARATOR);
+        }
+
+        $_SERVER['DOCUMENT_ROOT'] = $docRoot;
+
+        return $docRoot;
     }
 
     private static function probeForConfig(?string $start): ?string
@@ -290,11 +312,14 @@ final class EnergineBootstrapper
     /**
      * @param array<mixed> $config
      */
-    private static function configureRegistry(array &$config): void
+    private static function configureRegistry(array &$config, string $docRoot): void
     {
         $reg  = \E();
         $feat = $config['features'] ?? [];
-        $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? HTDOCS_DIR, '/');
+
+        if ($docRoot === '') {
+            $docRoot = rtrim((string)HTDOCS_DIR, '/');
+        }
 
         $monologLevelResolver = static function (string $name): ?MonologLevel {
             if (!class_exists(MonologLevel::class)) {
