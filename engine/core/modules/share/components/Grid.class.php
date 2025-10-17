@@ -626,9 +626,14 @@ class Grid extends DBDataSet
         ], true))
         {
             $dd = $this->getDataDescription();
-            if ($selects = $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_SELECT))
+            $selectLikeFields = array_merge(
+                $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_SELECT) ?? [],
+                $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_MULTI) ?? []
+            );
+
+            if ($selectLikeFields)
             {
-                foreach ($selects as $select)
+                foreach ($selectLikeFields as $select)
                 {
                     $editorClassName = $select->getPropertyValue('editor');
                     // null — используем Grid по умолчанию
