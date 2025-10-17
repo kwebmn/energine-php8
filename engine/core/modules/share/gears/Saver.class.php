@@ -176,6 +176,10 @@ class Saver extends DBWorker
                 {
                     // ключ формата ['table' => ..., 'pk' => ...] или аналогичный
                     [$m2mTableName, $m2mPKName] = array_values($fieldInfo->getPropertyValue('key'));
+                    if ($m2mData === false)
+                    {
+                        $m2mData = [];
+                    }
                     $m2mData[$m2mTableName]['pk'] = $m2mPKName;
                 }
             }
@@ -234,6 +238,10 @@ class Saver extends DBWorker
                             unset($m2mInfo[$m2mPKName]); // убираем PK, остаётся внешняя колонка
                             foreach ($m2mValues as $val)
                             {
+                                if ($m2mData === false)
+                                {
+                                    $m2mData = [];
+                                }
                                 $m2mData[$m2mTableName]['pk'] = $m2mPKName;
                                 $m2mData[$m2mTableName][key($m2mInfo)][] = $val;
                             }

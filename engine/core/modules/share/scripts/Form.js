@@ -527,11 +527,17 @@ class Form {
                     return;
                 }
 
+                const isSelectElement = control instanceof HTMLSelectElement;
+                const isMultiSelect = isSelectElement && control.multiple;
+
                 ModalBox.open({
                     url: `${this.singlePath}${dataField}-${dataEditor}/crud/`,
                     onClose: (result) => {
                         const selectedValue = result?.key;
                         if (result?.dirty) {
+                            const previousSelection = isMultiSelect
+                                ? Array.from(control.selectedOptions || []).map((option) => option.value)
+                                : (isSelectElement ? control.value : null);
                             Energine.request(
                                 `${this.singlePath}${dataField}/fk-values/`,
                                 null,
@@ -552,9 +558,19 @@ class Form {
                                                 }
                                             });
                                             control.appendChild(option);
+                                            if (isMultiSelect) {
+                                                if (previousSelection?.includes(option.value)) {
+                                                    option.selected = true;
+                                                }
+                                            } else if (previousSelection && option.value === previousSelection) {
+                                                option.selected = true;
+                                            }
                                         });
-                                        if (selectedValue) {
-                                            control.value = selectedValue;
+                                        if (selectedValue && isSelectElement) {
+                                            const optionToSelect = Array.from(control.options || []).find((option) => option.value == selectedValue);
+                                            if (optionToSelect) {
+                                                optionToSelect.selected = true;
+                                            }
                                         }
                                     }
                                 },
@@ -562,7 +578,14 @@ class Form {
                                 this.processServerError.bind(this)
                             );
                         } else if (selectedValue) {
-                            control.value = selectedValue;
+                            if (isMultiSelect) {
+                                const optionToSelect = Array.from(control.options || []).find((option) => option.value == selectedValue);
+                                if (optionToSelect) {
+                                    optionToSelect.selected = true;
+                                }
+                            } else if (isSelectElement) {
+                                control.value = selectedValue;
+                            }
                         }
                     }
                 });
