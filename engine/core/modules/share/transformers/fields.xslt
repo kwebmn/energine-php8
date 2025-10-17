@@ -330,6 +330,46 @@
     </xsl:template>
 
     <!-- поле множественного выбора (multi) -->
+    <xsl:template match="field[@type='multi'][@editor][ancestor::component[@exttype='grid' or @exttype='feed']]" mode="field_input">
+        <xsl:variable name="FIELD_ID">
+            <xsl:value-of select="@name"/>
+            <xsl:if test="@language">_<xsl:value-of select="@language"/></xsl:if>
+        </xsl:variable>
+        <xsl:variable name="LANG_SUFFIX" select="substring(concat('[', @language, ']'), 1, (string-length(@language) + 2) * boolean(@language))"/>
+        <xsl:variable name="NAME_BASE">
+            <xsl:choose>
+                <xsl:when test="@tableName"><xsl:value-of select="concat(@tableName, $LANG_SUFFIX, '[', @name, ']')"/></xsl:when>
+                <xsl:otherwise><xsl:value-of select="concat(@name, $LANG_SUFFIX)"/></xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="IS_REQUIRED" select="@nullable!='1'"/>
+        <xsl:variable name="HAS_ERROR" select="boolean(error)"/>
+        <div class="input-group">
+            <select id="{$FIELD_ID}" multiple="multiple">
+                <xsl:attribute name="class">
+                    <xsl:text>form-select</xsl:text>
+                    <xsl:if test="$HAS_ERROR"><xsl:text> is-invalid</xsl:text></xsl:if>
+                </xsl:attribute>
+                <xsl:attribute name="name"><xsl:value-of select="concat($NAME_BASE, '[]')"/></xsl:attribute>
+                <xsl:if test="$IS_REQUIRED">
+                    <xsl:attribute name="required">required</xsl:attribute>
+                </xsl:if>
+                <xsl:for-each select="options/option">
+                    <option value="{@id}">
+                        <xsl:copy-of select="attribute::*[name(.)!='id' and name(.)!='selected']"/>
+                        <xsl:if test="@selected">
+                            <xsl:attribute name="selected">selected</xsl:attribute>
+                        </xsl:if>
+                        <xsl:value-of select="."/>
+                    </option>
+                </xsl:for-each>
+            </select>
+            <button class="btn btn-outline-secondary" type="button" data-action="crud" data-field="{@name}" data-editor="{@editor}">
+                <xsl:text>...</xsl:text>
+            </button>
+        </div>
+    </xsl:template>
+
     <xsl:template match="field[@type='multi'][ancestor::component[@type='form']]" mode="field_input">
         <xsl:variable name="FIELD_ID">
             <xsl:value-of select="@name"/>
