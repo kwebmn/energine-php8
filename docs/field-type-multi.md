@@ -176,6 +176,7 @@ COMMIT;
             <field name="test_article_name"/>
             <field name="test_article_slug"/>
             <field name="test_article_published_at"/>
+            <field name="category_multi" customField="customField"/>
         </fields>
     </state>
 
@@ -231,6 +232,28 @@ COMMIT;
 ```
 
 XML-слой задаёт, в каких состояниях компонента показывать поле `category_multi`, а также помечает его как «виртуальное», чтобы `DataDescription::intersect()` не пытался сопоставить с колонками БД (см. свойство `customField`). Всё остальное — тип, связующая таблица, перечень значений — подставляется в PHP на шаге `createDataDescription()`. Именно там нужно сконструировать `FieldDescription`, иначе билдеры и `Saver` не получат сведений о мультисвязи.【F:engine/core/modules/share/gears/DataDescription.class.php†L214-L261】【F:engine/core/modules/share/gears/FieldDescription.class.php†L252-L329】
+
+### Несколько мультиполей и вывод в списке
+
+`DBDataSet::modify()` обрабатывает каждое поле с типом `FIELD_TYPE_MULTI`, поэтому можно добавить несколько мультиселектов в один компонент: для каждого создайте `FieldDescription`, присвойте тип `multi` и пропишите собственный `key`. Например, массив со схемой можно перечислить инициализацией:
+
+```php
+foreach ([
+    'category_multi' => ['tableName' => 'test_article_category', 'fieldName' => 'test_article_id'],
+    'audience_multi' => ['tableName' => 'test_article_audience', 'fieldName' => 'test_article_id'],
+] as $fieldName => $keyInfo) {
+    $fd = new FieldDescription($fieldName);
+    $fd->setSystemType(DBA::COLTYPE_INTEGER);
+    $fd->setType(FieldDescription::FIELD_TYPE_MULTI);
+    $fd->setProperty('customField', 'customField');
+    $fd->setProperty('key', $keyInfo);
+    $dd->addFieldDescription($fd);
+}
+```
+
+Для каждого поля требуется собственная связующая таблица (`test_article_audience` в примере устроена так же, как `test_article_category`: пара внешних ключей и составной PK). Это позволяет ядру разобрать структуру и подготовить списки значений автоматически.
+
+Чтобы выбранные значения отображались в списке (`state="main"`), добавьте соответствующие поля в `<fields>` и пометьте их `customField="customField"`, как показано в примере выше. При рендеринге грида `JSONBuilder` преобразует массив ID в строку с названиями, объединяя подписи через запятую, поэтому в колонке списка сразу будут отображаться человекочитаемые значения без дополнительного кода.【F:engine/core/modules/share/components/DBDataSet.class.php†L120-L164】【F:engine/core/modules/share/gears/JSONBuilder.class.php†L72-L114】
 
 ## Результат
 
