@@ -442,31 +442,80 @@ class Grid extends DBDataSet
 
         if ($class === 'Grid')
         {
-            $cols = $this->dbh->getColumnsInfo($this->getTableName());
-            if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
+            $fieldDescription = $this->getDataDescription()->getFieldDescriptionByName($fkField);
+            if ($fieldDescription instanceof FieldDescription
+                && $fieldDescription->getType() === FieldDescription::FIELD_TYPE_MULTI)
             {
-                $cols = $this->dbh->getColumnsInfo($this->getTranslationTableName());
-                if (!in_array($fkField, array_keys($cols), true))
+                $keyInfo = $fieldDescription->getPropertyValue('key');
+                if (!is_array($keyInfo) || empty($keyInfo['tableName']) || empty($keyInfo['fieldName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $m2mTableName = (string)$keyInfo['tableName'];
+                $m2mOwnerColumn = (string)$keyInfo['fieldName'];
+
+                if (!$this->dbh->tableExists($m2mTableName))
+                {
+                    throw new SystemException('ERR_DEV_NO_TABLENAME', SystemException::ERR_DEVELOPER, $m2mTableName);
+                }
+
+                $m2mColumns = $this->dbh->getColumnsInfo($m2mTableName);
+                if (!array_key_exists($m2mOwnerColumn, $m2mColumns))
+                {
+                    throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $m2mOwnerColumn);
+                }
+                unset($m2mColumns[$m2mOwnerColumn]);
+
+                $fkMeta = null;
+                foreach ($m2mColumns as $columnMeta)
+                {
+                    if (isset($columnMeta['key']) && is_array($columnMeta['key']) && !empty($columnMeta['key']['tableName']))
+                    {
+                        $fkMeta = $columnMeta['key'];
+                        break;
+                    }
+                }
+
+                if (!is_array($fkMeta) || empty($fkMeta['tableName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $params['tableName'] = $fkMeta['tableName'];
+                if (!empty($fkMeta['fieldName']))
+                {
+                    $params['keyFieldName'] = $fkMeta['fieldName'];
+                }
+            }
+            else
+            {
+                $cols = $this->dbh->getColumnsInfo($this->getTableName());
+                if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
+                {
+                    $cols = $this->dbh->getColumnsInfo($this->getTranslationTableName());
+                    if (!in_array($fkField, array_keys($cols), true))
+                    {
+                        throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                    }
+                }
+                elseif (!$this->getTranslationTableName())
                 {
                     throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
                 }
-            }
-            elseif (!$this->getTranslationTableName())
-            {
-                throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
-            }
 
-            
-            $keyInfo = $cols[$fkField]['key'] ?? null;
-            if (!is_array($keyInfo) || empty($keyInfo['tableName']))
-            {
-                throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
-            }
 
-            $params['tableName'] = $keyInfo['tableName'];
-            if (!empty($keyInfo['fieldName']))
-            {
-                $params['keyFieldName'] = $keyInfo['fieldName'];
+                $keyInfo = $cols[$fkField]['key'] ?? null;
+                if (!is_array($keyInfo) || empty($keyInfo['tableName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $params['tableName'] = $keyInfo['tableName'];
+                if (!empty($keyInfo['fieldName']))
+                {
+                    $params['keyFieldName'] = $keyInfo['fieldName'];
+                }
             }
         }
         else
