@@ -142,6 +142,8 @@ class FieldDescription extends DBWorker implements \Iterator
     /** Загрузить описание из XML. Возвращает true (BC). */
     public function loadXML(\SimpleXMLElement $fieldInfo): bool
     {
+        $keyFromXML = [];
+
         foreach ($fieldInfo->attributes() as $attrName => $attrValue)
         {
             $attrName  = (string)$attrName;
@@ -171,10 +173,53 @@ class FieldDescription extends DBWorker implements \Iterator
                     $this->setMode((int)$attrValue);
                     break;
 
+                case 'keyTableName':
+                    $keyFromXML['tableName'] = $attrValue;
+                    break;
+
+                case 'keyFieldName':
+                    $keyFromXML['fieldName'] = $attrValue;
+                    break;
+
                 default:
                     $this->setProperty($attrName, $attrValue);
             }
         }
+
+        if ($keyFromXML)
+        {
+            $existingKey = $this->getPropertyValue('key');
+            if (is_array($existingKey))
+            {
+                $keyFromXML = array_merge($existingKey, $keyFromXML);
+            }
+
+            if (
+                array_key_exists('tableName', $keyFromXML) &&
+                array_key_exists('fieldName', $keyFromXML)
+            )
+            {
+                $this->setProperty('key', [
+                    'tableName' => $keyFromXML['tableName'],
+                    'fieldName' => $keyFromXML['fieldName'],
+                ]);
+            }
+            else
+            {
+                $this->setProperty('key', $keyFromXML);
+            }
+
+            if ($this->systemType !== null)
+            {
+                $this->setType(self::convertType(
+                    $this->systemType,
+                    $this->name,
+                    $this->length,
+                    $this->additionalProperties
+                ));
+            }
+        }
+
         return true;
     }
 
