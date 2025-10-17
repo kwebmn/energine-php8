@@ -442,6 +442,11 @@ class Grid extends DBDataSet
 
         if ($class === 'Grid')
         {
+            if (!$this->hasDataDescription())
+            {
+                $this->setDataDescription($this->createDataDescription());
+            }
+
             $fieldDescription = $this->getDataDescription()->getFieldDescriptionByName($fkField);
             if ($fieldDescription instanceof FieldDescription
                 && $fieldDescription->getType() === FieldDescription::FIELD_TYPE_MULTI)

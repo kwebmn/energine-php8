@@ -241,6 +241,14 @@ abstract class DataSet extends Component
     }
 
     /**
+     * Check if data description is already initialised.
+     */
+    final protected function hasDataDescription(): bool
+    {
+        return $this->dataDescription instanceof DataDescription;
+    }
+
+    /**
      * @copydoc Component::prepare
      */
     protected function prepare(): void
