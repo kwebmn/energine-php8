@@ -157,7 +157,9 @@ COMMIT;
 
 ### Пример конфигурации `component.xml`
 
-Чтобы подключить поле без дополнительного PHP, в конфигурации компонента достаточно описать поле как `customField` и передать связующую таблицу. Ниже — пример `*.component.xml` в том же стиле, что и `engine/core/modules/auto/config/TestfeedFeedEditor.component.xml`: у него есть состояния `main`, `add`, `edit` с наборами полей и тулбарами.【F:engine/core/modules/auto/config/TestfeedFeedEditor.component.xml†L1-L74】
+XML-конфигурация отвечает только за то, где отображать поле. Сама логика мультивыбора — название связующей таблицы и колонок — берётся из свойства `key`, которое мы задаём на шаге PHP-настройки (см. выше). Ниже приведён `*.component.xml` в том же стиле, что и `engine/core/modules/auto/config/TestfeedFeedEditor.component.xml`: у него есть состояния `main`, `add`, `edit` с наборами полей и тулбарами.【F:engine/core/modules/auto/config/TestfeedFeedEditor.component.xml†L1-L74】
+
+> Примечание. Атрибут `<field name="category_multi" customField="customField"/>` лишь сообщает XML-слою, что поле виртуальное. Связующую таблицу и колонку владельца ядро узнаёт исключительно из `$fd->setProperty('key', ['tableName' => ..., 'fieldName' => ...])`.
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
@@ -231,7 +233,7 @@ COMMIT;
 </configuration>
 ```
 
-XML-слой задаёт, в каких состояниях компонента показывать поле `category_multi`, а также помечает его как «виртуальное», чтобы `DataDescription::intersect()` не пытался сопоставить с колонками БД (см. свойство `customField`). Всё остальное — тип, связующая таблица, перечень значений — подставляется в PHP на шаге `createDataDescription()`. Именно там нужно сконструировать `FieldDescription`, иначе билдеры и `Saver` не получат сведений о мультисвязи.【F:engine/core/modules/share/gears/DataDescription.class.php†L214-L261】【F:engine/core/modules/share/gears/FieldDescription.class.php†L252-L329】
+XML-слой задаёт, в каких состояниях компонента показывать поле `category_multi`, а также помечает его как «виртуальное», чтобы `DataDescription::intersect()` не пытался сопоставить с колонками БД (см. свойство `customField`). Поиск значений выполняется не на основании тега `<field>`, а на основании свойства `key`, которое было установлено в `FieldDescription` при сборке описания данных: именно там указаны `tableName` и `fieldName`, поэтому `DBDataSet` и `Saver` знают, где искать выбранные категории.【F:engine/core/modules/share/gears/DataDescription.class.php†L214-L261】【F:engine/core/modules/share/gears/FieldDescription.class.php†L252-L329】
 
 ### Несколько мультиполей и вывод в списке
 
