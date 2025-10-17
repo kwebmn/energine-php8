@@ -65,7 +65,7 @@ return array(
         */
         'cache' => 0,
         'cache_ignore_debug' => 0,
-        'cache_dir' => $energine_release . '/var/cache', // опционально (иначе автозадастся)
+        'cache_dir' => $_SERVER['DOCUMENT_ROOT'] . '/var/cache', // опционально (иначе автозадастся)
         'cache_prefix' => 'prod:site1', // опционально: префикс ключей
         'cache_default_ttl' => 3600,    // опционально: дефолтный TTL (сек)
         'aliases' => 0,
