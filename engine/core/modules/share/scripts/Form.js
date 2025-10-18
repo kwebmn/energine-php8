@@ -527,11 +527,26 @@ class Form {
                     return;
                 }
 
+                const isSelectElement = control instanceof HTMLSelectElement;
+                const isMultiSelect = isSelectElement && control.multiple;
+
                 ModalBox.open({
                     url: `${this.singlePath}${dataField}-${dataEditor}/crud/`,
                     onClose: (result) => {
                         const selectedValue = result?.key;
-                        if (result?.dirty) {
+                        const wasDirty = Boolean(result?.dirty);
+                        let shouldReload = wasDirty;
+
+                        if (!shouldReload && selectedValue && isSelectElement) {
+                            const hasSelectedOption = Array.from(control.options || [])
+                                .some((option) => option.value == selectedValue);
+                            shouldReload = !hasSelectedOption;
+                        }
+
+                        if (shouldReload) {
+                            const previousSelection = isMultiSelect
+                                ? Array.from(control.selectedOptions || []).map((option) => option.value)
+                                : (isSelectElement ? control.value : null);
                             Energine.request(
                                 `${this.singlePath}${dataField}/fk-values/`,
                                 null,
@@ -541,7 +556,7 @@ class Form {
                                         const id = data.result[1];
                                         const title = data.result[2];
                                         data.result[0].forEach(row => {
-                                            let option = document.createElement('option');
+                                            const option = document.createElement('option');
                                             Object.entries(row).forEach(([key, value]) => {
                                                 if (key === id) {
                                                     option.value = value;
@@ -552,17 +567,38 @@ class Form {
                                                 }
                                             });
                                             control.appendChild(option);
+                                            if (isMultiSelect) {
+                                                if (previousSelection?.includes(option.value)) {
+                                                    option.selected = true;
+                                                }
+                                            } else if (previousSelection && option.value === previousSelection) {
+                                                option.selected = true;
+                                            }
                                         });
-                                        if (selectedValue) {
-                                            control.value = selectedValue;
+                                        if (selectedValue && isSelectElement) {
+                                            const optionToSelect = Array.from(control.options || [])
+                                                .find((option) => option.value == selectedValue);
+                                            if (optionToSelect) {
+                                                optionToSelect.selected = true;
+                                            }
                                         }
+                                        control.dispatchEvent(new Event('change', { bubbles: true }));
                                     }
                                 },
                                 this.processServerError.bind(this),
                                 this.processServerError.bind(this)
                             );
                         } else if (selectedValue) {
-                            control.value = selectedValue;
+                            if (isMultiSelect) {
+                                const optionToSelect = Array.from(control.options || [])
+                                    .find((option) => option.value == selectedValue);
+                                if (optionToSelect) {
+                                    optionToSelect.selected = true;
+                                }
+                            } else if (isSelectElement) {
+                                control.value = selectedValue;
+                            }
+                            control.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                     }
                 });

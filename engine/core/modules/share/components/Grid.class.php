@@ -442,31 +442,85 @@ class Grid extends DBDataSet
 
         if ($class === 'Grid')
         {
-            $cols = $this->dbh->getColumnsInfo($this->getTableName());
-            if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
+            if (!$this->hasDataDescription())
             {
-                $cols = $this->dbh->getColumnsInfo($this->getTranslationTableName());
-                if (!in_array($fkField, array_keys($cols), true))
+                $this->setDataDescription($this->createDataDescription());
+            }
+
+            $fieldDescription = $this->getDataDescription()->getFieldDescriptionByName($fkField);
+            if ($fieldDescription instanceof FieldDescription
+                && $fieldDescription->getType() === FieldDescription::FIELD_TYPE_MULTI)
+            {
+                $keyInfo = $fieldDescription->getPropertyValue('key');
+                if (!is_array($keyInfo) || empty($keyInfo['tableName']) || empty($keyInfo['fieldName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $m2mTableName = (string)$keyInfo['tableName'];
+                $m2mOwnerColumn = (string)$keyInfo['fieldName'];
+
+                if (!$this->dbh->tableExists($m2mTableName))
+                {
+                    throw new SystemException('ERR_DEV_NO_TABLENAME', SystemException::ERR_DEVELOPER, $m2mTableName);
+                }
+
+                $m2mColumns = $this->dbh->getColumnsInfo($m2mTableName);
+                if (!array_key_exists($m2mOwnerColumn, $m2mColumns))
+                {
+                    throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $m2mOwnerColumn);
+                }
+                unset($m2mColumns[$m2mOwnerColumn]);
+
+                $fkMeta = null;
+                foreach ($m2mColumns as $columnMeta)
+                {
+                    if (isset($columnMeta['key']) && is_array($columnMeta['key']) && !empty($columnMeta['key']['tableName']))
+                    {
+                        $fkMeta = $columnMeta['key'];
+                        break;
+                    }
+                }
+
+                if (!is_array($fkMeta) || empty($fkMeta['tableName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $params['tableName'] = $fkMeta['tableName'];
+                if (!empty($fkMeta['fieldName']))
+                {
+                    $params['keyFieldName'] = $fkMeta['fieldName'];
+                }
+            }
+            else
+            {
+                $cols = $this->dbh->getColumnsInfo($this->getTableName());
+                if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
+                {
+                    $cols = $this->dbh->getColumnsInfo($this->getTranslationTableName());
+                    if (!in_array($fkField, array_keys($cols), true))
+                    {
+                        throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                    }
+                }
+                elseif (!$this->getTranslationTableName())
                 {
                     throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
                 }
-            }
-            elseif (!$this->getTranslationTableName())
-            {
-                throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
-            }
 
-            
-            $keyInfo = $cols[$fkField]['key'] ?? null;
-            if (!is_array($keyInfo) || empty($keyInfo['tableName']))
-            {
-                throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
-            }
 
-            $params['tableName'] = $keyInfo['tableName'];
-            if (!empty($keyInfo['fieldName']))
-            {
-                $params['keyFieldName'] = $keyInfo['fieldName'];
+                $keyInfo = $cols[$fkField]['key'] ?? null;
+                if (!is_array($keyInfo) || empty($keyInfo['tableName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $params['tableName'] = $keyInfo['tableName'];
+                if (!empty($keyInfo['fieldName']))
+                {
+                    $params['keyFieldName'] = $keyInfo['fieldName'];
+                }
             }
         }
         else
@@ -503,6 +557,61 @@ class Grid extends DBDataSet
     protected function fkValues()
     {
         list($fkField) = $this->getStateParams();
+
+        if (!$this->hasDataDescription())
+        {
+            $this->setDataDescription($this->createDataDescription());
+        }
+
+        $fieldDescription = $this->getDataDescription()->getFieldDescriptionByName($fkField);
+
+        if ($fieldDescription instanceof FieldDescription
+            && $fieldDescription->getType() === FieldDescription::FIELD_TYPE_MULTI)
+        {
+            $fkData = $this->getMultiFieldFKValues($fieldDescription);
+            $columnMeta = null;
+        }
+        else
+        {
+            [$fkData, $columnMeta] = $this->getScalarFieldFKValues($fkField);
+        }
+
+        if (!($fieldDescription instanceof FieldDescription)
+            || $fieldDescription->getType() !== FieldDescription::FIELD_TYPE_MULTI)
+        {
+            if (
+                is_array($columnMeta)
+                && ($columnMeta['nullable'] ?? false)
+                && is_array($fkData)
+                && isset($fkData[0], $fkData[1], $fkData[2])
+            ) {
+                $rows = $fkData[0];
+                if ($rows === true || $rows === false || $rows === null) {
+                    $rows = [];
+                }
+                if (!is_array($rows)) {
+                    $rows = [];
+                }
+
+                array_unshift($rows, [
+                    $fkData[1] => '',
+                    $fkData[2] => '',
+                ]);
+
+                $fkData[0] = array_values($rows);
+            }
+        }
+
+        $builder = new JSONCustomBuilder();
+        $builder->setProperty('result', $fkData);
+        $this->setBuilder($builder);
+    }
+
+    /**
+     * @throws SystemException
+     */
+    private function getScalarFieldFKValues(string $fkField): array
+    {
         $cols = $this->dbh->getColumnsInfo($this->getTableName());
 
         if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
@@ -523,35 +632,61 @@ class Grid extends DBDataSet
             throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
         }
 
-        $builder = new JSONCustomBuilder();
-        $fkData = $this->getFKData(
-            $cols[$fkField]['key']['tableName'],
-            $cols[$fkField]['key']['fieldName']
-        );
+        return [
+            $this->getFKData(
+                $cols[$fkField]['key']['tableName'],
+                $cols[$fkField]['key']['fieldName']
+            ),
+            $cols[$fkField],
+        ];
+    }
 
-        if (
-            ($cols[$fkField]['nullable'] ?? false)
-            && is_array($fkData)
-            && isset($fkData[0], $fkData[1], $fkData[2])
-        ) {
-            $rows = $fkData[0];
-            if ($rows === true || $rows === false || $rows === null) {
-                $rows = [];
-            }
-            if (!is_array($rows)) {
-                $rows = [];
-            }
-
-            array_unshift($rows, [
-                $fkData[1] => '',
-                $fkData[2] => '',
-            ]);
-
-            $fkData[0] = array_values($rows);
+    /**
+     * @throws SystemException
+     */
+    private function getMultiFieldFKValues(FieldDescription $fieldDescription): array
+    {
+        $keyInfo = $fieldDescription->getPropertyValue('key');
+        if (!is_array($keyInfo) || empty($keyInfo['tableName']) || empty($keyInfo['fieldName']))
+        {
+            throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fieldDescription->getName());
         }
 
-        $builder->setProperty('result', $fkData);
-        $this->setBuilder($builder);
+        $m2mTableName = (string)$keyInfo['tableName'];
+        $m2mOwnerColumn = (string)$keyInfo['fieldName'];
+
+        if (!$this->dbh->tableExists($m2mTableName))
+        {
+            throw new SystemException('ERR_DEV_NO_TABLENAME', SystemException::ERR_DEVELOPER, $m2mTableName);
+        }
+
+        $m2mColumns = $this->dbh->getColumnsInfo($m2mTableName);
+        if (!array_key_exists($m2mOwnerColumn, $m2mColumns))
+        {
+            throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $m2mOwnerColumn);
+        }
+
+        unset($m2mColumns[$m2mOwnerColumn]);
+
+        $fkMeta = null;
+        foreach ($m2mColumns as $columnMeta)
+        {
+            if (isset($columnMeta['key']) && is_array($columnMeta['key']) && !empty($columnMeta['key']['tableName']))
+            {
+                $fkMeta = $columnMeta['key'];
+                break;
+            }
+        }
+
+        if (!is_array($fkMeta) || empty($fkMeta['tableName']) || empty($fkMeta['fieldName']))
+        {
+            throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fieldDescription->getName());
+        }
+
+        $fkTableName = (string)$fkMeta['tableName'];
+        $fkKeyField = (string)$fkMeta['fieldName'];
+
+        return $this->getFKData($fkTableName, $fkKeyField);
     }
 
     /**
@@ -626,9 +761,14 @@ class Grid extends DBDataSet
         ], true))
         {
             $dd = $this->getDataDescription();
-            if ($selects = $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_SELECT))
+            $selectLikeFields = array_merge(
+                $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_SELECT) ?? [],
+                $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_MULTI) ?? []
+            );
+
+            if ($selectLikeFields)
             {
-                foreach ($selects as $select)
+                foreach ($selectLikeFields as $select)
                 {
                     $editorClassName = $select->getPropertyValue('editor');
                     // null — используем Grid по умолчанию
