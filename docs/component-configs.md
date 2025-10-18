@@ -112,7 +112,7 @@ Toolbar задаёт кнопки и выпадающие списки, отоб
 * `id` — уникальный идентификатор контрола.
 * `title` — текст или ключ локализации. Для кнопок с иконками текст также используется как `aria-label`.
 * `type` — вид элемента (`button`, `select`, `switcher`, `file`, `separator`, `link`).
-* `icon` — CSS-класс иконки Font Awesome (например, `fa fa-plus`). Отрисовывается в XSLT (`engine/core/modules/share/transformers/bootstrap/components/navigation/toolbar.xslt`).
+* `icon` — CSS-класс иконки Font Awesome (например, `fa fa-plus`). Отрисовывается в XSLT (`engine/core/modules/share/transformers/bootstrap/toolbar.xslt`).
 * `iconOnly="true"` — отобразить только иконку (JS-логика в `Toolbar.js`).
 * `onclick` — имя действия/метода в JS или на сервере, вызываемого при клике.
 * Дополнительные атрибуты: `disabled`, `hidden`, `tooltip`, `confirm`, `multiple`, `accept`, `behavior`, `target`, `useDefaultIcon` и др.
@@ -203,4 +203,4 @@ Toolbar задаёт кнопки и выпадающие списки, отоб
 5. Обновите локализации для новых `title`/`option`.
 6. Перезапустите/обновите страницу админки и убедитесь, что иконки отображаются корректно.
 
-Эта документация охватывает основные концепции конфигов компонентов. За подробностями смотрите исходный код классов `Component`, `Toolbar`, `DataDescription`, а также XSLT-шаблоны в `engine/core/modules/share/transformers/bootstrap/components/`.
+Эта документация охватывает основные концепции конфигов компонентов. За подробностями смотрите исходный код классов `Component`, `Toolbar`, `DataDescription`, а также XSLT-шаблоны в `engine/core/modules/share/transformers/bootstrap/`.

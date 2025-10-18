@@ -4,11 +4,11 @@
 
     version="1.0">
 
-    <xsl:include href="bootstrap/layout/header.xslt"/>
-    <xsl:include href="bootstrap/layout/footer.xslt"/>
-    <xsl:include href="bootstrap/pages/login.xslt"/>
-    <xsl:include href="bootstrap/components/content.xslt"/>
-    <xsl:include href="bootstrap/pages/account.xslt"/>
+    <xsl:include href="bootstrap/header.xslt"/>
+    <xsl:include href="bootstrap/footer.xslt"/>
+    <xsl:include href="bootstrap/login.xslt"/>
+    <xsl:include href="bootstrap/content.xslt"/>
+    <xsl:include href="bootstrap/account.xslt"/>
 
     <xsl:include href="energine.xslt"/>
 
