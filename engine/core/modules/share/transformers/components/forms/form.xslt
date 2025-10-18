@@ -7,8 +7,7 @@
     extension-element-prefixes="set">
     
     <!-- обработка компонента типа form -->
-    <!--or descendant::field[@type='pfile']
-     or descendant::field[@type='prfile']-->
+    <!-- или дочерние поля типов pfile/prfile -->
     <xsl:template match="component[@type='form']">
         <xsl:variable name="FORM_ID" select="concat('form-', generate-id())"/>
         <section class="card h-100 d-flex flex-column" data-role="pane">

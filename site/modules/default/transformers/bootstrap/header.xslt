@@ -3,9 +3,9 @@
 
     <xsl:template name="HEADER">
         <xsl:variable name="NAVBAR_ID" select="concat('mainNavbar-', generate-id(/*))"/>
-        <xsl:variable name="SITE_NAME" select="normalize-space(//property[@name='site_name'])"/>
-        <xsl:variable name="LOGO_SRC" select="string((//property[@name='site_logo'] | //property[@name='logo'])[1])"/>
-        <xsl:variable name="IS_USER" select="//property[@name='is_user'] &gt; 0"/>
+        <xsl:variable name="SITE_NAME" select="normalize-space($DOC_PROPS[@name='site_name'])"/>
+        <xsl:variable name="LOGO_SRC" select="string(($DOC_PROPS[@name='site_logo'] | $DOC_PROPS[@name='logo'])[1])"/>
+        <xsl:variable name="IS_USER" select="number($DOC_PROPS[@name='is_user']) &gt; 0"/>
 
         <nav class="navbar navbar-expand-lg navbar-light bg-body-tertiary border-bottom shadow-sm">
             <div class="container">
@@ -26,7 +26,7 @@
                                         <xsl:value-of select="$SITE_NAME"/>
                                     </xsl:when>
                                     <xsl:otherwise>
-                                        <xsl:value-of select="//translation[@const='TXT_HOME']"/>
+                                        <xsl:value-of select="$TRANSLATION[@const='TXT_HOME']"/>
                                     </xsl:otherwise>
                                 </xsl:choose>
                             </xsl:attribute>
@@ -40,7 +40,7 @@
                                 <xsl:value-of select="$SITE_NAME"/>
                             </xsl:when>
                             <xsl:otherwise>
-                                <xsl:value-of select="//translation[@const='TXT_HOME']"/>
+                                <xsl:value-of select="$TRANSLATION[@const='TXT_HOME']"/>
                             </xsl:otherwise>
                         </xsl:choose>
                     </span>
@@ -61,11 +61,11 @@
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item">
                             <a class="nav-link" href="{$BASE}{$LANG_ABBR}">
-                                <xsl:if test="//property[@name='default'] = 1">
+                                <xsl:if test="$DOC_PROPS[@name='default'] = 1">
                                     <xsl:attribute name="class">nav-link active</xsl:attribute>
                                     <xsl:attribute name="aria-current">page</xsl:attribute>
                                 </xsl:if>
-                                <xsl:value-of select="//translation[@const='TXT_HOME']" />
+                                <xsl:value-of select="$TRANSLATION[@const='TXT_HOME']" />
                             </a>
                         </li>
                         <xsl:apply-templates select="$COMPONENTS[@name='mainMenu']/recordset/record" mode="main-nav" />
@@ -76,13 +76,13 @@
                             <xsl:when test="$IS_USER">
                                 <a class="btn btn-outline-primary" href="{$BASE}{$LANG_ABBR}my">
                                     <i class="fas fa-user-large me-2" aria-hidden="true"></i>
-                                    <span class="fw-semibold small"><xsl:value-of select="//translation[@const='TXT_PROFILE']"/></span>
+                                    <span class="fw-semibold small"><xsl:value-of select="$TRANSLATION[@const='TXT_PROFILE']"/></span>
                                 </a>
                             </xsl:when>
                             <xsl:otherwise>
                                 <a class="btn btn-primary" href="{$BASE}{$LANG_ABBR}login">
                                     <i class="fas fa-user-large me-2" aria-hidden="true"></i>
-                                    <span class="fw-semibold small"><xsl:value-of select="//translation[@const='TXT_SIGN_IN_ONLY']"/></span>
+                                    <span class="fw-semibold small"><xsl:value-of select="$TRANSLATION[@const='TXT_SIGN_IN_ONLY']"/></span>
                                 </a>
                             </xsl:otherwise>
                         </xsl:choose>
@@ -176,7 +176,7 @@
     </xsl:template>
 
     <xsl:template match="component[@name='langSwitcher']">
-        <xsl:variable name="LANG_ID" select="//property[@name='lang']" />
+        <xsl:variable name="LANG_ID" select="$DOC_PROPS[@name='lang']" />
         <xsl:variable name="DROPDOWN_ID" select="concat('languageDropdown-', generate-id(.))" />
 
         <ul class="navbar-nav">
@@ -190,32 +190,36 @@
                         aria-expanded="false"
                         aria-haspopup="true"
                 >
-                    <xsl:value-of select="//field[@name='lang_id' and text() = $LANG_ID]/../field[@name='lang_name']" />
+                    <xsl:value-of select="recordset/record[field[@name='lang_id'] = $LANG_ID]/field[@name='lang_name']" />
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="{$DROPDOWN_ID}">
-                    <xsl:for-each select="recordset/record">
-                        <xsl:variable name="IS_CURRENT" select="field[@name='lang_id'] = $LANG_ID" />
-                        <li>
-                            <a href="{field[@name='lang_url']}">
-                                <xsl:attribute name="class">
-                                    <xsl:text>dropdown-item</xsl:text>
-                                    <xsl:if test="$IS_CURRENT">
-                                        <xsl:text> active</xsl:text>
-                                    </xsl:if>
-                                </xsl:attribute>
-                                <xsl:if test="$IS_CURRENT">
-                                    <xsl:attribute name="aria-current">true</xsl:attribute>
-                                </xsl:if>
-                                <xsl:value-of select="field[@name='lang_name']" />
-                                <xsl:if test="$IS_CURRENT">
-                                    <i class="fa fa-check text-success ms-2" aria-hidden="true"></i>
-                                </xsl:if>
-                            </a>
-                        </li>
-                    </xsl:for-each>
+                    <xsl:apply-templates select="recordset/record" mode="lang-switcher">
+                        <xsl:with-param name="LANG_ID" select="$LANG_ID"/>
+                    </xsl:apply-templates>
                 </ul>
             </li>
         </ul>
     </xsl:template>
 
+    <xsl:template match="component[@name='langSwitcher']/recordset/record" mode="lang-switcher">
+        <xsl:param name="LANG_ID"/>
+        <xsl:variable name="IS_CURRENT" select="field[@name='lang_id'] = $LANG_ID" />
+        <li>
+            <a href="{field[@name='lang_url']}">
+                <xsl:attribute name="class">
+                    <xsl:text>dropdown-item</xsl:text>
+                    <xsl:if test="$IS_CURRENT">
+                        <xsl:text> active</xsl:text>
+                    </xsl:if>
+                </xsl:attribute>
+                <xsl:if test="$IS_CURRENT">
+                    <xsl:attribute name="aria-current">true</xsl:attribute>
+                </xsl:if>
+                <xsl:value-of select="field[@name='lang_name']" />
+                <xsl:if test="$IS_CURRENT">
+                    <i class="fa fa-check text-success ms-2" aria-hidden="true"></i>
+                </xsl:if>
+            </a>
+        </li>
+    </xsl:template>
 </xsl:stylesheet>

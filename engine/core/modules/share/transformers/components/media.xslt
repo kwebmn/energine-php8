@@ -4,7 +4,7 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
     >
 
-    <!-- Video player (JW Player) -->
+    <!-- Видеоплеер (JW Player) -->
     <xsl:template name="VIDEO_PLAYER">
         <xsl:param name="PLAYER_WIDTH"/>
         <xsl:param name="PLAYER_HEIGHT"/>
@@ -24,6 +24,6 @@
             });
         </script>
     </xsl:template>
-    <!-- /Video player (JW Player) -->
+    <!-- /Видеоплеер (JW Player) -->
     
 </xsl:stylesheet>

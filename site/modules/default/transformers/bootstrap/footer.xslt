@@ -17,7 +17,7 @@
 
             <div class="bg-body-secondary py-3">
                 <div class="container text-center small text-muted">
-                    <xsl:value-of select="//translation[@const='TXT_COPYRIGHT']" disable-output-escaping="yes"/>
+                    <xsl:value-of select="$TRANSLATION[@const='TXT_COPYRIGHT']" disable-output-escaping="yes"/>
                 </div>
             </div>
         </footer>

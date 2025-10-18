@@ -1,83 +1,78 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+    <!--
+        Bootstrap layout for the demo "test" component.
+        Renders the section header with breadcrumbs and outputs the component records.
+    -->
+    <xsl:output method="html" indent="yes" />
 
-
-    <xsl:template match="content[@file = 'test.content.xml']">
-
-        <!-- Heading -->
-        <div class="container-fluid">
+    <xsl:template match="content[@file='test.content.xml']">
+        <section class="container-fluid">
             <div class="p-5 bg-body-tertiary mb-4">
-                <h1 class=""><xsl:value-of select="//property[@name='title']"/></h1>
-                <!-- Breadcrumb -->
+                <h1>
+                    <xsl:value-of select="$DOC_PROPS[@name='title']"/>
+                </h1>
                 <nav class="d-flex">
                     <xsl:apply-templates select="$COMPONENTS[@name='breadCrumbs']"/>
                 </nav>
-                <!-- Breadcrumb -->
             </div>
-
-        </div>
+        </section>
 
         <div class="container">
             <div class="row">
                 <div class="col-sm-12">
-                    <xsl:apply-templates />
+                    <xsl:apply-templates/>
                 </div>
             </div>
         </div>
-
     </xsl:template>
 
-    <xsl:template match="component[@name='test']">
+    <xsl:template match="content[@file='test.content.xml']/component">
         <xsl:apply-templates select="recordset"/>
-        <xsl:if test="not(//property[@name='default'] = 1)">
+        <xsl:if test="not($DOC_PROPS[@name='default'] = 1)">
             <xsl:apply-templates select="toolbar"/>
         </xsl:if>
     </xsl:template>
 
     <xsl:template match="component[@name='test']/recordset">
         <div class="row">
-            <div class="col-sm-12" id="{generate-id(.)}">
+            <div class="col-sm-12" id="{generate-id()}" >
                 <xsl:choose>
                     <xsl:when test="@empty">
-                        <p><xsl:value-of select="@empty"/></p>
+                        <p>
+                            <xsl:value-of select="@empty"/>
+                        </p>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:apply-templates />
+                        <xsl:apply-templates select="record"/>
                     </xsl:otherwise>
                 </xsl:choose>
-
             </div>
         </div>
     </xsl:template>
 
     <xsl:template match="component[@name='test']/recordset/record">
-
-            <div class="col-sm-12" record="{field[@name='test_id']}">
-                <div class="row">
-                    <xsl:apply-templates select="field"/>
-                </div>
-                <a href="{$LANG_ABBR}{field[@name='smap_id']/@url}{field[@name='news_id']}" >
-
-                </a>
+        <div class="col-sm-12" record="{field[@name='test_id']}">
+            <div class="row">
+                <xsl:apply-templates select="field"/>
             </div>
+            <a href="{$LANG_ABBR}{field[@name='smap_id']/@url}{field[@name='news_id']}"></a>
+        </div>
     </xsl:template>
 
-    <xsl:template match="component[@name='test' and @componentAction = 'view']/recordset/record">
+    <xsl:template match="component[@name='test' and @componentAction='view']/recordset/record">
         <div class="row" record="{field[@name='test_id']}">
             <div class="col-sm-12">
                 <div class="row">
                     <xsl:apply-templates select="field"/>
                 </div>
-
             </div>
         </div>
     </xsl:template>
 
     <xsl:template match="component[@name='test']/recordset/record/field">
         <div class="col">
-            <xsl:value-of select="." />
+            <xsl:value-of select="."/>
         </div>
     </xsl:template>
-
-
 </xsl:stylesheet>
