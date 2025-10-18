@@ -823,6 +823,8 @@ final class FileRepository extends Grid implements SampleFileRepository
         $builder = new JSONCustomBuilder();
         $this->setBuilder($builder);
 
+        header('Content-Type: application/json; charset=utf-8');
+
         if (!empty($_SERVER['HTTP_ORIGIN']))
         {
             header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
@@ -892,20 +894,6 @@ final class FileRepository extends Grid implements SampleFileRepository
             $response['error'] = true;
             $response['result'] = false;
             $response['error_message'] = (string)$e->getMessage();
-        }
-
-        // IE9 no-flash / iframe upload (fallback)
-        $jsonp = isset($_REQUEST['callback']) ? trim((string)$_REQUEST['callback']) : null;
-        if (!empty($jsonp))
-        {
-            echo '<script type="text/javascript">'
-                . '(function(ctx,jsonp){'
-                . 'if(ctx&&ctx[jsonp]){'
-                . 'ctx[jsonp](200, "OK", "' . addslashes(json_encode($response)) . '")'
-                . '}'
-                . '})(this.parent, "' . $jsonp . '")'
-                . '</script>';
-            exit();
         }
 
         $builder->setProperties($response);

@@ -1,4 +1,19 @@
 @import 'vendor/components/jstree/dist/themes/default/style.min.css';
 @import 'vendor/components/jstree/dist/themes/default-dark/style.min.css';
-@import 'vendor/codemirror/codemirror/lib/codemirror.css';
-@import 'vendor/codemirror/codemirror/theme/elegant.css';
+
+textarea[data-role="code-editor"].code-editor-hidden {
+    display: none !important;
+}
+
+.code-editor-wrapper {
+    margin-top: 0.25rem;
+}
+
+.code-editor-wrapper .cm-editor {
+    width: 100%;
+    font-size: 0.95rem;
+}
+
+.code-editor-wrapper .cm-editor.cm-focused {
+    transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}

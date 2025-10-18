@@ -24,9 +24,6 @@ const customPluginSources = [
     },
 ];
 
-const CODEMIRROR_PLUGIN_ZIP =
-    'https://download.ckeditor.com/codemirror/releases/codemirror_1.17.7.zip';
-
 const removePhpFiles = (directory) => {
     if (!existsSync(directory)) {
         return;
@@ -122,27 +119,5 @@ if (existsSync(ckeditorSourceDir)) {
         cpSync(source, target, { recursive: true });
     });
 
-    const codemirrorPluginDir = resolve(ckeditorTargetDir, 'plugins/codemirror');
-    const codemirrorPluginEntry = resolve(codemirrorPluginDir, 'plugin.js');
-    if (!existsSync(codemirrorPluginEntry)) {
-        const tempDir = mkdtempSync(join(tmpdir(), 'ckeditor-codemirror-'));
-        const archivePath = resolve(tempDir, 'codemirror.zip');
-        try {
-            execSync(`curl -fsSL "${CODEMIRROR_PLUGIN_ZIP}" -o "${archivePath}"`, { stdio: 'inherit' });
-            execSync(`unzip -q "${archivePath}" -d "${tempDir}"`, { stdio: 'inherit' });
-            const extractedDir = resolve(tempDir, 'codemirror');
-            if (!existsSync(extractedDir)) {
-                throw new Error('CKEditor codemirror plugin archive did not contain expected directory.');
-            }
-            if (existsSync(codemirrorPluginDir)) {
-                rmSync(codemirrorPluginDir, { recursive: true, force: true });
-            }
-            mkdirSync(codemirrorPluginDir, { recursive: true });
-            cpSync(extractedDir, codemirrorPluginDir, { recursive: true });
-        } catch (error) {
-            console.warn('[build] Unable to download CKEditor codemirror plugin:', error);
-        } finally {
-            rmSync(tempDir, { recursive: true, force: true });
-        }
-    }
+    // The CKEditor CodeMirror plugin is no longer bundled; legacy download logic removed.
 }

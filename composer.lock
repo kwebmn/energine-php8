@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9725e955c2a7e4dca151448ec3339081",
+    "content-hash": "f44cec5767e280d812191189f31f83d2",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -204,15 +204,6 @@
                 "wiki": "https://ckeditor.com/docs/ckeditor4/latest/"
             },
             "time": "2023-06-30T13:35:30+00:00"
-        },
-        {
-            "name": "codemirror/codemirror",
-            "version": "5.65.16",
-            "dist": {
-                "type": "tar",
-                "url": "https://registry.npmjs.org/codemirror/-/codemirror-5.65.16.tgz"
-            },
-            "type": "library"
         },
         {
             "name": "components/jquery",

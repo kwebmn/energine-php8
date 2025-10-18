@@ -6,12 +6,7 @@ import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
 import loadCKEditor from './ckeditor/loader.js';
-
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const getCodeMirror = () => globalScope?.CodeMirror;
+import loadCodeEditor from './codeEditor/loader.js';
 
 /**
  * @file Contain the description of the next classes:
@@ -357,19 +352,26 @@ class Form {
 
         // CodeMirror
         this.codeEditors = [];
-        const codeMirror = getCodeMirror();
-        if (codeMirror) {
-            this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
-                this.codeEditors.push(
-                    codeMirror.fromTextArea(textarea, {
-                        mode: "text/html",
-                        tabMode: "indent",
-                        lineNumbers: true,
-                        theme: 'elegant'
-                    })
-                );
+        loadCodeEditor()
+            .then((codeEditor) => {
+                if (!codeEditor) return;
+                this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
+                    const language = textarea.dataset.language
+                        || textarea.dataset.lang
+                        || textarea.getAttribute('data-code-language')
+                        || textarea.getAttribute('data-lang')
+                        || 'html';
+                    const editorInstance = codeEditor.enhanceTextArea(textarea, { language });
+                    if (editorInstance) {
+                        this.codeEditors.push(editorInstance);
+                    }
+                });
+            })
+            .catch((error) => {
+                if (window?.console?.warn) {
+                    console.warn('Form: failed to initialize code editor', error);
+                }
             });
-        }
 
         // Acpl поля
         this.form.querySelectorAll('[data-role="acpl"]').forEach(el => {
