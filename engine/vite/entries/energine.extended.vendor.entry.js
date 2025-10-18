@@ -3,10 +3,43 @@ import './styles/extended-vendor.css';
 import './vendor-shims/jquery.js';
 import './vendor-shims/jstree.js';
 
-import { basicSetup } from 'codemirror';
 import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { indentWithTab } from '@codemirror/commands';
+import {
+    EditorView,
+    keymap,
+    lineNumbers,
+    drawSelection,
+    dropCursor,
+    highlightActiveLine,
+    highlightActiveLineGutter,
+    rectangularSelection,
+    crosshairCursor,
+} from '@codemirror/view';
+import {
+    indentOnInput,
+    syntaxHighlighting,
+    defaultHighlightStyle,
+    foldGutter,
+    foldKeymap,
+} from '@codemirror/language';
+import {
+    history,
+    historyKeymap,
+    defaultKeymap,
+    indentWithTab,
+} from '@codemirror/commands';
+import {
+    closeBrackets,
+    closeBracketsKeymap,
+    autocompletion,
+    completionKeymap,
+} from '@codemirror/autocomplete';
+import { lintKeymap } from '@codemirror/lint';
+import {
+    searchKeymap,
+    highlightSelectionMatches,
+} from '@codemirror/search';
+import { bracketMatching } from '@codemirror/matchbrackets';
 import { html } from '@codemirror/lang-html';
 import { javascript } from '@codemirror/lang-javascript';
 import { css } from '@codemirror/lang-css';
@@ -78,9 +111,32 @@ const enhanceTextArea = (textarea, options = {}) => {
     const state = EditorState.create({
         doc: textarea.value || '',
         extensions: [
-            basicSetup,
             lineNumbers(),
-            keymap.of([indentWithTab]),
+            highlightActiveLineGutter(),
+            history(),
+            drawSelection(),
+            dropCursor(),
+            EditorState.allowMultipleSelections.of(true),
+            indentOnInput(),
+            syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+            bracketMatching(),
+            closeBrackets(),
+            autocompletion(),
+            rectangularSelection(),
+            crosshairCursor(),
+            highlightActiveLine(),
+            highlightSelectionMatches(),
+            foldGutter(),
+            keymap.of([
+                indentWithTab,
+                ...defaultKeymap,
+                ...historyKeymap,
+                ...foldKeymap,
+                ...completionKeymap,
+                ...closeBracketsKeymap,
+                ...searchKeymap,
+                ...lintKeymap,
+            ]),
             editorTheme,
             EditorView.lineWrapping,
             updateTextarea,
