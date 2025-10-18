@@ -74,7 +74,7 @@
    - Убедиться, что `<script>`-теги для jQuery/CKEditor остаются без `type="module"` и подключаются до модульных скриптов.
    - При необходимости обернуть обращения к ним в отдельные модули-адаптеры.
 4. **Шаблоны `document.xslt` и `energine.xslt`**
-   - В `engine/core/modules/share/transformers/document.xslt` и `site/modules/default/transformers/energine.xslt` обновить блоки, отвечающие за старт платформы:
+   - В `engine/core/modules/share/transformers/bootstrap/document.xslt` и `site/modules/default/transformers/energine.xslt` обновить блоки, отвечающие за старт платформы:
      - заменить `<script type="text/javascript" src="{$STATIC_URL}scripts/Energine.js"></script>` на модульный аналог (атрибут `type="module"` с сохранением текущего `src`).
      - скорректировать шаблон `START_ENERGINE_JS`, чтобы он генерировал **модульный** inline-скрипт: `import { bootEnergine } from '{$STATIC_URL}scripts/Energine.js';` → сбор конфигурации из XSLT-переменных → вызов `bootEnergine(config)`.
      - если модуль предоставляет `attachToWindow()`, вызвать его здесь же, чтобы глобальный `window.Energine` был доступен до загрузки остальных файлов.
