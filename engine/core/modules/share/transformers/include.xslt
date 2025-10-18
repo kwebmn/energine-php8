@@ -4,20 +4,20 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
     >
     
-    <xsl:import href="base.xslt"/>
+    <xsl:import href="common/base.xslt"/>
     <xsl:include href="document.xslt"/>
-<!--    <xsl:include href="container.xslt"/>-->
-    <xsl:include href="list.xslt"/>
-    <xsl:include href="form-field-wrapper.xslt"/>
-    <xsl:include href="fields.xslt"/>
-    <xsl:include href="form.xslt"/>
-    <xsl:include href="toolbar.xslt"/>
-    <xsl:include href="file.xslt"/>
-    <xsl:include href="divisionEditor.xslt"/>
-    <xsl:include href="tagEditor.xslt"/>
-    <xsl:include href="text.xslt"/>
-    <xsl:include href="media.xslt"/>
-    <xsl:include href="filters_tree_editor.xslt"/>
+<!--    <xsl:include href="layout/container.xslt"/>-->
+    <xsl:include href="components/content/list.xslt"/>
+    <xsl:include href="components/forms/form-field-wrapper.xslt"/>
+    <xsl:include href="components/forms/fields.xslt"/>
+    <xsl:include href="components/forms/form.xslt"/>
+    <xsl:include href="components/navigation/toolbar.xslt"/>
+    <xsl:include href="components/content/file.xslt"/>
+    <xsl:include href="components/editor/divisionEditor.xslt"/>
+    <xsl:include href="components/editor/tagEditor.xslt"/>
+    <xsl:include href="components/content/text.xslt"/>
+    <xsl:include href="components/content/media.xslt"/>
+    <xsl:include href="components/editor/filters_tree_editor.xslt"/>
     <!--<xsl:include href="error_page.xslt"/>-->
     
 </xsl:stylesheet>

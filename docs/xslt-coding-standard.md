@@ -62,7 +62,7 @@
 - Внутри каталога `transformers/` выделяем подкаталоги по UI-стекам. Для Bootstrap 5+ используем `transformers/bootstrap/`. Общие для всех стеков правила располагаются непосредственно в `transformers/`.
 - Каждая библиотека наследует ту же структуру, что и корневой каталог: `bootstrap/document.xslt`, `bootstrap/components/textblock.xslt` и т. д. При добавлении новых библиотек (например, `transformers/mdbootstrap/`) переиспользуем общие файлы через `xsl:import`.
 - Для модулей с большим количеством Bootstrap-шаблонов допускается дополнительный уровень группировки (`bootstrap/components/forms/`, `bootstrap/components/navigation/`).
-- В `engine/core/modules/share/transformers/` точкой входа служит файл `include.xslt` в корне каталога. Он подключает общие правила (`document.xslt`, `field.xslt`) и нужный стек (`bootstrap/include.xslt`), который уже импортирует конкретные компоненты.
+- В `engine/core/modules/share/transformers/` точкой входа служит файл `include.xslt` в корне каталога. Он подключает общие правила из `common/`, корневые шаблоны (`document.xslt`) и компонентные файлы из `components/` (например, `components/navigation/toolbar.xslt`). При необходимости дополнительные UI-стеки подключаются собственными `include.xslt` внутри подкаталогов.
 
 ## Комментарии и документация
 

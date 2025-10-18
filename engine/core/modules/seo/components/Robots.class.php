@@ -43,7 +43,7 @@ class Robots extends DataSet
      */
     protected function main(): void
     {
-        E()->getController()->getTransformer()->setFileName('engine/core/modules/seo/transformers/robots_txt.xslt', true);
+        E()->getController()->getTransformer()->setFileName('engine/core/modules/seo/transformers/documents/robots_txt.xslt', true);
         parent::main();
         $this->setBuilder(new SimpleBuilder());
     }
