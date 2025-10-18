@@ -28,22 +28,6 @@ class Grid extends DBDataSet
     public const DIR_DOWN = '>';
 
     /**
-     * @var FiltersTreeEditor
-     */
-    protected $filtersTree;
-
-    /**
-     * @var AttachmentEditor
-     */
-    protected $attachmentEditor;
-
-    /**
-     * Tag editor.
-     * @var TagEditor
-     */
-    protected $tagEditor;
-
-    /**
      * Saver.
      * @var Saver
      */
@@ -60,12 +44,6 @@ class Grid extends DBDataSet
      * @var Filter
      */
     protected $filter_control;
-
-    /**
-     * Grid for select fields
-     * @var Grid|null
-     */
-    protected $fkCRUDEditor = null;
 
     /**
      * @copydoc DBDataSet::__construct
@@ -142,6 +120,85 @@ class Grid extends DBDataSet
         $params['order'] = false;
 
         return array_merge(parent::defineParams(), $params);
+    }
+
+    public static function getModalRoutePatterns(): array
+    {
+        return array_merge(
+            parent::getModalRoutePatterns(),
+            [
+                'fkEditor'          => ['/[field]-[class]/crud/[any]/'],
+                'attachments'       => ['/attachments/[any]/', '/[id]/attachments/[any]/'],
+                'tags'              => ['/tags/[any]/', '/[id]/tags/[any]/'],
+                'filtersTreeEditor' => ['/filtersTree/[any]/', '/[id]/filtersTree/[any]/'],
+            ]
+        );
+    }
+
+    protected function registerModals(): array
+    {
+        return array_merge(
+            parent::registerModals(),
+            [
+                'fkEditor' => function (Grid $grid, array $stateParams): Component {
+                    return $grid->spawnFkEditor($stateParams);
+                },
+                'attachments' => function (Grid $grid, array $stateParams): Component {
+                    $shift = isset($stateParams['id']) ? 2 : 1;
+                    $grid->getRequest()->shiftPath($shift);
+
+                    $params = [
+                        'origTableName' => $grid->getTableName(),
+                        'pk'            => $grid->getPK(),
+                        'tableName'     => $grid->getTableName() . AttachmentManager::ATTACH_TABLE_SUFFIX,
+                    ];
+
+                    if (isset($stateParams['id']))
+                    {
+                        $params['linkedID'] = $stateParams['id'];
+                    }
+
+                    return $grid->activateModalComponent(
+                        'attachmentEditor',
+                        'share',
+                        'AttachmentEditor',
+                        $params
+                    );
+                },
+                'filtersTreeEditor' => function (Grid $grid, array $stateParams): Component {
+                    $shift = isset($stateParams['id']) ? 2 : 1;
+                    $grid->getRequest()->shiftPath($shift);
+
+                    $params = [
+                        'origTableName' => $grid->getTableName(),
+                        'pk'            => $grid->getPK(),
+                        'tableName'     => $grid->getTableName() . FilterManager::FILTER_TABLE_SUFFIX,
+                    ];
+
+                    if (isset($stateParams['id']))
+                    {
+                        $params['linkedID'] = $stateParams['id'];
+                    }
+
+                    return $grid->activateModalComponent(
+                        'filtersTreeEditor',
+                        'share',
+                        'FiltersTreeEditor',
+                        $params
+                    );
+                },
+                'tags' => function (Grid $grid): Component {
+                    $grid->getRequest()->shiftPath(1);
+
+                    return $grid->activateModalComponent(
+                        'tageditor',
+                        'share',
+                        'TagEditor',
+                        ['config' => 'engine/core/modules/share/config/TagEditorModal.component.xml']
+                    );
+                },
+            ]
+        );
     }
 
     /**
@@ -353,47 +410,118 @@ class Grid extends DBDataSet
     }
 
     /**
-     * Single mode state that show Grid for select field values
+     * Создать встраиваемый редактор для выбора значения внешнего ключа.
+     *
+     * @param array<int|string, mixed> $stateParams
      */
-    protected function fkEditor()
+    protected function spawnFkEditor(array $stateParams): Component
     {
-        list($fkField, $className) = $this->getStateParams();
+        $values = array_values($stateParams);
+
+        $fkField = $stateParams['field'] ?? ($values[0] ?? null);
+        $className = $stateParams['class'] ?? ($values[1] ?? null);
+
+        if (!is_string($fkField) || !is_string($className))
+        {
+            throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER, 'fkEditor');
+        }
+
         $className = explode('\\', urldecode($className));
 
         if (count($className) > 1)
         {
-            list($module, $class) = $className;
+            [$module, $class] = $className;
         }
         else
         {
-            $module = $this->module;
-            list($class) = $className;
+            $module = $this->getModule();
+            [$class] = $className;
         }
-        unset($className);
 
         $params = [];
 
-        if ($class == 'Grid')
+        if ($class === 'Grid')
         {
-            $cols = $this->dbh->getColumnsInfo($this->getTableName());
-            if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
+            if (!$this->hasDataDescription())
             {
-                $cols = $this->dbh->getColumnsInfo($this->getTranslationTableName());
-                if (!in_array($fkField, array_keys($cols), true))
+                $this->setDataDescription($this->createDataDescription());
+            }
+
+            $fieldDescription = $this->getDataDescription()->getFieldDescriptionByName($fkField);
+            if ($fieldDescription instanceof FieldDescription
+                && $fieldDescription->getType() === FieldDescription::FIELD_TYPE_MULTI)
+            {
+                $keyInfo = $fieldDescription->getPropertyValue('key');
+                if (!is_array($keyInfo) || empty($keyInfo['tableName']) || empty($keyInfo['fieldName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $m2mTableName = (string)$keyInfo['tableName'];
+                $m2mOwnerColumn = (string)$keyInfo['fieldName'];
+
+                if (!$this->dbh->tableExists($m2mTableName))
+                {
+                    throw new SystemException('ERR_DEV_NO_TABLENAME', SystemException::ERR_DEVELOPER, $m2mTableName);
+                }
+
+                $m2mColumns = $this->dbh->getColumnsInfo($m2mTableName);
+                if (!array_key_exists($m2mOwnerColumn, $m2mColumns))
+                {
+                    throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $m2mOwnerColumn);
+                }
+                unset($m2mColumns[$m2mOwnerColumn]);
+
+                $fkMeta = null;
+                foreach ($m2mColumns as $columnMeta)
+                {
+                    if (isset($columnMeta['key']) && is_array($columnMeta['key']) && !empty($columnMeta['key']['tableName']))
+                    {
+                        $fkMeta = $columnMeta['key'];
+                        break;
+                    }
+                }
+
+                if (!is_array($fkMeta) || empty($fkMeta['tableName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $params['tableName'] = $fkMeta['tableName'];
+                if (!empty($fkMeta['fieldName']))
+                {
+                    $params['keyFieldName'] = $fkMeta['fieldName'];
+                }
+            }
+            else
+            {
+                $cols = $this->dbh->getColumnsInfo($this->getTableName());
+                if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
+                {
+                    $cols = $this->dbh->getColumnsInfo($this->getTranslationTableName());
+                    if (!in_array($fkField, array_keys($cols), true))
+                    {
+                        throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                    }
+                }
+                elseif (!$this->getTranslationTableName())
                 {
                     throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
                 }
-            }
-            elseif (!$this->getTranslationTableName())
-            {
-                throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
-            }
 
-            if (!is_array($cols[$fkField]['key']))
-            {
-                throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+
+                $keyInfo = $cols[$fkField]['key'] ?? null;
+                if (!is_array($keyInfo) || empty($keyInfo['tableName']))
+                {
+                    throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
+                }
+
+                $params['tableName'] = $keyInfo['tableName'];
+                if (!empty($keyInfo['fieldName']))
+                {
+                    $params['keyFieldName'] = $keyInfo['fieldName'];
+                }
             }
-            $params['tableName'] = $cols[$fkField]['key']['tableName'];
         }
         else
         {
@@ -407,19 +535,20 @@ class Grid extends DBDataSet
             }
         }
 
-        // Search for modal component config
-        if (!file_exists($config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . 'Modal.component.xml'))
+        $config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . 'Modal.component.xml';
+        if (!file_exists($config))
         {
-            if (!file_exists($config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . '.component.xml'))
+            $config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, $module) . $class . '.component.xml';
+            if (!file_exists($config))
             {
                 $config = CORE_REL_DIR . sprintf(ComponentConfig::CORE_CONFIG_DIR, 'share') . 'GridModal.component.xml';
             }
         }
         $params['config'] = $config;
 
-        $this->request->shiftPath(2);
-        $this->fkCRUDEditor = $this->document->componentManager->createComponent('fkEditor', $module, $class, $params);
-        $this->fkCRUDEditor->run();
+        $this->getRequest()->shiftPath(2);
+
+        return $this->activateModalComponent('fkEditor', $module, $class, $params);
     }
 
     /**
@@ -428,6 +557,61 @@ class Grid extends DBDataSet
     protected function fkValues()
     {
         list($fkField) = $this->getStateParams();
+
+        if (!$this->hasDataDescription())
+        {
+            $this->setDataDescription($this->createDataDescription());
+        }
+
+        $fieldDescription = $this->getDataDescription()->getFieldDescriptionByName($fkField);
+
+        if ($fieldDescription instanceof FieldDescription
+            && $fieldDescription->getType() === FieldDescription::FIELD_TYPE_MULTI)
+        {
+            $fkData = $this->getMultiFieldFKValues($fieldDescription);
+            $columnMeta = null;
+        }
+        else
+        {
+            [$fkData, $columnMeta] = $this->getScalarFieldFKValues($fkField);
+        }
+
+        if (!($fieldDescription instanceof FieldDescription)
+            || $fieldDescription->getType() !== FieldDescription::FIELD_TYPE_MULTI)
+        {
+            if (
+                is_array($columnMeta)
+                && ($columnMeta['nullable'] ?? false)
+                && is_array($fkData)
+                && isset($fkData[0], $fkData[1], $fkData[2])
+            ) {
+                $rows = $fkData[0];
+                if ($rows === true || $rows === false || $rows === null) {
+                    $rows = [];
+                }
+                if (!is_array($rows)) {
+                    $rows = [];
+                }
+
+                array_unshift($rows, [
+                    $fkData[1] => '',
+                    $fkData[2] => '',
+                ]);
+
+                $fkData[0] = array_values($rows);
+            }
+        }
+
+        $builder = new JSONCustomBuilder();
+        $builder->setProperty('result', $fkData);
+        $this->setBuilder($builder);
+    }
+
+    /**
+     * @throws SystemException
+     */
+    private function getScalarFieldFKValues(string $fkField): array
+    {
         $cols = $this->dbh->getColumnsInfo($this->getTableName());
 
         if (!in_array($fkField, array_keys($cols), true) && $this->getTranslationTableName())
@@ -448,12 +632,61 @@ class Grid extends DBDataSet
             throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fkField);
         }
 
-        $builder = new JSONCustomBuilder();
-        $builder->setProperty(
-            'result',
-            $this->getFKData($cols[$fkField]['key']['tableName'], $cols[$fkField]['key']['fieldName'])
-        );
-        $this->setBuilder($builder);
+        return [
+            $this->getFKData(
+                $cols[$fkField]['key']['tableName'],
+                $cols[$fkField]['key']['fieldName']
+            ),
+            $cols[$fkField],
+        ];
+    }
+
+    /**
+     * @throws SystemException
+     */
+    private function getMultiFieldFKValues(FieldDescription $fieldDescription): array
+    {
+        $keyInfo = $fieldDescription->getPropertyValue('key');
+        if (!is_array($keyInfo) || empty($keyInfo['tableName']) || empty($keyInfo['fieldName']))
+        {
+            throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fieldDescription->getName());
+        }
+
+        $m2mTableName = (string)$keyInfo['tableName'];
+        $m2mOwnerColumn = (string)$keyInfo['fieldName'];
+
+        if (!$this->dbh->tableExists($m2mTableName))
+        {
+            throw new SystemException('ERR_DEV_NO_TABLENAME', SystemException::ERR_DEVELOPER, $m2mTableName);
+        }
+
+        $m2mColumns = $this->dbh->getColumnsInfo($m2mTableName);
+        if (!array_key_exists($m2mOwnerColumn, $m2mColumns))
+        {
+            throw new SystemException('ERR_NO_COLUMN', SystemException::ERR_DEVELOPER, $m2mOwnerColumn);
+        }
+
+        unset($m2mColumns[$m2mOwnerColumn]);
+
+        $fkMeta = null;
+        foreach ($m2mColumns as $columnMeta)
+        {
+            if (isset($columnMeta['key']) && is_array($columnMeta['key']) && !empty($columnMeta['key']['tableName']))
+            {
+                $fkMeta = $columnMeta['key'];
+                break;
+            }
+        }
+
+        if (!is_array($fkMeta) || empty($fkMeta['tableName']) || empty($fkMeta['fieldName']))
+        {
+            throw new SystemException('ERR_BAD_FK_COLUMN', SystemException::ERR_DEVELOPER, $fieldDescription->getName());
+        }
+
+        $fkTableName = (string)$fkMeta['tableName'];
+        $fkKeyField = (string)$fkMeta['fieldName'];
+
+        return $this->getFKData($fkTableName, $fkKeyField);
     }
 
     /**
@@ -499,11 +732,6 @@ class Grid extends DBDataSet
 
     private function flushGlobalCaches(): void
     {
-        if ((int)BaseObject::_getConfigValue('site.apcu') === 1 && function_exists('apcu_clear_cache'))
-        {
-            apcu_clear_cache();
-        }
-
         if (function_exists('E') && E()->__isset('psrCache'))
         {
             $cache = E()->psrCache;
@@ -533,9 +761,14 @@ class Grid extends DBDataSet
         ], true))
         {
             $dd = $this->getDataDescription();
-            if ($selects = $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_SELECT))
+            $selectLikeFields = array_merge(
+                $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_SELECT) ?? [],
+                $dd->getFieldDescriptionsByType(FieldDescription::FIELD_TYPE_MULTI) ?? []
+            );
+
+            if ($selectLikeFields)
             {
-                foreach ($selects as $select)
+                foreach ($selectLikeFields as $select)
                 {
                     $editorClassName = $select->getPropertyValue('editor');
                     // null — используем Grid по умолчанию
@@ -780,18 +1013,9 @@ class Grid extends DBDataSet
      */
     public function build(): DOMDocument
     {
-        switch ($this->getState())
+        if ($modal = $this->getActiveModalComponent())
         {
-            case 'attachments':
-                return $this->attachmentEditor->build();
-            case 'tags':
-                return $this->tagEditor->build();
-            case 'fkEditor':
-                return $this->fkCRUDEditor->build();
-            case 'filtersTreeEditor':
-                return $this->filtersTree->build();
-            default:
-                // do nothing
+            return $modal->build();
         }
 
         if ($this->getType() == self::COMPONENT_TYPE_LIST)
@@ -861,80 +1085,6 @@ class Grid extends DBDataSet
         }
 
         return $result;
-    }
-
-    /**
-     * Show component: attachments.
-     */
-    protected function attachments()
-    {
-        $sp = $this->getStateParams(true);
-        $attachmentEditorParams = [
-            'origTableName' => $this->getTableName(),
-            'pk' => $this->getPK(),
-            'tableName' => $this->getTableName() . AttachmentManager::ATTACH_TABLE_SUFFIX,
-        ];
-
-        if (isset($sp['id']))
-        {
-            $this->request->shiftPath(2);
-            $attachmentEditorParams['linkedID'] = $sp['id'];
-        }
-        else
-        {
-            $this->request->shiftPath(1);
-        }
-
-        $this->attachmentEditor = $this->document->componentManager->createComponent(
-            'attachmentEditor',
-            'share',
-            'AttachmentEditor',
-            $attachmentEditorParams
-        );
-        $this->attachmentEditor->run();
-    }
-
-    protected function filtersTreeEditor()
-    {
-        $sp = $this->getStateParams(true);
-        $filtersTreeEditorParams = [
-            'origTableName' => $this->getTableName(),
-            'pk' => $this->getPK(),
-            'tableName' => $this->getTableName() . FilterManager::FILTER_TABLE_SUFFIX,
-        ];
-
-        if (isset($sp['id']))
-        {
-            $this->request->shiftPath(2);
-            $filtersTreeEditorParams['linkedID'] = $sp['id'];
-        }
-        else
-        {
-            $this->request->shiftPath(1);
-        }
-
-        $this->filtersTree = $this->document->componentManager->createComponent(
-            'filtersTreeEditor',
-            'share',
-            'FiltersTreeEditor',
-            $filtersTreeEditorParams
-        );
-        $this->filtersTree->run();
-    }
-
-    /**
-     * Show component: tag editor.
-     */
-    protected function tags()
-    {
-        $this->request->setPathOffset($this->request->getPathOffset() + 1);
-        $this->tagEditor = $this->document->componentManager->createComponent(
-            'tageditor',
-            'share',
-            'TagEditor',
-            ['config' => 'engine/core/modules/share/config/TagEditorModal.component.xml']
-        );
-        $this->tagEditor->run();
     }
 
     /**

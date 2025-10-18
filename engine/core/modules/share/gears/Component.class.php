@@ -39,6 +39,16 @@ class Component extends DBWorker implements IBlock
     private bool $enabled = true;
 
     /**
+     * Реестр дочерних (встраиваемых) состояний для компонента.
+     *
+     * @var array<string, callable|array>
+     */
+    private ?array $modalRegistry = null;
+
+    /** Текущий активный дочерний блок/компонент (если состояние встраиваемое). */
+    private ?IBlock $activeModalComponent = null;
+
+    /**
      * Параметры состояния (из URI/конфига).
      * null — если параметров нет.
      *
@@ -300,13 +310,28 @@ class Component extends DBWorker implements IBlock
     }
 
     /**
+     * Имя модуля, к которому относится компонент.
+     */
+    final public function getModule(): string
+    {
+        return $this->module;
+    }
+
+    /**
      * Запуск метода текущего состояния.
      *
      * @throws SystemException
      */
     public function run(): void
     {
+        $this->clearActiveModalComponent();
+
         $params = $this->getStateParams() ?: [];
+
+        if ($this->handleModalState($this->getState()))
+        {
+            return;
+        }
 
         // Приоритет у методов с суффиксом "State"
         $methodState = $this->getState() . 'State';
@@ -394,6 +419,11 @@ class Component extends DBWorker implements IBlock
      */
     public function build(): DOMDocument
     {
+        if ($modal = $this->getActiveModalComponent())
+        {
+            return $modal->build();
+        }
+
         $root = $this->doc->createElement('component');
         $root->setAttribute('name', $this->getName());
         $root->setAttribute('module', $this->module);
@@ -451,6 +481,145 @@ class Component extends DBWorker implements IBlock
             $this->stateParams = [];
         }
         $this->stateParams[$paramName] = $paramValue;
+    }
+
+    /**
+     * Карта URI-паттернов для дочерних состояний.
+     *
+     * Потомки могут вернуть массив вида
+     * `['stateName' => ['/pattern/', '/another/']]` либо
+     * `['stateName' => ['patterns' => [...], 'rights' => 3]]`, чтобы
+     * `ComponentConfig` автоматически зарегистрировал необходимые состояния.
+     *
+     * @return array<string, array<int, string>|array{patterns: array<int, string>, rights?: int}>
+     */
+    public static function getModalRoutePatterns(): array
+    {
+        return [];
+    }
+
+    /**
+     * Переопределяемый метод регистрации дочерних (встраиваемых) состояний.
+     *
+     * @return array<string, callable|array>
+     */
+    protected function registerModals(): array
+    {
+        return [];
+    }
+
+    /** Получить текущий HTTP-запрос. */
+    final protected function getRequest(): Request
+    {
+        return $this->request;
+    }
+
+    /** Установить активный дочерний блок/компонент. */
+    final protected function setActiveModalComponent(IBlock $component): void
+    {
+        $this->activeModalComponent = $component;
+    }
+
+    /** Возвращает активный дочерний блок/компонент (если есть). */
+    final protected function getActiveModalComponent(): ?IBlock
+    {
+        return $this->activeModalComponent;
+    }
+
+    /** Сбросить активный дочерний компонент. */
+    final protected function clearActiveModalComponent(): void
+    {
+        $this->activeModalComponent = null;
+    }
+
+    /** Создать, запустить и сделать активным дочерний компонент. */
+    final protected function activateModalComponent(
+        string $name,
+        string $module,
+        string $class,
+        ?array $params = null
+    ): Component {
+        $component = $this->document->componentManager->createComponent($name, $module, $class, $params);
+        $component->run();
+        $this->setActiveModalComponent($component);
+
+        return $component;
+    }
+
+    /** Получить нормализованный реестр дочерних состояний. */
+    private function getModalRegistry(): array
+    {
+        if ($this->modalRegistry === null)
+        {
+            $registry = $this->registerModals();
+            $this->modalRegistry = is_array($registry) ? $registry : [];
+        }
+
+        return $this->modalRegistry;
+    }
+
+    /** Проверить и обработать дочернее состояние. */
+    private function handleModalState(string $state): bool
+    {
+        $registry = $this->getModalRegistry();
+
+        if (!array_key_exists($state, $registry))
+        {
+            return false;
+        }
+
+        $stateParams = $this->getStateParams(true) ?? [];
+        $definition = $registry[$state];
+
+        if (is_callable($definition))
+        {
+            $component = $definition($this, $stateParams);
+
+            if (!$component instanceof IBlock)
+            {
+                throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER, $state);
+            }
+
+            if ($this->getActiveModalComponent() !== $component)
+            {
+                $component->run();
+                $this->setActiveModalComponent($component);
+            }
+
+            return true;
+        }
+
+        if (!is_array($definition) || !isset($definition['class']))
+        {
+            throw new SystemException('ERR_DEV_BAD_DATA', SystemException::ERR_DEVELOPER, $state);
+        }
+
+        $name = $definition['name'] ?? $state;
+        $module = $definition['module'] ?? $this->module;
+        $params = $definition['params'] ?? null;
+
+        if (is_callable($params))
+        {
+            $params = $params($this, $stateParams);
+        }
+
+        if ($params !== null && !is_array($params))
+        {
+            $params = (array)$params;
+        }
+
+        /** @var Component $component */
+        $component = $this->document->componentManager->createComponent($name, $module, $definition['class'], $params);
+
+        if (isset($definition['configure']) && is_callable($definition['configure']))
+        {
+            $definition['configure']($this, $component, $stateParams);
+        }
+
+        $component->run();
+        $this->setActiveModalComponent($component);
+
+        return true;
     }
 }
 

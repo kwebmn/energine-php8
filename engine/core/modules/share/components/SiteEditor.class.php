@@ -7,15 +7,6 @@ declare(strict_types=1);
  */
 class SiteEditor extends Grid
 {
-    /** @var DivisionEditor|null */
-    private ?DivisionEditor $divEditor = null;
-
-    /** @var DomainEditor|null */
-    private ?DomainEditor $domainEditor = null;
-
-    /** @var SitePropertiesEditor|null */
-    private ?SitePropertiesEditor $propertiesEditor = null;
-
     /**
      * @inheritDoc
      */
@@ -24,6 +15,50 @@ class SiteEditor extends Grid
         parent::__construct($name, $module, $params);
         $this->setTableName('share_sites');
         $this->setSaver(new SiteSaver());
+    }
+
+    protected function registerModals(): array
+    {
+        return array_merge(
+            parent::registerModals(),
+            [
+                'reset' => function (SiteEditor $editor): Component {
+                    $editor->getRequest()->shiftPath(1);
+
+                    return $editor->activateModalComponent('dEditor', 'share', 'DivisionEditor');
+                },
+                'domains' => function (SiteEditor $editor, array $stateParams): Component {
+                    if (isset($stateParams['site_id']))
+                    {
+                        $editor->getRequest()->shiftPath(2);
+                        $params = ['siteID' => $stateParams['site_id']];
+                    }
+                    else
+                    {
+                        $editor->getRequest()->shiftPath(1);
+                        $params = [];
+                    }
+
+                    return $editor->activateModalComponent('domainEditor', 'share', 'DomainEditor', $params);
+                },
+                'properties' => function (SiteEditor $editor, array $stateParams): Component {
+                    $params = [];
+
+                    if (isset($stateParams['site_id']))
+                    {
+                        $editor->getRequest()->shiftPath(2);
+                        $params['siteID'] = $stateParams['site_id'];
+                    }
+
+                    return $editor->activateModalComponent(
+                        'propertiesEditor',
+                        'share',
+                        'SitePropertiesEditor',
+                        $params ?: null
+                    );
+                },
+            ]
+        );
     }
 
     /**
@@ -134,77 +169,19 @@ class SiteEditor extends Grid
     }
 
     /**
-     * Сброс редактора: перейти к редактору разделов.
-     */
-    protected function reset(): void
-    {
-        $this->request->shiftPath(1);
-        $this->divEditor = $this->document->componentManager->createComponent('dEditor', 'share', 'DivisionEditor');
-        $this->divEditor->run();
-    }
-
-    /**
-     * Вкладка доменов.
-     */
-    protected function domains(): void
-    {
-        $sp = $this->getStateParams(true);
-        $params = [];
-
-        if (isset($sp['site_id']))
-        {
-            $this->request->shiftPath(2);
-            $params = ['siteID' => $sp['site_id']];
-        }
-        else
-        {
-            $this->request->shiftPath(1);
-        }
-
-        $this->domainEditor = $this->document->componentManager->createComponent(
-            'domainEditor',
-            'share',
-            'DomainEditor',
-            $params
-        );
-        $this->domainEditor->run();
-    }
-
-    /**
      * Доп. свойства сайта.
      */
-    protected function properties(): void
-    {
-        $sp = $this->getStateParams(true);
-        $params = [];
-
-        if (isset($sp['site_id']))
-        {
-            $this->request->shiftPath(2);
-            $params = ['siteID' => $sp['site_id']];
-        }
-
-        $this->propertiesEditor = $this->document->componentManager->createComponent(
-            'propertiesEditor',
-            'share',
-            'SitePropertiesEditor',
-            $params
-        );
-        $this->propertiesEditor->run();
-    }
-
     /**
      * @inheritDoc
      */
     public function build(): DOMDocument
     {
-        return match ($this->getState())
+        if ($modal = $this->getActiveModalComponent())
         {
-            'reset'      => $this->divEditor?->build() ?? parent::build(),
-            'domains'    => $this->domainEditor?->build() ?? parent::build(),
-            'properties' => $this->propertiesEditor?->build() ?? parent::build(),
-            default      => parent::build(),
-        };
+            return $modal->build();
+        }
+
+        return parent::build();
     }
 
     /**

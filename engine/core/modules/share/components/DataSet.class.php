@@ -15,21 +15,6 @@ declare(strict_types=1);
 abstract class DataSet extends Component
 {
     /**
-     * File library.
-     */
-    protected ?FileRepository $fileLibrary = null;
-
-    /**
-     * Image manager.
-     */
-    protected ?ImageManager $imageManager = null;
-
-    /**
-     * Source.
-     */
-    private ?TextBlockSource $source = null;
-
-    /**
      * Component type: list.
      */
     public const COMPONENT_TYPE_LIST = 'list';
@@ -114,6 +99,43 @@ abstract class DataSet extends Component
                 $this->translate($this->getParam('title'))
             );
         }
+    }
+
+    public static function getModalRoutePatterns(): array
+    {
+        return array_merge(
+            parent::getModalRoutePatterns(),
+            [
+                'fileLibrary'  => ['/file-library/', '/file-library/[any]/'],
+                'imageManager' => ['/imagemanager/'],
+                'source'       => ['/source/'],
+            ]
+        );
+    }
+
+    protected function registerModals(): array
+    {
+        return array_merge(
+            parent::registerModals(),
+            [
+                'fileLibrary' => function (DataSet $dataset): Component {
+                    $dataset->getRequest()->shiftPath(1);
+
+                    return $dataset->activateModalComponent(
+                        'filelibrary',
+                        'share',
+                        'FileRepository',
+                        ['config' => 'engine/core/modules/share/config/FileRepositorySelect.component.xml']
+                    );
+                },
+                'imageManager' => function (DataSet $dataset): Component {
+                    return $dataset->activateModalComponent('imagemanager', 'share', 'ImageManager');
+                },
+                'source' => function (DataSet $dataset): Component {
+                    return $dataset->activateModalComponent('textblocksource', 'share', 'TextBlockSource');
+                },
+            ]
+        );
     }
 
     /**
@@ -216,6 +238,14 @@ abstract class DataSet extends Component
         }
 
         return $this->dataDescription;
+    }
+
+    /**
+     * Check if data description is already initialised.
+     */
+    final protected function hasDataDescription(): bool
+    {
+        return $this->dataDescription instanceof DataDescription;
     }
 
     /**
@@ -372,78 +402,68 @@ abstract class DataSet extends Component
      */
     public function build(): DOMDocument
     {
-        if ($this->getState() === 'fileLibrary')
+        if ($modal = $this->getActiveModalComponent())
         {
-            $result = $this->fileLibrary->build();
+            return $modal->build();
         }
-        elseif ($this->getState() === 'imageManager')
+
+        if (!$this->getBuilder())
         {
-            $result = $this->imageManager->build();
+            throw new SystemException(
+                'ERR_DEV_NO_BUILDER:' . $this->getName() . ': ' . $this->getState(),
+                SystemException::ERR_CRITICAL,
+                $this->getName()
+            );
         }
-        elseif ($this->getState() === 'source')
+
+        // передаем данные и описание данных построителю
+        if ($this->getData() && method_exists($this->getBuilder(), 'setData'))
         {
-            $result = $this->source->build();
+            $this->getBuilder()->setData($this->getData());
         }
-        else
+
+        if (method_exists($this->getBuilder(), 'setDataDescription'))
         {
-            if (!$this->getBuilder())
-            {
-                throw new SystemException(
-                    'ERR_DEV_NO_BUILDER:' . $this->getName() . ': ' . $this->getState(),
-                    SystemException::ERR_CRITICAL,
-                    $this->getName()
-                );
-            }
+            $this->getBuilder()->setDataDescription($this->getDataDescription());
+        }
 
-            // передаем данные и описание данных построителю
-            if ($this->getData() && method_exists($this->getBuilder(), 'setData'))
-            {
-                $this->getBuilder()->setData($this->getData());
-            }
+        // вызываем родительский метод построения
+        $result = parent::build();
 
-            if (method_exists($this->getBuilder(), 'setDataDescription'))
-            {
-                $this->getBuilder()->setDataDescription($this->getDataDescription());
-            }
+        if ($this->js)
+        {
+            $result->documentElement->appendChild($result->importNode($this->js, true));
+        }
 
-            // вызываем родительский метод построения
-            $result = parent::build();
-
-            if ($this->js)
+        $toolbars = $this->getToolbar();
+        if (!empty($toolbars))
+        {
+            foreach ($toolbars as $tb)
             {
-                $result->documentElement->appendChild($result->importNode($this->js, true));
-            }
-
-            $toolbars = $this->getToolbar();
-            if (!empty($toolbars))
-            {
-                foreach ($toolbars as $tb)
+                if ($toolbar = $tb->build())
                 {
-                    if ($toolbar = $tb->build())
-                    {
-                        $result->documentElement->appendChild(
-                            $result->importNode($toolbar, true)
-                        );
-                    }
+                    $result->documentElement->appendChild(
+                        $result->importNode($toolbar, true)
+                    );
                 }
             }
+        }
 
-            if (
-                $this->pager
-                && $this->getType() === self::COMPONENT_TYPE_LIST
-                && ($pagerData = $this->pager->build())
-            ) {
-                $pager = $result->importNode($pagerData, true);
-                $result->documentElement->appendChild($pager);
-            }
+        if (
+            $this->pager
+            && $this->getType() === self::COMPONENT_TYPE_LIST
+            && ($pagerData = $this->pager->build())
+        ) {
+            $pager = $result->importNode($pagerData, true);
+            $result->documentElement->appendChild($pager);
+        }
 
-            // Работа с константами переводов
-            if (($methodConfig = $this->getConfig()->getCurrentStateConfig()) && $methodConfig->translations)
+        // Работа с константами переводов
+        if (($methodConfig = $this->getConfig()->getCurrentStateConfig()) && $methodConfig->translations)
+        {
+            foreach ($methodConfig->translations->translation as $translation)
             {
-                foreach ($methodConfig->translations->translation as $translation)
-                {
-                    $this->addTranslation((string)$translation['const']);
-                }
+                $this->addTranslation((string)$translation['const']);
             }
         }
 
@@ -719,110 +739,6 @@ abstract class DataSet extends Component
         ];
 
         $this->addTranslation(...$translations);
-    }
-
-    /**
-     * Get file library.
-     */
-    protected function fileLibrary(): void
-    {
-        $this->request->shiftPath(1);
-
-        $this->fileLibrary = $this->document->componentManager->createComponent(
-            'filelibrary',
-            'share',
-            'FileRepository',
-            ['config' => 'engine/core/modules/share/config/FileRepositorySelect.component.xml']
-        );
-
-        $this->fileLibrary->run();
-    }
-
-    /**
-     * Run source.
-     */
-    protected function source(): void
-    {
-        $this->source = $this->document->componentManager->createComponent(
-            'textblocksource',
-            'share',
-            'TextBlockSource',
-            null
-        );
-        $this->source->run();
-    }
-
-    /**
-     * Show image manager.
-     */
-    protected function imageManager(): void
-    {
-        $this->imageManager = $this->document->componentManager->createComponent(
-            'imagemanager',
-            'share',
-            'ImageManager',
-            null
-        );
-        $this->imageManager->run();
-    }
-
-    /**
-     * Player for embedding in text areas.
-     */
-    protected function embedPlayer(): void
-    {
-        $sp = $this->getStateParams();
-        [$uplId] = $sp;
-
-        $fileInfo = $this->dbh->select(
-            'share_uploads',
-            [
-                'upl_path',
-                'upl_name',
-            ],
-            [
-                'upl_id'            => (int)$uplId,
-                'upl_internal_type' => FileRepoInfo::META_TYPE_VIDEO,
-            ]
-        );
-
-        if (!is_array($fileInfo))
-        {
-            throw new SystemException('ERROR_NO_VIDEO_FILE', SystemException::ERR_404);
-        }
-
-        // Using array_values to transform associative index to key index
-        [$file, $name] = array_values($fileInfo[0]);
-
-        $dd = new DataDescription();
-        foreach ([
-                     'file' => FieldDescription::FIELD_TYPE_STRING,
-                     'name' => FieldDescription::FIELD_TYPE_STRING,
-                 ] as $fName => $fType)
-        {
-            $fd = new FieldDescription($fName);
-            $fd->setType($fType);
-            $dd->addFieldDescription($fd);
-        }
-
-        $this->setBuilder(new SimpleBuilder());
-        $this->setDataDescription($dd);
-
-        $data = new Data();
-        $data->load([
-            [
-                'file' => $file,
-                'name' => $name,
-            ],
-        ]);
-        $this->setData($data);
-
-        $this->js = $this->buildJS();
-
-        E()->getController()->getTransformer()->setFileName(
-            'engine/core/modules/share/transformers/embed_player.xslt',
-            true
-        );
     }
 
     /**

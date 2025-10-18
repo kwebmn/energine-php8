@@ -32,6 +32,9 @@ class DBStructureInfo extends BaseObject
     /** Легаси-кеш (совместим с вашим Cache) */
     private $legacyCache = null;
 
+    /** Отмеченные таблицы с уже дополненными данными о внешних ключах. */
+    private array $fkAugmented = [];
+
     public function __construct(PDO $pdo, $cache = null)
     {
         $this->pdo = $pdo;
@@ -138,7 +141,15 @@ class DBStructureInfo extends BaseObject
         // если уже есть заполненные метаданные — отдадим
         if (isset($this->structure[$tableName]) && is_array($this->structure[$tableName]) && $this->structure[$tableName] !== [])
         {
-            return $this->structure[$tableName];
+            $meta = $this->structure[$tableName];
+            if (!($this->fkAugmented[$tableName] ?? false))
+            {
+                $meta = $this->ensureForeignKeyMetadata($tableName, $meta);
+                $this->structure[$tableName] = $meta;
+                $this->fkAugmented[$tableName] = true;
+                $this->persistCache();
+            }
+            return $meta;
         }
 
         // попытаемся как «таблица»
@@ -156,8 +167,10 @@ class DBStructureInfo extends BaseObject
             $col['tableName'] = $tableName;
         }
 
-        // закешируем
+        // дополним сведениями о внешних ключах (и закешируем)
+        $meta = $this->ensureForeignKeyMetadata($tableName, $meta);
         $this->structure[$tableName] = $meta;
+        $this->fkAugmented[$tableName] = true;
         $this->persistCache();
 
         return $this->structure[$tableName];
@@ -204,9 +217,10 @@ class DBStructureInfo extends BaseObject
      * Анализ обычной таблицы.
      */
     private function analyzeTable(string $tableName): array
-    {
+    {        
         // разбор db/table
         $parts = DBA::getFQTableName($tableName, true);
+        
         // последний элемент — всегда имя таблицы
         $tbl = $parts[count($parts) - 1];
         // предпоследний — база (если есть)
@@ -222,6 +236,7 @@ class DBStructureInfo extends BaseObject
 
         $cols = [];
         $idxs = [];
+        $fkMap = [];
 
         try
         {
@@ -236,9 +251,11 @@ class DBStructureInfo extends BaseObject
             {
                 $idxs = $idxStmt->fetchAll(PDO::FETCH_ASSOC);
             }
+            
         }
         catch (\PDOException $e)
         {
+            
             // если это не 1142 — пробрасываем дальше
             $errno = $e->errorInfo[1] ?? null;
             if ((int)$errno !== 1142)
@@ -261,6 +278,44 @@ class DBStructureInfo extends BaseObject
             $st = $this->pdo->prepare($iSql);
             $st->execute([$db, $tbl]);
             $idxs = $st->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        try
+        {
+            $fkSql = 'SELECT COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_SCHEMA
+                      FROM information_schema.KEY_COLUMN_USAGE
+                      WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :tbl AND REFERENCED_TABLE_NAME IS NOT NULL';
+            $fkStmt = $this->pdo->prepare($fkSql);
+            $fkStmt->execute([':db' => $db, ':tbl' => $tbl]);
+            while ($fkRow = $fkStmt->fetch(PDO::FETCH_ASSOC))
+            {
+                $column     = $fkRow['COLUMN_NAME']             ?? $fkRow['Column_name']            ?? null;
+                $refTable   = $fkRow['REFERENCED_TABLE_NAME']   ?? $fkRow['Referenced_table_name']  ?? null;
+                $refColumn  = $fkRow['REFERENCED_COLUMN_NAME']  ?? $fkRow['Referenced_column_name'] ?? null;
+                $constraint = $fkRow['CONSTRAINT_NAME']         ?? $fkRow['Constraint_name']        ?? null;
+                $refSchema  = $fkRow['REFERENCED_TABLE_SCHEMA'] ?? $fkRow['Referenced_table_schema'] ?? null;
+
+                if (!$column || !$refTable || !$refColumn)
+                {
+                    continue;
+                }
+
+                $qualifiedRefTable = $refTable;
+                if ($refSchema && strcasecmp($refSchema, (string)$db) !== 0)
+                {
+                    $qualifiedRefTable = "{$refSchema}.{$refTable}";
+                }
+
+                $fkMap[$column] = [
+                    'tableName'  => $qualifiedRefTable,
+                    'fieldName'  => $refColumn,
+                    'constraint' => $constraint ?: null,
+                ];
+            }
+        }
+        catch (\Throwable)
+        {
+            // ignore details; FK metadata is optional
         }
 
         // разберём индексы
@@ -309,10 +364,98 @@ class DBStructureInfo extends BaseObject
                 'nullable' => (strcasecmp((string)$nullS, 'YES') === 0),
                 'length'   => $len,
                 'default'  => $deflt,
-                'key'      => isset($primary[$field]),
+                'key'      => $fkMap[$field] ?? (isset($primary[$field]) ? true : false),
                 'type'     => self::convertType((string)$typeS),
                 'index'    => isset($primary[$field]) ? 'PRI' : (isset($mul[$field]) ? 'MUL' : false),
             ];
+        }
+
+        return $meta;
+    }
+
+    /**
+     * Дополнить метаданные сведениями о внешних ключах, если они ещё не добавлены.
+     *
+     * @param array<string, array<string, mixed>> $meta
+     * @return array<string, array<string, mixed>>
+     */
+    private function ensureForeignKeyMetadata(string $tableName, array $meta): array
+    {
+        foreach ($meta as $info)
+        {
+            if (isset($info['key']) && is_array($info['key']) && isset($info['key']['tableName']))
+            {
+                return $meta;
+            }
+        }
+
+        $parts = DBA::getFQTableName($tableName, true);
+        $tbl = $parts[count($parts) - 1] ?? null;
+        $db  = $parts[count($parts) - 2] ?? null;
+
+        if (!$tbl)
+        {
+            return $meta;
+        }
+
+        if (!$db)
+        {
+            try
+            {
+                $db = (string)$this->pdo->query('SELECT DATABASE()')->fetchColumn();
+            }
+            catch (\Throwable)
+            {
+                $db = null;
+            }
+        }
+
+        if (!$db)
+        {
+            return $meta;
+        }
+
+        try
+        {
+            $fkSql = 'SELECT COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_SCHEMA
+                      FROM information_schema.KEY_COLUMN_USAGE
+                      WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :tbl AND REFERENCED_TABLE_NAME IS NOT NULL';
+            $fkStmt = $this->pdo->prepare($fkSql);
+            $fkStmt->execute([':db' => $db, ':tbl' => $tbl]);
+
+            while ($fkRow = $fkStmt->fetch(PDO::FETCH_ASSOC))
+            {
+                $column     = $fkRow['COLUMN_NAME']             ?? $fkRow['Column_name']            ?? null;
+                $refTable   = $fkRow['REFERENCED_TABLE_NAME']   ?? $fkRow['Referenced_table_name']  ?? null;
+                $refColumn  = $fkRow['REFERENCED_COLUMN_NAME']  ?? $fkRow['Referenced_column_name'] ?? null;
+                $constraint = $fkRow['CONSTRAINT_NAME']         ?? $fkRow['Constraint_name']        ?? null;
+                $refSchema  = $fkRow['REFERENCED_TABLE_SCHEMA'] ?? $fkRow['Referenced_table_schema'] ?? null;
+
+                if (!$column || !$refTable || !$refColumn)
+                {
+                    continue;
+                }
+                if (!isset($meta[$column]) || !is_array($meta[$column]))
+                {
+                    continue;
+                }
+
+                $qualifiedRefTable = $refTable;
+                if ($refSchema && strcasecmp($refSchema, (string)$db) !== 0)
+                {
+                    $qualifiedRefTable = "{$refSchema}.{$refTable}";
+                }
+
+                $meta[$column]['key'] = [
+                    'tableName'  => $qualifiedRefTable,
+                    'fieldName'  => $refColumn,
+                    'constraint' => $constraint ?: null,
+                ];
+            }
+        }
+        catch (\Throwable)
+        {
+            // ignore failures; базовая мета уже пригодна
         }
 
         return $meta;
