@@ -77,7 +77,7 @@
 
 | Имя файла | Назначение | Где подключается |
 | --- | --- | --- |
-| `energine.vendor.js` / `energine.vendor.css` | Базовые вендорные зависимости (Bootstrap). Нужны всем пользователям. | `engine/core/modules/share/transformers/document.xslt` — подключаются без условий в продакшене. |
+| `energine.vendor.js` / `energine.vendor.css` | Базовые вендорные зависимости (Bootstrap). Нужны всем пользователям. | `engine/core/modules/share/transformers/bootstrap/document.xslt` — подключаются без условий в продакшене. |
 | `energine.extended.vendor.js` / `energine.extended.vendor.css` | Административные сторонние библиотеки: редактор, файловый API, дерево, CodeMirror. Загружаются только для пользователей с `is_user = 1`. | Там же, в `document.xslt`, внутри условия по авторизации. |
 | `energine.js` / `energine.css` | Публичный модуль Energine и базовая тема. JS-файл грузится как модуль и содержит `bootEnergine`, CSS — общие стили сайта. | `document.xslt` (JS — в `<script type="module">`, CSS — линк всегда). |
 | `energine.extended.js` / `energine.extended.css` | Логика админ-интерфейса (grid, формы, тулбары) и дополнительные стили интерфейса управления сайтом. | Подключаются только при входе пользователя (`is_user = 1`). |
@@ -89,7 +89,7 @@
 
 ## 5. Где используются бандлы
 
-- **`engine/core/modules/share/transformers/document.xslt`** – основной шаблон документов. В продакшене подключает все JS/CSS из `assets/`, а также активирует расширенные бандлы для авторизованных пользователей. Здесь же настраивается глобальный объект Energine и запускается `START_ENERGINE_JS`.
+- **`engine/core/modules/share/transformers/bootstrap/document.xslt`** – основной шаблон документов. В продакшене подключает все JS/CSS из `assets/`, а также активирует расширенные бандлы для авторизованных пользователей. Здесь же настраивается глобальный объект Energine и запускается `START_ENERGINE_JS`.
 - **`site/modules/default/transformers/energine.xslt`** – шаблон публичного сайта. В режиме отладки продолжает ссылаться на старые пути (`stylesheets/default/…`, `scripts/default/…`) для совместимости, но в продакшене полагается на собранные бандлы.
 - **Компоненты административной панели** (Grid, Form, Toolbar) – используют расширенные файлы; работать без `energine.extended.*` они не смогут.
 
@@ -120,7 +120,7 @@
 ## 8. Ссылки и смежные документы
 
 - Документация по миграции на ES-модули: `docs/es-modules-phase*.md`.
-- Настройки главного XSLT-шаблона: `engine/core/modules/share/transformers/document.xslt`.
+- Настройки главного XSLT-шаблона: `engine/core/modules/share/transformers/bootstrap/document.xslt`.
 - Vite (официальная документация): <https://vitejs.dev/>
 
 Если понадобилось добавить новый бандл или изменить структуру существующих — обновляйте `buildTargets`, соответствующий entry-файл и XSLT-шаблон, после чего пересоберите проект. В репозитории не принято хранить автогенерируемые файлы под другими именами, поэтому придерживайтесь описанной структуры.

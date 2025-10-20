@@ -4,7 +4,7 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
     >
     
-    <xsl:include href="user.xslt"/>
-    <xsl:include href="profile.xslt"/>
+    <xsl:include href="components/user.xslt"/>
+    <xsl:include href="components/profile.xslt"/>
 
 </xsl:stylesheet>

@@ -4,8 +4,8 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
     >
 
-	<xsl:include href="test.xslt"/>
-	<xsl:include href="Testfeed.xslt"/>
+        <xsl:include href="components/test.xslt"/>
+        <xsl:include href="components/Testfeed.xslt"/>
 <!--next-->
 
 </xsl:stylesheet>
