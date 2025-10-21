@@ -857,6 +857,365 @@ if (existingConfig && Object.keys(existingConfig).length) {
     Energine.boot(existingConfig);
 }
 
+const TRUTHY_DATA_VALUES = ['1', 'true', 'yes', 'on'];
+
+const bodyConfigKeyRemap = {
+    forceJson: 'forceJSON',
+};
+
+const isTruthyDataValue = (value) => {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'number') {
+        return value !== 0;
+    }
+    if (typeof value === 'string') {
+        return TRUTHY_DATA_VALUES.includes(value.toLowerCase());
+    }
+    return Boolean(value);
+};
+
+const readBodyConfigOverrides = () => {
+    if (typeof document === 'undefined') {
+        return {};
+    }
+
+    const { body } = document;
+    if (!body || !body.dataset) {
+        return {};
+    }
+
+    const overrides = {};
+    Object.keys(body.dataset).forEach((key) => {
+        if (!key.startsWith('energine')) {
+            return;
+        }
+        if (key === 'energineRun' || key === 'energineRuntime') {
+            return;
+        }
+
+        const value = body.dataset[key];
+        if (typeof value === 'undefined') {
+            return;
+        }
+
+        const propName = key.slice('energine'.length);
+        if (!propName) {
+            return;
+        }
+
+        const normalizedKey = propName.charAt(0).toLowerCase() + propName.slice(1);
+        const mappedKey = bodyConfigKeyRemap[normalizedKey] || normalizedKey;
+        overrides[mappedKey] = value;
+    });
+
+    return overrides;
+};
+
+const resolveRuntimeDataRoot = () => {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    const { body } = document;
+    if (body && body.dataset && body.dataset.energineRuntime) {
+        const selector = body.dataset.energineRuntime;
+        if (selector) {
+            if (selector.startsWith('#')) {
+                const element = document.getElementById(selector.slice(1));
+                if (element) {
+                    return element;
+                }
+            }
+            try {
+                const queried = document.querySelector(selector);
+                if (queried) {
+                    return queried;
+                }
+            } catch {
+                if (selector.startsWith('#')) {
+                    return document.getElementById(selector.slice(1));
+                }
+            }
+        }
+    }
+
+    const fallbackById = document.getElementById('energine-runtime-data');
+    if (fallbackById) {
+        return fallbackById;
+    }
+
+    return document.querySelector('[data-energine-runtime]');
+};
+
+const stageTranslationsFromRoot = (runtime, root) => {
+    if (!runtime || !root) {
+        return;
+    }
+
+    const scripts = root.querySelectorAll('script[type="application/json"][data-kind="translations"]');
+    scripts.forEach((script) => {
+        const jsonText = script.textContent ? script.textContent.trim() : '';
+        if (!jsonText) {
+            return;
+        }
+        try {
+            const values = JSON.parse(jsonText);
+            runtime.stageTranslations(values);
+        } catch (error) {
+            runtime.safeConsoleError(error, 'translations');
+        }
+    });
+};
+
+const readControlElementConfig = (element) => {
+    const control = {};
+    if (!element) {
+        return control;
+    }
+
+    element.querySelectorAll('[data-kind="control-attr"]').forEach((attr) => {
+        const name = attr.getAttribute('data-name');
+        if (!name) {
+            return;
+        }
+        control[name] = attr.getAttribute('data-value') || '';
+    });
+
+    return control;
+};
+
+const instantiatePageToolbarFromElement = (runtime, element) => {
+    if (!element || typeof document === 'undefined') {
+        return null;
+    }
+
+    const className = element.getAttribute('data-class');
+    if (!className || !globalScope) {
+        return null;
+    }
+
+    const ToolbarCtor = globalScope[className];
+    if (typeof ToolbarCtor !== 'function') {
+        return null;
+    }
+
+    const url = element.getAttribute('data-url') || '';
+    const pageId = element.getAttribute('data-page-id') || '';
+    const toolbarName = element.getAttribute('data-toolbar') || '';
+
+    const controls = [];
+    element.querySelectorAll('[data-kind="control"]').forEach((controlEl) => {
+        controls.push(readControlElementConfig(controlEl));
+    });
+
+    let properties;
+    const propertiesContainer = element.querySelector('[data-kind="properties"]');
+    if (propertiesContainer) {
+        properties = {};
+        propertiesContainer.querySelectorAll('[data-kind="property"]').forEach((propertyEl) => {
+            const propertyName = propertyEl.getAttribute('data-name');
+            if (!propertyName) {
+                return;
+            }
+            properties[propertyName] = propertyEl.getAttribute('data-value') || '';
+        });
+    }
+
+    try {
+        if (properties && Object.keys(properties).length) {
+            return new ToolbarCtor(url, pageId, toolbarName, controls, properties);
+        }
+        return new ToolbarCtor(url, pageId, toolbarName, controls);
+    } catch (error) {
+        runtime.safeConsoleError(error, className);
+    }
+
+    return null;
+};
+
+const instantiateBehaviorFromElement = (runtime, element) => {
+    if (!element || typeof document === 'undefined') {
+        return null;
+    }
+
+    const targetId = element.getAttribute('data-target');
+    const className = element.getAttribute('data-class');
+    if (!targetId || !className) {
+        return null;
+    }
+
+    const targetElement = document.getElementById(targetId);
+    if (!targetElement || !globalScope) {
+        return null;
+    }
+
+    const BehaviorCtor = globalScope[className];
+    if (typeof BehaviorCtor !== 'function') {
+        return null;
+    }
+
+    try {
+        const instance = new BehaviorCtor(targetElement);
+        globalScope[targetId] = instance;
+        return instance;
+    } catch (error) {
+        runtime.safeConsoleError(error, className);
+    }
+
+    return null;
+};
+
+const instantiatePageEditorFromElement = (runtime, element) => {
+    if (!element || !globalScope) {
+        return null;
+    }
+
+    const className = element.getAttribute('data-class') || 'PageEditor';
+    const targetKey = element.getAttribute('data-target') || null;
+    const EditorCtor = globalScope[className];
+    if (typeof EditorCtor !== 'function') {
+        return null;
+    }
+
+    try {
+        const instance = new EditorCtor();
+        if (targetKey) {
+            globalScope[targetKey] = instance;
+        }
+        return instance;
+    } catch (error) {
+        runtime.safeConsoleError(error, className);
+    }
+
+    return null;
+};
+
+const applyRuntimeDataFromDOM = (runtime) => {
+    if (!runtime || typeof document === 'undefined') {
+        return;
+    }
+
+    const root = resolveRuntimeDataRoot();
+    if (!root) {
+        return;
+    }
+
+    stageTranslationsFromRoot(runtime, root);
+
+    if (globalScope) {
+        if (!Array.isArray(globalScope.componentToolbars)) {
+            globalScope.componentToolbars = [];
+        }
+    }
+
+    const pageToolbarElement = root.querySelector('[data-kind="page-toolbar"]');
+    if (pageToolbarElement) {
+        runtime.addTask(() => {
+            const instance = instantiatePageToolbarFromElement(runtime, pageToolbarElement);
+            if (instance && globalScope && Array.isArray(globalScope.componentToolbars)) {
+                globalScope.componentToolbars.push(instance);
+            }
+        });
+    }
+
+    const behaviorElements = Array.from(root.querySelectorAll('[data-kind="behavior"]'));
+    behaviorElements.forEach((element) => {
+        const targetId = element.getAttribute('data-target');
+        if (targetId && globalScope && typeof globalScope[targetId] === 'undefined') {
+            globalScope[targetId] = null;
+        }
+    });
+    behaviorElements.forEach((element) => {
+        instantiateBehaviorFromElement(runtime, element);
+    });
+
+    const pageEditorElement = root.querySelector('[data-kind="page-editor"]');
+    if (pageEditorElement) {
+        const targetKey = pageEditorElement.getAttribute('data-target');
+        if (targetKey && globalScope && typeof globalScope[targetKey] === 'undefined') {
+            globalScope[targetKey] = null;
+        }
+        instantiatePageEditorFromElement(runtime, pageEditorElement);
+    }
+};
+
+const shouldAutoBootstrap = () => {
+    if (typeof document === 'undefined') {
+        return false;
+    }
+
+    const { body } = document;
+    if (!body || !body.dataset) {
+        return false;
+    }
+
+    const flag = body.dataset.energineRun;
+    return isTruthyDataValue(flag);
+};
+
+let autoBootstrapStarted = false;
+
+const bootstrapFromDOM = () => {
+    if (autoBootstrapStarted) {
+        return;
+    }
+    if (!shouldAutoBootstrap()) {
+        return;
+    }
+
+    autoBootstrapStarted = true;
+
+    const configOverrides = readBodyConfigOverrides();
+    const config = Energine.createConfigFromScriptDataset(configOverrides);
+    const runtime = Energine.boot(config);
+
+    if (globalScope && globalScope.__energineBridge && typeof globalScope.__energineBridge.setRuntime === 'function') {
+        try {
+            globalScope.__energineBridge.setRuntime(runtime);
+        } catch (error) {
+            runtime.safeConsoleError(error, 'bridge:setRuntime');
+        }
+    }
+
+    const attachedRuntime = Energine.attachToWindow(globalScope, runtime);
+
+    if (globalScope) {
+        globalScope.componentToolbars = [];
+    }
+
+    applyRuntimeDataFromDOM(attachedRuntime);
+
+    if (attachedRuntime && typeof attachedRuntime.run === 'function') {
+        try {
+            attachedRuntime.run();
+        } catch (error) {
+            attachedRuntime.safeConsoleError(error, 'Energine.run');
+        }
+    }
+};
+
+const scheduleAutoBootstrap = () => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    const trigger = () => {
+        if (!autoBootstrapStarted && shouldAutoBootstrap()) {
+            bootstrapFromDOM();
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', trigger, { once: true });
+    } else {
+        trigger();
+    }
+};
+
+scheduleAutoBootstrap();
+
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 
 export const bootEnergine = (config = {}) => Energine.boot(config);

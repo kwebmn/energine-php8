@@ -43,6 +43,8 @@
 
             </head>
             <body>
+                <xsl:attribute name="data-energine-run">1</xsl:attribute>
+                <xsl:attribute name="data-energine-runtime">#energine-runtime-data</xsl:attribute>
                 <xsl:apply-templates select="document"/>
 
                 <xsl:if test="not(//property[@name='single'])">
