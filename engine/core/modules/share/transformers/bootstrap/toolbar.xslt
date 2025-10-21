@@ -5,9 +5,6 @@
 >
     <xsl:output method="xml" omit-xml-declaration="yes"/>
 
-    <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
-    <xsl:variable name="BASE" select="$DOC_PROPS[@name='base']"/>
-    <xsl:variable name="LANG_ABBR" select="$DOC_PROPS[@name='lang']/@abbr"/>
     <xsl:variable name="UPPER" select="'ABCDEFGHIJKLMNOPQRSTUVWXYZ'"/>
     <xsl:variable name="LOWER" select="'abcdefghijklmnopqrstuvwxyz'"/>
 
@@ -54,6 +51,8 @@
     <xsl:template match="toolbar/control[@disabled]"/>
 
     <xsl:template match="toolbar/control[@type='link']">
+        <xsl:variable name="BASE" select="/document/properties/property[@name='base']"/>
+        <xsl:variable name="LANG_ABBR" select="/document/properties/property[@name='lang']/@abbr"/>
         <xsl:variable name="ICON_RAW" select="@icon"/>
         <xsl:variable name="ICON_NORMALIZED" select="normalize-space($ICON_RAW)"/>
         <xsl:variable name="TITLE" select="normalize-space(@title)"/>
