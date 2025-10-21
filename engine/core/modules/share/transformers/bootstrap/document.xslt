@@ -200,114 +200,123 @@
         <xsl:if test="/document/@debug = '0' and //property[@name='is_user'] = '1'">
             <script type="module" src="{concat($ASSETS_BASE, 'energine.extended.js')}"></script>
         </xsl:if>
-        <div id="energine-runtime-data" data-energine-runtime="1" hidden="hidden">
-            <xsl:if test="/document/translations/@json != ''">
-                <script type="application/json" data-kind="translations">
-                    <xsl:value-of select="/document/translations/@json"/>
-                </script>
-            </xsl:if>
-            <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
-                <div data-kind="page-toolbar">
-                    <xsl:attribute name="data-class"><xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/></xsl:attribute>
-                    <xsl:attribute name="data-url"><xsl:value-of select="concat($BASE, $LANG_ABBR, $PAGE_TOOLBAR/@single_template)"/></xsl:attribute>
-                    <xsl:attribute name="data-page-id"><xsl:value-of select="$ID"/></xsl:attribute>
-                    <xsl:attribute name="data-toolbar"><xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/></xsl:attribute>
-                    <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                        <div data-kind="control">
-                            <xsl:for-each select="@*[name()!='mode']">
-                                <span data-kind="control-attr">
-                                    <xsl:attribute name="data-name"><xsl:value-of select="name()"/></xsl:attribute>
-                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
-                                </span>
-                            </xsl:for-each>
-                        </div>
-                    </xsl:for-each>
-                    <xsl:if test="$PAGE_TOOLBAR/toolbar/properties/property">
-                        <div data-kind="properties">
-                            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">
-                                <span data-kind="property">
-                                    <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
-                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
-                                </span>
-                            </xsl:for-each>
-                        </div>
-                    </xsl:if>
-                </div>
-            </xsl:if>
-            <xsl:for-each select="$COMPONENTS[@exttype='grid']/toolbar[@name!='pager']">
-                <xsl:variable name="componentID" select="generate-id(../recordset)"/>
-                <div data-kind="component-toolbar">
-                    <xsl:attribute name="data-target"><xsl:value-of select="$componentID"/></xsl:attribute>
-                    <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
-                    <xsl:attribute name="data-class">
-                        <xsl:choose>
-                            <xsl:when test="@class!=''"><xsl:value-of select="@class"/></xsl:when>
-                            <xsl:otherwise>Toolbar</xsl:otherwise>
-                        </xsl:choose>
-                    </xsl:attribute>
-                    <xsl:if test="properties/property">
-                        <div data-kind="properties">
-                            <xsl:for-each select="properties/property">
-                                <span data-kind="property">
-                                    <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
-                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
-                                </span>
-                            </xsl:for-each>
-                        </div>
-                    </xsl:if>
-                    <xsl:for-each select="control">
-                        <div data-kind="control">
-                            <xsl:attribute name="data-control-type">
-                                <xsl:choose>
-                                    <xsl:when test="@type!=''">
-                                        <xsl:value-of select="@type"/>
-                                    </xsl:when>
-                                    <xsl:otherwise>button</xsl:otherwise>
-                                </xsl:choose>
-                            </xsl:attribute>
-                            <xsl:for-each select="@*[name()!='mode']">
-                                <span data-kind="control-attr">
-                                    <xsl:attribute name="data-name"><xsl:value-of select="name()"/></xsl:attribute>
-                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
-                                </span>
-                            </xsl:for-each>
-                            <xsl:if test="options/option">
-                                <div data-kind="options">
-                                    <xsl:for-each select="options/option">
-                                        <span data-kind="option">
-                                            <xsl:for-each select="@*">
-                                                <span data-kind="option-attr">
-                                                    <xsl:attribute name="data-name"><xsl:value-of select="name()"/></xsl:attribute>
-                                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
-                                                </span>
-                                            </xsl:for-each>
-                                            <xsl:if test="normalize-space(.)!=''">
-                                                <span data-kind="option-label"><xsl:value-of select="."/></span>
-                                            </xsl:if>
-                                        </span>
-                                    </xsl:for-each>
-                                </div>
-                            </xsl:if>
-                        </div>
-                    </xsl:for-each>
-                </div>
-            </xsl:for-each>
-            <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
-                <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
-                <div data-kind="behavior">
-                    <xsl:attribute name="data-target"><xsl:value-of select="$objectID"/></xsl:attribute>
-                    <xsl:attribute name="data-class"><xsl:value-of select="@name"/></xsl:attribute>
-                </div>
-            </xsl:for-each>
-            <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
-                <xsl:variable name="objectID" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
-                <div data-kind="page-editor">
-                    <xsl:attribute name="data-class">PageEditor</xsl:attribute>
-                    <xsl:attribute name="data-target"><xsl:value-of select="$objectID"/></xsl:attribute>
-                </div>
-            </xsl:if>
-        </div>
+        <script id="energine-runtime-data" type="application/xml" data-energine-runtime="1">
+            <xsl:text>
+</xsl:text>
+            <runtime>
+                <xsl:if test="/document/translations/@json != ''">
+                    <translations>
+                        <xsl:attribute name="json"><xsl:value-of select="/document/translations/@json"/></xsl:attribute>
+                    </translations>
+                </xsl:if>
+                <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
+                    <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
+                    <page-toolbar>
+                        <xsl:attribute name="class"><xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/></xsl:attribute>
+                        <xsl:attribute name="url"><xsl:value-of select="concat($BASE, $LANG_ABBR, $PAGE_TOOLBAR/@single_template)"/></xsl:attribute>
+                        <xsl:attribute name="page-id"><xsl:value-of select="$ID"/></xsl:attribute>
+                        <xsl:attribute name="toolbar"><xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/></xsl:attribute>
+                        <xsl:if test="$PAGE_TOOLBAR/toolbar/properties/property">
+                            <properties>
+                                <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">
+                                    <property>
+                                        <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
+                                        <xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute>
+                                    </property>
+                                </xsl:for-each>
+                            </properties>
+                        </xsl:if>
+                        <xsl:if test="$PAGE_TOOLBAR/toolbar/control">
+                            <controls>
+                                <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
+                                    <control>
+                                        <xsl:for-each select="@*[name()!='mode']">
+                                            <xsl:attribute name="{name()}"><xsl:value-of select="."/></xsl:attribute>
+                                        </xsl:for-each>
+                                    </control>
+                                </xsl:for-each>
+                            </controls>
+                        </xsl:if>
+                    </page-toolbar>
+                </xsl:if>
+                <xsl:if test="$COMPONENTS[@exttype='grid']/toolbar[@name!='pager']">
+                    <component-toolbars>
+                        <xsl:for-each select="$COMPONENTS[@exttype='grid']/toolbar[@name!='pager']">
+                            <xsl:variable name="componentID" select="generate-id(../recordset)"/>
+                            <component-toolbar>
+                                <xsl:attribute name="target"><xsl:value-of select="$componentID"/></xsl:attribute>
+                                <xsl:attribute name="toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+                                <xsl:attribute name="class">
+                                    <xsl:choose>
+                                        <xsl:when test="@class!=''"><xsl:value-of select="@class"/></xsl:when>
+                                        <xsl:otherwise>Toolbar</xsl:otherwise>
+                                    </xsl:choose>
+                                </xsl:attribute>
+                                <xsl:if test="properties/property">
+                                    <properties>
+                                        <xsl:for-each select="properties/property">
+                                            <property>
+                                                <xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute>
+                                                <xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute>
+                                            </property>
+                                        </xsl:for-each>
+                                    </properties>
+                                </xsl:if>
+                                <xsl:if test="control">
+                                    <controls>
+                                        <xsl:for-each select="control">
+                                            <control>
+                                                <xsl:attribute name="type">
+                                                    <xsl:choose>
+                                                        <xsl:when test="@type!=''"><xsl:value-of select="@type"/></xsl:when>
+                                                        <xsl:otherwise>button</xsl:otherwise>
+                                                    </xsl:choose>
+                                                </xsl:attribute>
+                                                <xsl:for-each select="@*[name()!='mode' and name()!='type']">
+                                                    <xsl:attribute name="{name()}"><xsl:value-of select="."/></xsl:attribute>
+                                                </xsl:for-each>
+                                                <xsl:if test="options/option">
+                                                    <options>
+                                                        <xsl:for-each select="options/option">
+                                                            <option>
+                                                                <xsl:for-each select="@*">
+                                                                    <xsl:attribute name="{name()}"><xsl:value-of select="."/></xsl:attribute>
+                                                                </xsl:for-each>
+                                                                <xsl:if test="normalize-space(.)!=''">
+                                                                    <xsl:attribute name="label"><xsl:value-of select="."/></xsl:attribute>
+                                                                </xsl:if>
+                                                            </option>
+                                                        </xsl:for-each>
+                                                    </options>
+                                                </xsl:if>
+                                            </control>
+                                        </xsl:for-each>
+                                    </controls>
+                                </xsl:if>
+                            </component-toolbar>
+                        </xsl:for-each>
+                    </component-toolbars>
+                </xsl:if>
+                <xsl:if test="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
+                    <behaviors>
+                        <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
+                            <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
+                            <behavior>
+                                <xsl:attribute name="target"><xsl:value-of select="$objectID"/></xsl:attribute>
+                                <xsl:attribute name="class"><xsl:value-of select="@name"/></xsl:attribute>
+                            </behavior>
+                        </xsl:for-each>
+                    </behaviors>
+                </xsl:if>
+                <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
+                    <xsl:variable name="objectID" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
+                    <page-editor>
+                        <xsl:attribute name="class">PageEditor</xsl:attribute>
+                        <xsl:attribute name="target"><xsl:value-of select="$objectID"/></xsl:attribute>
+                    </page-editor>
+                </xsl:if>
+            </runtime>
+        </script>
         <xsl:apply-templates select="." mode="scripts"/>
 
         <xsl:if test="not(//property[@name='single'])">
