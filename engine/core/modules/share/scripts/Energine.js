@@ -1079,122 +1079,6 @@ const waitUntil = (runtime, options = {}) => {
     attempt();
 };
 
-const scheduleTaskWhenConstructorReady = (
-    runtime,
-    className,
-    description,
-    task,
-    options = {},
-) => {
-    if (typeof task !== 'function') {
-        return;
-    }
-
-    waitUntil(runtime, {
-        description: description || className || 'constructor',
-        check: () => {
-            if (!globalScope || !className) {
-                return { done: true };
-            }
-            if (typeof globalScope[className] === 'function') {
-                return { done: true };
-            }
-            return undefined;
-        },
-        onReady: () => task(),
-        onTimeout: () => {
-            if (!className || !runtime || typeof runtime.safeConsoleError !== 'function') {
-                return false;
-            }
-            runtime.safeConsoleError(
-                new Error(`Constructor ${className} is not available on the global scope.`),
-                description || className,
-            );
-            return true;
-        },
-        ...options,
-    });
-};
-
-const scheduleTaskWhenComponentReady = (
-    runtime,
-    targetId,
-    description,
-    task,
-    options = {},
-) => {
-    if (typeof task !== 'function' || !targetId) {
-        return;
-    }
-
-    waitUntil(runtime, {
-        description: description || targetId,
-        check: () => {
-            if (!globalScope) {
-                return { done: true, value: null };
-            }
-            const componentInstance = globalScope[targetId];
-            if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
-                return { done: true, value: componentInstance };
-            }
-            return undefined;
-        },
-        onReady: (componentInstance) => {
-            task(componentInstance || null);
-        },
-        onTimeout: () => {
-            if (!runtime || typeof runtime.safeConsoleError !== 'function') {
-                return false;
-            }
-            runtime.safeConsoleError(
-                new Error(`Component ${targetId} is not ready for toolbar attachment.`),
-                description || targetId,
-            );
-            return true;
-        },
-        ...options,
-    });
-};
-
-const queueRuntimeTask = (runtime, task, priority = 0) => {
-    if (!runtime || typeof runtime.addTask !== 'function' || typeof task !== 'function') {
-        return;
-    }
-    runtime.addTask(task, priority);
-};
-
-const queueConstructorTask = (runtime, {
-    className,
-    description,
-    priority = 0,
-    task,
-    options,
-}) => {
-    if (typeof task !== 'function') {
-        return;
-    }
-
-    queueRuntimeTask(runtime, () => {
-        scheduleTaskWhenConstructorReady(runtime, className, description, task, options);
-    }, priority);
-};
-
-const queueComponentTask = (runtime, {
-    targetId,
-    description,
-    priority = 0,
-    task,
-    options,
-}) => {
-    if (typeof task !== 'function') {
-        return;
-    }
-
-    queueRuntimeTask(runtime, () => {
-        scheduleTaskWhenComponentReady(runtime, targetId, description, task, options);
-    }, priority);
-};
-
 const stageTranslationsFromRoot = (runtime, root) => {
     if (!runtime || !root) {
         return;
@@ -1502,16 +1386,39 @@ const applyRuntimeDataFromDOM = (runtime) => {
     const pageToolbarElement = root.querySelector('[data-kind="page-toolbar"]');
     if (pageToolbarElement) {
         const className = pageToolbarElement.getAttribute('data-class');
-        queueConstructorTask(runtime, {
-            className,
-            description: `page-toolbar:${className || ''}`,
-            task: () => {
-                const instance = instantiatePageToolbarFromElement(runtime, pageToolbarElement);
-                if (instance && globalScope && Array.isArray(globalScope.componentToolbars)) {
-                    globalScope.componentToolbars.push(instance);
-                }
-            },
-        });
+        runtime.addTask(() => {
+            waitUntil(runtime, {
+                description: `page-toolbar:${className || ''}`,
+                check: () => {
+                    if (!className) {
+                        return { done: true };
+                    }
+                    if (!globalScope) {
+                        return undefined;
+                    }
+                    if (typeof globalScope[className] === 'function') {
+                        return { done: true };
+                    }
+                    return undefined;
+                },
+                onReady: () => {
+                    const instance = instantiatePageToolbarFromElement(runtime, pageToolbarElement);
+                    if (instance && globalScope && Array.isArray(globalScope.componentToolbars)) {
+                        globalScope.componentToolbars.push(instance);
+                    }
+                },
+                onTimeout: () => {
+                    if (!className || !runtime || typeof runtime.safeConsoleError !== 'function') {
+                        return false;
+                    }
+                    runtime.safeConsoleError(
+                        new Error(`Constructor ${className} is not available on the global scope.`),
+                        `page-toolbar:${className || ''}`,
+                    );
+                    return true;
+                },
+            });
+        }, 0);
     }
 
     const componentToolbarElements = Array.from(root.querySelectorAll('[data-kind="component-toolbar"]'));
@@ -1523,26 +1430,68 @@ const applyRuntimeDataFromDOM = (runtime) => {
             globalScope[targetId] = null;
         }
 
-        queueConstructorTask(runtime, {
-            className,
-            description: `component-toolbar:${className || 'Toolbar'}:${targetId || 'unknown'}`,
-            task: () => {
-                const toolbarInstance = instantiateComponentToolbarFromElement(runtime, element);
-                if (!toolbarInstance || !targetId) {
-                    return;
-                }
+        runtime.addTask(() => {
+            waitUntil(runtime, {
+                description: `component-toolbar:${className || 'Toolbar'}:${targetId || 'unknown'}`,
+                check: () => {
+                    if (!className) {
+                        return { done: true };
+                    }
+                    if (!globalScope) {
+                        return undefined;
+                    }
+                    if (typeof globalScope[className] === 'function') {
+                        return { done: true };
+                    }
+                    return undefined;
+                },
+                onReady: () => {
+                    const toolbarInstance = instantiateComponentToolbarFromElement(runtime, element);
+                    if (!toolbarInstance || !targetId) {
+                        return;
+                    }
 
-                queueComponentTask(runtime, {
-                    targetId,
-                    description: `component-toolbar-attach:${targetId}`,
-                    task: (componentInstance) => {
-                        if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
-                            componentInstance.attachToolbar(toolbarInstance);
-                        }
-                    },
-                });
-            },
-        });
+                    waitUntil(runtime, {
+                        description: `component-toolbar-attach:${targetId}`,
+                        check: () => {
+                            if (!globalScope) {
+                                return undefined;
+                            }
+                            const componentInstance = globalScope[targetId];
+                            if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
+                                return { done: true, value: componentInstance };
+                            }
+                            return undefined;
+                        },
+                        onReady: (componentInstance) => {
+                            if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
+                                componentInstance.attachToolbar(toolbarInstance);
+                            }
+                        },
+                        onTimeout: () => {
+                            if (!runtime || typeof runtime.safeConsoleError !== 'function') {
+                                return false;
+                            }
+                            runtime.safeConsoleError(
+                                new Error(`Component ${targetId} is not ready for toolbar attachment.`),
+                                `component-toolbar-attach:${targetId}`,
+                            );
+                            return true;
+                        },
+                    });
+                },
+                onTimeout: () => {
+                    if (!className || !runtime || typeof runtime.safeConsoleError !== 'function') {
+                        return false;
+                    }
+                    runtime.safeConsoleError(
+                        new Error(`Constructor ${className} is not available on the global scope.`),
+                        `component-toolbar:${className || 'Toolbar'}:${targetId || 'unknown'}`,
+                    );
+                    return true;
+                },
+            });
+        }, 0);
     });
 
     const behaviorElements = Array.from(root.querySelectorAll('[data-kind="behavior"]'));
@@ -1553,13 +1502,36 @@ const applyRuntimeDataFromDOM = (runtime) => {
         }
 
         const className = element.getAttribute('data-class');
-        queueConstructorTask(runtime, {
-            className,
-            description: `behavior:${className || targetId || 'unknown'}`,
-            task: () => {
-                instantiateBehaviorFromElement(runtime, element);
-            },
-        });
+        runtime.addTask(() => {
+            waitUntil(runtime, {
+                description: `behavior:${className || targetId || 'unknown'}`,
+                check: () => {
+                    if (!className) {
+                        return { done: true };
+                    }
+                    if (!globalScope) {
+                        return undefined;
+                    }
+                    if (typeof globalScope[className] === 'function') {
+                        return { done: true };
+                    }
+                    return undefined;
+                },
+                onReady: () => {
+                    instantiateBehaviorFromElement(runtime, element);
+                },
+                onTimeout: () => {
+                    if (!className || !runtime || typeof runtime.safeConsoleError !== 'function') {
+                        return false;
+                    }
+                    runtime.safeConsoleError(
+                        new Error(`Constructor ${className} is not available on the global scope.`),
+                        `behavior:${className || targetId || 'unknown'}`,
+                    );
+                    return true;
+                },
+            });
+        }, 0);
     });
 
     const pageEditorElement = root.querySelector('[data-kind="page-editor"]');
@@ -1569,13 +1541,33 @@ const applyRuntimeDataFromDOM = (runtime) => {
             globalScope[targetKey] = null;
         }
         const className = pageEditorElement.getAttribute('data-class') || 'PageEditor';
-        queueConstructorTask(runtime, {
-            className,
-            description: `page-editor:${className}`,
-            task: () => {
-                instantiatePageEditorFromElement(runtime, pageEditorElement);
-            },
-        });
+        runtime.addTask(() => {
+            waitUntil(runtime, {
+                description: `page-editor:${className}`,
+                check: () => {
+                    if (!globalScope) {
+                        return undefined;
+                    }
+                    if (typeof globalScope[className] === 'function') {
+                        return { done: true };
+                    }
+                    return undefined;
+                },
+                onReady: () => {
+                    instantiatePageEditorFromElement(runtime, pageEditorElement);
+                },
+                onTimeout: () => {
+                    if (!runtime || typeof runtime.safeConsoleError !== 'function') {
+                        return false;
+                    }
+                    runtime.safeConsoleError(
+                        new Error(`Constructor ${className} is not available on the global scope.`),
+                        `page-editor:${className}`,
+                    );
+                    return true;
+                },
+            });
+        }, 0);
     }
 };
 
