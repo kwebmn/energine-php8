@@ -1321,6 +1321,15 @@ const scheduleAutoBootstrap = () => {
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', trigger, { once: true });
+        return;
+    }
+
+    const scheduler = (globalScope && typeof globalScope.setTimeout === 'function')
+        ? globalScope.setTimeout.bind(globalScope)
+        : (typeof setTimeout === 'function' ? setTimeout : null);
+
+    if (scheduler) {
+        scheduler(trigger, 0);
     } else {
         trigger();
     }
