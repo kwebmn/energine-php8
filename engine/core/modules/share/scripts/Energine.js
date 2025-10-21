@@ -1,7 +1,7 @@
 const RUNTIME_SELECTOR = 'script[data-energine-core]';
 const TRANSLATION_SELECTOR = 'script[type="application/json"][data-energine-translations]';
-const BEHAVIOUR_SELECTOR = 'script[type="application/json"][data-energine-behaviors]';
-const COMPONENT_SELECTOR = 'script[type="application/json"][data-energine-components]';
+const BEHAVIOUR_TEMPLATE_SELECTOR = 'template[data-energine-behaviors]';
+const COMPONENT_TEMPLATE_SELECTOR = 'template[data-energine-components]';
 
 const ELEMENT_CTOR = typeof Element !== 'undefined' ? Element : null;
 
@@ -57,6 +57,153 @@ function extractOptions(dataset, ignoredKeys = []) {
         options[key] = coerceValue(dataset[key]);
     });
     return options;
+}
+
+function toCamelCaseKey(name) {
+    if (typeof name !== 'string') {
+        return '';
+    }
+    const trimmed = name.trim();
+    if (!trimmed) {
+        return '';
+    }
+    if (!/[-_:]/.test(trimmed)) {
+        return trimmed;
+    }
+    const segments = trimmed.split(/[-_:]+/).filter(Boolean);
+    if (!segments.length) {
+        return '';
+    }
+    return segments.map((segment, index) => {
+        const lower = segment.toLowerCase();
+        if (index === 0) {
+            return lower;
+        }
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }).join('');
+}
+
+function collectAttributes(element, ignored = [], preserveOriginal = false) {
+    const result = {};
+    if (!element || !element.attributes) {
+        return result;
+    }
+    Array.from(element.attributes).forEach((attr) => {
+        const { name, value } = attr;
+        if (ignored.includes(name)) {
+            return;
+        }
+        const key = preserveOriginal ? name : toCamelCaseKey(name);
+        if (!key) {
+            return;
+        }
+        result[key] = coerceValue(value);
+    });
+    return result;
+}
+
+function readTemplateElements(template, selector) {
+    if (!template || !template.content) {
+        return [];
+    }
+    return Array.from(template.content.querySelectorAll(selector));
+}
+
+function parsePropertyNodes(container) {
+    const properties = {};
+    if (!container) {
+        return properties;
+    }
+    const propertyNodes = container.querySelectorAll('property');
+    propertyNodes.forEach((node) => {
+        const name = node.getAttribute('name') || node.getAttribute('key');
+        if (!name) {
+            return;
+        }
+        const value = node.hasAttribute('value') ? node.getAttribute('value') : node.textContent;
+        properties[name] = coerceValue(value);
+    });
+    return properties;
+}
+
+function parseControlNodes(container) {
+    if (!container) {
+        return [];
+    }
+    const controls = [];
+    container.querySelectorAll('control').forEach((node) => {
+        const attributes = collectAttributes(node, [], true);
+        if (Object.keys(attributes).length) {
+            controls.push(attributes);
+        }
+    });
+    return controls;
+}
+
+function readBehaviourDefinitions() {
+    const doc = getDocument();
+    const templates = Array.from(doc.querySelectorAll(BEHAVIOUR_TEMPLATE_SELECTOR));
+    const definitions = [];
+    templates.forEach((template) => {
+        readTemplateElements(template, 'behavior').forEach((node) => {
+            const selector = node.getAttribute('selector') || null;
+            const moduleId = node.getAttribute('module') || node.getAttribute('controller') || null;
+            if (!selector || !moduleId) {
+                return;
+            }
+            const definition = {
+                selector,
+                module: moduleId,
+            };
+            const exportName = node.getAttribute('export');
+            if (exportName) {
+                definition.export = exportName;
+            }
+            const options = collectAttributes(node, ['selector', 'module', 'controller', 'export']);
+            if (Object.keys(options).length) {
+                definition.options = options;
+            }
+            definitions.push(definition);
+        });
+    });
+    return definitions;
+}
+
+function readComponentDefinitions() {
+    const doc = getDocument();
+    const templates = Array.from(doc.querySelectorAll(COMPONENT_TEMPLATE_SELECTOR));
+    const definitions = [];
+    templates.forEach((template) => {
+        readTemplateElements(template, 'component').forEach((node) => {
+            const selector = node.getAttribute('selector') || null;
+            const moduleId = node.getAttribute('module') || node.getAttribute('controller') || null;
+            if (!selector || !moduleId) {
+                return;
+            }
+            const definition = {
+                selector,
+                module: moduleId,
+            };
+            const exportName = node.getAttribute('export');
+            if (exportName) {
+                definition.export = exportName;
+            }
+            const options = collectAttributes(node, ['selector', 'module', 'controller', 'export']);
+            const controls = parseControlNodes(node.querySelector('controls'));
+            if (controls.length) {
+                options.controls = controls;
+            }
+            const properties = parsePropertyNodes(node.querySelector('properties'));
+            if (Object.keys(properties).length) {
+                options.properties = properties;
+            }
+            if (Object.keys(options).length) {
+                definition.options = options;
+            }
+            definitions.push(definition);
+        });
+    });
+    return definitions;
 }
 
 function getDocument() {
@@ -363,12 +510,12 @@ async function performBoot(configOverrides = {}) {
 
     storeTranslations(readJsonPayload(TRANSLATION_SELECTOR));
 
-    const behaviourPayload = readJsonPayload(BEHAVIOUR_SELECTOR);
-    const componentPayload = readJsonPayload(COMPONENT_SELECTOR);
+    const behaviourDefinitions = readBehaviourDefinitions();
+    const componentDefinitions = readComponentDefinitions();
 
     const [behaviourResults, componentResults, controllerResults] = await Promise.all([
-        initialiseBehaviours(behaviourPayload),
-        initialiseComponentDefinitions(componentPayload),
+        initialiseBehaviours(behaviourDefinitions),
+        initialiseComponentDefinitions(componentDefinitions),
         mountControllers(),
     ]);
 

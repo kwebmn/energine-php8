@@ -58,32 +58,6 @@
     </xsl:variable>
     <xsl:key name="js-library" match="javascript/library" use="concat(@loader,'|',@src,'|',@path)"/>
 
-    <xsl:variable name="JSON_BACKSLASH" select="'\'"/>
-    <xsl:variable name="JSON_QUOTE">"</xsl:variable>
-
-    <xsl:template name="json-escape">
-        <xsl:param name="value"/>
-        <xsl:choose>
-            <xsl:when test="contains($value, $JSON_BACKSLASH)">
-                <xsl:variable name="before" select="substring-before($value, $JSON_BACKSLASH)"/>
-                <xsl:variable name="after" select="substring-after($value, $JSON_BACKSLASH)"/>
-                <xsl:call-template name="json-escape">
-                    <xsl:with-param name="value" select="concat($before, '\\', $after)"/>
-                </xsl:call-template>
-            </xsl:when>
-            <xsl:when test="contains($value, string($JSON_QUOTE))">
-                <xsl:variable name="before" select="substring-before($value, string($JSON_QUOTE))"/>
-                <xsl:variable name="after" select="substring-after($value, string($JSON_QUOTE))"/>
-                <xsl:call-template name="json-escape">
-                    <xsl:with-param name="value" select="concat($before, '\"', $after)"/>
-                </xsl:call-template>
-            </xsl:when>
-            <xsl:otherwise>
-                <xsl:value-of select="$value"/>
-            </xsl:otherwise>
-        </xsl:choose>
-    </xsl:template>
-
     <!--@deprecated-->
     <!--Оставлено для обратной совместимости, сейчас рекомендуется определять обработчик рута в модуле сайта и взывать рутовый шаблон в режиме head-->
 
@@ -225,104 +199,45 @@
             </script>
         </xsl:if>
         <xsl:if test="count($COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']) &gt; 0">
-            <script type="application/json" data-energine-behaviors="true">
-                <xsl:text>[</xsl:text>
-                <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
-                    <xsl:if test="position() &gt; 1">
-                        <xsl:text>,</xsl:text>
-                    </xsl:if>
-                    <xsl:text>{"selector":"#</xsl:text>
-                    <xsl:call-template name="json-escape">
-                        <xsl:with-param name="value" select="generate-id(../../recordset[not(@name)])"/>
-                    </xsl:call-template>
-                    <xsl:text>","module":"scripts/</xsl:text>
-                    <xsl:call-template name="json-escape">
-                        <xsl:with-param name="value" select="@name"/>
-                    </xsl:call-template>
-                    <xsl:text>.js","export":"default"}</xsl:text>
-                </xsl:for-each>
-                <xsl:text>]</xsl:text>
-            </script>
+            <template data-energine-behaviors="true">
+                <behaviors>
+                    <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
+                        <behavior selector="#{generate-id(../../recordset[not(@name)])}" module="scripts/{@name}.js" export="default"/>
+                    </xsl:for-each>
+                </behaviors>
+            </template>
         </xsl:if>
         <xsl:variable name="HAS_PAGE_TOOLBAR" select="boolean($COMPONENTS[@componentAction='showPageToolbar'])"/>
         <xsl:variable name="HAS_PAGE_EDITOR" select="boolean($COMPONENTS/javascript/behavior[@name='PageEditor'])"/>
         <xsl:if test="$HAS_PAGE_TOOLBAR or $HAS_PAGE_EDITOR">
-            <script type="application/json" data-energine-components="true">
-                <xsl:text>[</xsl:text>
-                <xsl:if test="$HAS_PAGE_TOOLBAR">
-                    <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
-                    <xsl:text>{"selector":"body","module":"scripts/</xsl:text>
-                    <xsl:call-template name="json-escape">
-                        <xsl:with-param name="value" select="$PAGE_TOOLBAR/javascript/behavior/@name"/>
-                    </xsl:call-template>
-                    <xsl:text>.js","export":"default","options":{</xsl:text>
-                    <xsl:text>"template":"</xsl:text>
-                    <xsl:call-template name="json-escape">
-                        <xsl:with-param name="value" select="concat($BASE, $LANG_ABBR, $PAGE_TOOLBAR/@single_template)"/>
-                    </xsl:call-template>
-                    <xsl:text>","pageId":"</xsl:text>
-                    <xsl:call-template name="json-escape">
-                        <xsl:with-param name="value" select="$ID"/>
-                    </xsl:call-template>
-                    <xsl:text>","toolbarName":"</xsl:text>
-                    <xsl:call-template name="json-escape">
-                        <xsl:with-param name="value" select="$PAGE_TOOLBAR/toolbar/@name"/>
-                    </xsl:call-template>
-                    <xsl:text>","controls":[</xsl:text>
-                    <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                        <xsl:if test="position() &gt; 1">
-                            <xsl:text>,</xsl:text>
-                        </xsl:if>
-                        <xsl:text>{</xsl:text>
-                        <xsl:for-each select="@*[name()!='mode']">
-                            <xsl:if test="position() &gt; 1">
-                                <xsl:text>,</xsl:text>
+            <template data-energine-components="true">
+                <components>
+                    <xsl:if test="$HAS_PAGE_TOOLBAR">
+                        <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
+                        <component selector="body" module="scripts/{$PAGE_TOOLBAR/javascript/behavior/@name}.js" export="default" template="{concat($BASE, $LANG_ABBR, $PAGE_TOOLBAR/@single_template)}" page-id="{$ID}" toolbar-name="{$PAGE_TOOLBAR/toolbar/@name}">
+                            <controls>
+                                <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
+                                    <control>
+                                        <xsl:for-each select="@*[name()!='mode']">
+                                            <xsl:attribute name="{name()}"><xsl:value-of select="."/></xsl:attribute>
+                                        </xsl:for-each>
+                                    </control>
+                                </xsl:for-each>
+                            </controls>
+                            <xsl:if test="$PAGE_TOOLBAR/toolbar/properties/property">
+                                <properties>
+                                    <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">
+                                        <property name="{@name}" value="{.}"/>
+                                    </xsl:for-each>
+                                </properties>
                             </xsl:if>
-                            <xsl:text>"</xsl:text>
-                            <xsl:call-template name="json-escape">
-                                <xsl:with-param name="value" select="name()"/>
-                            </xsl:call-template>
-                            <xsl:text>":"</xsl:text>
-                            <xsl:call-template name="json-escape">
-                                <xsl:with-param name="value" select="."/>
-                            </xsl:call-template>
-                            <xsl:text>"</xsl:text>
-                        </xsl:for-each>
-                        <xsl:text>}</xsl:text>
-                    </xsl:for-each>
-                    <xsl:text>]</xsl:text>
-                    <xsl:if test="$PAGE_TOOLBAR/toolbar/properties/property">
-                        <xsl:text>,"properties":{</xsl:text>
-                        <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">
-                            <xsl:if test="position() &gt; 1">
-                                <xsl:text>,</xsl:text>
-                            </xsl:if>
-                            <xsl:text>"</xsl:text>
-                            <xsl:call-template name="json-escape">
-                                <xsl:with-param name="value" select="@name"/>
-                            </xsl:call-template>
-                            <xsl:text>":"</xsl:text>
-                            <xsl:call-template name="json-escape">
-                                <xsl:with-param name="value" select="."/>
-                            </xsl:call-template>
-                            <xsl:text>"</xsl:text>
-                        </xsl:for-each>
-                        <xsl:text>}</xsl:text>
+                        </component>
                     </xsl:if>
-                    <xsl:text>}}</xsl:text>
                     <xsl:if test="$HAS_PAGE_EDITOR">
-                        <xsl:text>,</xsl:text>
+                        <component selector="body" module="scripts/PageEditor.js" export="default" global-key="{generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)}"/>
                     </xsl:if>
-                </xsl:if>
-                <xsl:if test="$HAS_PAGE_EDITOR">
-                    <xsl:text>{"selector":"body","module":"scripts/PageEditor.js","export":"default","options":{"globalKey":"</xsl:text>
-                    <xsl:call-template name="json-escape">
-                        <xsl:with-param name="value" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
-                    </xsl:call-template>
-                    <xsl:text>"}}</xsl:text>
-                </xsl:if>
-                <xsl:text>]</xsl:text>
-            </script>
+                </components>
+            </template>
         </xsl:if>
         <xsl:if test="/document/@debug != '0'">
             <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
