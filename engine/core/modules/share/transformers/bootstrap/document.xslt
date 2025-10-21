@@ -235,6 +235,64 @@
                     </xsl:if>
                 </div>
             </xsl:if>
+            <xsl:for-each select="$COMPONENTS[@exttype='grid']/toolbar[@name!='pager']">
+                <xsl:variable name="componentID" select="generate-id(../recordset)"/>
+                <div data-kind="component-toolbar">
+                    <xsl:attribute name="data-target"><xsl:value-of select="$componentID"/></xsl:attribute>
+                    <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+                    <xsl:attribute name="data-class">
+                        <xsl:choose>
+                            <xsl:when test="@class!=''"><xsl:value-of select="@class"/></xsl:when>
+                            <xsl:otherwise>Toolbar</xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:attribute>
+                    <xsl:if test="properties/property">
+                        <div data-kind="properties">
+                            <xsl:for-each select="properties/property">
+                                <span data-kind="property">
+                                    <xsl:attribute name="data-name"><xsl:value-of select="@name"/></xsl:attribute>
+                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
+                                </span>
+                            </xsl:for-each>
+                        </div>
+                    </xsl:if>
+                    <xsl:for-each select="control">
+                        <div data-kind="control">
+                            <xsl:attribute name="data-control-type">
+                                <xsl:choose>
+                                    <xsl:when test="@type!=''">
+                                        <xsl:value-of select="@type"/>
+                                    </xsl:when>
+                                    <xsl:otherwise>button</xsl:otherwise>
+                                </xsl:choose>
+                            </xsl:attribute>
+                            <xsl:for-each select="@*[name()!='mode']">
+                                <span data-kind="control-attr">
+                                    <xsl:attribute name="data-name"><xsl:value-of select="name()"/></xsl:attribute>
+                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
+                                </span>
+                            </xsl:for-each>
+                            <xsl:if test="options/option">
+                                <div data-kind="options">
+                                    <xsl:for-each select="options/option">
+                                        <span data-kind="option">
+                                            <xsl:for-each select="@*">
+                                                <span data-kind="option-attr">
+                                                    <xsl:attribute name="data-name"><xsl:value-of select="name()"/></xsl:attribute>
+                                                    <xsl:attribute name="data-value"><xsl:value-of select="."/></xsl:attribute>
+                                                </span>
+                                            </xsl:for-each>
+                                            <xsl:if test="normalize-space(.)!=''">
+                                                <span data-kind="option-label"><xsl:value-of select="."/></span>
+                                            </xsl:if>
+                                        </span>
+                                    </xsl:for-each>
+                                </div>
+                            </xsl:if>
+                        </div>
+                    </xsl:for-each>
+                </div>
+            </xsl:for-each>
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
                 <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
                 <div data-kind="behavior">

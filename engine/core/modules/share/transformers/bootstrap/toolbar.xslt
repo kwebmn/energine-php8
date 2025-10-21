@@ -173,100 +173,18 @@
         <br/>
     </xsl:template>
     <!-- Панель управления для формы -->
-    <xsl:template match="toolbar[parent::component[@exttype='grid']]">
-
-        <script type="module">
-            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
-            queueTask(() => {
-                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
-                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
-                componentToolbars[componentId] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
-                test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
-                <xsl:apply-templates />
-                const componentInstance = globalThis[componentId];
-                if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
-                    componentInstance.attachToolbar(componentToolbars[componentId]);
-                }
-                var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
-                    content = holder.querySelector('[data-pane-part="body"]');
-                if (content &amp;&amp; parseInt(document.body.clientWidth, 10) &lt;= 680) {
-                    var tToolbar = holder.querySelector('[data-pane-part="header"]'),
-                        bToolbar = holder.querySelector('[data-pane-part="footer"]'),
-                        contentHeight = document.body.clientHeight;
-                    if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
-                    if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;
-                    <!--content.setStyles({
-                        height: contentHeight,
-                        position: 'static'
-                    });-->
-                }
-            });
-        </script>
-    </xsl:template>    
+    <xsl:template match="toolbar[parent::component[@exttype='grid']][@name!='pager']"/>
     
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'button']">
-            componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-                new Toolbar.Button({
-                    id: '<xsl:value-of select="@id"/>',
-                    title: '<xsl:value-of select="@title"/>',
-                    action: '<xsl:value-of select="@onclick"/>',
-                    icon: '<xsl:value-of select="@icon"/>',
-                    iconOnly: '<xsl:value-of select="@icon-only"/>',
-                    disabled: '<xsl:value-of select="@disabled"/>'
-                })
-            );
-    </xsl:template>
+    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'button']"/>
 
 
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'switcher']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-        new Toolbar.Switcher({
-        id: '<xsl:value-of select="@id"/>',
-        title: '<xsl:value-of select="@title"/>',
-        action: '<xsl:value-of select="@onclick"/>',
-        icon: '<xsl:value-of select="@icon"/>',
-        aicon: '<xsl:value-of select="@aicon"/>',
-        iconOnly: '<xsl:value-of select="@icon-only"/>'
-        })
-        );
-    </xsl:template>
+    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'switcher']"/>
 
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type='file']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.File({
-                id: '<xsl:value-of select="@id"/>',
-                title: '<xsl:value-of select="@title"/>',
-                action: '<xsl:value-of select="@onclick"/>',
-                icon: '<xsl:value-of select="@icon"/>',
-                iconOnly: '<xsl:value-of select="@icon-only"/>'
-            })
-        );
-    </xsl:template>
+    <xsl:template match="component[@exttype='grid']/toolbar/control[@type='file']"/>
 
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'select']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.Select({
-                id: '<xsl:value-of select="@id"/>',
-                title: '<xsl:value-of select="@title"/>',
-                action: '<xsl:value-of select="@action"/>'
-            },
-            {
-                <xsl:if test="options">
-                    <xsl:for-each select="options/option">
-                        '<xsl:value-of select="@id"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if>
-                    </xsl:for-each>
-                </xsl:if>
-            })
-        );
-    </xsl:template>
-  
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'separator']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.Separator({ id: '<xsl:value-of select="@id"/>' })
-    	);
-    </xsl:template>
+    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'select']"/>
+
+    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'separator']"/>
     
     <!-- листалка по страницам -->
     <xsl:template match="toolbar[@name='pager']">

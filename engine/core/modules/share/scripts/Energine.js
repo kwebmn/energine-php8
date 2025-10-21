@@ -1026,6 +1026,61 @@ const scheduleTaskWhenConstructorReady = (
     checkAvailability();
 };
 
+const scheduleTaskWhenComponentReady = (
+    runtime,
+    targetId,
+    description,
+    task,
+    { attempts = 20, delay = 50 } = {},
+) => {
+    if (typeof task !== 'function' || !targetId) {
+        return;
+    }
+
+    if (!globalScope) {
+        task(null);
+        return;
+    }
+
+    let remaining = attempts;
+
+    const scheduler = (globalScope && typeof globalScope.setTimeout === 'function')
+        ? globalScope.setTimeout.bind(globalScope)
+        : (typeof setTimeout === 'function' ? setTimeout : null);
+
+    const attemptAttachment = () => {
+        const componentInstance = globalScope[targetId];
+        if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
+            try {
+                task(componentInstance);
+            } catch (error) {
+                if (runtime && typeof runtime.safeConsoleError === 'function') {
+                    runtime.safeConsoleError(error, description || targetId);
+                }
+            }
+            return;
+        }
+
+        if (remaining <= 0) {
+            if (runtime && typeof runtime.safeConsoleError === 'function') {
+                runtime.safeConsoleError(
+                    new Error(`Component ${targetId} is not ready for toolbar attachment.`),
+                    description || targetId,
+                );
+            }
+            return;
+        }
+
+        remaining -= 1;
+
+        if (scheduler) {
+            scheduler(attemptAttachment, delay);
+        }
+    };
+
+    attemptAttachment();
+};
+
 const stageTranslationsFromRoot = (runtime, root) => {
     if (!runtime || !root) {
         return;
@@ -1063,6 +1118,72 @@ const readControlElementConfig = (element) => {
     return control;
 };
 
+const readPropertyElementConfig = (element) => {
+    const properties = {};
+    if (!element) {
+        return properties;
+    }
+
+    element.querySelectorAll('[data-kind="property"]').forEach((propertyEl) => {
+        const propertyName = propertyEl.getAttribute('data-name');
+        if (!propertyName) {
+            return;
+        }
+        properties[propertyName] = propertyEl.getAttribute('data-value') || '';
+    });
+
+    return properties;
+};
+
+const readOptionElementConfig = (element) => {
+    const option = {};
+    if (!element) {
+        return option;
+    }
+
+    element.querySelectorAll(':scope > [data-kind="option-attr"]').forEach((attr) => {
+        const name = attr.getAttribute('data-name');
+        if (!name) {
+            return;
+        }
+        option[name] = attr.getAttribute('data-value') || '';
+    });
+
+    const labelNode = element.querySelector(':scope > [data-kind="option-label"]');
+    if (labelNode && !option.label) {
+        option.label = labelNode.textContent || '';
+    }
+
+    return option;
+};
+
+const normalizeToolbarControlConfig = (rawConfig = {}) => {
+    const config = {};
+
+    Object.keys(rawConfig).forEach((key) => {
+        const value = rawConfig[key];
+        switch (key) {
+            case 'onclick':
+            case 'action':
+                config.action = value;
+                break;
+            case 'icon-only':
+            case 'iconOnly':
+                config.iconOnly = value;
+                break;
+            default:
+                config[key] = value;
+                break;
+        }
+    });
+
+    if (typeof config.type === 'undefined' && typeof rawConfig.type !== 'undefined') {
+        config.type = rawConfig.type;
+    }
+
+    return config;
+};
+
 const instantiatePageToolbarFromElement = (runtime, element) => {
     if (!element || typeof document === 'undefined') {
         return null;
@@ -1087,18 +1208,7 @@ const instantiatePageToolbarFromElement = (runtime, element) => {
         controls.push(readControlElementConfig(controlEl));
     });
 
-    let properties;
-    const propertiesContainer = element.querySelector('[data-kind="properties"]');
-    if (propertiesContainer) {
-        properties = {};
-        propertiesContainer.querySelectorAll('[data-kind="property"]').forEach((propertyEl) => {
-            const propertyName = propertyEl.getAttribute('data-name');
-            if (!propertyName) {
-                return;
-            }
-            properties[propertyName] = propertyEl.getAttribute('data-value') || '';
-        });
-    }
+    const properties = readPropertyElementConfig(element.querySelector('[data-kind="properties"]'));
 
     try {
         if (properties && Object.keys(properties).length) {
@@ -1110,6 +1220,125 @@ const instantiatePageToolbarFromElement = (runtime, element) => {
     }
 
     return null;
+};
+
+const instantiateComponentToolbarFromElement = (runtime, element) => {
+    if (!element || !globalScope) {
+        return null;
+    }
+
+    const targetId = element.getAttribute('data-target') || '';
+    const toolbarName = element.getAttribute('data-toolbar') || '';
+    const className = element.getAttribute('data-class') || 'Toolbar';
+
+    const ToolbarCtor = globalScope[className];
+    if (typeof ToolbarCtor !== 'function') {
+        return null;
+    }
+
+    const toolbarProps = readPropertyElementConfig(element.querySelector(':scope > [data-kind="properties"]'));
+
+    let toolbarInstance;
+    try {
+        toolbarInstance = new ToolbarCtor(toolbarName, toolbarProps);
+    } catch (error) {
+        if (runtime && typeof runtime.safeConsoleError === 'function') {
+            runtime.safeConsoleError(error, className);
+        }
+        return null;
+    }
+
+    const baseNamespace = globalScope.Toolbar || ToolbarCtor;
+
+    const controlElements = Array.from(element.querySelectorAll(':scope > [data-kind="control"]'));
+    controlElements.forEach((controlElement) => {
+        const controlType = (controlElement.getAttribute('data-control-type') || 'button').toLowerCase();
+        const rawConfig = readControlElementConfig(controlElement);
+        const config = normalizeToolbarControlConfig(rawConfig);
+        config.type = controlType;
+
+        const appendControl = (instance) => {
+            if (!instance) {
+                return;
+            }
+            try {
+                toolbarInstance.appendControl(instance);
+            } catch (error) {
+                if (runtime && typeof runtime.safeConsoleError === 'function') {
+                    runtime.safeConsoleError(error, `${className}:${controlType}`);
+                }
+            }
+        };
+
+        try {
+            switch (controlType) {
+                case 'switcher':
+                    if (baseNamespace && typeof baseNamespace.Switcher === 'function') {
+                        appendControl(new baseNamespace.Switcher(config));
+                    }
+                    break;
+                case 'file':
+                    if (baseNamespace && typeof baseNamespace.File === 'function') {
+                        appendControl(new baseNamespace.File(config));
+                    }
+                    break;
+                case 'select':
+                    if (baseNamespace && typeof baseNamespace.Select === 'function') {
+                        const optionElements = Array.from(controlElement.querySelectorAll(':scope > [data-kind="options"] > [data-kind="option"]'));
+                        const options = {};
+                        let initialValue = null;
+
+                        optionElements.forEach((optionElement) => {
+                            const optionConfig = readOptionElementConfig(optionElement);
+                            const key = optionConfig.id || optionConfig.value || optionConfig.key || null;
+                            if (!key) {
+                                return;
+                            }
+
+                            if (initialValue === null && typeof optionConfig.selected !== 'undefined') {
+                                const selectedValue = `${optionConfig.selected}`.toLowerCase();
+                                if (selectedValue === 'true' || selectedValue === '1' || selectedValue === 'selected') {
+                                    initialValue = key;
+                                }
+                            }
+
+                            const caption = optionConfig.caption
+                                || optionConfig.label
+                                || optionConfig.title
+                                || optionConfig.text
+                                || optionConfig.value
+                                || '';
+                            options[key] = caption;
+                        });
+
+                        appendControl(new baseNamespace.Select(config, options, initialValue));
+                    }
+                    break;
+                case 'separator':
+                    if (baseNamespace && typeof baseNamespace.Separator === 'function') {
+                        appendControl(new baseNamespace.Separator(config));
+                    }
+                    break;
+                case 'submit':
+                case 'button':
+                default:
+                    if (baseNamespace && typeof baseNamespace.Button === 'function') {
+                        appendControl(new baseNamespace.Button(config));
+                    }
+                    break;
+            }
+        } catch (error) {
+            if (runtime && typeof runtime.safeConsoleError === 'function') {
+                runtime.safeConsoleError(error, `${className}:${controlType}`);
+            }
+        }
+    });
+
+    if (targetId && globalScope && typeof globalScope.componentToolbars === 'object') {
+        globalScope.componentToolbars[targetId] = toolbarInstance;
+    }
+
+    return toolbarInstance;
 };
 
 const instantiateBehaviorFromElement = (runtime, element) => {
@@ -1204,6 +1433,41 @@ const applyRuntimeDataFromDOM = (runtime) => {
             );
         }, 0);
     }
+
+    const componentToolbarElements = Array.from(root.querySelectorAll('[data-kind="component-toolbar"]'));
+    componentToolbarElements.forEach((element) => {
+        const targetId = element.getAttribute('data-target');
+        const className = element.getAttribute('data-class') || 'Toolbar';
+
+        if (targetId && globalScope && typeof globalScope[targetId] === 'undefined') {
+            globalScope[targetId] = null;
+        }
+
+        runtime.addTask(() => {
+            scheduleTaskWhenConstructorReady(
+                runtime,
+                className,
+                `component-toolbar:${className || 'Toolbar'}:${targetId || 'unknown'}`,
+                () => {
+                    const toolbarInstance = instantiateComponentToolbarFromElement(runtime, element);
+                    if (!toolbarInstance || !targetId) {
+                        return;
+                    }
+
+                    scheduleTaskWhenComponentReady(
+                        runtime,
+                        targetId,
+                        `component-toolbar-attach:${targetId}`,
+                        (componentInstance) => {
+                            if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
+                                componentInstance.attachToolbar(toolbarInstance);
+                            }
+                        },
+                    );
+                },
+            );
+        }, 0);
+    });
 
     const behaviorElements = Array.from(root.querySelectorAll('[data-kind="behavior"]'));
     behaviorElements.forEach((element) => {
