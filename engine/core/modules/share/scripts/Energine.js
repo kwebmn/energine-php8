@@ -876,6 +876,23 @@ const isTruthyDataValue = (value) => {
     return Boolean(value);
 };
 
+const readAttributeFallback = (element, name) => {
+    if (!element) {
+        return undefined;
+    }
+
+    if (element.dataset && Object.prototype.hasOwnProperty.call(element.dataset, name)) {
+        return element.dataset[name];
+    }
+
+    const attributeName = `data-${name.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)}`;
+    if (element.hasAttribute(attributeName)) {
+        return element.getAttribute(attributeName);
+    }
+
+    return undefined;
+};
+
 const readBodyConfigOverrides = () => {
     if (typeof document === 'undefined') {
         return {};
@@ -947,6 +964,66 @@ const resolveRuntimeDataRoot = () => {
     }
 
     return document.querySelector('[data-energine-runtime]');
+};
+
+const scheduleTaskWhenConstructorReady = (
+    runtime,
+    className,
+    description,
+    task,
+    { attempts = 20, delay = 50 } = {},
+) => {
+    if (typeof task !== 'function') {
+        return;
+    }
+
+    if (!globalScope || !className) {
+        task();
+        return;
+    }
+
+    let remaining = attempts;
+
+    const scheduler = (globalScope && typeof globalScope.setTimeout === 'function')
+        ? globalScope.setTimeout.bind(globalScope)
+        : (typeof setTimeout === 'function' ? setTimeout : null);
+
+    const invokeTask = () => {
+        try {
+            task();
+        } catch (error) {
+            if (runtime && typeof runtime.safeConsoleError === 'function') {
+                runtime.safeConsoleError(error, description || className);
+            }
+        }
+    };
+
+    const checkAvailability = () => {
+        if (!globalScope || typeof globalScope[className] === 'function') {
+            invokeTask();
+            return;
+        }
+
+        if (remaining <= 0) {
+            if (runtime && typeof runtime.safeConsoleError === 'function') {
+                runtime.safeConsoleError(
+                    new Error(`Constructor ${className} is not available on the global scope.`),
+                    description || className,
+                );
+            }
+            return;
+        }
+
+        remaining -= 1;
+
+        if (scheduler) {
+            scheduler(checkAvailability, delay);
+        } else {
+            invokeTask();
+        }
+    };
+
+    checkAvailability();
 };
 
 const stageTranslationsFromRoot = (runtime, root) => {
@@ -1112,11 +1189,19 @@ const applyRuntimeDataFromDOM = (runtime) => {
 
     const pageToolbarElement = root.querySelector('[data-kind="page-toolbar"]');
     if (pageToolbarElement) {
+        const className = pageToolbarElement.getAttribute('data-class');
         runtime.addTask(() => {
-            const instance = instantiatePageToolbarFromElement(runtime, pageToolbarElement);
-            if (instance && globalScope && Array.isArray(globalScope.componentToolbars)) {
-                globalScope.componentToolbars.push(instance);
-            }
+            scheduleTaskWhenConstructorReady(
+                runtime,
+                className,
+                `page-toolbar:${className || ''}`,
+                () => {
+                    const instance = instantiatePageToolbarFromElement(runtime, pageToolbarElement);
+                    if (instance && globalScope && Array.isArray(globalScope.componentToolbars)) {
+                        globalScope.componentToolbars.push(instance);
+                    }
+                },
+            );
         });
     }
 
@@ -1126,9 +1211,18 @@ const applyRuntimeDataFromDOM = (runtime) => {
         if (targetId && globalScope && typeof globalScope[targetId] === 'undefined') {
             globalScope[targetId] = null;
         }
-    });
-    behaviorElements.forEach((element) => {
-        instantiateBehaviorFromElement(runtime, element);
+
+        const className = element.getAttribute('data-class');
+        runtime.addTask(() => {
+            scheduleTaskWhenConstructorReady(
+                runtime,
+                className,
+                `behavior:${className || targetId || 'unknown'}`,
+                () => {
+                    instantiateBehaviorFromElement(runtime, element);
+                },
+            );
+        });
     });
 
     const pageEditorElement = root.querySelector('[data-kind="page-editor"]');
@@ -1137,7 +1231,17 @@ const applyRuntimeDataFromDOM = (runtime) => {
         if (targetKey && globalScope && typeof globalScope[targetKey] === 'undefined') {
             globalScope[targetKey] = null;
         }
-        instantiatePageEditorFromElement(runtime, pageEditorElement);
+        const className = pageEditorElement.getAttribute('data-class') || 'PageEditor';
+        runtime.addTask(() => {
+            scheduleTaskWhenConstructorReady(
+                runtime,
+                className,
+                `page-editor:${className}`,
+                () => {
+                    instantiatePageEditorFromElement(runtime, pageEditorElement);
+                },
+            );
+        });
     }
 };
 
@@ -1147,12 +1251,20 @@ const shouldAutoBootstrap = () => {
     }
 
     const { body } = document;
-    if (!body || !body.dataset) {
+    if (!body) {
         return false;
     }
 
-    const flag = body.dataset.energineRun;
-    return isTruthyDataValue(flag);
+    const flagValue = readAttributeFallback(body, 'energineRun');
+    if (typeof flagValue === 'undefined') {
+        return false;
+    }
+
+    if (flagValue === null || flagValue === '') {
+        return true;
+    }
+
+    return isTruthyDataValue(flagValue);
 };
 
 let autoBootstrapStarted = false;
