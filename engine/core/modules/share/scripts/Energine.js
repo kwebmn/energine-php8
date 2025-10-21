@@ -1202,7 +1202,7 @@ const applyRuntimeDataFromDOM = (runtime) => {
                     }
                 },
             );
-        });
+        }, 0);
     }
 
     const behaviorElements = Array.from(root.querySelectorAll('[data-kind="behavior"]'));
@@ -1222,7 +1222,7 @@ const applyRuntimeDataFromDOM = (runtime) => {
                     instantiateBehaviorFromElement(runtime, element);
                 },
             );
-        });
+        }, 0);
     });
 
     const pageEditorElement = root.querySelector('[data-kind="page-editor"]');
@@ -1241,7 +1241,7 @@ const applyRuntimeDataFromDOM = (runtime) => {
                     instantiatePageEditorFromElement(runtime, pageEditorElement);
                 },
             );
-        });
+        }, 0);
     }
 };
 
