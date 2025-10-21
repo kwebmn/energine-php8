@@ -34,6 +34,16 @@ const noticeIconMap = {
     question: { variant: 'primary', icon: 'fa-circle-question' },
 };
 
+const getGlobalScheduler = () => {
+    if (globalScope && typeof globalScope.setTimeout === 'function') {
+        return globalScope.setTimeout.bind(globalScope);
+    }
+    if (typeof setTimeout === 'function') {
+        return setTimeout;
+    }
+    return null;
+};
+
 class EnergineCore {
     constructor(scope) {
         this.globalScope = scope;
@@ -899,33 +909,55 @@ const readBodyConfigOverrides = () => {
     }
 
     const { body } = document;
-    if (!body || !body.dataset) {
+    if (!body) {
         return {};
     }
 
     const overrides = {};
-    Object.keys(body.dataset).forEach((key) => {
-        if (!key.startsWith('energine')) {
+
+    const applyOverride = (rawKey, rawValue) => {
+        if (!rawKey || typeof rawValue === 'undefined') {
             return;
         }
-        if (key === 'energineRun' || key === 'energineRuntime') {
+        if (!rawKey.startsWith('energine')) {
+            return;
+        }
+        if (rawKey === 'energineRun' || rawKey === 'energineRuntime') {
             return;
         }
 
-        const value = body.dataset[key];
-        if (typeof value === 'undefined') {
-            return;
-        }
-
-        const propName = key.slice('energine'.length);
+        const propName = rawKey.slice('energine'.length);
         if (!propName) {
             return;
         }
 
         const normalizedKey = propName.charAt(0).toLowerCase() + propName.slice(1);
         const mappedKey = bodyConfigKeyRemap[normalizedKey] || normalizedKey;
-        overrides[mappedKey] = value;
-    });
+        overrides[mappedKey] = rawValue;
+    };
+
+    if (body.dataset) {
+        Object.keys(body.dataset).forEach((key) => {
+            applyOverride(key, body.dataset[key]);
+        });
+    }
+
+    if (body.attributes) {
+        Array.prototype.forEach.call(body.attributes, (attr) => {
+            if (!attr || typeof attr.name !== 'string') {
+                return;
+            }
+            if (!attr.name.startsWith('data-energine-')) {
+                return;
+            }
+
+            const camelKey = attr.name
+                .slice('data-'.length)
+                .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+
+            applyOverride(camelKey, attr.value);
+        });
+    }
 
     return overrides;
 };
@@ -936,8 +968,8 @@ const resolveRuntimeDataRoot = () => {
     }
 
     const { body } = document;
-    if (body && body.dataset && body.dataset.energineRuntime) {
-        const selector = body.dataset.energineRuntime;
+    if (body) {
+        const selector = readAttributeFallback(body, 'energineRuntime');
         if (selector) {
             if (selector.startsWith('#')) {
                 const element = document.getElementById(selector.slice(1));
@@ -966,50 +998,70 @@ const resolveRuntimeDataRoot = () => {
     return document.querySelector('[data-energine-runtime]');
 };
 
-const scheduleTaskWhenConstructorReady = (
-    runtime,
-    className,
-    description,
-    task,
-    { attempts = 20, delay = 50 } = {},
-) => {
-    if (typeof task !== 'function') {
-        return;
-    }
+const waitUntil = (runtime, options = {}) => {
+    const {
+        description = 'condition',
+        check,
+        onReady,
+        onTimeout,
+        attempts = 20,
+        delay = 50,
+    } = options;
 
-    if (!globalScope || !className) {
-        task();
+    if (typeof check !== 'function' || typeof onReady !== 'function') {
         return;
     }
 
     let remaining = attempts;
+    const scheduler = getGlobalScheduler();
 
-    const scheduler = (globalScope && typeof globalScope.setTimeout === 'function')
-        ? globalScope.setTimeout.bind(globalScope)
-        : (typeof setTimeout === 'function' ? setTimeout : null);
-
-    const invokeTask = () => {
+    const attempt = () => {
+        let result;
         try {
-            task();
+            result = check();
         } catch (error) {
             if (runtime && typeof runtime.safeConsoleError === 'function') {
-                runtime.safeConsoleError(error, description || className);
+                runtime.safeConsoleError(error, description);
             }
+            return;
         }
-    };
 
-    const checkAvailability = () => {
-        if (!globalScope || typeof globalScope[className] === 'function') {
-            invokeTask();
+        let ready = false;
+        let value;
+
+        if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'done')) {
+            ready = Boolean(result.done);
+            value = result.value;
+        } else if (typeof result !== 'undefined') {
+            ready = true;
+            value = result;
+        }
+
+        if (ready) {
+            try {
+                onReady(value);
+            } catch (error) {
+                if (runtime && typeof runtime.safeConsoleError === 'function') {
+                    runtime.safeConsoleError(error, description);
+                }
+            }
             return;
         }
 
         if (remaining <= 0) {
-            if (runtime && typeof runtime.safeConsoleError === 'function') {
-                runtime.safeConsoleError(
-                    new Error(`Constructor ${className} is not available on the global scope.`),
-                    description || className,
-                );
+            const timeoutError = new Error(`Timed out while waiting for ${description}.`);
+            let handled = false;
+            if (typeof onTimeout === 'function') {
+                try {
+                    handled = onTimeout(timeoutError) === true;
+                } catch (error) {
+                    if (runtime && typeof runtime.safeConsoleError === 'function') {
+                        runtime.safeConsoleError(error, description);
+                    }
+                }
+            }
+            if (!handled && runtime && typeof runtime.safeConsoleError === 'function') {
+                runtime.safeConsoleError(timeoutError, description);
             }
             return;
         }
@@ -1017,13 +1069,51 @@ const scheduleTaskWhenConstructorReady = (
         remaining -= 1;
 
         if (scheduler) {
-            scheduler(checkAvailability, delay);
+            scheduler(attempt, delay);
         } else {
-            invokeTask();
+            remaining = 0;
+            attempt();
         }
     };
 
-    checkAvailability();
+    attempt();
+};
+
+const scheduleTaskWhenConstructorReady = (
+    runtime,
+    className,
+    description,
+    task,
+    options = {},
+) => {
+    if (typeof task !== 'function') {
+        return;
+    }
+
+    waitUntil(runtime, {
+        description: description || className || 'constructor',
+        check: () => {
+            if (!globalScope || !className) {
+                return { done: true };
+            }
+            if (typeof globalScope[className] === 'function') {
+                return { done: true };
+            }
+            return undefined;
+        },
+        onReady: () => task(),
+        onTimeout: () => {
+            if (!className || !runtime || typeof runtime.safeConsoleError !== 'function') {
+                return false;
+            }
+            runtime.safeConsoleError(
+                new Error(`Constructor ${className} is not available on the global scope.`),
+                description || className,
+            );
+            return true;
+        },
+        ...options,
+    });
 };
 
 const scheduleTaskWhenComponentReady = (
@@ -1031,54 +1121,78 @@ const scheduleTaskWhenComponentReady = (
     targetId,
     description,
     task,
-    { attempts = 20, delay = 50 } = {},
+    options = {},
 ) => {
     if (typeof task !== 'function' || !targetId) {
         return;
     }
 
-    if (!globalScope) {
-        task(null);
+    waitUntil(runtime, {
+        description: description || targetId,
+        check: () => {
+            if (!globalScope) {
+                return { done: true, value: null };
+            }
+            const componentInstance = globalScope[targetId];
+            if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
+                return { done: true, value: componentInstance };
+            }
+            return undefined;
+        },
+        onReady: (componentInstance) => {
+            task(componentInstance || null);
+        },
+        onTimeout: () => {
+            if (!runtime || typeof runtime.safeConsoleError !== 'function') {
+                return false;
+            }
+            runtime.safeConsoleError(
+                new Error(`Component ${targetId} is not ready for toolbar attachment.`),
+                description || targetId,
+            );
+            return true;
+        },
+        ...options,
+    });
+};
+
+const queueRuntimeTask = (runtime, task, priority = 0) => {
+    if (!runtime || typeof runtime.addTask !== 'function' || typeof task !== 'function') {
+        return;
+    }
+    runtime.addTask(task, priority);
+};
+
+const queueConstructorTask = (runtime, {
+    className,
+    description,
+    priority = 0,
+    task,
+    options,
+}) => {
+    if (typeof task !== 'function') {
         return;
     }
 
-    let remaining = attempts;
+    queueRuntimeTask(runtime, () => {
+        scheduleTaskWhenConstructorReady(runtime, className, description, task, options);
+    }, priority);
+};
 
-    const scheduler = (globalScope && typeof globalScope.setTimeout === 'function')
-        ? globalScope.setTimeout.bind(globalScope)
-        : (typeof setTimeout === 'function' ? setTimeout : null);
+const queueComponentTask = (runtime, {
+    targetId,
+    description,
+    priority = 0,
+    task,
+    options,
+}) => {
+    if (typeof task !== 'function') {
+        return;
+    }
 
-    const attemptAttachment = () => {
-        const componentInstance = globalScope[targetId];
-        if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
-            try {
-                task(componentInstance);
-            } catch (error) {
-                if (runtime && typeof runtime.safeConsoleError === 'function') {
-                    runtime.safeConsoleError(error, description || targetId);
-                }
-            }
-            return;
-        }
-
-        if (remaining <= 0) {
-            if (runtime && typeof runtime.safeConsoleError === 'function') {
-                runtime.safeConsoleError(
-                    new Error(`Component ${targetId} is not ready for toolbar attachment.`),
-                    description || targetId,
-                );
-            }
-            return;
-        }
-
-        remaining -= 1;
-
-        if (scheduler) {
-            scheduler(attemptAttachment, delay);
-        }
-    };
-
-    attemptAttachment();
+    queueRuntimeTask(runtime, () => {
+        scheduleTaskWhenComponentReady(runtime, targetId, description, task, options);
+    }, priority);
 };
 
 const stageTranslationsFromRoot = (runtime, root) => {
@@ -1101,53 +1215,32 @@ const stageTranslationsFromRoot = (runtime, root) => {
     });
 };
 
-const readControlElementConfig = (element) => {
-    const control = {};
-    if (!element) {
-        return control;
+const readDataEntries = (root, selector) => {
+    const entries = {};
+    if (!root) {
+        return entries;
     }
 
-    element.querySelectorAll('[data-kind="control-attr"]').forEach((attr) => {
-        const name = attr.getAttribute('data-name');
+    root.querySelectorAll(selector).forEach((node) => {
+        const name = node.getAttribute('data-name');
         if (!name) {
             return;
         }
-        control[name] = attr.getAttribute('data-value') || '';
+        entries[name] = node.getAttribute('data-value') || '';
     });
 
-    return control;
+    return entries;
 };
 
-const readPropertyElementConfig = (element) => {
-    const properties = {};
-    if (!element) {
-        return properties;
-    }
+const readControlElementConfig = (element) => readDataEntries(element, '[data-kind="control-attr"]');
 
-    element.querySelectorAll('[data-kind="property"]').forEach((propertyEl) => {
-        const propertyName = propertyEl.getAttribute('data-name');
-        if (!propertyName) {
-            return;
-        }
-        properties[propertyName] = propertyEl.getAttribute('data-value') || '';
-    });
-
-    return properties;
-};
+const readPropertyElementConfig = (element) => readDataEntries(element, '[data-kind="property"]');
 
 const readOptionElementConfig = (element) => {
-    const option = {};
+    const option = readDataEntries(element, ':scope > [data-kind="option-attr"]');
     if (!element) {
         return option;
     }
-
-    element.querySelectorAll(':scope > [data-kind="option-attr"]').forEach((attr) => {
-        const name = attr.getAttribute('data-name');
-        if (!name) {
-            return;
-        }
-        option[name] = attr.getAttribute('data-value') || '';
-    });
 
     const labelNode = element.querySelector(':scope > [data-kind="option-label"]');
     if (labelNode && !option.label) {
@@ -1159,27 +1252,17 @@ const readOptionElementConfig = (element) => {
 
 const normalizeToolbarControlConfig = (rawConfig = {}) => {
     const config = {};
+    const keyMap = {
+        onclick: 'action',
+        action: 'action',
+        'icon-only': 'iconOnly',
+        iconOnly: 'iconOnly',
+    };
 
     Object.keys(rawConfig).forEach((key) => {
-        const value = rawConfig[key];
-        switch (key) {
-            case 'onclick':
-            case 'action':
-                config.action = value;
-                break;
-            case 'icon-only':
-            case 'iconOnly':
-                config.iconOnly = value;
-                break;
-            default:
-                config[key] = value;
-                break;
-        }
+        const targetKey = keyMap[key] || key;
+        config[targetKey] = rawConfig[key];
     });
-
-    if (typeof config.type === 'undefined' && typeof rawConfig.type !== 'undefined') {
-        config.type = rawConfig.type;
-    }
 
     return config;
 };
@@ -1419,19 +1502,16 @@ const applyRuntimeDataFromDOM = (runtime) => {
     const pageToolbarElement = root.querySelector('[data-kind="page-toolbar"]');
     if (pageToolbarElement) {
         const className = pageToolbarElement.getAttribute('data-class');
-        runtime.addTask(() => {
-            scheduleTaskWhenConstructorReady(
-                runtime,
-                className,
-                `page-toolbar:${className || ''}`,
-                () => {
-                    const instance = instantiatePageToolbarFromElement(runtime, pageToolbarElement);
-                    if (instance && globalScope && Array.isArray(globalScope.componentToolbars)) {
-                        globalScope.componentToolbars.push(instance);
-                    }
-                },
-            );
-        }, 0);
+        queueConstructorTask(runtime, {
+            className,
+            description: `page-toolbar:${className || ''}`,
+            task: () => {
+                const instance = instantiatePageToolbarFromElement(runtime, pageToolbarElement);
+                if (instance && globalScope && Array.isArray(globalScope.componentToolbars)) {
+                    globalScope.componentToolbars.push(instance);
+                }
+            },
+        });
     }
 
     const componentToolbarElements = Array.from(root.querySelectorAll('[data-kind="component-toolbar"]'));
@@ -1443,30 +1523,26 @@ const applyRuntimeDataFromDOM = (runtime) => {
             globalScope[targetId] = null;
         }
 
-        runtime.addTask(() => {
-            scheduleTaskWhenConstructorReady(
-                runtime,
-                className,
-                `component-toolbar:${className || 'Toolbar'}:${targetId || 'unknown'}`,
-                () => {
-                    const toolbarInstance = instantiateComponentToolbarFromElement(runtime, element);
-                    if (!toolbarInstance || !targetId) {
-                        return;
-                    }
+        queueConstructorTask(runtime, {
+            className,
+            description: `component-toolbar:${className || 'Toolbar'}:${targetId || 'unknown'}`,
+            task: () => {
+                const toolbarInstance = instantiateComponentToolbarFromElement(runtime, element);
+                if (!toolbarInstance || !targetId) {
+                    return;
+                }
 
-                    scheduleTaskWhenComponentReady(
-                        runtime,
-                        targetId,
-                        `component-toolbar-attach:${targetId}`,
-                        (componentInstance) => {
-                            if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
-                                componentInstance.attachToolbar(toolbarInstance);
-                            }
-                        },
-                    );
-                },
-            );
-        }, 0);
+                queueComponentTask(runtime, {
+                    targetId,
+                    description: `component-toolbar-attach:${targetId}`,
+                    task: (componentInstance) => {
+                        if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
+                            componentInstance.attachToolbar(toolbarInstance);
+                        }
+                    },
+                });
+            },
+        });
     });
 
     const behaviorElements = Array.from(root.querySelectorAll('[data-kind="behavior"]'));
@@ -1477,16 +1553,13 @@ const applyRuntimeDataFromDOM = (runtime) => {
         }
 
         const className = element.getAttribute('data-class');
-        runtime.addTask(() => {
-            scheduleTaskWhenConstructorReady(
-                runtime,
-                className,
-                `behavior:${className || targetId || 'unknown'}`,
-                () => {
-                    instantiateBehaviorFromElement(runtime, element);
-                },
-            );
-        }, 0);
+        queueConstructorTask(runtime, {
+            className,
+            description: `behavior:${className || targetId || 'unknown'}`,
+            task: () => {
+                instantiateBehaviorFromElement(runtime, element);
+            },
+        });
     });
 
     const pageEditorElement = root.querySelector('[data-kind="page-editor"]');
@@ -1496,16 +1569,13 @@ const applyRuntimeDataFromDOM = (runtime) => {
             globalScope[targetKey] = null;
         }
         const className = pageEditorElement.getAttribute('data-class') || 'PageEditor';
-        runtime.addTask(() => {
-            scheduleTaskWhenConstructorReady(
-                runtime,
-                className,
-                `page-editor:${className}`,
-                () => {
-                    instantiatePageEditorFromElement(runtime, pageEditorElement);
-                },
-            );
-        }, 0);
+        queueConstructorTask(runtime, {
+            className,
+            description: `page-editor:${className}`,
+            task: () => {
+                instantiatePageEditorFromElement(runtime, pageEditorElement);
+            },
+        });
     }
 };
 
@@ -1588,9 +1658,7 @@ const scheduleAutoBootstrap = () => {
         return;
     }
 
-    const scheduler = (globalScope && typeof globalScope.setTimeout === 'function')
-        ? globalScope.setTimeout.bind(globalScope)
-        : (typeof setTimeout === 'function' ? setTimeout : null);
+    const scheduler = getGlobalScheduler();
 
     if (scheduler) {
         scheduler(trigger, 0);
