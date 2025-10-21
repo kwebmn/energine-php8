@@ -55,6 +55,7 @@ const targets = [
     { name: 'energine.ckeditor', entry: 'energine.ckeditor.entry.js' },
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
+    { name: 'energine.bootstrap', entry: 'energine.bootstrap.entry.js' },
 ];
 
 for (let index = 0; index < targets.length; index += 1) {
