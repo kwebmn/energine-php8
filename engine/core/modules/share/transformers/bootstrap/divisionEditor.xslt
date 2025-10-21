@@ -5,12 +5,7 @@
     xmlns:set="http://exslt.org/sets"
     extension-element-prefixes="set">
 
-    <xsl:template match="document/translations[translation[@component=//component[@sample='DivisionEditor' or @class='SiteEditor']/@name]]">
-        <script type="module">
-            import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
-        </script>
-    </xsl:template>
+    <xsl:template match="document/translations[translation[@component=//component[@sample='DivisionEditor' or @class='SiteEditor']/@name]]"/>
     
     <!-- вывод дерева разделов -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">

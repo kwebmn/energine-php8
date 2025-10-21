@@ -1,882 +1,434 @@
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+const RUNTIME_SELECTOR = 'script[data-energine-core]';
+const TRANSLATION_SELECTOR = 'script[type="application/json"][data-energine-translations]';
+const BEHAVIOUR_SELECTOR = 'script[type="application/json"][data-energine-behaviors]';
+const COMPONENT_SELECTOR = 'script[type="application/json"][data-energine-components]';
 
-const bridgeMethodNames = [
-    'request',
-    'cancelEvent',
-    'resize',
-    'confirmBox',
-    'alertBox',
-    'noticeBox',
-    'loadCSS',
-    'run',
-    'createDatePicker',
-    'createDateTimePicker',
-];
+const ELEMENT_CTOR = typeof Element !== 'undefined' ? Element : null;
 
-const allowedConfigKeys = [
-    'debug',
-    'base',
-    'static',
-    'resizer',
-    'media',
-    'root',
-    'lang',
-    'singleMode',
-];
-
-const noticeIconMap = {
-    success: { variant: 'success', icon: 'fa-circle-check' },
-    error: { variant: 'danger', icon: 'fa-circle-xmark' },
-    warning: { variant: 'warning', icon: 'fa-triangle-exclamation' },
-    info: { variant: 'info', icon: 'fa-circle-info' },
-    question: { variant: 'primary', icon: 'fa-circle-question' },
+const runtimeState = {
+    script: null,
+    config: {},
+    bootPromise: null,
+    mountedControllers: new WeakMap(),
+    translations: {},
 };
 
-class EnergineCore {
-    constructor(scope) {
-        this.globalScope = scope;
-
-        this.debug = false;
-        this.base = '';
-        this.static = '';
-        this.resizer = '';
-        this.media = '';
-        this.root = '';
-        this.lang = '';
-        this.singleMode = false;
-        this.forceJSON = false;
-        this.supportContentEdit = true;
-        this.tasks = [];
-
-        this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
-            ? import.meta.url
-            : '';
-        this.moduleScriptElement = null;
-
-        this.translationStore = {};
-        this.translations = this.createTranslationsFacade();
-
-        this.bridge = this.initBridge();
-        this.applyDatasetConfigToBridge();
+function coerceValue(value) {
+    if (value === undefined || value === null) {
+        return value;
     }
 
-    createTranslationsFacade() {
-        const store = this.translationStore;
-        return {
-            get(constant) {
-                return Object.prototype.hasOwnProperty.call(store, constant)
-                    ? store[constant]
-                    : null;
-            },
-            set(constant, value) {
-                store[constant] = value;
-            },
-            extend(values) {
-                if (!values || typeof values !== 'object') {
-                    return;
-                }
-                Object.assign(store, values);
-            },
-        };
+    if (value === '') {
+        return '';
     }
 
-    initBridge() {
-        if (!this.globalScope) {
-            return null;
-        }
-        if (this.globalScope.__energineBridge) {
-            return this.globalScope.__energineBridge;
-        }
+    const normalized = String(value).trim();
+    const lower = normalized.toLowerCase();
 
-        const pending = {
-            config: {},
-            tasks: [],
-            translations: {},
-        };
-        let runtime = null;
-
-        const translationFacade = {
-            get: (constant) => {
-                if (runtime && runtime.translations) {
-                    return runtime.translations.get(constant);
-                }
-                return Object.prototype.hasOwnProperty.call(pending.translations, constant)
-                    ? pending.translations[constant]
-                    : null;
-            },
-            set: (constant, value) => {
-                if (runtime && runtime.translations) {
-                    runtime.translations.set(constant, value);
-                } else {
-                    pending.translations[constant] = value;
-                }
-            },
-            extend: (values) => {
-                if (runtime && runtime.translations) {
-                    runtime.translations.extend(values);
-                } else if (values && typeof values === 'object') {
-                    Object.assign(pending.translations, values);
-                }
-            },
-        };
-
-        const queueTask = (task, priority = 5) => {
-            if (typeof task !== 'function') {
-                return;
-            }
-
-            if (runtime) {
-                runtime.addTask(task, priority);
-            } else {
-                pending.tasks.push({ task, priority });
-            }
-        };
-
-        const extendTranslations = (values) => {
-            if (!values || typeof values !== 'object') {
-                return;
-            }
-            translationFacade.extend(values);
-        };
-
-        const setRuntime = (instance) => {
-            runtime = instance;
-
-            if (runtime && typeof runtime.mergeConfigValues === 'function') {
-                runtime.mergeConfigValues(pending.config);
-            } else if (runtime && pending.config) {
-                Object.assign(runtime, pending.config);
-            }
-
-            if (runtime
-                && runtime.translations
-                && typeof runtime.translations.extend === 'function'
-                && Object.keys(pending.translations).length) {
-                runtime.translations.extend(pending.translations);
-                pending.translations = {};
-            }
-
-            if (runtime && pending.tasks.length) {
-                pending.tasks.forEach(({ task, priority }) => runtime.addTask(task, priority));
-                pending.tasks = [];
-            }
-        };
-
-        const api = new Proxy(
-            {},
-            {
-                get: (_, prop) => {
-                    if (prop === '__setRuntime') {
-                        return setRuntime;
-                    }
-                    if (prop === 'translations') {
-                        return translationFacade;
-                    }
-                    if (prop === 'addTask') {
-                        return queueTask;
-                    }
-                    if (prop === 'tasks') {
-                        return runtime ? runtime.tasks : pending.tasks;
-                    }
-                    if (runtime) {
-                        const value = runtime[prop];
-                        return typeof value === 'function' ? value.bind(runtime) : value;
-                    }
-                    if (bridgeMethodNames.includes(prop)) {
-                        return (...args) => {
-                            if (!runtime || typeof runtime[prop] !== 'function') {
-                                throw new Error('Energine runtime is not ready yet');
-                            }
-                            return runtime[prop](...args);
-                        };
-                    }
-                    if (Object.prototype.hasOwnProperty.call(pending.config, prop)) {
-                        return pending.config[prop];
-                    }
-                    return undefined;
-                },
-                set: (_, prop, value) => {
-                    if (prop === 'translations') {
-                        translationFacade.extend(value);
-                        return true;
-                    }
-                    if (runtime) {
-                        runtime[prop] = value;
-                    } else {
-                        pending.config[prop] = value;
-                    }
-                    return true;
-                },
-            },
-        );
-
-        this.globalScope.Energine = api;
-        this.globalScope.__energineBridge = {
-            setRuntime,
-            pendingConfig: pending.config,
-            queueTask,
-            extendTranslations,
-        };
-
-        return this.globalScope.__energineBridge;
+    if (lower === 'true') {
+        return true;
     }
 
-    applyDatasetConfigToBridge() {
-        if (!this.bridge || !this.bridge.pendingConfig) {
-            return;
-        }
-        const datasetConfig = this.readConfigFromScriptDataset();
-        if (Object.keys(datasetConfig).length) {
-            Object.assign(this.bridge.pendingConfig, datasetConfig);
-        }
+    if (lower === 'false') {
+        return false;
     }
 
-    resolveModuleScriptElement() {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-        if (this.moduleScriptElement && document.contains(this.moduleScriptElement)) {
-            return this.moduleScriptElement;
-        }
-        if (!this.moduleUrl) {
-            return null;
-        }
-
-        const scripts = document.getElementsByTagName('script');
-        for (let i = scripts.length - 1; i >= 0; i -= 1) {
-            const script = scripts[i];
-            if (script.type !== 'module' || !script.src) {
-                continue;
-            }
-
-            try {
-                const normalizedSrc = new URL(script.src, document.baseURI).href;
-                if (normalizedSrc === this.moduleUrl) {
-                    this.moduleScriptElement = script;
-                    return script;
-                }
-            } catch {
-                // ignore malformed URLs
-            }
-        }
-
+    if (lower === 'null') {
         return null;
     }
 
-    readConfigFromScriptDataset() {
-        if (typeof document === 'undefined') {
-            return {};
-        }
-
-        const scriptEl = this.resolveModuleScriptElement();
-        if (!scriptEl || !scriptEl.dataset) {
-            return {};
-        }
-
-        const config = {};
-        allowedConfigKeys.forEach((key) => {
-            if (typeof scriptEl.dataset[key] === 'undefined') {
-                return;
-            }
-            if (key === 'debug' || key === 'singleMode') {
-                config[key] = scriptEl.dataset[key] === 'true';
-            } else {
-                config[key] = scriptEl.dataset[key];
-            }
-        });
-
-        return config;
-    }
-
-    mergeConfigValues(values = {}) {
-        if (!values || typeof values !== 'object') {
-            return;
-        }
-
-        allowedConfigKeys.forEach((key) => {
-            if (Object.prototype.hasOwnProperty.call(values, key)) {
-                this[key] = values[key];
-            }
-        });
-    }
-
-    serializeToFormEncoded(obj, prefix) {
-        const str = [];
-
-        for (const key in obj) {
-            if (!Object.prototype.hasOwnProperty.call(obj, key)) {
-                continue;
-            }
-
-            const propKey = prefix ? `${prefix}[${key}]` : key;
-            const value = obj[key];
-
-            if (typeof value === 'object' && value !== null && !(value instanceof File)) {
-                str.push(this.serializeToFormEncoded(value, propKey));
-            } else {
-                str.push(`${encodeURIComponent(propKey)}=${encodeURIComponent(value)}`);
-            }
-        }
-
-        return str.join('&');
-    }
-
-    async request(uri, data, onSuccess, onUserError, onServerError = () => {}, method = 'post') {
-        let url = uri + (this.forceJSON ? '?json' : '');
-        const isGet = method.toLowerCase() === 'get';
-        const headers = { 'X-Request': 'json' };
-        const fetchOpts = { method: method.toUpperCase(), headers };
-
-        if (this.forceJSON) {
-            headers['Content-Type'] = 'application/json';
-            if (!isGet) {
-                fetchOpts.body = JSON.stringify(data);
-            } else if (data) {
-                const params = new URLSearchParams(data).toString();
-                url += (url.includes('?') ? '&' : '?') + params;
-            }
-        } else if (typeof data === 'string') {
-            headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            fetchOpts.body = data;
-        } else {
-            const formEncoded = this.serializeToFormEncoded(data || {});
-            if (isGet) {
-                url += (url.includes('?') ? '&' : '?') + formEncoded;
-            } else {
-                headers['Content-Type'] = 'application/x-www-form-urlencoded';
-                fetchOpts.body = formEncoded;
-            }
-        }
-
-        try {
-            const res = await fetch(url, fetchOpts);
-            const text = await res.text();
-            let response;
-
-            try {
-                response = JSON.parse(text);
-            } catch {
-                response = null;
-            }
-
-            if (!response) {
-                onServerError(text);
-                return;
-            }
-
-            if (response.result) {
-                onSuccess(response);
-                return;
-            }
-
-            let msg = response.title || 'Произошла ошибка:\n';
-            if (Array.isArray(response.errors)) {
-                response.errors.forEach((error) => {
-                    if (typeof error.field !== 'undefined') {
-                        msg += `${error.field} :\t`;
-                    }
-                    if (typeof error.message !== 'undefined') {
-                        msg += `${error.message}\n`;
-                    } else {
-                        msg += `${error}\n`;
-                    }
-                });
-            }
-            alert(msg);
-            if (onUserError) onUserError(response);
-        } catch (e) {
-            console.error(e);
-            onServerError(e.toString());
-        }
-    }
-
-    cancelEvent(e) {
-        const event = e || (this.globalScope ? this.globalScope.event : undefined);
-        try {
-            if (event && event.preventDefault) {
-                event.stopPropagation();
-                event.preventDefault();
-            } else if (event) {
-                event.returnValue = false;
-                event.cancelBubble = true;
-            }
-        } catch (err) {
-            console.warn(err);
-        }
-    }
-
-    resize(img, src, w, h, r = '') {
-        if (!img) return;
-        img.setAttribute('src', `${this.resizer}${r}w${w}-h${h}/${src}`);
-    }
-
-    resolveBootstrap() {
-        if (this.globalScope && this.globalScope.bootstrap) {
-            return this.globalScope.bootstrap;
-        }
-        if (typeof bootstrap !== 'undefined') {
-            return bootstrap;
-        }
-        return null;
-    }
-
-    ensureModalElement(id, template) {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-
-        let element = document.getElementById(id);
-        if (element) {
-            return element;
-        }
-
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = template.trim();
-        element = wrapper.firstElementChild;
-        if (element) {
-            document.body.appendChild(element);
-        }
-
-        return element;
-    }
-
-    getToastContainer() {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-        let container = document.getElementById('energine-toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'energine-toast-container';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '11000';
-            document.body.appendChild(container);
-        }
-        return container;
-    }
-
-    confirmBox(message, yes, no) {
-        const bootstrapLib = this.resolveBootstrap();
-        if (!bootstrapLib || typeof document === 'undefined') {
-            if (confirm(message)) {
-                if (yes) yes();
-            } else if (no) {
-                no();
-            }
-            return;
-        }
-
-        const modal = this.ensureModalElement('energine-confirm-modal', `
-            <div class="modal fade" id="energine-confirm-modal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header bg-warning text-dark">
-                            <h5 class="modal-title">
-                                <i class="fa-solid fa-triangle-exclamation me-2"></i>
-                                <span data-role="title">Подтверждение</span>
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p class="mb-0" data-role="message"></p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-role="cancel" data-bs-dismiss="modal">
-                                <i class="fa-solid fa-circle-xmark me-2"></i>Нет
-                            </button>
-                            <button type="button" class="btn btn-primary" data-role="confirm" data-bs-dismiss="modal">
-                                <i class="fa-solid fa-circle-check me-2"></i>Да
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `);
-
-        if (!modal) {
-            if (confirm(message)) {
-                if (yes) yes();
-            } else if (no) {
-                no();
-            }
-            return;
-        }
-
-        const messageContainer = modal.querySelector('[data-role="message"]');
-        if (messageContainer) {
-            messageContainer.textContent = message;
-        }
-
-        const confirmBtn = modal.querySelector('[data-role="confirm"]');
-        const cancelBtn = modal.querySelector('[data-role="cancel"]');
-        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
-
-        let resolved = false;
-        const handleConfirm = () => {
-            resolved = true;
-            if (yes) yes();
-        };
-        const handleCancel = () => {
-            resolved = true;
-            if (no) no();
-        };
-
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', handleConfirm, { once: true });
-        }
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', handleCancel, { once: true });
-        }
-
-        modal.addEventListener('hidden.bs.modal', () => {
-            if (!resolved && no) {
-                no();
-            }
-        }, { once: true });
-
-        instance.show();
-    }
-
-    alertBox(message) {
-        const bootstrapLib = this.resolveBootstrap();
-        if (!bootstrapLib || typeof document === 'undefined') {
-            alert(message);
-            return;
-        }
-
-        const modal = this.ensureModalElement('energine-alert-modal', `
-            <div class="modal fade" id="energine-alert-modal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title">
-                                <i class="fa-solid fa-circle-exclamation me-2"></i>
-                                <span data-role="title">Внимание</span>
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p class="mb-0" data-role="message"></p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                                <i class="fa-solid fa-circle-check me-2"></i>Ок
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `);
-
-        if (!modal) {
-            alert(message);
-            return;
-        }
-
-        const messageContainer = modal.querySelector('[data-role="message"]');
-        if (messageContainer) {
-            messageContainer.textContent = message;
-        }
-
-        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
-        instance.show();
-    }
-
-    noticeBox(message, icon, callback) {
-        const bootstrapLib = this.resolveBootstrap();
-        if (!bootstrapLib || typeof document === 'undefined') {
-            alert(message);
-            if (callback) callback();
-            return;
-        }
-
-        const container = this.getToastContainer();
-        if (!container) {
-            alert(message);
-            if (callback) callback();
-            return;
-        }
-
-        const { variant, icon: iconClass } = noticeIconMap[icon] || noticeIconMap.info;
-
-        const toast = document.createElement('div');
-        toast.className = `toast align-items-center text-bg-${variant} border-0`;
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body d-flex align-items-center">
-                    <i class="fa-solid ${iconClass} me-2"></i>
-                    <span>${message}</span>
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        `;
-
-        container.appendChild(toast);
-
-        const toastInstance = bootstrapLib.Toast.getOrCreateInstance(toast, {
-            delay: 1500,
-            autohide: true,
-        });
-
-        toast.addEventListener('hidden.bs.toast', () => {
-            toastInstance.dispose();
-            toast.remove();
-            if (callback) {
-                callback();
-            }
-        }, { once: true });
-
-        toastInstance.show();
-    }
-
-    createDatePicker() {
-        // Placeholder for date picker integration
-    }
-
-    createDateTimePicker() {
-        // Placeholder for date-time picker integration
-    }
-
-    loadCSS(file) {
-        if (typeof document === 'undefined') return;
-        if (!document.querySelector(`link[href$="${file}"]`)) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = file;
-            document.head.appendChild(link);
-        }
-    }
-
-    addTask(task, priority = 5) {
-        if (!this.tasks[priority]) {
-            this.tasks[priority] = [];
-        }
-        this.tasks[priority].push(task);
-    }
-
-    run() {
-        if (!this.tasks) {
-            return;
-        }
-
-        for (const priority of this.tasks) {
-            if (!priority) continue;
-            for (const func of priority) {
-                try {
-                    func();
-                } catch (e) {
-                    this.safeConsoleError(e);
-                }
-            }
-        }
-    }
-
-    boot(config = {}) {
-        const { translations: translationsConfig, tasks, ...rest } = config;
-
-        this.mergeConfigValues(rest);
-
-        if (translationsConfig) {
-            this.translations.extend(translationsConfig);
-        }
-
-        if (Array.isArray(tasks)) {
-            this.tasks = tasks;
-        }
-
-        return this;
-    }
-
-    stageTranslations(values) {
-        if (!values || typeof values !== 'object') {
-            return;
-        }
-
-        if (this.bridge && typeof this.bridge.extendTranslations === 'function') {
-            this.bridge.extendTranslations(values);
-            return;
-        }
-
-        this.translations.extend(values);
-    }
-
-    queueTask(task, priority = 5) {
-        if (typeof task !== 'function') {
-            return;
-        }
-
-        if (this.bridge && typeof this.bridge.queueTask === 'function') {
-            this.bridge.queueTask(task, priority);
-            return;
-        }
-
-        this.addTask(task, priority);
-    }
-
-    createConfigFromProps(props = {}) {
-        const config = { ...props };
-
-        const normalizeBoolean = (value) => {
-            if (typeof value === 'boolean') return value;
-            if (typeof value === 'number') return value !== 0;
-            if (typeof value === 'string') {
-                return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-            }
-            return Boolean(value);
-        };
-
-        if (Object.prototype.hasOwnProperty.call(config, 'debug')) {
-            config.debug = normalizeBoolean(config.debug);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'forceJSON')) {
-            config.forceJSON = normalizeBoolean(config.forceJSON);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'supportContentEdit')) {
-            config.supportContentEdit = normalizeBoolean(config.supportContentEdit);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'singleMode')) {
-            config.singleMode = normalizeBoolean(config.singleMode);
-        }
-
-        return config;
-    }
-
-    createConfigFromScriptDataset(overrides = {}) {
-        const baseConfig = this.readConfigFromScriptDataset();
-        return this.createConfigFromProps({ ...baseConfig, ...overrides });
-    }
-
-    createConfigFromBridgePending(overrides = {}) {
-        const bridgeConfig = (this.bridge && this.bridge.pendingConfig)
-            ? { ...this.bridge.pendingConfig }
-            : {};
-        return this.createConfigFromProps({ ...bridgeConfig, ...overrides });
-    }
-
-    safeConsoleError(e, context = '') {
-        if (typeof console === 'undefined' || !console.error || !console.groupCollapsed) {
-            return;
-        }
-
-        const message = (e && e.message) ? e.message : e;
-
-        console.groupCollapsed(
-            `%c[App Error]%c ${context ? `[${context}] ` : ''}%c${message}`,
-            'color:#fff; background:#dc3545; padding:2px 6px; border-radius:3px;',
-            'color:#aaa; font-size:11px;',
-            'color:#dc3545;',
-        );
-
-        if (e && e.stack) {
-            console.error('%cStack trace:', 'color:#888');
-            console.error(`%c${e.stack}`, 'color:#dc3545; font-size:12px;');
-        } else {
-            console.error(e);
-        }
-
-        console.info(
-            `%c${new Date().toLocaleString()}`,
-            'color:#888; font-size:10px;',
-        );
-
-        console.groupEnd();
-    }
-
-    showLoader(container = (typeof document !== 'undefined' ? document.body : undefined)) {
-        if (!container || typeof document === 'undefined') {
-            return;
-        }
-
-        if (!container.querySelector('.global-loader')) {
-            const loader = document.createElement('div');
-            loader.className = 'global-loader d-flex justify-content-center align-items-center position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75';
-            loader.style.zIndex = 9999;
-            loader.innerHTML = `
-                <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            `;
-            const computeStyle = (this.globalScope && this.globalScope.getComputedStyle)
-                ? this.globalScope.getComputedStyle(container)
-                : (typeof window !== 'undefined' && window.getComputedStyle
-                    ? window.getComputedStyle(container)
-                    : null);
-            if (computeStyle && (computeStyle.position === 'static' || !computeStyle.position)) {
-                container.style.position = 'relative';
-            }
-            container.appendChild(loader);
-        }
-    }
-
-    hideLoader(container = (typeof document !== 'undefined' ? document.body : undefined)) {
-        if (!container || typeof document === 'undefined') {
-            return;
-        }
-
-        const loader = container.querySelector('.global-loader');
-        if (loader) {
-            loader.remove();
-        }
-    }
-
-    attachToWindow(target = this.globalScope, runtime = this) {
-        if (!target) {
-            return runtime;
-        }
-
-        target.safeConsoleError = this.safeConsoleError.bind(this);
-        target.showLoader = this.showLoader.bind(this);
-        target.hideLoader = this.hideLoader.bind(this);
-        target.Energine = runtime;
-
-        return runtime;
-    }
-}
-
-const Energine = new EnergineCore(globalScope);
-
-const existingConfig = (() => {
-    if (!globalScope) {
+    if (lower === 'undefined') {
         return undefined;
     }
-    if (globalScope.__energineBridge && globalScope.__energineBridge.pendingConfig) {
-        return { ...globalScope.__energineBridge.pendingConfig };
-    }
-    if (typeof globalScope.Energine === 'object') {
-        return { ...globalScope.Energine };
-    }
-    return undefined;
-})();
 
-if (existingConfig && Object.keys(existingConfig).length) {
-    Energine.boot(existingConfig);
+    if (!Number.isNaN(Number(normalized))) {
+        return Number(normalized);
+    }
+
+    return normalized;
 }
 
-export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
+function extractOptions(dataset, ignoredKeys = []) {
+    const options = {};
+    Object.keys(dataset || {}).forEach((key) => {
+        if (ignoredKeys.includes(key)) {
+            return;
+        }
+        options[key] = coerceValue(dataset[key]);
+    });
+    return options;
+}
 
-export const bootEnergine = (config = {}) => Energine.boot(config);
+function getDocument() {
+    if (typeof document === 'undefined') {
+        throw new Error('Energine runtime requires a DOM environment');
+    }
+    return document;
+}
 
-export const stageTranslations = (values) => Energine.stageTranslations(values);
+function findRuntimeScript() {
+    const doc = getDocument();
+    let script = doc.querySelector(RUNTIME_SELECTOR);
+    if (script) {
+        return script;
+    }
+    const scripts = Array.from(doc.querySelectorAll('script[type="module"]'));
+    script = scripts.reverse().find((node) => {
+        const src = node.getAttribute('src') || '';
+        return src.includes('Energine.js');
+    }) || null;
+    return script;
+}
 
-export const queueTask = (task, priority = 5) => Energine.queueTask(task, priority);
+export function readConfigFromScriptDataset(scriptElement) {
+    if (!scriptElement || !scriptElement.dataset) {
+        return {};
+    }
+    const dataset = scriptElement.dataset;
+    const config = {};
+    Object.keys(dataset).forEach((key) => {
+        config[key] = coerceValue(dataset[key]);
+    });
+    return config;
+}
 
-export const createConfigFromProps = (props = {}) => Energine.createConfigFromProps(props);
+export function getConfig() {
+    return Object.assign({}, runtimeState.config);
+}
 
-export const createConfigFromScriptDataset = (overrides = {}) => Energine.createConfigFromScriptDataset(overrides);
+function ensureAbsoluteUrl(url) {
+    if (typeof url !== 'string' || url.length === 0) {
+        return url;
+    }
+    if (/^[a-z]+:\/\//i.test(url) || url.startsWith('//')) {
+        return url;
+    }
+    return null;
+}
 
-export const createConfigFromBridgePending = (overrides = {}) => Energine.createConfigFromBridgePending(overrides);
+export function resolveModuleUrl(moduleId) {
+    if (!moduleId) {
+        throw new Error('Module identifier must be provided');
+    }
 
-export const safeConsoleError = (error, context = '') => Energine.safeConsoleError(error, context);
+    const absolute = ensureAbsoluteUrl(moduleId);
+    if (absolute) {
+        return absolute;
+    }
 
-export const showLoader = (container) => Energine.showLoader(container);
+    if (moduleId.startsWith('/')) {
+        return moduleId;
+    }
 
-export const hideLoader = (container) => Energine.hideLoader(container);
+    if (moduleId.startsWith('./') || moduleId.startsWith('../')) {
+        if (runtimeState.script && runtimeState.script.src) {
+            return new URL(moduleId, runtimeState.script.src).toString();
+        }
+        return moduleId;
+    }
 
-export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
+    const staticBase = runtimeState.config.static || '';
+    if (!staticBase) {
+        return moduleId;
+    }
+    const separator = staticBase.endsWith('/') ? '' : '/';
+    return `${staticBase}${separator}${moduleId.replace(/^\/+/g, '')}`;
+}
 
-export default Energine;
+function readJsonPayload(selector) {
+    try {
+        const node = getDocument().querySelector(selector);
+        if (!node) {
+            return null;
+        }
+        const text = node.textContent || '';
+        if (!text.trim()) {
+            return null;
+        }
+        return JSON.parse(text);
+    } catch (error) {
+        console.error('[Energine] Failed to parse JSON payload from', selector, error);
+        return null;
+    }
+}
+
+function storeTranslations(payload) {
+    if (!payload || typeof payload !== 'object') {
+        return;
+    }
+    Object.assign(runtimeState.translations, payload);
+}
+
+export const translations = {
+    get(constant) {
+        return Object.prototype.hasOwnProperty.call(runtimeState.translations, constant)
+            ? runtimeState.translations[constant]
+            : null;
+    },
+    set(constant, value) {
+        runtimeState.translations[constant] = value;
+    },
+    extend(values) {
+        if (!values || typeof values !== 'object') {
+            return;
+        }
+        Object.assign(runtimeState.translations, values);
+    },
+};
+
+function createControllerContext(element, options = {}) {
+    return {
+        element,
+        options,
+        config: runtimeState.config,
+        translations,
+        resolveModuleUrl,
+        mountControllers,
+    };
+}
+
+async function instantiateController(element) {
+    if (!element || runtimeState.mountedControllers.has(element)) {
+        return runtimeState.mountedControllers.get(element) || null;
+    }
+
+    const { controller, module: moduleId, export: exportName } = element.dataset;
+    if (!controller && !moduleId) {
+        return null;
+    }
+
+    const moduleSpecifier = moduleId || `scripts/${controller}.js`;
+    const namespace = await import(/* webpackIgnore: true */ resolveModuleUrl(moduleSpecifier));
+    const exportKey = exportName || 'default';
+    const ControllerCtor = exportKey === 'default' ? (namespace.default || namespace.Controller || namespace[controller]) : namespace[exportKey];
+
+    if (typeof ControllerCtor !== 'function') {
+        throw new Error(`Controller "${controller || moduleId}" does not export a callable constructor (${exportKey}).`);
+    }
+
+    const options = extractOptions(element.dataset, ['controller', 'module', 'export']);
+    const instance = new ControllerCtor(element, createControllerContext(element, options));
+    if (instance && typeof instance.mount === 'function') {
+        await instance.mount();
+    }
+    runtimeState.mountedControllers.set(element, instance || true);
+    element.dispatchEvent(new CustomEvent('energine:controller-mounted', {
+        bubbles: true,
+        detail: {
+            controller: controller || moduleId,
+            instance,
+        },
+    }));
+    return instance;
+}
+
+async function initialiseBehaviours(definitions) {
+    if (!Array.isArray(definitions)) {
+        return [];
+    }
+
+    const results = [];
+    for (const definition of definitions) {
+        if (!definition || typeof definition !== 'object') {
+            continue;
+        }
+        const selector = definition.selector || null;
+        const moduleId = definition.module || definition.controller || null;
+        if (!selector || !moduleId) {
+            continue;
+        }
+
+        const exportName = definition.export || 'default';
+        const namespace = await import(/* webpackIgnore: true */ resolveModuleUrl(moduleId));
+        const behaviour = exportName === 'default'
+            ? (namespace.default || namespace.run || namespace.initialise)
+            : namespace[exportName];
+
+        if (typeof behaviour !== 'function') {
+            console.warn(`[Energine] Behaviour ${moduleId} is missing callable export ${exportName}`);
+            continue;
+        }
+
+        const context = {
+            config: runtimeState.config,
+            translations,
+            resolveModuleUrl,
+        };
+
+        const nodes = selector === 'document'
+            ? [getDocument()]
+            : Array.from(getDocument().querySelectorAll(selector));
+
+        for (const node of nodes) {
+            try {
+                const payload = definition.options ? JSON.parse(JSON.stringify(definition.options)) : {};
+                results.push(await behaviour(node, context, payload));
+            } catch (error) {
+                console.error(`[Energine] Behaviour ${moduleId} failed`, error);
+            }
+        }
+    }
+    return results;
+}
+
+async function initialiseComponentDefinitions(definitions) {
+    if (!Array.isArray(definitions)) {
+        return [];
+    }
+    const instances = [];
+    for (const definition of definitions) {
+        if (!definition || typeof definition !== 'object') {
+            continue;
+        }
+        const targetSelector = definition.selector || null;
+        if (!targetSelector) {
+            continue;
+        }
+        const nodes = Array.from(getDocument().querySelectorAll(targetSelector));
+        if (!nodes.length) {
+            continue;
+        }
+        const moduleId = definition.module || definition.controller;
+        if (!moduleId) {
+            continue;
+        }
+        const exportName = definition.export || 'default';
+        const namespace = await import(/* webpackIgnore: true */ resolveModuleUrl(moduleId));
+        const Factory = exportName === 'default'
+            ? (namespace.default || namespace.create || namespace.initialise)
+            : namespace[exportName];
+        if (typeof Factory !== 'function') {
+            console.warn(`[Energine] Component ${moduleId} is missing callable export ${exportName}`);
+            continue;
+        }
+        for (const element of nodes) {
+            try {
+                const options = definition.options ? JSON.parse(JSON.stringify(definition.options)) : {};
+                instances.push(await Factory(element, createControllerContext(element, options)));
+            } catch (error) {
+                console.error(`[Energine] Component ${moduleId} failed`, error);
+            }
+        }
+    }
+    return instances;
+}
+
+export async function mountControllers(root = null) {
+    const doc = getDocument();
+    const container = root || doc;
+    const elements = ELEMENT_CTOR && container instanceof ELEMENT_CTOR
+        ? [container, ...Array.from(container.querySelectorAll('[data-controller]'))]
+        : Array.from(doc.querySelectorAll('[data-controller]'));
+
+    const uniqueElements = elements.filter((el, idx, array) => {
+        if (!(ELEMENT_CTOR && el instanceof ELEMENT_CTOR)) {
+            return false;
+        }
+        if (idx === 0) {
+            return true;
+        }
+        return array.indexOf(el) === idx;
+    });
+
+    const promises = uniqueElements.map((element) => instantiateController(element).catch((error) => {
+        console.error('[Energine] Failed to mount controller for element', element, error);
+        return null;
+    }));
+
+    return Promise.all(promises);
+}
+
+function shouldBoot(config) {
+    const doc = getDocument();
+    if (doc.body && doc.body.dataset && doc.body.dataset.energineRun === '1') {
+        return true;
+    }
+    if (config.autoBoot === false) {
+        return false;
+    }
+    return true;
+}
+
+async function performBoot(configOverrides = {}) {
+    runtimeState.script = findRuntimeScript();
+    const datasetConfig = readConfigFromScriptDataset(runtimeState.script);
+    runtimeState.config = Object.assign({}, datasetConfig, configOverrides);
+
+    if (!shouldBoot(runtimeState.config)) {
+        return {
+            skipped: true,
+            reason: 'boot flag missing',
+        };
+    }
+
+    storeTranslations(readJsonPayload(TRANSLATION_SELECTOR));
+
+    const behaviourPayload = readJsonPayload(BEHAVIOUR_SELECTOR);
+    const componentPayload = readJsonPayload(COMPONENT_SELECTOR);
+
+    const [behaviourResults, componentResults, controllerResults] = await Promise.all([
+        initialiseBehaviours(behaviourPayload),
+        initialiseComponentDefinitions(componentPayload),
+        mountControllers(),
+    ]);
+
+    return {
+        skipped: false,
+        behaviours: behaviourResults,
+        components: componentResults,
+        controllers: controllerResults,
+    };
+}
+
+export function boot(configOverrides = {}) {
+    if (!runtimeState.bootPromise) {
+        runtimeState.bootPromise = performBoot(configOverrides);
+    }
+    return runtimeState.bootPromise;
+}
+
+function scheduleAutoBoot() {
+    try {
+        const doc = getDocument();
+        if (doc.readyState === 'loading') {
+            doc.addEventListener('DOMContentLoaded', () => {
+                boot().catch((error) => {
+                    console.error('[Energine] boot failed', error);
+                });
+            }, { once: true });
+            return;
+        }
+        boot().catch((error) => {
+            console.error('[Energine] boot failed', error);
+        });
+    } catch (error) {
+        console.error('[Energine] unable to initialise auto boot', error);
+    }
+}
+
+if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'Energine', {
+        configurable: true,
+        enumerable: false,
+        get() {
+            return {
+                boot,
+                getConfig,
+                translations,
+                resolveModuleUrl,
+                readConfigFromScriptDataset,
+            };
+        },
+    });
+}
+
+scheduleAutoBoot();
+
+export default {
+    boot,
+    getConfig,
+    translations,
+    resolveModuleUrl,
+    mountControllers,
+    readConfigFromScriptDataset,
+};

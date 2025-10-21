@@ -54,23 +54,11 @@
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
             <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
-            <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
-                <script type="module">
-                    import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-                    stageTranslations(<xsl:value-of select="/document/translations/@json" />);
-                </script>
-            </xsl:if>
         </div>
     </xsl:template>
     
     <!-- Выводим переводы для WYSIWYG -->
-    <xsl:template match="document/translations[translation[@component=//component[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name]]">
-        <script type="module">
-            import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
-        </script>
-
-    </xsl:template>
+    <xsl:template match="document/translations[translation[@component=//component[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name]]"/>
 
     <!--Фильтр обрабатывается в BUILD_GRID-->
     <xsl:template match="component[@type='list' and @exttype='grid']/filter"/>
