@@ -4,28 +4,6 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 
     >
-    <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
-    <xsl:variable name="COMPONENTS" select="//component[@name][@module]"/>
-    <xsl:variable name="TRANSLATION" select="/document/translations/translation"/>
-    <xsl:variable name="ID" select="$DOC_PROPS[@name='ID']"/>
-	<xsl:variable name="BASE" select="$DOC_PROPS[@name='base']"/>
-    <xsl:variable name="FOLDER" select="$DOC_PROPS[@name='base']/@folder"/>
-	<xsl:variable name="LANG_ID" select="$DOC_PROPS[@name='lang']"/>
-	<xsl:variable name="LANG_ABBR" select="$DOC_PROPS[@name='lang']/@abbr"/>
-	<xsl:variable name="NBSP"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></xsl:variable>
-    <xsl:variable name="STATIC_URL"><xsl:value-of select="$BASE/@static"/></xsl:variable>
-    <xsl:variable name="ASSETS_BASE">
-        <xsl:choose>
-            <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
-                <xsl:value-of select="concat($STATIC_URL, 'assets/')"/>
-            </xsl:when>
-            <xsl:otherwise>
-                <xsl:value-of select="concat($STATIC_URL, '/assets/')"/>
-            </xsl:otherwise>
-        </xsl:choose>
-    </xsl:variable>
-    <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
-    <xsl:variable name="RESIZER_URL"><xsl:value-of select="$BASE/@resizer"/></xsl:variable>
     <xsl:variable name="MAIN_SITE"><xsl:value-of select="$DOC_PROPS[@name='base']/@default"/><xsl:value-of select="$LANG_ABBR"/></xsl:variable>
     <xsl:variable name="SCRIPTS_BASE">
         <xsl:choose>

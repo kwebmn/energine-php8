@@ -3,19 +3,8 @@
     version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
+        <xsl:import href="base.xslt" />
         <xsl:import href="list.xslt" />
-
-        <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
-        <xsl:variable name="COMPONENTS" select="//component[@name][@module]"/>
-        <xsl:variable name="TRANSLATION" select="/document/translations/translation"/>
-        <xsl:variable name="ID" select="$DOC_PROPS[@name='ID']"/>
-        <xsl:variable name="BASE" select="$DOC_PROPS[@name='base']"/>
-        <xsl:variable name="FOLDER" select="$DOC_PROPS[@name='base']/@folder"/>
-        <xsl:variable name="LANG_ID" select="$DOC_PROPS[@name='lang']"/>
-        <xsl:variable name="LANG_ABBR" select="$DOC_PROPS[@name='lang']/@abbr"/>
-        <xsl:variable name="NBSP"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></xsl:variable>
-        <xsl:variable name="STATIC_URL"><xsl:value-of select="$BASE/@static"/></xsl:variable>
-        <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
 
         <xsl:template match="/">
             <html>

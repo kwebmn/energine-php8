@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet
     version="1.0"
-    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
+
+    <xsl:import href="base.xslt"/>
 
     <xsl:output method="html"
                 version="1.0"
@@ -12,20 +14,6 @@
                 doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"
                 indent="yes" />
 
-    <xsl:variable name="BASE" select="/document/properties/property[@name='base']"/>
-    <xsl:variable name="STATIC_URL" select="$BASE"/>
-    <xsl:variable name="FOLDER">default</xsl:variable>
-    <xsl:variable name="LANG_ABBR" select="/document/properties/property[@name='lang']/@abbr"/>
-    <xsl:variable name="ASSETS_BASE">
-        <xsl:choose>
-            <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
-                <xsl:value-of select="concat($STATIC_URL, 'assets/')"/>
-            </xsl:when>
-            <xsl:otherwise>
-                <xsl:value-of select="concat($STATIC_URL, '/assets/')"/>
-            </xsl:otherwise>
-        </xsl:choose>
-    </xsl:variable>
     <xsl:variable name="IN_DEBUG_MODE"><xsl:value-of select="/document/@debug"/></xsl:variable>
 
     <xsl:template match="/document">

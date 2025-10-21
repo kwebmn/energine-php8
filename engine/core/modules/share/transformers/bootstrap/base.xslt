@@ -7,10 +7,33 @@
     <!--
         В этом файле собраны базовые правила обработки с низким приоритетом. Файл импортируется в include.xslt,
         что позволяет использовать правило apply-imports в шаблонах более высокого уровня.
-        Для переопределения этих правил нужно создать такой же файл и подключить его (импортировать) аналогично 
+        Для переопределения этих правил нужно создать такой же файл и подключить его (импортировать) аналогично
         в нужный модуль. Также здесь собраны некоторые именованные шаблоны - импортирование позволяет переопределять
         их позже в site/transformers.
     -->
+
+    <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
+    <xsl:variable name="COMPONENTS" select="//component[@name][@module]"/>
+    <xsl:variable name="TRANSLATION" select="/document/translations/translation"/>
+    <xsl:variable name="ID" select="$DOC_PROPS[@name='ID']"/>
+    <xsl:variable name="BASE" select="$DOC_PROPS[@name='base']"/>
+    <xsl:variable name="FOLDER" select="$BASE/@folder"/>
+    <xsl:variable name="LANG_ID" select="$DOC_PROPS[@name='lang']"/>
+    <xsl:variable name="LANG_ABBR" select="$LANG_ID/@abbr"/>
+    <xsl:variable name="NBSP"><xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></xsl:variable>
+    <xsl:variable name="STATIC_URL"><xsl:value-of select="$BASE/@static"/></xsl:variable>
+    <xsl:variable name="ASSETS_BASE">
+        <xsl:choose>
+            <xsl:when test="substring($STATIC_URL, string-length($STATIC_URL)) = '/' or $STATIC_URL = ''">
+                <xsl:value-of select="concat($STATIC_URL, 'assets/')"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="concat($STATIC_URL, '/assets/')"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="MEDIA_URL"><xsl:value-of select="$BASE/@media"/></xsl:variable>
+    <xsl:variable name="RESIZER_URL"><xsl:value-of select="$BASE/@resizer"/></xsl:variable>
 
     <!-- именованный шаблон с дефолтным набором атрибутов для элемента формы - НЕ ПЕРЕПИСЫВАТЬ В ДРУГОМ МЕСТЕ! -->
     <xsl:template name="FORM_ELEMENT_ATTRIBUTES">
