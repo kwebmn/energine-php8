@@ -3,18 +3,47 @@ const globalScope = typeof window !== 'undefined'
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class Toolbar {
-    constructor(toolbarName, props = {}) {
-        this.name = toolbarName;
-        this.element = document.createElement('div');
-        this.element.classList.add('btn-toolbar', 'flex-wrap', 'gap-2', 'align-items-center');
-        this.element.setAttribute('role', 'toolbar');
-        if (toolbarName) {
-            this.element.classList.add(toolbarName);
-            this.element.dataset.toolbar = toolbarName;
-        }
-        this.properties = typeof props === 'object' ? props : {};
+    constructor(toolbarNameOrElement, props = {}) {
+        this.element = null;
+        this.name = '';
         this.boundTo = null;
         this.controls = [];
+        this.properties = typeof props === 'object' ? props : {};
+
+        if (toolbarNameOrElement instanceof HTMLElement) {
+            this.element = toolbarNameOrElement;
+            this.name = this.element.dataset?.toolbar || '';
+            if (!this.name && typeof toolbarNameOrElement.getAttribute === 'function') {
+                this.name = toolbarNameOrElement.getAttribute('data-toolbar') || '';
+            }
+            if (!this.name && typeof toolbarNameOrElement.className === 'string') {
+                const nameMatch = /([\w-]+)_toolbar/.exec(toolbarNameOrElement.className);
+                if (nameMatch) {
+                    this.name = nameMatch[1];
+                }
+            }
+            if (!this.element.classList.contains('btn-toolbar')) {
+                this.element.classList.add('btn-toolbar');
+            }
+            this.element.classList.add('flex-wrap', 'gap-2', 'align-items-center');
+            this.element.setAttribute('role', 'toolbar');
+            if (this.name) {
+                this.element.dataset.toolbar = this.name;
+                this.element.classList.add(this.name);
+            }
+        } else {
+            const toolbarName = toolbarNameOrElement || '';
+            this.name = toolbarName;
+            if (typeof document !== 'undefined') {
+                this.element = document.createElement('div');
+                this.element.classList.add('btn-toolbar', 'flex-wrap', 'gap-2', 'align-items-center');
+                this.element.setAttribute('role', 'toolbar');
+                if (toolbarName) {
+                    this.element.classList.add(toolbarName);
+                    this.element.dataset.toolbar = toolbarName;
+                }
+            }
+        }
     }
 
     load(toolbarDescr) {
@@ -118,6 +147,219 @@ class Toolbar {
         if (this.boundTo && typeof this.boundTo[action] === 'function') {
             this.boundTo[action](data);
         }
+    }
+
+    // Hydration helpers
+    static extractPropertiesFromDataset(dataset = {}, overrides = {}) {
+        const props = {};
+        Object.entries(dataset).forEach(([key, value]) => {
+            if (!key || typeof value === 'undefined' || value === null) {
+                return;
+            }
+            if (key.startsWith('prop')) {
+                const normalized = key.slice(4).replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).toLowerCase();
+                if (normalized) {
+                    props[normalized] = value;
+                }
+            }
+        });
+        return Object.assign(props, overrides || {});
+    }
+
+    static extractControlDescriptor(element) {
+        if (!(element instanceof HTMLElement)) {
+            return null;
+        }
+        const dataset = element.dataset || {};
+        const rawType = dataset.type || element.getAttribute('data-type') || element.tagName.toLowerCase();
+        const type = (rawType || 'button').toLowerCase();
+        const controlId = dataset.controlId || element.getAttribute('data-control-id') || '';
+        const title = dataset.title || element.getAttribute('data-title') || '';
+        const tooltip = element.getAttribute('title') || dataset.tooltip || '';
+        const action = dataset.action || element.getAttribute('data-action') || '';
+        const icon = dataset.icon || element.getAttribute('data-icon') || '';
+        const iconOnly = dataset.iconOnly || element.getAttribute('data-icon-only') || '';
+        const disabled = element.hasAttribute('disabled')
+            || dataset.disabled === 'true'
+            || dataset.disabled === '1';
+
+        if (!controlId && type !== 'separator') {
+            return null;
+        }
+
+        const descriptor = {
+            type,
+            element,
+            props: {
+                id: controlId,
+                title: title || element.textContent?.trim() || '',
+                tooltip,
+                icon,
+                iconOnly,
+                action,
+                disabled,
+                type,
+            },
+        };
+
+        if (type === 'switcher') {
+            descriptor.props.aicon = dataset.altIcon || element.getAttribute('data-alt-icon') || '';
+            descriptor.props.state = dataset.state || element.getAttribute('data-state') || '';
+        }
+
+        if (type === 'select') {
+            const selectEl = element.querySelector('select');
+            const options = {};
+            let initialValue = false;
+            if (selectEl) {
+                Array.from(selectEl.options).forEach(option => {
+                    options[option.value] = option.textContent;
+                    if (option.selected) {
+                        initialValue = option.value;
+                    }
+                });
+                descriptor.props.disabled = disabled || selectEl.hasAttribute('disabled');
+            }
+            descriptor.options = options;
+            descriptor.initial = initialValue;
+        }
+
+        if (type === 'separator') {
+            descriptor.props.id = controlId || descriptor.props.id || '';
+        }
+
+        return descriptor;
+    }
+
+    static createControlFromDescriptor(descriptor) {
+        if (!descriptor || !descriptor.props) {
+            return null;
+        }
+
+        const { type, props, options, initial } = descriptor;
+
+        switch (type) {
+            case 'switcher':
+                return new Toolbar.Switcher(props);
+            case 'file':
+                return new Toolbar.File(props);
+            case 'select':
+                return new Toolbar.Select(props, options || {}, initial);
+            case 'separator':
+                return new Toolbar.Separator(props);
+            case 'link':
+                return new Toolbar.Button(props);
+            default:
+                return new Toolbar.Button(props);
+        }
+    }
+
+    static registerToolbarInstance(toolbar, componentRef = null) {
+        if (!(toolbar instanceof Toolbar)) {
+            return;
+        }
+        if (!Toolbar.registry) {
+            Toolbar.registry = new Map();
+        }
+        Toolbar.registry.set(toolbar.element, toolbar);
+
+        if (!componentRef) {
+            return;
+        }
+
+        if (!Toolbar.pendingToolbars) {
+            Toolbar.pendingToolbars = new Map();
+        }
+        if (!Toolbar.componentInstances) {
+            Toolbar.componentInstances = new Map();
+        }
+
+        const componentInstance = Toolbar.componentInstances.get(componentRef);
+        if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
+            componentInstance.attachToolbar(toolbar);
+            return;
+        }
+
+        const list = Toolbar.pendingToolbars.get(componentRef) || [];
+        list.push(toolbar);
+        Toolbar.pendingToolbars.set(componentRef, list);
+    }
+
+    static registerComponentInstance(componentRef, instance) {
+        if (!componentRef || !instance) {
+            return;
+        }
+        if (!Toolbar.componentInstances) {
+            Toolbar.componentInstances = new Map();
+        }
+        Toolbar.componentInstances.set(componentRef, instance);
+
+        const pending = Toolbar.pendingToolbars && Toolbar.pendingToolbars.get(componentRef);
+        if (pending && pending.length) {
+            pending.forEach(toolbar => {
+                try {
+                    instance.attachToolbar?.(toolbar);
+                } catch (error) {
+                    console.warn('[Toolbar] Failed to attach toolbar to component', componentRef, error);
+                }
+            });
+            Toolbar.pendingToolbars.delete(componentRef);
+        }
+    }
+
+    static hydrate(element, options = {}) {
+        if (!(element instanceof HTMLElement)) {
+            return null;
+        }
+
+        if (element.dataset && element.dataset.toolbarHydrated) {
+            return (Toolbar.registry && Toolbar.registry.get(element)) || null;
+        }
+
+        const dataset = element.dataset || {};
+        const toolbarName = dataset.toolbar || options.name || '';
+        const props = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
+        const childElements = Array.from(element.children || []).filter(child => child instanceof HTMLElement);
+        const descriptors = childElements.map(child => Toolbar.extractControlDescriptor(child)).filter(Boolean);
+
+        element.innerHTML = '';
+
+        const toolbar = new Toolbar(element, props);
+        if (toolbarName) {
+            toolbar.name = toolbarName;
+            toolbar.element.dataset.toolbar = toolbarName;
+            toolbar.element.classList.add(toolbarName);
+        }
+
+        descriptors.forEach(descriptor => {
+            const controlInstance = Toolbar.createControlFromDescriptor(descriptor);
+            if (controlInstance) {
+                toolbar.appendControl(controlInstance);
+            }
+        });
+
+        if (toolbar.element?.dataset) {
+            toolbar.element.dataset.toolbarHydrated = '1';
+        }
+
+        const componentRef = dataset.toolbarComponent || dataset.componentRef || null;
+        Toolbar.registerToolbarInstance(toolbar, componentRef);
+
+        return toolbar;
+    }
+
+    static initFromDOM(root = (typeof document !== 'undefined' ? document : null)) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return [];
+        }
+        const toolbars = [];
+        root.querySelectorAll('[data-toolbar]').forEach(element => {
+            const toolbar = Toolbar.hydrate(element);
+            if (toolbar) {
+                toolbars.push(toolbar);
+            }
+        });
+        return toolbars;
     }
 
     // STATIC
@@ -845,8 +1087,20 @@ class Toolbar {
     };
 }
 
+Toolbar.registry = new Map();
+Toolbar.pendingToolbars = new Map();
+Toolbar.componentInstances = new Map();
+
 export { Toolbar };
 export default Toolbar;
+
+export function initializeToolbars(root) {
+    return Toolbar.initFromDOM(root);
+}
+
+export function registerToolbarComponent(componentRef, instance) {
+    return Toolbar.registerComponentInstance(componentRef, instance);
+}
 
 export function attachToWindow(target = globalScope) {
     if (!target) {

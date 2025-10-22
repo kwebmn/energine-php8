@@ -202,8 +202,9 @@
         </xsl:if>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
-        <script type="module">            
+        <script type="module">
             import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
+            import { initializeToolbars, registerToolbarComponent } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
 
             const config = createConfigFromScriptDataset();
 
@@ -212,8 +213,6 @@
                 window.__energineBridge.setRuntime(runtime);
             }
             const Energine = attachToWindow(window, runtime);
-
-            const componentToolbars = window.componentToolbars = [];
 
             <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
                 <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]">
@@ -235,12 +234,16 @@
             </xsl:if>
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
                 <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
-                if (document.getElementById('<xsl:value-of select="$objectID"/>')) {
-                    try {
-                         globalThis['<xsl:value-of select="$objectID"/>'] = new <xsl:value-of select="@name"/>(document.getElementById('<xsl:value-of select="$objectID"/>'));
-                    }
-                    catch (e) {
-                        safeConsoleError(e);
+                {
+                    const componentElement = document.getElementById('<xsl:value-of select="$objectID"/>');
+                    if (componentElement) {
+                        try {
+                            const instance = new <xsl:value-of select="@name"/>(componentElement);
+                            globalThis['<xsl:value-of select="$objectID"/>'] = instance;
+                            registerToolbarComponent('<xsl:value-of select="$objectID"/>', instance);
+                        } catch (e) {
+                            safeConsoleError(e);
+                        }
                     }
                 }
             </xsl:for-each>
@@ -255,6 +258,8 @@
                     }
                 </xsl:if>
             </xsl:if>
+
+            initializeToolbars(document);
 
             document.addEventListener('DOMContentLoaded', () => Energine.run());
         </script>
