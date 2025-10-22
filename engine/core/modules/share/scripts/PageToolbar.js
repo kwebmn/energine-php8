@@ -377,13 +377,21 @@ class PageToolbar extends Toolbar {
             topFrame.dataset.toolbarDock = dockingMode;
         }
 
-        const addedClasses = [];
-        const rememberClass = className => {
-            if (className && !topFrame.classList.contains(className)) {
-                topFrame.classList.add(className);
-                addedClasses.push(className);
+        const topFrameAddedClasses = [];
+        const rootAddedClasses = [];
+        const rememberClass = (element, className, bucket) => {
+            if (!element || !className) {
+                return;
+            }
+            if (!element.classList.contains(className)) {
+                element.classList.add(className);
+                if (Array.isArray(bucket)) {
+                    bucket.push(className);
+                }
             }
         };
+        const rememberTopClass = className => rememberClass(topFrame, className, topFrameAddedClasses);
+        const rememberRootClass = className => rememberClass(root, className, rootAddedClasses);
 
         const originalStyles = {
             position: topFrame.style.position,
@@ -392,15 +400,20 @@ class PageToolbar extends Toolbar {
             right: topFrame.style.right,
             zIndex: topFrame.style.zIndex,
         };
+        const originalRootStyles = root ? {
+            position: root.style.position,
+            top: root.style.top,
+            left: root.style.left,
+            right: root.style.right,
+            zIndex: root.style.zIndex,
+        } : null;
 
         const applySticky = () => {
-            rememberClass('position-sticky');
-            rememberClass('top-0');
-            rememberClass('start-0');
-            rememberClass('end-0');
-            if (!topFrame.classList.contains('sticky-top')) {
-                topFrame.classList.add('sticky-top');
-            }
+            rememberTopClass('sticky-top');
+            rememberTopClass('position-sticky');
+            rememberTopClass('top-0');
+            rememberTopClass('start-0');
+            rememberTopClass('end-0');
             if (!topFrame.style.position) {
                 topFrame.style.position = 'sticky';
             }
@@ -409,6 +422,31 @@ class PageToolbar extends Toolbar {
             }
             if (!topFrame.style.zIndex) {
                 topFrame.style.zIndex = '1040';
+            }
+            if (!topFrame.style.left) {
+                topFrame.style.left = '0px';
+            }
+            rememberRootClass('sticky-top');
+            rememberRootClass('position-sticky');
+            rememberRootClass('top-0');
+            rememberRootClass('start-0');
+            rememberRootClass('end-0');
+            if (root) {
+                if (!root.style.position || root.style.position === 'static') {
+                    root.style.position = 'sticky';
+                }
+                if (!root.style.top) {
+                    root.style.top = '0px';
+                }
+                if (!root.style.left) {
+                    root.style.left = '0px';
+                }
+                if (!root.style.right) {
+                    root.style.right = '0px';
+                }
+                if (!root.style.zIndex) {
+                    root.style.zIndex = '1040';
+                }
             }
         };
 
@@ -427,6 +465,23 @@ class PageToolbar extends Toolbar {
             }
             if (!topFrame.style.zIndex) {
                 topFrame.style.zIndex = '1040';
+            }
+            if (root) {
+                if (!root.style.position || root.style.position === 'static') {
+                    root.style.position = 'fixed';
+                }
+                if (!root.style.top) {
+                    root.style.top = '0px';
+                }
+                if (!root.style.left) {
+                    root.style.left = '0px';
+                }
+                if (!root.style.right) {
+                    root.style.right = '0px';
+                }
+                if (!root.style.zIndex) {
+                    root.style.zIndex = '1040';
+                }
             }
         };
 
@@ -466,13 +521,25 @@ class PageToolbar extends Toolbar {
         }
 
         this._registerLayoutCleanup(() => {
-            addedClasses.forEach(className => topFrame.classList.remove(className));
+            topFrameAddedClasses.forEach(className => topFrame.classList.remove(className));
+            if (root) {
+                rootAddedClasses.forEach(className => root.classList.remove(className));
+            }
             topFrame.style.position = originalStyles.position;
             topFrame.style.top = originalStyles.top;
             topFrame.style.left = originalStyles.left;
             topFrame.style.right = originalStyles.right;
             topFrame.style.zIndex = originalStyles.zIndex;
-            root.style.removeProperty('--page-toolbar-height');
+            if (root && originalRootStyles) {
+                root.style.position = originalRootStyles.position;
+                root.style.top = originalRootStyles.top;
+                root.style.left = originalRootStyles.left;
+                root.style.right = originalRootStyles.right;
+                root.style.zIndex = originalRootStyles.zIndex;
+            }
+            if (root?.style) {
+                root.style.removeProperty('--page-toolbar-height');
+            }
             if (document?.documentElement) {
                 document.documentElement.style.removeProperty('--page-toolbar-height');
             }

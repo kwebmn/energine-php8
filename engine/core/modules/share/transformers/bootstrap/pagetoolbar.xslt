@@ -100,7 +100,7 @@
         <xsl:variable name="LOGO_SRC" select="concat($STATIC, $LOGO_FILE)"/>
         <xsl:variable name="DOCK_POSITION" select="javascript/param[@name='dock']"/>
 
-        <section class="e-page-toolbar" data-role="page-toolbar-root">
+        <section class="e-page-toolbar sticky-top position-sticky top-0 start-0 end-0" data-role="page-toolbar-root">
             <xsl:attribute name="data-e-js">PageToolbar</xsl:attribute>
             <xsl:attribute name="data-toolbar-scope">page</xsl:attribute>
             <xsl:attribute name="data-page-toolbar"><xsl:value-of select="$TOOLBAR_NAME"/></xsl:attribute>
@@ -122,7 +122,7 @@
                 </xsl:choose>
             </xsl:attribute>
 
-            <nav class="e-topframe sticky-top position-sticky top-0 start-0 end-0 py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
+            <nav class="e-topframe py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
                 <div class="container-fluid d-flex align-items-start justify-content-start gap-3 flex-wrap py-0">
                     <div class="d-flex align-items-center gap-2 flex-shrink-0" data-role="toolbar-brand">
                         <button type="button" class="btn btn-sm btn-light border border-secondary-subtle rounded-1 px-2 d-flex align-items-center justify-content-center flex-shrink-0 border-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
