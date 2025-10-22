@@ -142,10 +142,6 @@
                         </div>
                         <div class="e-toolbar-editband bg-body border shadow-sm rounded-3 px-3 py-2 d-flex align-items-center gap-2 flex-wrap w-100 justify-content-start" data-role="toolbar-editband" hidden="hidden"/>
                     </div>
-                    <div class="d-flex flex-column flex-md-row align-items-md-center gap-2 ms-auto text-md-end" data-role="toolbar-meta">
-                        <span class="fw-semibold" data-role="page-title"></span>
-                        <small class="text-muted" data-role="breadcrumb-trail"></small>
-                    </div>
                 </div>
             </nav>
 

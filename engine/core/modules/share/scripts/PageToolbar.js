@@ -212,62 +212,6 @@ class PageToolbar extends Toolbar {
             }
         }
 
-        const metaContainer = root.querySelector('[data-role="toolbar-meta"]');
-        if (metaContainer) {
-            const pageTitleOverride = PageToolbar._resolveDatasetValue(
-                ['pageTitle', 'title', 'documentTitle'],
-                this._layoutConfig,
-                dataset,
-                rootDataset,
-                metaContainer.dataset || {}
-            );
-            const pageTitle = (typeof pageTitleOverride === 'string' && pageTitleOverride.trim())
-                ? pageTitleOverride.trim()
-                : PageToolbar._extractPageTitle();
-
-            const breadcrumbOverride = PageToolbar._resolveDatasetValue(
-                ['breadcrumb', 'breadcrumbs', 'breadcrumbTrail'],
-                this._layoutConfig,
-                dataset,
-                rootDataset,
-                metaContainer.dataset || {}
-            );
-            const breadcrumbTrail = (typeof breadcrumbOverride === 'string' && breadcrumbOverride.trim())
-                ? breadcrumbOverride.trim()
-                : PageToolbar._extractBreadcrumbTrail(pageTitle);
-
-            let hasMetaContent = false;
-            const pageTitleTarget = metaContainer.querySelector('[data-role="page-title"]');
-            if (pageTitleTarget) {
-                if (pageTitle) {
-                    pageTitleTarget.textContent = pageTitle;
-                    hasMetaContent = true;
-                } else {
-                    pageTitleTarget.remove();
-                }
-            }
-
-            const breadcrumbTarget = metaContainer.querySelector('[data-role="breadcrumb-trail"]');
-            if (breadcrumbTarget) {
-                if (breadcrumbTrail) {
-                    breadcrumbTarget.textContent = breadcrumbTrail;
-                    hasMetaContent = true;
-                } else {
-                    breadcrumbTarget.remove();
-                }
-            }
-
-            if (hasMetaContent) {
-                metaContainer.removeAttribute('hidden');
-                metaContainer.classList.remove('d-none');
-                metaContainer.dataset.state = 'populated';
-            } else {
-                metaContainer.setAttribute('hidden', 'hidden');
-                metaContainer.classList.add('d-none');
-                metaContainer.dataset.state = 'empty';
-            }
-        }
-
         const sidebarEnvironmentTarget = root.querySelector('[data-role="sidebar-environment"]');
         if (sidebarEnvironmentTarget && !sidebarEnvironmentTarget.childElementCount) {
             const environmentOverride = PageToolbar._resolveDatasetValue(
