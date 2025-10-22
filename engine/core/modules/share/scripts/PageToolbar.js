@@ -743,38 +743,36 @@ class PageToolbar extends Toolbar {
         const sidebarLabel = getTranslation('TXT_SIDEBAR_TOGGLE', 'TXT_SIDEBAR', 'TXT_SETTINGS') || 'Toggle sidebar';
         const sidebarToggle = document.createElement('button');
         sidebarToggle.type = 'button';
-        sidebarToggle.classList.add('btn', 'btn-sm', 'btn-light', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0', 'border-0');
-        // sidebarToggle.classList.add('btn', 'btn-sm', 'border', 'border-secondary-subtle', 'rounded-1', 'px-2', 'd-flex', 'align-items-center', 'justify-content-center', 'flex-shrink-0');
+        sidebarToggle.classList.add(
+            'btn',
+            'btn-sm',
+            'btn-light',
+            'd-inline-flex',
+            'align-items-center',
+            'gap-2',
+            'border',
+            'border-secondary-subtle',
+            'rounded-1',
+            'px-3',
+            'flex-shrink-0',
+            'text-secondary',
+        );
         if (sidebarLabel) {
             sidebarToggle.setAttribute('aria-label', sidebarLabel);
         }
-        const logoWrapper = document.createElement('span');
-        logoWrapper.classList.add('d-inline-flex', 'align-items-center', 'justify-content-center', 'rounded-1', 'bg-white', 'border', 'border-secondary-subtle', 'shadow-sm');
-        logoWrapper.style.width = '32px';
-        logoWrapper.style.height = '32px';
-        logoWrapper.style.lineHeight = '0';
 
-        const logoImage = document.createElement('img');
-        logoImage.src = (Energine.static || '') + (Energine.debug ? 'images/toolbar/nrgnptbdbg.png' : 'images/toolbar/nrgnptb.png');
-        logoImage.alt = '';
-        logoImage.classList.add('img-fluid');
-        logoImage.style.width = '70%';
-        logoImage.style.height = '70%';
-        logoImage.style.objectFit = 'contain';
-        logoWrapper.appendChild(logoImage);
+        const iconWrapper = document.createElement('span');
+        iconWrapper.classList.add('toolbar-icon', 'd-inline-flex', 'align-items-center', 'justify-content-center');
 
-        sidebarToggle.appendChild(logoWrapper);
+        const icon = document.createElement('i');
+        icon.classList.add('fa', 'fa-bars');
+        icon.setAttribute('aria-hidden', 'true');
+
+        iconWrapper.appendChild(icon);
+        sidebarToggle.appendChild(iconWrapper);
         brandStack.appendChild(sidebarToggle);
         this.sidebarToggleButton = sidebarToggle;
         this.sidebarToggleButtons = [sidebarToggle];
-
-        const toolbarLabelText = getTranslation('TXT_ADMIN_PANEL', 'TXT_CONTROL_PANEL', 'TXT_SETTINGS');
-        if (toolbarLabelText) {
-            const toolbarLabel = document.createElement('span');
-            toolbarLabel.classList.add('fw-semibold', 'small', 'text-muted', 'd-none', 'd-sm-inline');
-            toolbarLabel.textContent = toolbarLabelText;
-            brandStack.appendChild(toolbarLabel);
-        }
 
         const environmentLabel = PageToolbar._extractEnvironmentLabel();
 

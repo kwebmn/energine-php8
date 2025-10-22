@@ -104,13 +104,13 @@
             <nav class="e-topframe py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
                 <div class="container-fluid d-flex align-items-start justify-content-start gap-3 flex-wrap py-0">
                     <div class="d-flex align-items-center flex-shrink-0" data-role="toolbar-brand">
-                        <button type="button" class="btn btn-sm btn-light border border-secondary-subtle rounded-1 px-2 d-flex align-items-center justify-content-center flex-shrink-0 border-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
+                        <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center gap-2 border border-secondary-subtle rounded-1 px-3 flex-shrink-0 text-secondary" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
                             <xsl:attribute name="data-bs-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:attribute name="aria-controls"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:if test="string-length(normalize-space($SIDEBAR_LABEL)) &gt; 0">
                                 <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                             </xsl:if>
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-1 bg-white border border-secondary-subtle shadow-sm" style="width:32px;height:32px;line-height:0;">
+                            <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
                                 <i class="fa fa-bars" aria-hidden="true"></i>
                             </span>
                         </button>
