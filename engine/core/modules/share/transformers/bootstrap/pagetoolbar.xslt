@@ -113,11 +113,16 @@
             <xsl:attribute name="data-offcanvas-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
             <xsl:attribute name="data-sidebar-expanded">0</xsl:attribute>
             <xsl:attribute name="data-sidebar-state">closed</xsl:attribute>
-            <xsl:if test="string-length(normalize-space($DOCK_POSITION)) &gt; 0">
-                <xsl:attribute name="data-toolbar-dock"><xsl:value-of select="$DOCK_POSITION"/></xsl:attribute>
-            </xsl:if>
+            <xsl:attribute name="data-toolbar-dock">
+                <xsl:choose>
+                    <xsl:when test="string-length(normalize-space($DOCK_POSITION)) &gt; 0">
+                        <xsl:value-of select="$DOCK_POSITION"/>
+                    </xsl:when>
+                    <xsl:otherwise>sticky</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
 
-            <nav class="e-topframe sticky-top py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
+            <nav class="e-topframe sticky-top position-sticky top-0 start-0 end-0 py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
                 <div class="container-fluid d-flex align-items-start justify-content-start gap-3 flex-wrap py-0">
                     <div class="d-flex align-items-center gap-2 flex-shrink-0" data-role="toolbar-brand">
                         <button type="button" class="btn btn-sm btn-light border border-secondary-subtle rounded-1 px-2 d-flex align-items-center justify-content-center flex-shrink-0 border-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
