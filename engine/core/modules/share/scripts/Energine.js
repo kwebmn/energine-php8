@@ -845,6 +845,34 @@ const BOOTSTRAP_ROOT_ID = 'energine-bootstrap';
 let bootstrapPayloadCache = null;
 let bootstrapPayloadResolved = false;
 
+const collectDataAttributes = (node, { ignore = [] } = {}) => {
+    if (!node || !node.attributes) {
+        return {};
+    }
+
+    const skip = new Set(ignore);
+    const result = {};
+
+    Array.from(node.attributes).forEach((attr) => {
+        if (!attr.name || !attr.name.startsWith('data-')) {
+            return;
+        }
+
+        if (skip.has(attr.name)) {
+            return;
+        }
+
+        const name = attr.name.slice(5);
+        if (!name) {
+            return;
+        }
+
+        result[name] = attr.value;
+    });
+
+    return result;
+};
+
 const parseBootstrapPayloadFromDom = () => {
     if (typeof document === 'undefined') {
         return null;
@@ -867,29 +895,63 @@ const parseBootstrapPayloadFromDom = () => {
         payload.globals.push(node.dataset.id);
     });
 
-    const toolbarNode = root.querySelector('[data-type="page-toolbar"]');
+    const toolbarNode = root.querySelector('[data-page-toolbar]')
+        || root.querySelector('[data-type="page-toolbar"]');
     if (toolbarNode && toolbarNode.dataset) {
+        const toolbarAttributes = collectDataAttributes(toolbarNode);
         const toolbar = {
-            className: toolbarNode.dataset.className || '',
-            componentPath: toolbarNode.dataset.componentPath || '',
-            documentId: toolbarNode.dataset.documentId || '',
-            toolbarName: toolbarNode.dataset.toolbarName || '',
+            className: toolbarNode.dataset.className
+                || toolbarAttributes['class-name']
+                || '',
+            componentPath: toolbarNode.dataset.componentPath
+                || toolbarAttributes['component-path']
+                || '',
+            documentId: toolbarNode.dataset.documentId
+                || toolbarAttributes['document-id']
+                || '',
+            toolbarName: toolbarNode.dataset.toolbarName
+                || toolbarAttributes['toolbar-name']
+                || '',
             controls: [],
         };
 
-        toolbarNode.querySelectorAll('[data-type="control"]').forEach((controlNode) => {
-            const control = {};
-            controlNode.querySelectorAll('[data-type="attribute"]').forEach((attributeNode) => {
-                if (!attributeNode.dataset || !attributeNode.dataset.name) {
-                    return;
-                }
-                const { name, value } = attributeNode.dataset;
-                control[name] = typeof value === 'undefined' ? '' : value;
+        const controlNodes = toolbarNode.querySelectorAll('[data-toolbar-control]');
+        const parseControlAttributes = (node) => {
+            const control = collectDataAttributes(node, {
+                ignore: ['data-type', 'data-toolbar-control'],
             });
-            toolbar.controls.push(control);
+
+            if (!Object.keys(control).length) {
+                node.querySelectorAll('[data-type="attribute"]').forEach((attributeNode) => {
+                    if (!attributeNode.dataset || !attributeNode.dataset.name) {
+                        return;
+                    }
+                    const { name, value } = attributeNode.dataset;
+                    control[name] = typeof value === 'undefined' ? '' : value;
+                });
+            }
+
+            return control;
+        };
+
+        controlNodes.forEach((controlNode) => {
+            const control = parseControlAttributes(controlNode);
+            if (control && Object.keys(control).length) {
+                toolbar.controls.push(control);
+            }
         });
 
-        const propertiesNode = toolbarNode.querySelector('[data-type="properties"]');
+        if (!controlNodes.length) {
+            toolbarNode.querySelectorAll('[data-type="control"]').forEach((controlNode) => {
+                const control = parseControlAttributes(controlNode);
+                if (control && Object.keys(control).length) {
+                    toolbar.controls.push(control);
+                }
+            });
+        }
+
+        const propertiesNode = toolbarNode.querySelector('[data-toolbar-properties]')
+            || toolbarNode.querySelector('[data-type="properties"]');
         if (propertiesNode) {
             const properties = {};
             propertiesNode.querySelectorAll('[data-type="property"]').forEach((propertyNode) => {

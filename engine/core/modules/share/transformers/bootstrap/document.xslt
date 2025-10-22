@@ -184,20 +184,23 @@
             <xsl:if test="$PAGE_TOOLBAR">
                 <div
                     data-type="page-toolbar"
+                    data-page-toolbar="{$PAGE_TOOLBAR/toolbar/@name}"
                     data-class-name="{$PAGE_TOOLBAR/javascript/behavior/@name}"
                     data-component-path="{$BASE}{$LANG_ABBR}{$PAGE_TOOLBAR/@single_template}"
                     data-document-id="{$ID}"
                     data-toolbar-name="{$PAGE_TOOLBAR/toolbar/@name}"
                 >
                     <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                        <div data-type="control">
+                        <div data-type="control" data-toolbar-control="1">
                             <xsl:for-each select="@*[name()!='mode']">
-                                <div data-type="attribute" data-name="{name()}" data-value="{.}"/>
+                                <xsl:attribute name="data-{name()}">
+                                    <xsl:value-of select="."/>
+                                </xsl:attribute>
                             </xsl:for-each>
                         </div>
                     </xsl:for-each>
                     <xsl:if test="$PAGE_TOOLBAR/toolbar/properties/property">
-                        <div data-type="properties">
+                        <div data-type="properties" data-toolbar-properties="1">
                             <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">
                                 <div data-type="property" data-name="{@name}" data-value="{.}"/>
                             </xsl:for-each>
