@@ -60,20 +60,6 @@
                 <xsl:otherwise>Toggle sidebar</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <xsl:variable name="ADMIN_LABEL">
-            <xsl:choose>
-                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_ADMIN_PANEL'])) &gt; 0">
-                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_ADMIN_PANEL']"/>
-                </xsl:when>
-                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_CONTROL_PANEL'])) &gt; 0">
-                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_CONTROL_PANEL']"/>
-                </xsl:when>
-                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_SETTINGS'])) &gt; 0">
-                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_SETTINGS']"/>
-                </xsl:when>
-                <xsl:otherwise>Admin panel</xsl:otherwise>
-            </xsl:choose>
-        </xsl:variable>
         <xsl:variable name="CLOSE_LABEL">
             <xsl:choose>
                 <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_CLOSE'])) &gt; 0">
@@ -124,7 +110,7 @@
 
             <nav class="e-topframe py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
                 <div class="container-fluid d-flex align-items-start justify-content-start gap-3 flex-wrap py-0">
-                    <div class="d-flex align-items-center gap-2 flex-shrink-0" data-role="toolbar-brand">
+                    <div class="d-flex align-items-center flex-shrink-0" data-role="toolbar-brand">
                         <button type="button" class="btn btn-sm btn-light border border-secondary-subtle rounded-1 px-2 d-flex align-items-center justify-content-center flex-shrink-0 border-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
                             <xsl:attribute name="data-bs-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:attribute name="aria-controls"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
@@ -135,11 +121,6 @@
                                 <img src="{$LOGO_SRC}" alt="" class="img-fluid" style="width:70%;height:70%;object-fit:contain;"/>
                             </span>
                         </button>
-                        <xsl:if test="string-length(normalize-space($ADMIN_LABEL)) &gt; 0">
-                            <span class="fw-semibold small text-muted d-none d-sm-inline" data-role="toolbar-label">
-                                <xsl:value-of select="$ADMIN_LABEL"/>
-                            </span>
-                        </xsl:if>
                     </div>
                     <div class="d-flex flex-column gap-2 flex-grow-1 min-w-0" data-role="toolbar-actions">
                         <div class="d-flex align-items-center gap-2 flex-wrap justify-content-start w-100 min-w-0 py-2 py-lg-0" data-role="toolbar-primary">
