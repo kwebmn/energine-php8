@@ -26,7 +26,8 @@
    - Для взаимодействия компонентов применяются `data-*` атрибуты, описывающие идентификаторы действий, параметры и состояния.
 
 3. **Размещение сценариев**
-   - Подключение базового модуля `Energine.js` выполняется тегом `<script type="module" src="/path/to/Energine.js"></script>` перед `</body>` либо сразу после завершающего содержимого, чтобы гарантировать готовность DOM.
+   - Подключение базового модуля `Energine.js` выполняется тегом `<script type="module" src="/path/to/Energine.js" data-base="…" data-lang="…"></script>` перед `</body>` либо сразу после завершающего содержимого. Атрибуты `data-*` на теге `<script>` XSLT формирует сразу в момент генерации документа, чтобы JavaScript получил полную конфигурацию без промежуточных вызовов.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L205-L304】
+   - После загрузки DOM сам модуль считывает `dataset` подключившего его `<script>` и проводит инициализацию. В шаблонах запрещены inline-вызовы `bootEnergine()` или другие инструкции, которые вручную запускают рантайм, как это делается сейчас внутри `document.xslt` через `<script type="module">` блок с импортами и вызовами `bootEnergine`/`attachToWindow`. Этот блок подлежит удалению после переноса запуска внутрь модуля.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L212-L304】
    - Дополнительные модули подключаются аналогично как ES6-модули либо входят в собранный бандл.
 
 ## 3. Конфигурация через `data-*`
@@ -48,7 +49,7 @@
    - После загрузки DOM (`DOMContentLoaded`) либо при выполнении скрипта, размещенного в конце `body`, модуль `Energine.js` проверяет наличие флага `data-energine-run`.
    - При наличии флага выполняется `Energine.boot(config)` с конфигурацией, прочитанной из `data-*` атрибутов.
    - При отсутствии флага инициализация пропускается, что позволяет использовать общие шаблоны без избыточного кода.
-   - Автоматический запуск переносится в сам модуль: `Energine.js` определяет `<script type="module">`, из которого он был загружен, считывает его `dataset` через `readConfigFromScriptDataset()` и вызывает `bootEnergine()` без участия inline-кода. Текущий bootstrap в `document.xslt`, импортирующий `bootEnergine` и вручную создающий рантайм, подлежит удалению после переноса логики внутрь модуля.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L205-L260】【F:engine/core/modules/share/scripts/Energine.js†L268-L312】
+   - Автоматический запуск переносится в сам модуль: `Energine.js` определяет `<script type="module">`, из которого он был загружен, считывает его `dataset` через `readConfigFromScriptDataset()` и вызывает `bootEnergine()` без участия inline-кода. Текущий bootstrap в `document.xslt`, импортирующий `bootEnergine` и вручную создающий рантайм, подлежит удалению после переноса логики внутрь модуля.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L205-L304】【F:engine/core/modules/share/scripts/Energine.js†L1-L260】
 
 2. **Поддержка режимов**
    - В режиме разработки допускается подключение исходных ES6-модулей без предварительной сборки.
@@ -158,6 +159,26 @@
   помощники, Bootstrap-модальные окна, тосты и оверлеи загрузчика.【F:engine/core/modules/share/scripts/Energine.js†L1-L882】
 - Текущая реализация `initBridge`/`__energineBridge` удерживает отложенные задания и конфигурацию, усложняя загрузку и увеличивая
   объем кода, который можно заменить детерминированным порядком инициализации.【F:engine/core/modules/share/scripts/Energine.js†L37-L200】
+
+## 10. Перезапуск рантайма без мостов и отложенных задач
+
+1. **Единая точка доступа `window.Energine`**
+   - Вместо прокси-моста `__energineBridge` модуль должен сразу экспортировать класс/инстанс `Energine` и закреплять его на `window`. Текущее обёртывание через `initBridge()` и Proxy создаёт временный API, который позже заменяется реальным инстансом.【F:engine/core/modules/share/scripts/Energine.js†L37-L212】
+   - После рефакторинга `window.Energine` хранит сам рантайм и коллекции глобальных объектов (например, `Toolbar`, `PageEditor`, `GridManager`), а не набор временных полей и очередей. XSLT больше не пишет в `globalThis['…']`; вместо этого модуль предоставляет методы `Energine.registerGlobal(name, value)` или прямое присваивание в `window.Energine`.
+
+2. **Последовательный старт без `queueTask`**
+   - Очередь `tasks` и методы `addTask()/queueTask()/run()` поддерживают отложенный запуск и зависят от моста, который аккумулирует задания до загрузки основного кода.【F:engine/core/modules/share/scripts/Energine.js†L655-L724】【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L244-L304】
+   - После переноса конфигурации в DOM JavaScript может сразу создавать экземпляры компонентов внутри обработчика `DOMContentLoaded` или через модульные инициализаторы. Потребность в сохранении задач отпадает, поэтому очередь следует удалить, а вызовы `Energine.addTask(...)` в XSLT заменить на декларативную разметку и привязку поведения в модулях.
+
+3. **Жёсткий порядок инициализации**
+   - `Energine.js` должен выполнять шаги в фиксированной последовательности: (1) считать конфигурацию из DOM, (2) сохранить инстанс в `window.Energine`, (3) инициировать регистрацию зависимостей, (4) пройтись по DOM и активировать элементы. Никаких «мостов» и ожиданий внешних вызовов быть не должно — модуль сам вызывает `initDOM()` сразу после загрузки и `DOMContentLoaded`.
+   - Для совместимости временно допускается вызов `window.Energine.attachToWindow()` из сторонних модулей, но этот метод просто возвращает уже созданный инстанс без дополнительных побочных эффектов.
+
+4. **Изменения в XSLT**
+   - Блок `<script type="module">` внутри `document.xslt`, который импортирует `bootEnergine`, создаёт `componentToolbars` и вручную откладывает запуск через `Energine.addTask`, должен быть удалён. Вместо этого XSLT расставляет `data-*` атрибуты (`data-energine-run`, `data-component`, `data-toolbar`, `data-behavior`) и доверяет модулю, что тот автоматически найдёт и проинициализирует элементы сразу после загрузки.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L212-L304】
+
+5. **Актуализация сопутствующих модулей**
+   - Модули, которые сейчас обращаются к глобальным переменным (например, `GridManager` ожидает `window.Energine` с методом `loadCSS`), должны получать доступ к API из того же контейнера `window.Energine`. После упразднения моста нет необходимости в проверках `if (window.Energine || {}).loadCSS` — объект гарантированно существует к моменту вызова, потому что рантайм инициализирован до подключения зависимостей.【F:engine/core/modules/share/scripts/GridManager.js†L29-L551】
 - Функция `request` сочетает несколько код-путей (form-urlencoded, JSON, GET) и вызывает `alert`, что препятствует повторному
   использованию и усложняет перенос на промисы/`fetch`-утилиты.【F:engine/core/modules/share/scripts/Energine.js†L305-L393】
 - UI-хелперы (`confirmBox`, `alertBox`, `noticeBox`, `showLoader`) встраивают Bootstrap- и FontAwesome-разметку, что увеличивает
