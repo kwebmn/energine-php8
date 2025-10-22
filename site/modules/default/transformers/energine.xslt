@@ -43,6 +43,7 @@
 
             </head>
             <body>
+                <xsl:apply-templates select="$COMPONENTS[@componentAction='showPageToolbar']"/>
                 <xsl:apply-templates select="document"/>
 
                 <xsl:if test="not(//property[@name='single'])">
