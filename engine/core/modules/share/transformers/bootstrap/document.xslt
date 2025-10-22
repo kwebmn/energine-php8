@@ -203,16 +203,18 @@
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="module">
-            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
-            import { initializeToolbars, registerToolbarComponent } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
-
-            const config = createConfigFromScriptDataset();
-
-            const runtime = bootEnergine(config);
-            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {
-                window.__energineBridge.setRuntime(runtime);
-            }
-            const Energine = attachToWindow(window, runtime);
+            <xsl:text>            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "</xsl:text>
+            <xsl:value-of select="$ENERGINE_URL"/>
+            <xsl:text>";</xsl:text>
+            <xsl:text>&#10;            import { initializeToolbars, registerToolbarComponent } from "</xsl:text>
+            <xsl:value-of select="/document/properties/property[@name='base']/@static"/>
+            <xsl:text>scripts/Toolbar.js";</xsl:text>
+            <xsl:text>&#10;&#10;            const config = createConfigFromScriptDataset();</xsl:text>
+            <xsl:text>&#10;&#10;            const runtime = bootEnergine(config);</xsl:text>
+            <xsl:text>&#10;            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {</xsl:text>
+            <xsl:text>&#10;                window.__energineBridge.setRuntime(runtime);</xsl:text>
+            <xsl:text>&#10;            }</xsl:text>
+            <xsl:text>&#10;            const Energine = attachToWindow(window, runtime);</xsl:text>
 
             <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
                 <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]">
@@ -221,16 +223,43 @@
             </xsl:if>
 
             <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                Energine.addTask(function () {
-             <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
-            const pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
-            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>
-            ]<xsl:if
-                test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
-
-                });
+                <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
+                <xsl:variable name="PAGE_TOOLBAR_NAME">
+                    <xsl:choose>
+                        <xsl:when test="string-length(normalize-space($PAGE_TOOLBAR/toolbar/@name)) &gt; 0">
+                            <xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>
+                        </xsl:when>
+                        <xsl:otherwise>main_toolbar</xsl:otherwise>
+                    </xsl:choose>
+                </xsl:variable>
+                const bootstrapPageToolbar = () => {
+                    const toolbarRoot = document.querySelector('[data-page-toolbar="<xsl:value-of select="$PAGE_TOOLBAR_NAME"/>"]');
+                    if (!toolbarRoot) {
+                        return null;
+                    }
+                    const toolbarElement = toolbarRoot.querySelector('[data-toolbar]');
+                    if (!toolbarElement) {
+                        return null;
+                    }
+                    if (window.Toolbar &amp;&amp; window.Toolbar.registry) {
+                        const existing = window.Toolbar.registry.get(toolbarElement);
+                        if (existing &amp;&amp; typeof existing.destroy === 'function') {
+                            try {
+                                existing.destroy();
+                            } catch (error) {
+                                console.warn('[document.xslt] Failed to dispose existing toolbar instance', error);
+                            }
+                        }
+                        window.Toolbar.registry.delete(toolbarElement);
+                    }
+                    return new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>(toolbarElement, { root: toolbarRoot });
+                };
+                const initialPageToolbar = bootstrapPageToolbar();
+                if (!initialPageToolbar) {
+                    Energine.addTask(() => bootstrapPageToolbar());
+                } else {
+                    Energine.addTask(() => initialPageToolbar);
+                }
             </xsl:if>
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
                 <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>

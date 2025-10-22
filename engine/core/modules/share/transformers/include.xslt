@@ -12,6 +12,7 @@
     <xsl:include href="bootstrap/fields.xslt"/>
     <xsl:include href="bootstrap/form.xslt"/>
     <xsl:include href="bootstrap/toolbar.xslt"/>
+    <xsl:include href="bootstrap/pagetoolbar.xslt"/>
     <xsl:include href="bootstrap/file.xslt"/>
     <xsl:include href="bootstrap/divisionEditor.xslt"/>
     <xsl:include href="bootstrap/tagEditor.xslt"/>
