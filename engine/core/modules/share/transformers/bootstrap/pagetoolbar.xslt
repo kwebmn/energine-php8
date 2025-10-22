@@ -3,8 +3,8 @@
     version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
-    <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
-    <xsl:variable name="TRANSLATIONS" select="/document/translations/translation"/>
+    <xsl:variable name="PT_DOC_PROPS" select="/document/properties/property"/>
+    <xsl:variable name="PT_TRANSLATIONS" select="/document/translations/translation"/>
 
     <xsl:template match="component[@componentAction='showPageToolbar']">
         <xsl:variable name="TOOLBAR" select="toolbar"/>
@@ -16,10 +16,10 @@
                 <xsl:otherwise>main_toolbar</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <xsl:variable name="BASE" select="$DOC_PROPS[@name='base']"/>
+        <xsl:variable name="BASE" select="$PT_DOC_PROPS[@name='base']"/>
         <xsl:variable name="STATIC" select="$BASE/@static"/>
-        <xsl:variable name="LANG_ABBR" select="$DOC_PROPS[@name='lang']/@abbr"/>
-        <xsl:variable name="DOCUMENT_ID" select="$DOC_PROPS[@name='ID']"/>
+        <xsl:variable name="LANG_ABBR" select="$PT_DOC_PROPS[@name='lang']/@abbr"/>
+        <xsl:variable name="DOCUMENT_ID" select="$PT_DOC_PROPS[@name='ID']"/>
         <xsl:variable name="COMPONENT_PATH">
             <xsl:value-of select="$BASE"/>
             <xsl:value-of select="$LANG_ABBR"/>
@@ -29,45 +29,45 @@
         <xsl:variable name="SIDEBAR_URL" select="concat($COMPONENT_PATH, 'show/')"/>
         <xsl:variable name="SIDEBAR_LABEL">
             <xsl:choose>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_SIDEBAR_TOGGLE'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_SIDEBAR_TOGGLE']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_SIDEBAR_TOGGLE'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_SIDEBAR_TOGGLE']"/>
                 </xsl:when>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_SIDEBAR'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_SIDEBAR']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_SIDEBAR'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_SIDEBAR']"/>
                 </xsl:when>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_SETTINGS'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_SETTINGS']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_SETTINGS'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_SETTINGS']"/>
                 </xsl:when>
                 <xsl:otherwise>Toggle sidebar</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
         <xsl:variable name="ADMIN_LABEL">
             <xsl:choose>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_ADMIN_PANEL'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_ADMIN_PANEL']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_ADMIN_PANEL'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_ADMIN_PANEL']"/>
                 </xsl:when>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_CONTROL_PANEL'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_CONTROL_PANEL']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_CONTROL_PANEL'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_CONTROL_PANEL']"/>
                 </xsl:when>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_SETTINGS'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_SETTINGS']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_SETTINGS'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_SETTINGS']"/>
                 </xsl:when>
                 <xsl:otherwise>Admin panel</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
         <xsl:variable name="CLOSE_LABEL">
             <xsl:choose>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_CLOSE'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_CLOSE']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_CLOSE'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_CLOSE']"/>
                 </xsl:when>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='BTN_CLOSE'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='BTN_CLOSE']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='BTN_CLOSE'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='BTN_CLOSE']"/>
                 </xsl:when>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='TXT_CANCEL'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='TXT_CANCEL']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_CANCEL'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='TXT_CANCEL']"/>
                 </xsl:when>
-                <xsl:when test="string-length(normalize-space($TRANSLATIONS[@name='BTN_CANCEL'])) &gt; 0">
-                    <xsl:value-of select="$TRANSLATIONS[@name='BTN_CANCEL']"/>
+                <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='BTN_CANCEL'])) &gt; 0">
+                    <xsl:value-of select="$PT_TRANSLATIONS[@name='BTN_CANCEL']"/>
                 </xsl:when>
                 <xsl:otherwise>Close</xsl:otherwise>
             </xsl:choose>
