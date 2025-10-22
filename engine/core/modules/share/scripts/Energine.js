@@ -727,6 +727,16 @@ class EnergineCore {
 
         this.booted = true;
 
+        if (this.bridge && typeof this.bridge.setRuntime === 'function') {
+            this.bridge.setRuntime(this);
+        } else if (
+            this.globalScope
+            && this.globalScope.__energineBridge
+            && typeof this.globalScope.__energineBridge.setRuntime === 'function'
+        ) {
+            this.globalScope.__energineBridge.setRuntime(this);
+        }
+
         return this;
     }
 
