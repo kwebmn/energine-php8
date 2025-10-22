@@ -126,7 +126,7 @@ class PageToolbar extends Toolbar {
             element.classList.add('gap-2', 'justify-content-start', 'text-start');
         }
 
-        element.classList.add('w-100');
+        element.classList.remove('w-100');
     }
 
     _styleToolbarButtons() {
@@ -139,8 +139,14 @@ class PageToolbar extends Toolbar {
     _applyToolbarLayoutClasses(root) {
         const toolbarElement = this.element instanceof HTMLElement ? this.element : null;
         if (toolbarElement) {
-            toolbarElement.classList.remove('flex-wrap', 'align-items-center');
-            toolbarElement.classList.add('flex-column', 'align-items-stretch', 'gap-2', 'w-100');
+            toolbarElement.classList.remove('flex-column', 'align-items-stretch');
+            toolbarElement.classList.remove('w-100');
+            toolbarElement.classList.add('d-flex');
+            toolbarElement.classList.add('flex-wrap');
+            toolbarElement.classList.add('align-items-center');
+            if (!toolbarElement.classList.contains('gap-1') && !toolbarElement.classList.contains('gap-2')) {
+                toolbarElement.classList.add('gap-2');
+            }
         }
 
         if (!root) {
@@ -149,14 +155,22 @@ class PageToolbar extends Toolbar {
 
         const primaryArea = root.querySelector('[data-role="toolbar-primary"]');
         if (primaryArea) {
-            primaryArea.classList.remove('align-items-center', 'flex-wrap', 'justify-content-start');
-            primaryArea.classList.add('d-flex', 'flex-column', 'align-items-stretch', 'gap-2');
+            primaryArea.classList.remove('flex-column', 'align-items-stretch');
+            primaryArea.classList.add('d-flex');
+            primaryArea.classList.add('flex-wrap');
+            primaryArea.classList.add('align-items-center');
+            primaryArea.classList.add('gap-2');
+            primaryArea.classList.add('justify-content-start');
         }
 
         const editBand = root.querySelector('[data-role="toolbar-editband"]');
         if (editBand) {
-            editBand.classList.remove('flex-wrap', 'align-items-center');
-            editBand.classList.add('d-flex', 'flex-column', 'align-items-stretch', 'gap-2');
+            editBand.classList.remove('flex-column', 'align-items-stretch');
+            editBand.classList.add('d-flex');
+            editBand.classList.add('flex-wrap');
+            editBand.classList.add('align-items-center');
+            editBand.classList.add('gap-2');
+            editBand.classList.add('justify-content-start');
         }
     }
 
