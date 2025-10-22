@@ -8,23 +8,47 @@ const globalScope = typeof window !== 'undefined'
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 class PageToolbar extends Toolbar {
-    constructor(componentPath, documentId, toolbarName, controlsDesc = [], props = {}) {
-        super(toolbarName, props);
+    constructor(...args) {
+        const config = PageToolbar._normalizeConstructorArgs(...args);
 
-        this.componentPath = componentPath;
-        this.documentId = documentId;
+        super(config.element || config.toolbarName, config.properties);
+
+        this.componentPath = config.componentPath;
+        this.documentId = config.documentId;
         this.layoutManager = null;
+        this.layoutRoot = config.layout?.root || null;
         this.sidebarToggleButton = null;
+        this.sidebarToggleButtons = [];
         this._updateSidebarToggleState = null;
         this.sidebarOffcanvas = null;
         this.sidebarFrameElement = null;
         this._ensureSidebarOffcanvas = null;
+        this._sidebarEventHandlers = [];
+        this._mode = config.mode;
+        this._layoutConfig = config.layout || {};
 
-        this.dock();
+        if (config.mode !== 'declarative' && config.shouldDock) {
+            this.dock();
+        }
+
         this.bindTo(this);
 
-        if (controlsDesc && Array.isArray(controlsDesc)) {
-            controlsDesc.forEach(control => this.appendControl(control));
+        if (config.mode === 'declarative') {
+            this._hydrateFromElement(config.element, config.descriptors);
+        } else if (config.controls && Array.isArray(config.controls)) {
+            config.controls.forEach(control => this.appendControl(control));
+        }
+
+        if (config.mode === 'declarative') {
+            if (this.element?.dataset) {
+                this.element.dataset.toolbarHydrated = '1';
+            }
+            const componentRef = config.componentRef
+                || this.element?.dataset?.toolbarComponent
+                || this.element?.dataset?.componentRef
+                || this._layoutConfig?.dataset?.toolbarComponent
+                || null;
+            Toolbar.registerToolbarInstance(this, componentRef);
         }
 
         this.setupLayout();
@@ -55,6 +79,29 @@ class PageToolbar extends Toolbar {
                 window.location = window.location;
             }
 
+        });
+    }
+
+    _hydrateFromElement(element, descriptors = null) {
+        if (!(element instanceof HTMLElement)) {
+            return;
+        }
+
+        const normalizedDescriptors = Array.isArray(descriptors) && descriptors.length
+            ? descriptors
+            : PageToolbar._extractDescriptorsFromElement(element);
+
+        if (!Array.isArray(normalizedDescriptors) || !normalizedDescriptors.length) {
+            return;
+        }
+
+        element.innerHTML = '';
+
+        normalizedDescriptors.forEach(descriptor => {
+            const controlInstance = Toolbar.createControlFromDescriptor(descriptor);
+            if (controlInstance) {
+                this.appendControl(controlInstance);
+            }
         });
     }
 
@@ -99,6 +146,206 @@ class PageToolbar extends Toolbar {
     // ===== Основная логика =====
 
     setupLayout() {
+        if (this._setupDeclarativeLayoutIfPossible()) {
+            return;
+        }
+        this._setupLegacyLayout();
+    }
+
+    _setupDeclarativeLayoutIfPossible() {
+        const element = this.element instanceof HTMLElement ? this.element : null;
+        if (!element || typeof document === 'undefined') {
+            return false;
+        }
+
+        const root = this.layoutRoot || PageToolbar._findDeclarativeRoot(element);
+        if (!root) {
+            return false;
+        }
+
+        this.layoutRoot = root;
+        this.layoutManager = root;
+
+        const dataset = element.dataset || {};
+        const rootDataset = root.dataset || {};
+        this._layoutConfig = Object.assign({}, this._layoutConfig || {}, { dataset, rootDataset });
+
+        const html = document.documentElement;
+        if (html) {
+            html.classList.add('h-100');
+        }
+        if (document.body) {
+            document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-light');
+        }
+
+        const offcanvasSelectorValue = PageToolbar._resolveDatasetValue(
+            ['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'],
+            this._layoutConfig,
+            dataset,
+            rootDataset
+        );
+        const offcanvasIdValue = PageToolbar._resolveDatasetValue(
+            ['sidebarId', 'offcanvasId'],
+            this._layoutConfig,
+            dataset,
+            rootDataset
+        );
+        const normalizedOffcanvasSelector = PageToolbar._normalizeSelector(offcanvasSelectorValue, offcanvasIdValue);
+
+        let sidebarFrame = null;
+        if (normalizedOffcanvasSelector) {
+            sidebarFrame = root.querySelector(normalizedOffcanvasSelector)
+                || document.querySelector(normalizedOffcanvasSelector);
+        }
+        if (!sidebarFrame && offcanvasIdValue) {
+            const candidateId = offcanvasIdValue.replace(/^#/, '');
+            sidebarFrame = document.getElementById(candidateId) || sidebarFrame;
+        }
+        if (!sidebarFrame) {
+            sidebarFrame = root.querySelector('[data-role="page-toolbar-sidebar"],[data-sidebar],[data-offcanvas]');
+        }
+        if (sidebarFrame) {
+            this.sidebarFrameElement = sidebarFrame;
+        }
+
+        const toggleButtons = PageToolbar._collectSidebarToggleButtons(
+            root,
+            sidebarFrame,
+            normalizedOffcanvasSelector
+        );
+        this.sidebarToggleButtons = toggleButtons;
+        this.sidebarToggleButton = toggleButtons[0] || null;
+
+        this._updateSidebarToggleState = state => {
+            const pressed = state ? 'true' : 'false';
+            toggleButtons.forEach(button => {
+                if (!button) {
+                    return;
+                }
+                button.setAttribute('aria-pressed', pressed);
+                button.setAttribute('aria-expanded', pressed);
+                button.classList.toggle('active', !!state);
+                if (sidebarFrame?.id && !button.getAttribute('aria-controls')) {
+                    button.setAttribute('aria-controls', sidebarFrame.id);
+                }
+                if (button.dataset) {
+                    button.dataset.sidebarState = state ? 'open' : 'closed';
+                }
+            });
+            if (root.dataset) {
+                root.dataset.sidebarExpanded = state ? '1' : '0';
+            }
+            if (element !== root && element.dataset) {
+                element.dataset.sidebarExpanded = state ? '1' : '0';
+            }
+        };
+
+        const rawInitialState = PageToolbar._resolveDatasetValue(
+            ['sidebarExpanded', 'sidebarState', 'sidebarVisible', 'sidebar'],
+            this._layoutConfig,
+            dataset,
+            rootDataset
+        );
+        let initialState = PageToolbar._parseSidebarState(rawInitialState);
+        if (initialState === null) {
+            const cookieValue = Cookie.read('sidebar');
+            initialState = cookieValue == 1;
+        }
+
+        this._handleSidebarStateChange(initialState, { persist: false });
+
+        if (sidebarFrame) {
+            const handleShown = () => this._handleSidebarStateChange(true);
+            const handleHidden = () => this._handleSidebarStateChange(false);
+            sidebarFrame.addEventListener('shown.bs.offcanvas', handleShown);
+            sidebarFrame.addEventListener('hidden.bs.offcanvas', handleHidden);
+            this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'shown.bs.offcanvas', handler: handleShown });
+            this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'hidden.bs.offcanvas', handler: handleHidden });
+
+            this._ensureSidebarOffcanvas = () => {
+                if (this.sidebarOffcanvas) {
+                    return this.sidebarOffcanvas;
+                }
+                const bootstrapGlobal = window?.bootstrap;
+                if (!bootstrapGlobal || !bootstrapGlobal.Offcanvas) {
+                    return null;
+                }
+                this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                    backdrop: false,
+                    scroll: false,
+                });
+                return this.sidebarOffcanvas;
+            };
+
+            if (initialState) {
+                if (window?.bootstrap?.Offcanvas) {
+                    this._ensureSidebarOffcanvas();
+                    if (this.sidebarOffcanvas) {
+                        const elementRef = this.sidebarOffcanvas._element || sidebarFrame;
+                        if (!elementRef.classList.contains('show')) {
+                            this.sidebarOffcanvas.show();
+                        }
+                    }
+                } else {
+                    sidebarFrame.classList.add('show');
+                }
+            }
+        }
+
+        if (toggleButtons.length) {
+            const handleToggleClick = event => {
+                if (window?.bootstrap?.Offcanvas) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggleSidebar();
+            };
+            toggleButtons.forEach(button => {
+                if (!button) {
+                    return;
+                }
+                button.addEventListener('click', handleToggleClick);
+                this._sidebarEventHandlers.push({ element: button, type: 'click', handler: handleToggleClick });
+            });
+        }
+
+        return true;
+    }
+
+    _handleSidebarStateChange(state, options = {}) {
+        const { persist = true } = options || {};
+        const html = (typeof document !== 'undefined') ? document.documentElement : null;
+        if (html) {
+            if (state) {
+                PageToolbar._addClass(html, 'e-has-sideframe');
+            } else {
+                PageToolbar._removeClass(html, 'e-has-sideframe');
+            }
+        }
+
+        if (persist) {
+            PageToolbar._persistSidebarState(!!state);
+        }
+
+        if (typeof this._updateSidebarToggleState === 'function') {
+            this._updateSidebarToggleState(!!state);
+        } else if (this.sidebarToggleButton) {
+            const pressed = state ? 'true' : 'false';
+            this.sidebarToggleButton.setAttribute('aria-pressed', pressed);
+            this.sidebarToggleButton.setAttribute('aria-expanded', pressed);
+            this.sidebarToggleButton.classList.toggle('active', !!state);
+        }
+
+        if (this.layoutRoot?.dataset) {
+            this.layoutRoot.dataset.sidebarExpanded = state ? '1' : '0';
+        }
+        if (this.element?.dataset && this.element !== this.layoutRoot) {
+            this.element.dataset.sidebarExpanded = state ? '1' : '0';
+        }
+    }
+
+    _setupLegacyLayout() {
         const html = document.documentElement;
         html.classList.add('h-100');
         document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-light');
@@ -177,6 +424,7 @@ class PageToolbar extends Toolbar {
         sidebarToggle.appendChild(logoWrapper);
         brandStack.appendChild(sidebarToggle);
         this.sidebarToggleButton = sidebarToggle;
+        this.sidebarToggleButtons = [sidebarToggle];
 
         const toolbarLabelText = getTranslation('TXT_ADMIN_PANEL', 'TXT_CONTROL_PANEL', 'TXT_SETTINGS');
         if (toolbarLabelText) {
@@ -372,25 +620,16 @@ class PageToolbar extends Toolbar {
 
         const sidebarCookie = Cookie.read('sidebar');
             const shouldShowSidebar = sidebarCookie == 1;
-            if (shouldShowSidebar) {
-                PageToolbar._addClass(html, 'e-has-sideframe');
-            } else {
-                PageToolbar._removeClass(html, 'e-has-sideframe');
-            }
-            this._updateSidebarToggleState(shouldShowSidebar);
+            this._handleSidebarStateChange(shouldShowSidebar, { persist: false });
 
             const handleSidebarShown = () => {
                 syncSidebarOffset();
-                PageToolbar._addClass(html, 'e-has-sideframe');
-                this._updateSidebarToggleState(true);
-                PageToolbar._persistSidebarState(true);
+                this._handleSidebarStateChange(true);
             };
 
             const handleSidebarHidden = () => {
                 syncSidebarOffset();
-                PageToolbar._removeClass(html, 'e-has-sideframe');
-                this._updateSidebarToggleState(false);
-                PageToolbar._persistSidebarState(false);
+                this._handleSidebarStateChange(false);
             };
 
             sidebarFrame.addEventListener('shown.bs.offcanvas', handleSidebarShown);
@@ -484,23 +723,14 @@ class PageToolbar extends Toolbar {
             const element = this.sidebarOffcanvas._element || this.sidebarFrameElement;
             const isShown = element ? element.classList.contains('show') : false;
             this.sidebarOffcanvas.toggle();
-            return !isShown;
+            const nextState = !isShown;
+            this._handleSidebarStateChange(nextState, { persist: false });
+            return nextState;
         }
 
-        const html = document.documentElement;
-        PageToolbar._toggleClass(html, 'e-has-sideframe');
-        const isSidebarVisible = PageToolbar._hasClass(html, 'e-has-sideframe');
-        PageToolbar._persistSidebarState(isSidebarVisible);
-
-        if (typeof this._updateSidebarToggleState === 'function') {
-            this._updateSidebarToggleState(isSidebarVisible);
-        } else if (this.sidebarToggleButton) {
-            const pressed = isSidebarVisible ? 'true' : 'false';
-            this.sidebarToggleButton.setAttribute('aria-pressed', pressed);
-            this.sidebarToggleButton.setAttribute('aria-expanded', pressed);
-            this.sidebarToggleButton.classList.toggle('active', isSidebarVisible);
-        }
-
+        const html = (typeof document !== 'undefined') ? document.documentElement : null;
+        const isSidebarVisible = html ? !PageToolbar._hasClass(html, 'e-has-sideframe') : false;
+        this._handleSidebarStateChange(isSidebarVisible);
         return isSidebarVisible;
     }
 
@@ -640,6 +870,217 @@ class PageToolbar extends Toolbar {
         }
 
         return '';
+    }
+
+    static _normalizeConstructorArgs(...args) {
+        if (!args.length) {
+            return {
+                mode: 'legacy',
+                element: null,
+                toolbarName: '',
+                componentPath: '',
+                documentId: '',
+                controls: [],
+                descriptors: [],
+                properties: {},
+                componentRef: null,
+                layout: {},
+                shouldDock: true,
+            };
+        }
+
+        if (args.length === 1 && args[0] && typeof args[0] === 'object' && !(args[0] instanceof HTMLElement) && args[0].element instanceof HTMLElement) {
+            return PageToolbar._normalizeConstructorArgs(args[0].element, args[0]);
+        }
+
+        if (args[0] instanceof HTMLElement) {
+            const element = args[0];
+            const options = (args[1] && typeof args[1] === 'object' && !Array.isArray(args[1])) ? args[1] : {};
+            const dataset = element.dataset || {};
+            const root = options.root || PageToolbar._findDeclarativeRoot(element);
+            const rootDataset = root && root.dataset ? root.dataset : {};
+            const properties = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
+
+            const componentPath = PageToolbar._resolveDatasetValue(
+                ['componentPath', 'component', 'componentUrl', 'componentBase', 'toolbarComponentPath', 'sidebarUrl', 'sidebarSource'],
+                options,
+                dataset,
+                rootDataset
+            ) || '';
+            const documentId = PageToolbar._resolveDatasetValue(
+                ['documentId', 'docId', 'doc', 'document', 'recordId', 'smapId', 'id'],
+                options,
+                dataset,
+                rootDataset
+            ) || '';
+            const toolbarName = options.toolbarName
+                || dataset.toolbar
+                || dataset.pageToolbar
+                || rootDataset.toolbar
+                || rootDataset.pageToolbar
+                || '';
+            const componentRef = options.componentRef
+                || dataset.toolbarComponent
+                || dataset.componentRef
+                || rootDataset.toolbarComponent
+                || null;
+            const descriptors = PageToolbar._extractDescriptorsFromElement(element);
+            const layout = {
+                root: root || null,
+                dataset,
+                rootDataset,
+                sidebarTarget: PageToolbar._resolveDatasetValue(['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'], options, dataset, rootDataset),
+                sidebarId: PageToolbar._resolveDatasetValue(['sidebarId', 'offcanvasId'], options, dataset, rootDataset),
+                sidebarUrl: PageToolbar._resolveDatasetValue(['sidebarUrl', 'sidebarSrc', 'offcanvasUrl'], options, dataset, rootDataset),
+            };
+
+            return {
+                mode: 'declarative',
+                element,
+                toolbarName,
+                componentPath,
+                documentId,
+                controls: [],
+                descriptors,
+                properties,
+                componentRef,
+                layout,
+                shouldDock: false,
+            };
+        }
+
+        const componentPath = typeof args[0] === 'string' ? args[0] : '';
+        const documentId = typeof args[1] !== 'undefined' ? args[1] : '';
+        const toolbarName = typeof args[2] === 'string' ? args[2] : '';
+        const controls = Array.isArray(args[3]) ? args[3] : [];
+        const props = (args[4] && typeof args[4] === 'object' && !Array.isArray(args[4])) ? args[4] : {};
+        return {
+            mode: 'legacy',
+            element: null,
+            toolbarName,
+            componentPath,
+            documentId,
+            controls,
+            descriptors: [],
+            properties: props,
+            componentRef: null,
+            layout: {},
+            shouldDock: true,
+        };
+    }
+
+    static _extractDescriptorsFromElement(element) {
+        if (!(element instanceof HTMLElement)) {
+            return [];
+        }
+        return Array.from(element.children || [])
+            .map(child => Toolbar.extractControlDescriptor(child))
+            .filter(Boolean);
+    }
+
+    static _resolveDatasetValue(keys, ...sources) {
+        if (!Array.isArray(keys)) {
+            return '';
+        }
+        for (const source of sources) {
+            if (!source || typeof source !== 'object') {
+                continue;
+            }
+            for (const key of keys) {
+                if (typeof key !== 'string' || !key) {
+                    continue;
+                }
+                const value = source[key];
+                if (typeof value !== 'undefined' && value !== null) {
+                    const stringified = String(value);
+                    if (stringified.trim().length) {
+                        return value;
+                    }
+                }
+            }
+        }
+        return '';
+    }
+
+    static _findDeclarativeRoot(element) {
+        if (!(element instanceof HTMLElement)) {
+            return null;
+        }
+        if (element.dataset?.pageToolbar || element.dataset?.pageToolbarRoot || element.dataset?.toolbarScope === 'page') {
+            return element;
+        }
+        return element.closest('[data-page-toolbar],[data-page-toolbar-root],[data-toolbar-root]')
+            || element.closest('.e-topframe')
+            || null;
+    }
+
+    static _normalizeSelector(value, fallbackId = '') {
+        let candidate = value || fallbackId || '';
+        if (!candidate) {
+            return '';
+        }
+        candidate = String(candidate).trim();
+        if (!candidate) {
+            return '';
+        }
+        if (candidate.startsWith('#') || candidate.startsWith('.') || candidate.startsWith('[')) {
+            return candidate;
+        }
+        return `#${candidate}`;
+    }
+
+    static _parseSidebarState(value) {
+        if (typeof value === 'undefined' || value === null) {
+            return null;
+        }
+        if (typeof value === 'number') {
+            if (value === 1) return true;
+            if (value === 0) return false;
+        }
+        const normalized = String(value).trim().toLowerCase();
+        if (!normalized) {
+            return null;
+        }
+        if (['1', 'true', 'yes', 'on', 'open', 'opened', 'show', 'shown', 'expand', 'expanded'].includes(normalized)) {
+            return true;
+        }
+        if (['0', 'false', 'no', 'off', 'close', 'closed', 'hidden', 'hide', 'collapsed', 'collapse'].includes(normalized)) {
+            return false;
+        }
+        return null;
+    }
+
+    static _collectSidebarToggleButtons(root, sidebarFrame, selector = '') {
+        const collection = new Set();
+        if (root && typeof root.querySelectorAll === 'function') {
+            const baseSelectors = [
+                '[data-role="sidebar-toggle"]',
+                '[data-sidebar-toggle]',
+                '[data-action="toggleSidebar"]',
+                '[data-action="toggleSidebar()"]',
+                '[data-action*="toggleSidebar"]',
+            ];
+            baseSelectors.forEach(sel => {
+                root.querySelectorAll(sel).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+            });
+        }
+
+        const normalizedSelector = selector ? PageToolbar._normalizeSelector(selector) : '';
+        if (normalizedSelector && root && typeof root.querySelectorAll === 'function') {
+            root.querySelectorAll(`[data-bs-target="${normalizedSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+            if (normalizedSelector.startsWith('#')) {
+                root.querySelectorAll(`a[href="${normalizedSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+                root.querySelectorAll(`button[href="${normalizedSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+            }
+        }
+
+        if (sidebarFrame?.id && root && typeof root.querySelectorAll === 'function') {
+            const idSelector = `#${sidebarFrame.id}`;
+            root.querySelectorAll(`[data-bs-target="${idSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+            root.querySelectorAll(`[aria-controls="${sidebarFrame.id}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+        }
+
+        return Array.from(collection);
     }
 
     // Вложенный контрол логотипа (если нужно)
