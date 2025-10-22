@@ -745,13 +745,12 @@ class PageToolbar extends Toolbar {
         sidebarToggle.type = 'button';
         sidebarToggle.classList.add(
             'btn',
+            'py-2',
             'btn-sm',
             'btn-light',
             'd-inline-flex',
             'align-items-center',
             'gap-2',
-            'border',
-            'border-secondary-subtle',
             'rounded-1',
             'px-3',
             'flex-shrink-0',
