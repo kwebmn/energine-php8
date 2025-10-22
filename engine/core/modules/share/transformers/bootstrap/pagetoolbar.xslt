@@ -17,14 +17,33 @@
             </xsl:choose>
         </xsl:variable>
         <xsl:variable name="BASE" select="$PT_DOC_PROPS[@name='base']"/>
+        <xsl:variable name="BASE_VALUE" select="string($BASE)"/>
+        <xsl:variable name="BASE_NORMALIZED">
+            <xsl:choose>
+                <xsl:when test="string-length($BASE_VALUE) = 0">/</xsl:when>
+                <xsl:when test="substring($BASE_VALUE, string-length($BASE_VALUE)) = '/'">
+                    <xsl:value-of select="$BASE_VALUE"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat($BASE_VALUE, '/')"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <xsl:variable name="STATIC" select="$BASE/@static"/>
         <xsl:variable name="LANG_ABBR" select="$PT_DOC_PROPS[@name='lang']/@abbr"/>
-        <xsl:variable name="DOCUMENT_ID" select="$PT_DOC_PROPS[@name='ID']"/>
-        <xsl:variable name="COMPONENT_PATH">
-            <xsl:value-of select="$BASE"/>
-            <xsl:value-of select="$LANG_ABBR"/>
-            <xsl:value-of select="@single_template"/>
+        <xsl:variable name="LANG_SEGMENT">
+            <xsl:choose>
+                <xsl:when test="string-length($LANG_ABBR) = 0"/>
+                <xsl:when test="substring($LANG_ABBR, string-length($LANG_ABBR)) = '/'">
+                    <xsl:value-of select="$LANG_ABBR"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="concat($LANG_ABBR, '/')"/>
+                </xsl:otherwise>
+            </xsl:choose>
         </xsl:variable>
+        <xsl:variable name="DOCUMENT_ID" select="$PT_DOC_PROPS[@name='ID']"/>
+        <xsl:variable name="COMPONENT_PATH" select="concat($BASE_NORMALIZED, $LANG_SEGMENT, @single_template)"/>
         <xsl:variable name="SIDEBAR_ID" select="concat($TOOLBAR_NAME, '-sidebar')"/>
         <xsl:variable name="SIDEBAR_URL" select="concat($COMPONENT_PATH, 'show/')"/>
         <xsl:variable name="SIDEBAR_LABEL">
