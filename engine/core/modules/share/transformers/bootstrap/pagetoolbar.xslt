@@ -77,13 +77,6 @@
                 <xsl:otherwise>Close</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <xsl:variable name="LOGO_FILE">
-            <xsl:choose>
-                <xsl:when test="/document/@debug = '1'">images/toolbar/nrgnptbdbg.png</xsl:when>
-                <xsl:otherwise>images/toolbar/nrgnptb.png</xsl:otherwise>
-            </xsl:choose>
-        </xsl:variable>
-        <xsl:variable name="LOGO_SRC" select="concat($STATIC, $LOGO_FILE)"/>
         <xsl:variable name="DOCK_POSITION" select="javascript/param[@name='dock']"/>
 
         <section class="e-page-toolbar sticky-top position-sticky top-0 start-0 end-0" data-role="page-toolbar-root">
@@ -118,7 +111,7 @@
                                 <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                             </xsl:if>
                             <span class="d-inline-flex align-items-center justify-content-center rounded-1 bg-white border border-secondary-subtle shadow-sm" style="width:32px;height:32px;line-height:0;">
-                                <img src="{$LOGO_SRC}" alt="" class="img-fluid" style="width:70%;height:70%;object-fit:contain;"/>
+                                <i class="fa fa-bars" aria-hidden="true"></i>
                             </span>
                         </button>
                     </div>
