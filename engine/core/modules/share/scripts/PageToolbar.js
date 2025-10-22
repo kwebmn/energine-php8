@@ -178,6 +178,116 @@ class PageToolbar extends Toolbar {
             document.body.classList.add('min-vh-100', 'd-flex', 'flex-column', 'bg-light');
         }
 
+        const editBandContainer = root.querySelector('[data-role="toolbar-editband"]');
+        if (editBandContainer) {
+            const editBandControlsRaw = PageToolbar._resolveDatasetValue(
+                ['editbandControls', 'editBandControls', 'editControls'],
+                this._layoutConfig,
+                dataset,
+                rootDataset,
+                editBandContainer.dataset || {}
+            );
+            const controlIds = (typeof editBandControlsRaw === 'string'
+                ? editBandControlsRaw.split(',').map(chunk => chunk.trim()).filter(Boolean)
+                : []) || [];
+            const fallbackControlIds = ['add', 'edit', 'delete'];
+            const resolvedIds = controlIds.length ? controlIds : fallbackControlIds;
+
+            const editControls = resolvedIds
+                .map(id => this.getControlById(id))
+                .filter(control => control && control.element instanceof HTMLElement);
+
+            if (editControls.length) {
+                editBandContainer.removeAttribute('hidden');
+                editBandContainer.classList.remove('d-none');
+                editBandContainer.dataset.state = 'active';
+                editControls.forEach(control => {
+                    control.element.classList.add('shadow-sm');
+                    editBandContainer.appendChild(control.element);
+                });
+            } else {
+                editBandContainer.setAttribute('hidden', 'hidden');
+                editBandContainer.classList.add('d-none');
+                editBandContainer.dataset.state = 'empty';
+            }
+        }
+
+        const metaContainer = root.querySelector('[data-role="toolbar-meta"]');
+        if (metaContainer) {
+            const pageTitleOverride = PageToolbar._resolveDatasetValue(
+                ['pageTitle', 'title', 'documentTitle'],
+                this._layoutConfig,
+                dataset,
+                rootDataset,
+                metaContainer.dataset || {}
+            );
+            const pageTitle = (typeof pageTitleOverride === 'string' && pageTitleOverride.trim())
+                ? pageTitleOverride.trim()
+                : PageToolbar._extractPageTitle();
+
+            const breadcrumbOverride = PageToolbar._resolveDatasetValue(
+                ['breadcrumb', 'breadcrumbs', 'breadcrumbTrail'],
+                this._layoutConfig,
+                dataset,
+                rootDataset,
+                metaContainer.dataset || {}
+            );
+            const breadcrumbTrail = (typeof breadcrumbOverride === 'string' && breadcrumbOverride.trim())
+                ? breadcrumbOverride.trim()
+                : PageToolbar._extractBreadcrumbTrail(pageTitle);
+
+            let hasMetaContent = false;
+            const pageTitleTarget = metaContainer.querySelector('[data-role="page-title"]');
+            if (pageTitleTarget) {
+                if (pageTitle) {
+                    pageTitleTarget.textContent = pageTitle;
+                    hasMetaContent = true;
+                } else {
+                    pageTitleTarget.remove();
+                }
+            }
+
+            const breadcrumbTarget = metaContainer.querySelector('[data-role="breadcrumb-trail"]');
+            if (breadcrumbTarget) {
+                if (breadcrumbTrail) {
+                    breadcrumbTarget.textContent = breadcrumbTrail;
+                    hasMetaContent = true;
+                } else {
+                    breadcrumbTarget.remove();
+                }
+            }
+
+            if (hasMetaContent) {
+                metaContainer.removeAttribute('hidden');
+                metaContainer.classList.remove('d-none');
+                metaContainer.dataset.state = 'populated';
+            } else {
+                metaContainer.setAttribute('hidden', 'hidden');
+                metaContainer.classList.add('d-none');
+                metaContainer.dataset.state = 'empty';
+            }
+        }
+
+        const sidebarEnvironmentTarget = root.querySelector('[data-role="sidebar-environment"]');
+        if (sidebarEnvironmentTarget && !sidebarEnvironmentTarget.childElementCount) {
+            const environmentOverride = PageToolbar._resolveDatasetValue(
+                ['environmentLabel', 'environment', 'environmentName'],
+                this._layoutConfig,
+                dataset,
+                rootDataset,
+                sidebarEnvironmentTarget.dataset || {}
+            );
+            const environmentLabel = (typeof environmentOverride === 'string' && environmentOverride.trim())
+                ? environmentOverride.trim()
+                : PageToolbar._extractEnvironmentLabel();
+            if (environmentLabel) {
+                const badge = document.createElement('span');
+                badge.classList.add('badge', 'text-bg-secondary', 'fw-semibold');
+                badge.textContent = environmentLabel;
+                sidebarEnvironmentTarget.appendChild(badge);
+            }
+        }
+
         const offcanvasSelectorValue = PageToolbar._resolveDatasetValue(
             ['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'],
             this._layoutConfig,
