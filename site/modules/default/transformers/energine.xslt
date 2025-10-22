@@ -43,6 +43,9 @@
 
             </head>
             <body>
+                <xsl:if test="not(/document/properties/property[@name='single'])">
+                    <xsl:call-template name="APPLY_BOOTSTRAP_BODY_DATA" />
+                </xsl:if>
                 <xsl:apply-templates select="document"/>
 
                 <xsl:if test="not(//property[@name='single'])">

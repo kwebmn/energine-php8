@@ -237,28 +237,48 @@ class EnergineCore {
         if (typeof document === 'undefined') {
             return null;
         }
+
+        const { currentScript } = document;
+        const isScriptElement = currentScript
+            && (typeof HTMLScriptElement === 'undefined'
+                || currentScript instanceof HTMLScriptElement);
+        if (isScriptElement
+            && currentScript.type === 'module'
+            && (currentScript.dataset.energineRun === '1' || currentScript.dataset.energineRun === 'true')) {
+            this.moduleScriptElement = currentScript;
+            return currentScript;
+        }
+
         if (this.moduleScriptElement && document.contains(this.moduleScriptElement)) {
             return this.moduleScriptElement;
         }
-        if (!this.moduleUrl) {
-            return null;
+
+        const scripts = document.querySelectorAll('script[type="module"]');
+
+        if (this.moduleUrl) {
+            for (let i = scripts.length - 1; i >= 0; i -= 1) {
+                const script = scripts[i];
+                if (!script.src) {
+                    continue;
+                }
+
+                try {
+                    const normalizedSrc = new URL(script.src, document.baseURI).href;
+                    if (normalizedSrc === this.moduleUrl) {
+                        this.moduleScriptElement = script;
+                        return script;
+                    }
+                } catch {
+                    // ignore malformed URLs
+                }
+            }
         }
 
-        const scripts = document.getElementsByTagName('script');
         for (let i = scripts.length - 1; i >= 0; i -= 1) {
             const script = scripts[i];
-            if (script.type !== 'module' || !script.src) {
-                continue;
-            }
-
-            try {
-                const normalizedSrc = new URL(script.src, document.baseURI).href;
-                if (normalizedSrc === this.moduleUrl) {
-                    this.moduleScriptElement = script;
-                    return script;
-                }
-            } catch {
-                // ignore malformed URLs
+            if (script.dataset && (script.dataset.energineRun === '1' || script.dataset.energineRun === 'true')) {
+                this.moduleScriptElement = script;
+                return script;
             }
         }
 
@@ -829,6 +849,10 @@ class EnergineCore {
             return runtime;
         }
 
+        if (this.bridge && typeof this.bridge.setRuntime === 'function') {
+            this.bridge.setRuntime(runtime);
+        }
+
         target.safeConsoleError = this.safeConsoleError.bind(this);
         target.showLoader = this.showLoader.bind(this);
         target.hideLoader = this.hideLoader.bind(this);
@@ -840,26 +864,78 @@ class EnergineCore {
 
 const Energine = new EnergineCore(globalScope);
 
-const existingConfig = (() => {
-    if (!globalScope) {
-        return undefined;
+const runEnergineTasks = () => {
+    try {
+        Energine.run();
+    } catch (err) {
+        Energine.safeConsoleError(err, 'Energine.run');
     }
-    if (globalScope.__energineBridge && globalScope.__energineBridge.pendingConfig) {
-        return { ...globalScope.__energineBridge.pendingConfig };
-    }
-    if (typeof globalScope.Energine === 'object') {
-        return { ...globalScope.Energine };
-    }
-    return undefined;
-})();
+};
 
-if (existingConfig && Object.keys(existingConfig).length) {
-    Energine.boot(existingConfig);
-}
+const shouldAutoBoot = () => {
+    if (typeof document === 'undefined') {
+        return true;
+    }
+
+    const { body } = document;
+    if (!body || !body.dataset) {
+        return false;
+    }
+
+    const flag = body.dataset.energineRun;
+    return flag === '1' || flag === 'true';
+};
+
+const initializeRuntime = () => {
+    const datasetConfig = Energine.readConfigFromScriptDataset();
+    const initialConfig = Energine.createConfigFromBridgePending(datasetConfig);
+    const autoBoot = shouldAutoBoot();
+
+    if (autoBoot) {
+        Energine.boot(initialConfig);
+    }
+
+    Energine.attachToWindow(globalScope, Energine);
+
+    if (autoBoot) {
+        runEnergineTasks();
+    }
+};
+
+const scheduleInitialization = () => {
+    if (typeof document === 'undefined') {
+        initializeRuntime();
+        return;
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeRuntime, { once: true });
+    } else {
+        initializeRuntime();
+    }
+};
+
+scheduleInitialization();
+
+const warnDeprecated = (name, replacement) => {
+    if (typeof console === 'undefined' || !console.warn) {
+        return;
+    }
+    console.warn(`${name}() is deprecated. Use ${replacement} instead.`);
+};
+
+let warnedBootEnergine = false;
+let warnedAttachToWindow = false;
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 
-export const bootEnergine = (config = {}) => Energine.boot(config);
+export const bootEnergine = (config = {}) => {
+    if (!warnedBootEnergine) {
+        warnDeprecated('bootEnergine', 'Energine.boot');
+        warnedBootEnergine = true;
+    }
+    return Energine.boot(config);
+};
 
 export const stageTranslations = (values) => Energine.stageTranslations(values);
 
@@ -877,6 +953,12 @@ export const showLoader = (container) => Energine.showLoader(container);
 
 export const hideLoader = (container) => Energine.hideLoader(container);
 
-export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
+export const attachToWindow = (target = globalScope, runtime = Energine) => {
+    if (!warnedAttachToWindow) {
+        warnDeprecated('attachToWindow', 'Energine.attachToWindow');
+        warnedAttachToWindow = true;
+    }
+    return Energine.attachToWindow(target, runtime);
+};
 
 export default Energine;
