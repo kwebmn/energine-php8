@@ -8,7 +8,21 @@
     
     <!-- Собственно панель управления -->
     <xsl:template match="toolbar">
-        <xsl:apply-templates/>
+        <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar">
+            <xsl:if test="@name!=''">
+                <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:attribute name="id"><xsl:value-of select="@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="parent::component">
+                <xsl:attribute name="data-component-id"><xsl:value-of select="generate-id(parent::component/recordset)"/></xsl:attribute>
+                <xsl:attribute name="data-component-name"><xsl:value-of select="parent::component/@name"/></xsl:attribute>
+                <xsl:attribute name="data-component-action"><xsl:value-of select="parent::component/@componentAction"/></xsl:attribute>
+            </xsl:if>
+            <xsl:for-each select="properties/property">
+                <xsl:attribute name="data-prop-{translate(@name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')}"><xsl:value-of select="."/></xsl:attribute>
+            </xsl:for-each>
+            <xsl:apply-templates select="control"/>
+        </div>
     </xsl:template>
     
     <!-- Элемент панели управления -->
@@ -43,7 +57,14 @@
                         <xsl:otherwise>button</xsl:otherwise>
                 </xsl:choose>
         </xsl:variable>
-        <xsl:variable name="CONTROL_KEY" select="translate(concat(@id, '|', @click, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="ACTION_VALUE">
+            <xsl:choose>
+                <xsl:when test="@onclick!=''"><xsl:value-of select="@onclick"/></xsl:when>
+                <xsl:when test="@action!=''"><xsl:value-of select="@action"/></xsl:when>
+                <xsl:otherwise/>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="CONTROL_KEY" select="translate(concat(@id, '|', $ACTION_VALUE, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
         <xsl:variable name="BUTTON_VARIANT">
             <xsl:choose>
                 <xsl:when test="contains($CONTROL_KEY, 'save') or contains($CONTROL_KEY, 'submit') or contains($CONTROL_KEY, 'apply') or contains($CONTROL_KEY, 'update') or contains($CONTROL_KEY, 'add') or contains($CONTROL_KEY, 'create') or contains($CONTROL_KEY, 'change') or contains($CONTROL_KEY, 'select') or contains($CONTROL_KEY, 'activate') or contains($CONTROL_KEY, 'confirm') or contains($CONTROL_KEY, 'ok') or contains($CONTROL_KEY, 'upload') or contains($CONTROL_KEY, 'send') or contains($CONTROL_KEY, 'build')">btn-primary</xsl:when>
@@ -53,6 +74,32 @@
         </xsl:variable>
 
         <xsl:element name="{$CONTROL}">
+            <xsl:attribute name="data-control-id"><xsl:value-of select="@id"/></xsl:attribute>
+            <xsl:attribute name="data-control-type"><xsl:value-of select="@type"/></xsl:attribute>
+            <xsl:if test="$ACTION_VALUE!=''">
+                <xsl:attribute name="data-action"><xsl:value-of select="$ACTION_VALUE"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@icon!=''">
+                <xsl:attribute name="data-icon"><xsl:value-of select="@icon"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@aicon!=''">
+                <xsl:attribute name="data-active-icon"><xsl:value-of select="@aicon"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@icon-only!=''">
+                <xsl:attribute name="data-icon-only"><xsl:value-of select="@icon-only"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@state!=''">
+                <xsl:attribute name="data-state"><xsl:value-of select="@state"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@mode!=''">
+                <xsl:attribute name="data-mode"><xsl:value-of select="@mode"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@confirm!=''">
+                <xsl:attribute name="data-confirm"><xsl:value-of select="@confirm"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@disabled!=''">
+                <xsl:attribute name="data-disabled"><xsl:value-of select="@disabled"/></xsl:attribute>
+            </xsl:if>
             <xsl:if test="@mode=1">
                 <xsl:attribute name="disabled">disabled</xsl:attribute>
             </xsl:if>
@@ -77,9 +124,6 @@
                 </xsl:if>
                 <xsl:value-of select="$BUTTON_VARIANT"/>
             </xsl:attribute>
-            <xsl:if test="@click!=''">
-                <xsl:attribute name="onclick"><xsl:value-of select="@click"/></xsl:attribute>
-            </xsl:if>
             <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
                 <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
             </xsl:if>
@@ -117,7 +161,14 @@
                 <xsl:otherwise/>
             </xsl:choose>
         </xsl:variable>
-        <xsl:variable name="LINK_KEY" select="translate(concat(@id, '|', @click, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="ACTION_VALUE">
+            <xsl:choose>
+                <xsl:when test="@onclick!=''"><xsl:value-of select="@onclick"/></xsl:when>
+                <xsl:when test="@action!=''"><xsl:value-of select="@action"/></xsl:when>
+                <xsl:otherwise/>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="LINK_KEY" select="translate(concat(@id, '|', $ACTION_VALUE, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
         <xsl:variable name="LINK_VARIANT">
             <xsl:choose>
                 <xsl:when test="contains($LINK_KEY, 'save') or contains($LINK_KEY, 'submit') or contains($LINK_KEY, 'apply') or contains($LINK_KEY, 'update') or contains($LINK_KEY, 'add') or contains($LINK_KEY, 'create') or contains($LINK_KEY, 'change') or contains($LINK_KEY, 'select') or contains($LINK_KEY, 'activate') or contains($LINK_KEY, 'confirm') or contains($LINK_KEY, 'ok') or contains($LINK_KEY, 'upload') or contains($LINK_KEY, 'send') or contains($LINK_KEY, 'build')">btn-primary</xsl:when>
@@ -125,10 +176,17 @@
                 <xsl:otherwise>btn-secondary</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <a href="{$BASE}{$LANG_ABBR}{@click}" id="{@id}">
+        <a>
             <xsl:if test="@tooltip != ''">
                 <xsl:attribute name="title"><xsl:value-of select="@tooltip"/></xsl:attribute>
                 <xsl:attribute name="data-bs-toggle">tooltip</xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="id"><xsl:value-of select="@id"/></xsl:attribute>
+            <xsl:if test="@click!=''">
+                <xsl:attribute name="href"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="@click"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@href!=''">
+                <xsl:attribute name="href"><xsl:value-of select="@href"/></xsl:attribute>
             </xsl:if>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
@@ -145,6 +203,32 @@
                 </xsl:if>
                 <xsl:value-of select="$LINK_VARIANT"/>
             </xsl:attribute>
+            <xsl:attribute name="data-control-id"><xsl:value-of select="@id"/></xsl:attribute>
+            <xsl:attribute name="data-control-type">link</xsl:attribute>
+            <xsl:if test="$ACTION_VALUE!=''">
+                <xsl:attribute name="data-action"><xsl:value-of select="$ACTION_VALUE"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@icon!=''">
+                <xsl:attribute name="data-icon"><xsl:value-of select="@icon"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@aicon!=''">
+                <xsl:attribute name="data-active-icon"><xsl:value-of select="@aicon"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@icon-only!=''">
+                <xsl:attribute name="data-icon-only"><xsl:value-of select="@icon-only"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@state!=''">
+                <xsl:attribute name="data-state"><xsl:value-of select="@state"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@mode!=''">
+                <xsl:attribute name="data-mode"><xsl:value-of select="@mode"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@confirm!=''">
+                <xsl:attribute name="data-confirm"><xsl:value-of select="@confirm"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@disabled!=''">
+                <xsl:attribute name="data-disabled"><xsl:value-of select="@disabled"/></xsl:attribute>
+            </xsl:if>
             <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
                 <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
             </xsl:if>
@@ -172,102 +256,6 @@
     <xsl:template match="toolbar/control[@type='separator']">
         <br/>
     </xsl:template>
-    <!-- Панель управления для формы -->
-    <xsl:template match="toolbar[parent::component[@exttype='grid']]">
-
-        <script type="module">
-            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
-            queueTask(() => {
-                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
-                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
-                componentToolbars[componentId] = new Toolbar('<xsl:value-of select="@name"/>'<xsl:if
-                test="properties/property">, <xsl:for-each select="properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
-                <xsl:apply-templates />
-                const componentInstance = globalThis[componentId];
-                if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
-                    componentInstance.attachToolbar(componentToolbars[componentId]);
-                }
-                var holder = document.getElementById('<xsl:value-of select="generate-id(../recordset)"/>'),
-                    content = holder.querySelector('[data-pane-part="body"]');
-                if (content &amp;&amp; parseInt(document.body.clientWidth, 10) &lt;= 680) {
-                    var tToolbar = holder.querySelector('[data-pane-part="header"]'),
-                        bToolbar = holder.querySelector('[data-pane-part="footer"]'),
-                        contentHeight = document.body.clientHeight;
-                    if (tToolbar) contentHeight -= tToolbar.getComputedSize().totalHeight;
-                    if (bToolbar) contentHeight -= bToolbar.getComputedSize().totalHeight;
-                    <!--content.setStyles({
-                        height: contentHeight,
-                        position: 'static'
-                    });-->
-                }
-            });
-        </script>
-    </xsl:template>    
-    
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'button']">
-            componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-                new Toolbar.Button({
-                    id: '<xsl:value-of select="@id"/>',
-                    title: '<xsl:value-of select="@title"/>',
-                    action: '<xsl:value-of select="@onclick"/>',
-                    icon: '<xsl:value-of select="@icon"/>',
-                    iconOnly: '<xsl:value-of select="@icon-only"/>',
-                    disabled: '<xsl:value-of select="@disabled"/>'
-                })
-            );
-    </xsl:template>
-
-
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'switcher']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-        new Toolbar.Switcher({
-        id: '<xsl:value-of select="@id"/>',
-        title: '<xsl:value-of select="@title"/>',
-        action: '<xsl:value-of select="@onclick"/>',
-        icon: '<xsl:value-of select="@icon"/>',
-        aicon: '<xsl:value-of select="@aicon"/>',
-        iconOnly: '<xsl:value-of select="@icon-only"/>'
-        })
-        );
-    </xsl:template>
-
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type='file']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.File({
-                id: '<xsl:value-of select="@id"/>',
-                title: '<xsl:value-of select="@title"/>',
-                action: '<xsl:value-of select="@onclick"/>',
-                icon: '<xsl:value-of select="@icon"/>',
-                iconOnly: '<xsl:value-of select="@icon-only"/>'
-            })
-        );
-    </xsl:template>
-
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'select']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.Select({
-                id: '<xsl:value-of select="@id"/>',
-                title: '<xsl:value-of select="@title"/>',
-                action: '<xsl:value-of select="@action"/>'
-            },
-            {
-                <xsl:if test="options">
-                    <xsl:for-each select="options/option">
-                        '<xsl:value-of select="@id"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if>
-                    </xsl:for-each>
-                </xsl:if>
-            })
-        );
-    </xsl:template>
-  
-    <xsl:template match="component[@exttype='grid']/toolbar/control[@type = 'separator']">
-        componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(
-            new Toolbar.Separator({ id: '<xsl:value-of select="@id"/>' })
-    	);
-    </xsl:template>
-    
     <!-- листалка по страницам -->
     <xsl:template match="toolbar[@name='pager']">
         <xsl:if test="count(control) &gt; 1">
@@ -332,8 +320,22 @@
     <xsl:template match="property[@name='title'][ancestor::toolbar[@name='pager']]"/>
     <!-- /листалка по страницам -->
     
-    <!-- Панель управления страницей обрабатывается в document.xslt  -->
-    <xsl:template match="toolbar[parent::component[@class='PageToolBar']]"/>
+    <!-- Панель управления страницей -->
+    <xsl:template match="toolbar[parent::component[@class='PageToolBar']]">
+        <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar">
+            <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+            <xsl:attribute name="data-page-toolbar">1</xsl:attribute>
+            <xsl:attribute name="data-component-id"><xsl:value-of select="generate-id(parent::component/recordset)"/></xsl:attribute>
+            <xsl:attribute name="data-component-name"><xsl:value-of select="parent::component/@name"/></xsl:attribute>
+            <xsl:attribute name="data-component-action"><xsl:value-of select="parent::component/@componentAction"/></xsl:attribute>
+            <xsl:attribute name="data-component-path"><xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="parent::component/@single_template"/></xsl:attribute>
+            <xsl:attribute name="data-document-id"><xsl:value-of select="$DOC_PROPS[@name='ID']"/></xsl:attribute>
+            <xsl:for-each select="properties/property">
+                <xsl:attribute name="data-prop-{translate(@name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')}"><xsl:value-of select="."/></xsl:attribute>
+            </xsl:for-each>
+            <xsl:apply-templates select="control"/>
+        </div>
+    </xsl:template>
     <!-- Те действия на которые нет прав  - прячем -->
     <xsl:template match="toolbar/control[@mode=0]"></xsl:template>
 

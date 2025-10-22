@@ -56,36 +56,9 @@
     </xsl:template>
     
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
-        <script type="module">
-            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
-            queueTask(() => {
-                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
-                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
-                componentToolbars[componentId] = new Toolbar(
-                    '<xsl:value-of select="@name"/>'
-                );
-                    <xsl:apply-templates/>
-                    const componentInstance = globalThis[componentId];
-                    if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
-                        componentInstance.attachToolbar(componentToolbars[componentId]);
-                    }
-            });
-        </script>
-        <!--
-        <script language="JavaScript">
-            var toolbar_<xsl:value-of select="generate-id(../recordset)"/>;
-            toolbar_<xsl:value-of select="generate-id(../recordset)"/> = new Toolbar;
-            <xsl:apply-templates/>
-        </script> 
-        -->
-    </xsl:template>
-    
-    <xsl:template match="control[ancestor::component[@class='ImageManager']]">
-        {
-            const button = new Toolbar.Button({ id: '<xsl:value-of select="@id"/>', title: '<xsl:value-of select="@title"/>', action: '<xsl:value-of select="@onclick"/>' });
-            componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(button);
-        }
+        <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar" data-toolbar="{../@name}" data-component-id="{generate-id(../recordset)}" data-component-name="{../@name}">
+            <xsl:apply-templates select="control"/>
+        </div>
     </xsl:template>
     <!-- /компонент ImageManager -->
 

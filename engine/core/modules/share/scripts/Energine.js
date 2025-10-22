@@ -49,6 +49,9 @@ class EnergineCore {
         this.forceJSON = false;
         this.supportContentEdit = true;
         this.tasks = [];
+        this.initializers = [];
+        this.domInitialized = false;
+        this.booted = false;
 
         this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
             ? import.meta.url
@@ -231,6 +234,39 @@ class EnergineCore {
         if (Object.keys(datasetConfig).length) {
             Object.assign(this.bridge.pendingConfig, datasetConfig);
         }
+    }
+
+    registerInitializer(initializer) {
+        if (typeof initializer !== 'function') {
+            return;
+        }
+
+        this.initializers.push(initializer);
+
+        if (this.domInitialized && this.booted) {
+            try {
+                initializer(this);
+            } catch (error) {
+                this.safeConsoleError(error, 'initializer');
+            }
+        }
+    }
+
+    runInitializers() {
+        if (!this.initializers.length) {
+            return;
+        }
+
+        this.initializers.forEach((initializer) => {
+            if (typeof initializer !== 'function') {
+                return;
+            }
+            try {
+                initializer(this);
+            } catch (error) {
+                this.safeConsoleError(error, 'initializer');
+            }
+        });
     }
 
     resolveModuleScriptElement() {
@@ -689,6 +725,8 @@ class EnergineCore {
             this.tasks = tasks;
         }
 
+        this.booted = true;
+
         return this;
     }
 
@@ -756,6 +794,57 @@ class EnergineCore {
             ? { ...this.bridge.pendingConfig }
             : {};
         return this.createConfigFromProps({ ...bridgeConfig, ...overrides });
+    }
+
+    readTranslationsFromDOM(root = (typeof document !== 'undefined' ? document : null)) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return {};
+        }
+
+        const scripts = root.querySelectorAll('script[data-energine-translations]');
+        const collected = {};
+
+        scripts.forEach((script) => {
+            const textContent = script.textContent ? script.textContent.trim() : '';
+            if (!textContent) {
+                if (script.parentNode) {
+                    script.parentNode.removeChild(script);
+                }
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(textContent);
+                if (parsed && typeof parsed === 'object') {
+                    Object.assign(collected, parsed);
+                }
+            } catch (error) {
+                this.safeConsoleError(error, 'translations');
+            }
+
+            if (script.parentNode) {
+                script.parentNode.removeChild(script);
+            }
+        });
+
+        return collected;
+    }
+
+    consumeTranslationScripts() {
+        const translations = this.readTranslationsFromDOM();
+        if (Object.keys(translations).length) {
+            this.stageTranslations(translations);
+        }
+    }
+
+    initializeFromDOM() {
+        if (this.domInitialized || typeof document === 'undefined') {
+            return;
+        }
+
+        this.consumeTranslationScripts();
+        this.runInitializers();
+        this.domInitialized = true;
     }
 
     safeConsoleError(e, context = '') {
@@ -842,7 +931,7 @@ const Energine = new EnergineCore(globalScope);
 
 const existingConfig = (() => {
     if (!globalScope) {
-        return undefined;
+        return {};
     }
     if (globalScope.__energineBridge && globalScope.__energineBridge.pendingConfig) {
         return { ...globalScope.__energineBridge.pendingConfig };
@@ -850,11 +939,63 @@ const existingConfig = (() => {
     if (typeof globalScope.Energine === 'object') {
         return { ...globalScope.Energine };
     }
-    return undefined;
+    return {};
 })();
 
-if (existingConfig && Object.keys(existingConfig).length) {
-    Energine.boot(existingConfig);
+const shouldAutoRun = (() => {
+    if (typeof document === 'undefined') {
+        return false;
+    }
+    const scriptElement = Energine.resolveModuleScriptElement ? Energine.resolveModuleScriptElement() : null;
+    const scriptFlag = scriptElement && scriptElement.dataset
+        ? scriptElement.dataset.energineRun || scriptElement.dataset.energinerun
+        : '';
+    const bodyFlag = document.body && document.body.dataset
+        ? (document.body.dataset.energineRun || document.body.dataset.energinerun)
+        : '';
+    const normalizeFlag = (value) => {
+        if (!value) return false;
+        const normalized = String(value).toLowerCase();
+        return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+    };
+    return normalizeFlag(scriptFlag) || normalizeFlag(bodyFlag);
+})();
+
+let initialConfig = {};
+
+if (shouldAutoRun) {
+    const bridgeConfig = Energine.createConfigFromBridgePending();
+    const scriptConfig = Energine.createConfigFromScriptDataset();
+    initialConfig = Energine.createConfigFromProps({
+        ...bridgeConfig,
+        ...existingConfig,
+        ...scriptConfig,
+    });
+} else if (Object.keys(existingConfig).length) {
+    initialConfig = Energine.createConfigFromProps(existingConfig);
+}
+
+if (Object.keys(initialConfig).length) {
+    Energine.boot(initialConfig);
+}
+
+if (shouldAutoRun && globalScope && typeof globalScope === 'object') {
+    Energine.attachToWindow(globalScope, Energine);
+
+    const finalizeInitialization = () => {
+        Energine.initializeFromDOM();
+        if (typeof Energine.run === 'function') {
+            Energine.run();
+        }
+    };
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', finalizeInitialization, { once: true });
+        } else {
+            finalizeInitialization();
+        }
+    }
 }
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
@@ -878,5 +1019,7 @@ export const showLoader = (container) => Energine.showLoader(container);
 export const hideLoader = (container) => Energine.hideLoader(container);
 
 export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
+
+export const registerInitializer = (initializer) => Energine.registerInitializer(initializer);
 
 export default Energine;

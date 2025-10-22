@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerInitializer as registerEnergineInitializer } from './Energine.js';
 import Toolbar from './Toolbar.js';
 import ModalBox from './ModalBox.js';
 import Cookie from './Cookie.js';
@@ -659,3 +659,86 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+function collectToolbarProperties(element) {
+    const props = {};
+    if (!element || !element.attributes) {
+        return props;
+    }
+
+    Array.from(element.attributes).forEach((attr) => {
+        if (!attr.name) {
+            return;
+        }
+        if (attr.name.startsWith('data-prop-')) {
+            const key = attr.name.substring('data-prop-'.length);
+            props[key] = attr.value;
+        }
+    });
+
+    return props;
+}
+
+function collectControlDescriptor(control) {
+    const descriptor = {};
+    if (!control || control.nodeType !== 1) {
+        return descriptor;
+    }
+
+    const dataset = control.dataset || {};
+    descriptor.id = dataset.controlId || control.getAttribute('name') || '';
+    descriptor.type = dataset.controlType || control.getAttribute('type') || control.tagName.toLowerCase();
+    descriptor.title = control.getAttribute('title')
+        || (control.textContent ? control.textContent.trim() : '')
+        || dataset.title
+        || '';
+    descriptor.onclick = dataset.action || '';
+    descriptor.action = dataset.action || '';
+    descriptor.icon = dataset.icon || '';
+    descriptor.aicon = dataset.activeIcon || '';
+    descriptor['icon-only'] = dataset.iconOnly || '';
+    descriptor.disabled = dataset.disabled || (control.hasAttribute('disabled') ? '1' : '');
+    if (dataset.state) descriptor.state = dataset.state;
+    if (dataset.mode) descriptor.mode = dataset.mode;
+    if (dataset.confirm) descriptor.confirm = dataset.confirm;
+
+    if (control.tagName.toLowerCase() === 'a' && control.getAttribute('href')) {
+        descriptor.href = control.getAttribute('href');
+    }
+
+    return descriptor;
+}
+
+function hydratePageToolbar(element) {
+    if (!element || element.dataset.hydrated) {
+        return null;
+    }
+
+    const componentPath = element.dataset.componentPath || '';
+    const documentId = parseInt(element.dataset.documentId || '0', 10) || 0;
+    const toolbarName = element.dataset.toolbar || '';
+    const props = collectToolbarProperties(element);
+    const controlsDesc = Array.from(element.querySelectorAll('[data-control-id]')).map(collectControlDescriptor);
+
+    const instance = new PageToolbar(componentPath, documentId, toolbarName, controlsDesc, props);
+    const instanceElement = instance.getElement();
+
+    if (element.parentNode && instanceElement) {
+        element.parentNode.replaceChild(instanceElement, element);
+    }
+
+    instanceElement?.setAttribute('data-hydrated', '1');
+
+    return instance;
+}
+
+if (typeof registerEnergineInitializer === 'function') {
+    registerEnergineInitializer(() => {
+        if (typeof document === 'undefined') {
+            return;
+        }
+        document.querySelectorAll('[data-page-toolbar]').forEach((element) => {
+            hydratePageToolbar(element);
+        });
+    });
+}

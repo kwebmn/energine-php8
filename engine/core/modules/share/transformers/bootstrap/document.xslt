@@ -176,6 +176,8 @@
         </xsl:if>
         <script type="module">
             <xsl:attribute name="src"><xsl:value-of select="$ENERGINE_URL"/></xsl:attribute>
+            <xsl:attribute name="data-energine-module">runtime</xsl:attribute>
+            <xsl:attribute name="data-energine-run">1</xsl:attribute>
             <xsl:if test="document/@debug=1">
                 <xsl:attribute name="data-debug">true</xsl:attribute>
             </xsl:if>
@@ -202,62 +204,6 @@
         </xsl:if>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
-        <script type="module">            
-            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
-
-            const config = createConfigFromScriptDataset();
-
-            const runtime = bootEnergine(config);
-            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {
-                window.__energineBridge.setRuntime(runtime);
-            }
-            const Energine = attachToWindow(window, runtime);
-
-            const componentToolbars = window.componentToolbars = [];
-
-            <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
-                <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]">
-                    globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] = globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] || null;
-                </xsl:for-each>
-            </xsl:if>
-
-            <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                Energine.addTask(function () {
-             <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
-            const pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
-            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>
-            ]<xsl:if
-                test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
-
-                });
-            </xsl:if>
-            <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
-                <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
-                if (document.getElementById('<xsl:value-of select="$objectID"/>')) {
-                    try {
-                         globalThis['<xsl:value-of select="$objectID"/>'] = new <xsl:value-of select="@name"/>(document.getElementById('<xsl:value-of select="$objectID"/>'));
-                    }
-                    catch (e) {
-                        safeConsoleError(e);
-                    }
-                }
-            </xsl:for-each>
-            <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
-                <xsl:if test="position()=1">
-                    <xsl:variable name="objectID" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
-                    try {
-                    globalThis['<xsl:value-of select="$objectID"/>'] = new PageEditor();
-                    }
-                    catch (e) {
-                    safeConsoleError(e);
-                    }
-                </xsl:if>
-            </xsl:if>
-
-            document.addEventListener('DOMContentLoaded', () => Energine.run());
-        </script>
 
         <xsl:if test="not(//property[@name='single'])">
             <xsl:if test="$DOC_PROPS[@name='google_analytics'] and ($DOC_PROPS[@name='google_analytics'] != '')">
@@ -283,9 +229,8 @@
     
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="/document/translations[translation[@component=//component[@editable]/@name]]">
-        <script type="module">
-            import { stageTranslations } from "<xsl:value-of select="$ENERGINE_URL"/>";
-            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+        <script type="application/json" data-energine-translations="editable">
+            <xsl:value-of select="/document/translations/@json" />
         </script>
     </xsl:template>
 
