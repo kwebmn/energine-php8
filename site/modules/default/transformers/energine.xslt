@@ -42,7 +42,7 @@
                 </xsl:choose>
 
             </head>
-            <body>
+            <body data-energine-run="1">
                 <xsl:apply-templates select="document"/>
 
                 <xsl:if test="not(//property[@name='single'])">

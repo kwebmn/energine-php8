@@ -49,7 +49,7 @@
                         rel="stylesheet"
                 />
         	</head>
-        	<body>
+                <body data-energine-run="1">
 
                 <div class="container px-4">
 

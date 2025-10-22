@@ -22,7 +22,7 @@
                 <head>
                     <base href="{$BASE}"/>
                 </head>
-                <body style="padding: 0; margin: 0;">
+                <body style="padding: 0; margin: 0;" data-energine-run="1">
                     <xsl:apply-templates select="document"/>
                 </body>
             </html>

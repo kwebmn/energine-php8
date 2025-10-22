@@ -840,22 +840,300 @@ class EnergineCore {
 
 const Energine = new EnergineCore(globalScope);
 
-const existingConfig = (() => {
-    if (!globalScope) {
-        return undefined;
-    }
-    if (globalScope.__energineBridge && globalScope.__energineBridge.pendingConfig) {
-        return { ...globalScope.__energineBridge.pendingConfig };
-    }
-    if (typeof globalScope.Energine === 'object') {
-        return { ...globalScope.Energine };
-    }
-    return undefined;
-})();
+const BOOTSTRAP_ROOT_ID = 'energine-bootstrap';
 
-if (existingConfig && Object.keys(existingConfig).length) {
-    Energine.boot(existingConfig);
-}
+let bootstrapPayloadCache = null;
+let bootstrapPayloadResolved = false;
+
+const parseBootstrapPayloadFromDom = () => {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    const root = document.getElementById(BOOTSTRAP_ROOT_ID);
+    if (!root) {
+        return null;
+    }
+
+    const payload = {
+        globals: [],
+        behaviors: [],
+    };
+
+    root.querySelectorAll('[data-type="global"]').forEach((node) => {
+        if (!node.dataset || !node.dataset.id) {
+            return;
+        }
+        payload.globals.push(node.dataset.id);
+    });
+
+    const toolbarNode = root.querySelector('[data-type="page-toolbar"]');
+    if (toolbarNode && toolbarNode.dataset) {
+        const toolbar = {
+            className: toolbarNode.dataset.className || '',
+            componentPath: toolbarNode.dataset.componentPath || '',
+            documentId: toolbarNode.dataset.documentId || '',
+            toolbarName: toolbarNode.dataset.toolbarName || '',
+            controls: [],
+        };
+
+        toolbarNode.querySelectorAll('[data-type="control"]').forEach((controlNode) => {
+            const control = {};
+            controlNode.querySelectorAll('[data-type="attribute"]').forEach((attributeNode) => {
+                if (!attributeNode.dataset || !attributeNode.dataset.name) {
+                    return;
+                }
+                const { name, value } = attributeNode.dataset;
+                control[name] = typeof value === 'undefined' ? '' : value;
+            });
+            toolbar.controls.push(control);
+        });
+
+        const propertiesNode = toolbarNode.querySelector('[data-type="properties"]');
+        if (propertiesNode) {
+            const properties = {};
+            propertiesNode.querySelectorAll('[data-type="property"]').forEach((propertyNode) => {
+                if (!propertyNode.dataset || !propertyNode.dataset.name) {
+                    return;
+                }
+                const { name, value } = propertyNode.dataset;
+                properties[name] = typeof value === 'undefined' ? '' : value;
+            });
+            toolbar.properties = properties;
+        }
+
+        payload.pageToolbar = toolbar;
+    }
+
+    root.querySelectorAll('[data-type="behavior"]').forEach((node) => {
+        if (!node.dataset || !node.dataset.id || !node.dataset.className) {
+            return;
+        }
+        payload.behaviors.push({
+            id: node.dataset.id,
+            className: node.dataset.className,
+        });
+    });
+
+    const pageEditorNode = root.querySelector('[data-type="page-editor"]');
+    if (pageEditorNode && pageEditorNode.dataset && pageEditorNode.dataset.className) {
+        payload.pageEditor = {
+            id: pageEditorNode.dataset.id || '',
+            className: pageEditorNode.dataset.className,
+        };
+    }
+
+    if (root.parentNode) {
+        root.parentNode.removeChild(root);
+    }
+
+    return payload;
+};
+
+const getBootstrapPayload = () => {
+    if (bootstrapPayloadResolved) {
+        return bootstrapPayloadCache;
+    }
+
+    bootstrapPayloadResolved = true;
+
+    try {
+        bootstrapPayloadCache = parseBootstrapPayloadFromDom();
+    } catch (error) {
+        Energine.safeConsoleError(error, 'Energine bootstrap payload');
+        bootstrapPayloadCache = null;
+    }
+
+    return bootstrapPayloadCache;
+};
+
+const ensureGlobalPlaceholders = (payload) => {
+    if (!globalScope || !payload || !Array.isArray(payload.globals)) {
+        return;
+    }
+
+    payload.globals.forEach((id) => {
+        if (typeof id !== 'string' || id.length === 0) {
+            return;
+        }
+        if (typeof globalScope[id] === 'undefined') {
+            globalScope[id] = null;
+        }
+    });
+};
+
+const instantiateBehaviorConstructors = (behaviors = []) => {
+    if (!Array.isArray(behaviors) || typeof document === 'undefined' || !globalScope) {
+        return;
+    }
+
+    behaviors.forEach(({ id, className }) => {
+        if (!id || !className) {
+            return;
+        }
+
+        const Constructor = globalScope[className];
+        if (typeof Constructor !== 'function') {
+            Energine.safeConsoleError(new Error(`Behavior constructor "${className}" is not available`), 'Energine bootstrap');
+            return;
+        }
+
+        const target = document.getElementById(id);
+        if (!target) {
+            return;
+        }
+
+        try {
+            const instance = new Constructor(target);
+            globalScope[id] = instance;
+        } catch (error) {
+            Energine.safeConsoleError(error, className);
+        }
+    });
+};
+
+const instantiatePageToolbarFromConfig = (config) => {
+    if (!config || !config.className || !globalScope) {
+        return null;
+    }
+
+    const Constructor = globalScope[config.className];
+    if (typeof Constructor !== 'function') {
+        Energine.safeConsoleError(new Error(`Toolbar constructor "${config.className}" is not available`), 'Energine bootstrap');
+        return null;
+    }
+
+    const controls = Array.isArray(config.controls) ? config.controls : [];
+    const args = [
+        config.componentPath || '',
+        config.documentId,
+        config.toolbarName,
+        controls,
+    ];
+
+    if (config.properties && Object.keys(config.properties).length) {
+        args.push(config.properties);
+    }
+
+    try {
+        const instance = new Constructor(...args);
+        return instance;
+    } catch (error) {
+        Energine.safeConsoleError(error, config.className);
+        return null;
+    }
+};
+
+const instantiatePageEditor = (config) => {
+    if (!config || !config.className || !globalScope) {
+        return null;
+    }
+
+    const Constructor = globalScope[config.className];
+    if (typeof Constructor !== 'function') {
+        Energine.safeConsoleError(new Error(`Editor constructor "${config.className}" is not available`), 'Energine bootstrap');
+        return null;
+    }
+
+    try {
+        const instance = new Constructor();
+        if (config.id) {
+            globalScope[config.id] = instance;
+        }
+        return instance;
+    } catch (error) {
+        Energine.safeConsoleError(error, config.className);
+        return null;
+    }
+};
+
+const scheduleBootstrapTasks = (runtime) => {
+    const payload = getBootstrapPayload();
+    if (!payload) {
+        return;
+    }
+
+    ensureGlobalPlaceholders(payload);
+
+    if (Array.isArray(payload.behaviors) && payload.behaviors.length) {
+        runtime.addTask(() => instantiateBehaviorConstructors(payload.behaviors));
+    }
+
+    if (payload.pageToolbar && payload.pageToolbar.className) {
+        runtime.addTask(() => instantiatePageToolbarFromConfig(payload.pageToolbar));
+    }
+
+    if (payload.pageEditor && payload.pageEditor.className) {
+        runtime.addTask(() => instantiatePageEditor(payload.pageEditor));
+    }
+};
+
+const attachRuntimeToBridge = (runtime) => {
+    if (!globalScope || !globalScope.__energineBridge) {
+        return;
+    }
+
+    const { setRuntime } = globalScope.__energineBridge;
+    if (typeof setRuntime === 'function') {
+        setRuntime(runtime);
+    }
+};
+
+const shouldAutoRun = () => {
+    if (typeof document === 'undefined') {
+        return false;
+    }
+
+    const { body } = document;
+    if (!body) {
+        return false;
+    }
+
+    const flag = body.getAttribute('data-energine-run');
+    if (flag === null) {
+        return Boolean(getBootstrapPayload());
+    }
+
+    const normalized = String(flag).toLowerCase();
+    return !['0', 'false', 'no', 'off'].includes(normalized);
+};
+
+const runWhenReady = (runtime) => {
+    if (typeof document === 'undefined' || !shouldAutoRun()) {
+        return;
+    }
+
+    const executeRun = () => {
+        try {
+            runtime.run();
+        } catch (error) {
+            runtime.safeConsoleError(error, 'Energine.run');
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', executeRun, { once: true });
+    } else {
+        executeRun();
+    }
+};
+
+const bootstrapRuntime = () => {
+    const config = Energine.createConfigFromBridgePending();
+    Energine.boot(config || {});
+
+    attachRuntimeToBridge(Energine);
+    Energine.attachToWindow(globalScope, Energine);
+
+    if (globalScope && !Array.isArray(globalScope.componentToolbars)) {
+        globalScope.componentToolbars = [];
+    }
+
+    scheduleBootstrapTasks(Energine);
+    runWhenReady(Energine);
+};
+
+bootstrapRuntime();
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 
