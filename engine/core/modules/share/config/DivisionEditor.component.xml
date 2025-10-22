@@ -211,7 +211,7 @@
             <!--<control id="showSidebar" title="BTN_SIDEBAR" type="button" icon="images/toolbar/structure.gif"-->
                      <!--onclick="toggleSidebar"/>-->
             <!--<control id="sep1" type="separator"/>-->
-            <control id="editMode" title="BTN_EDIT_MODE" icon="fa fa-pencil-square-o" type="switcher" onclick="editMode"/>
+            <control id="editMode" title="BTN_EDIT_MODE" icon="fa fa-edit" type="switcher" onclick="editMode"/>
             <!--<control id="sep2" type="separator"/>
             <control id="editBlocks" title="BTN_EDIT_BLOCKS" type="switcher" onclick="editBlocks"/>-->
             <!--disabled="disabled"-->
