@@ -56,36 +56,16 @@
     </xsl:template>
     
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
-        <script type="module">
-            import { queueTask } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            import { Toolbar } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
-            queueTask(() => {
-                const componentToolbars = window.componentToolbars || (window.componentToolbars = []);
-                const componentId = '<xsl:value-of select="generate-id(../recordset)"/>';
-                componentToolbars[componentId] = new Toolbar(
-                    '<xsl:value-of select="@name"/>'
-                );
-                    <xsl:apply-templates/>
-                    const componentInstance = globalThis[componentId];
-                    if (componentInstance &amp;&amp; typeof componentInstance.attachToolbar === 'function') {
-                        componentInstance.attachToolbar(componentToolbars[componentId]);
-                    }
-            });
-        </script>
-        <!--
-        <script language="JavaScript">
-            var toolbar_<xsl:value-of select="generate-id(../recordset)"/>;
-            toolbar_<xsl:value-of select="generate-id(../recordset)"/> = new Toolbar;
+        <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar">
+            <xsl:if test="@name">
+                <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-toolbar-scope">image-manager</xsl:attribute>
+            <xsl:if test="ancestor::component[1]/recordset">
+                <xsl:attribute name="data-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
+            </xsl:if>
             <xsl:apply-templates/>
-        </script> 
-        -->
-    </xsl:template>
-    
-    <xsl:template match="control[ancestor::component[@class='ImageManager']]">
-        {
-            const button = new Toolbar.Button({ id: '<xsl:value-of select="@id"/>', title: '<xsl:value-of select="@title"/>', action: '<xsl:value-of select="@onclick"/>' });
-            componentToolbars['<xsl:value-of select="generate-id(../../recordset)"/>'].appendControl(button);
-        }
+        </div>
     </xsl:template>
     <!-- /компонент ImageManager -->
 
