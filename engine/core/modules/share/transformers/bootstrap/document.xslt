@@ -221,15 +221,26 @@
             </xsl:if>
 
             <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                Energine.addTask(function () {
-             <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"></xsl:variable>
-            const pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name" />('<xsl:value-of select="$BASE"/><xsl:value-of select="$LANG_ABBR"/><xsl:value-of select="$PAGE_TOOLBAR/@single_template" />', <xsl:value-of select="$ID" />, '<xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>', [
-            <xsl:for-each select="$PAGE_TOOLBAR/toolbar/control">
-                { <xsl:for-each select="@*[name()!='mode']">'<xsl:value-of select="name()"/>':'<xsl:value-of select="."/>'<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>}<xsl:if test="position()!=last()">,</xsl:if></xsl:for-each>
-            ]<xsl:if
-                test="$PAGE_TOOLBAR/toolbar/properties/property">, <xsl:for-each select="$PAGE_TOOLBAR/toolbar/properties/property">{'<xsl:value-of select="@name"/>':'<xsl:value-of
-                select="."/>'<xsl:if test="position()!=last()">,</xsl:if>}</xsl:for-each></xsl:if>);
-
+                <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
+                <xsl:variable name="PAGE_TOOLBAR_NAME">
+                    <xsl:choose>
+                        <xsl:when test="string-length(normalize-space($PAGE_TOOLBAR/toolbar/@name)) &gt; 0">
+                            <xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>
+                        </xsl:when>
+                        <xsl:otherwise>main_toolbar</xsl:otherwise>
+                    </xsl:choose>
+                </xsl:variable>
+                Energine.addTask(() => {
+                    const toolbarRoot = document.querySelector('[data-page-toolbar="<xsl:value-of select="$PAGE_TOOLBAR_NAME"/>"]');
+                    if (!toolbarRoot) {
+                        return;
+                    }
+                    const toolbarElement = toolbarRoot.querySelector('[data-toolbar]');
+                    if (!toolbarElement) {
+                        return;
+                    }
+                    const pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>(toolbarElement, { root: toolbarRoot });
+                    return pageToolbar;
                 });
             </xsl:if>
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
