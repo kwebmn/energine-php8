@@ -230,18 +230,34 @@
                         <xsl:otherwise>main_toolbar</xsl:otherwise>
                     </xsl:choose>
                 </xsl:variable>
-                Energine.addTask(() => {
+                const bootstrapPageToolbar = () => {
                     const toolbarRoot = document.querySelector('[data-page-toolbar="<xsl:value-of select="$PAGE_TOOLBAR_NAME"/>"]');
                     if (!toolbarRoot) {
-                        return;
+                        return null;
                     }
                     const toolbarElement = toolbarRoot.querySelector('[data-toolbar]');
                     if (!toolbarElement) {
-                        return;
+                        return null;
                     }
-                    const pageToolbar = new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>(toolbarElement, { root: toolbarRoot });
-                    return pageToolbar;
-                });
+                    if (window.Toolbar && window.Toolbar.registry) {
+                        const existing = window.Toolbar.registry.get(toolbarElement);
+                        if (existing && typeof existing.destroy === 'function') {
+                            try {
+                                existing.destroy();
+                            } catch (error) {
+                                console.warn('[document.xslt] Failed to dispose existing toolbar instance', error);
+                            }
+                        }
+                        window.Toolbar.registry.delete(toolbarElement);
+                    }
+                    return new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>(toolbarElement, { root: toolbarRoot });
+                };
+                const initialPageToolbar = bootstrapPageToolbar();
+                if (!initialPageToolbar) {
+                    Energine.addTask(() => bootstrapPageToolbar());
+                } else {
+                    Energine.addTask(() => initialPageToolbar);
+                }
             </xsl:if>
             <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
                 <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
