@@ -203,16 +203,18 @@
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
         <script type="module">
-            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "<xsl:value-of select="$ENERGINE_URL"/>";
-            import { initializeToolbars, registerToolbarComponent } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Toolbar.js";
-
-            const config = createConfigFromScriptDataset();
-
-            const runtime = bootEnergine(config);
-            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {
-                window.__energineBridge.setRuntime(runtime);
-            }
-            const Energine = attachToWindow(window, runtime);
+            <xsl:text>            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "</xsl:text>
+            <xsl:value-of select="$ENERGINE_URL"/>
+            <xsl:text>";</xsl:text>
+            <xsl:text>&#10;            import { initializeToolbars, registerToolbarComponent } from "</xsl:text>
+            <xsl:value-of select="/document/properties/property[@name='base']/@static"/>
+            <xsl:text>scripts/Toolbar.js";</xsl:text>
+            <xsl:text>&#10;&#10;            const config = createConfigFromScriptDataset();</xsl:text>
+            <xsl:text>&#10;&#10;            const runtime = bootEnergine(config);</xsl:text>
+            <xsl:text>&#10;            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {</xsl:text>
+            <xsl:text>&#10;                window.__energineBridge.setRuntime(runtime);</xsl:text>
+            <xsl:text>&#10;            }</xsl:text>
+            <xsl:text>&#10;            const Energine = attachToWindow(window, runtime);</xsl:text>
 
             <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
                 <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]">
@@ -239,9 +241,9 @@
                     if (!toolbarElement) {
                         return null;
                     }
-                    if (window.Toolbar && window.Toolbar.registry) {
+                    if (window.Toolbar &amp;&amp; window.Toolbar.registry) {
                         const existing = window.Toolbar.registry.get(toolbarElement);
-                        if (existing && typeof existing.destroy === 'function') {
+                        if (existing &amp;&amp; typeof existing.destroy === 'function') {
                             try {
                                 existing.destroy();
                             } catch (error) {
