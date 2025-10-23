@@ -75,19 +75,23 @@ class PageToolbar extends Toolbar {
             return;
         }
 
+        const targetElement = element;
         const normalizedDescriptors = Array.isArray(descriptors) && descriptors.length
             ? descriptors
-            : PageToolbar._extractDescriptorsFromElement(element);
+            : PageToolbar._extractDescriptorsFromElement(targetElement);
 
         if (!Array.isArray(normalizedDescriptors) || !normalizedDescriptors.length) {
             return;
         }
 
-        element.innerHTML = '';
+        targetElement.innerHTML = '';
 
         normalizedDescriptors.forEach(descriptor => {
             const controlInstance = Toolbar.createControlFromDescriptor(descriptor);
             if (controlInstance) {
+                if (descriptor.element instanceof HTMLElement) {
+                    controlInstance.element = descriptor.element;
+                }
                 this.appendControl(controlInstance);
             }
         });
@@ -1267,10 +1271,16 @@ class PageToolbar extends Toolbar {
         }
 
         if (args[0] instanceof HTMLElement) {
-            const element = args[0];
+            const containerElement = args[0];
             const options = (args[1] && typeof args[1] === 'object' && !Array.isArray(args[1])) ? args[1] : {};
+            const toolbarElement = containerElement.matches('[data-toolbar]')
+                ? containerElement
+                : containerElement.querySelector('[data-toolbar]');
+            const element = toolbarElement || containerElement;
             const dataset = element.dataset || {};
-            const root = options.root || PageToolbar._findDeclarativeRoot(element);
+            const root = options.root
+                || PageToolbar._findDeclarativeRoot(containerElement)
+                || PageToolbar._findDeclarativeRoot(element);
             const rootDataset = root && root.dataset ? root.dataset : {};
             const properties = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
 
@@ -1299,9 +1309,10 @@ class PageToolbar extends Toolbar {
                 || null;
             const descriptors = PageToolbar._extractDescriptorsFromElement(element);
             const layout = {
-                root: root || null,
+                root: root || containerElement || null,
                 dataset,
                 rootDataset,
+                containerDataset: containerElement.dataset || {},
                 sidebarTarget: PageToolbar._resolveDatasetValue(['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'], options, dataset, rootDataset),
                 sidebarId: PageToolbar._resolveDatasetValue(['sidebarId', 'offcanvasId'], options, dataset, rootDataset),
                 sidebarUrl: PageToolbar._resolveDatasetValue(['sidebarUrl', 'sidebarSrc', 'offcanvasUrl'], options, dataset, rootDataset),

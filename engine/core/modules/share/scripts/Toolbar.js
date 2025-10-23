@@ -554,7 +554,10 @@ class Toolbar {
         }
         build() {
             if (!this.toolbar || !this.properties.id) return;
-            this.element = this.createElement();
+            const existingElement = this.element instanceof HTMLElement ? this.element : null;
+            if (!existingElement) {
+                this.element = this.createElement();
+            }
             this.applyCommonAttributes();
             this.render();
             if (this.properties.isDisabled) this.disable();
