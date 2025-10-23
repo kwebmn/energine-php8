@@ -134,7 +134,7 @@
                     <header class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
                         <div class="d-flex align-items-center gap-2 flex-wrap" data-role="sidebar-environment"></div>
                         <div class="d-flex align-items-center gap-2 ms-auto" data-role="sidebar-actions">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-role="sidebar-close" data-bs-dismiss="offcanvas">
+                            <button type="button" class="btn btn-sm btn-light border border-secondary-subtle text-secondary" data-role="sidebar-close" data-bs-dismiss="offcanvas">
                                 <xsl:if test="string-length(normalize-space($CLOSE_LABEL)) &gt; 0">
                                     <xsl:attribute name="aria-label"><xsl:value-of select="$CLOSE_LABEL"/></xsl:attribute>
                                     <xsl:value-of select="$CLOSE_LABEL"/>
