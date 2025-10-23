@@ -10,9 +10,9 @@
                 version="1.0"
                 encoding="utf-8"
                 omit-xml-declaration="yes"
-//                doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN"
-//                doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"
-                indent="no"/>
+                doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN"
+                doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"
+                indent="yes"/>
 
 
     <xsl:variable name="DOC_PROPS" select="/document/properties/property"/>
