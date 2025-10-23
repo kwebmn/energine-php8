@@ -72,11 +72,14 @@ class PageToolbar extends Toolbar {
             return;
         }
 
-        element.innerHTML = '';
-
         normalizedDescriptors.forEach(descriptor => {
             const controlInstance = Toolbar.createControlFromDescriptor(descriptor);
             if (controlInstance) {
+                if (typeof HTMLElement !== 'undefined'
+                    && descriptor.element instanceof HTMLElement
+                    && typeof controlInstance.useExistingElement === 'function') {
+                    controlInstance.useExistingElement(descriptor.element);
+                }
                 this.appendControl(controlInstance);
             }
         });
