@@ -95,7 +95,9 @@ class Toolbar {
                 control.toolbar = this;
                 control.build();
                 if (control.element) {
-                    this.element.appendChild(control.element);
+                    if (control.element.parentNode !== this.element) {
+                        this.element.appendChild(control.element);
+                    }
                     this.controls.push(control);
                     control.afterMount?.();
                 }
@@ -421,6 +423,8 @@ class Toolbar {
             this.toolbar = null;
             this.element = null;
             this.bootstrapTooltip = null;
+            this.existingElement = null;
+            this.usesDeclarativeElement = false;
             this.properties = Object.assign({
                 id: '',
                 icon: '',
@@ -437,6 +441,13 @@ class Toolbar {
             this.properties.initially_disabled = Toolbar.normalizeBoolean(this.properties.initially_disabled);
             this.properties.isDisabled = this.properties.disabled;
             this.properties.isInitiallyDisabled = this.properties.initially_disabled || this.properties.isDisabled;
+        }
+        useExistingElement(element) {
+            if (typeof HTMLElement === 'undefined' || !(element instanceof HTMLElement)) {
+                return;
+            }
+            this.existingElement = element;
+            this.usesDeclarativeElement = true;
         }
         load(controlDescr) {
             this.properties.id = controlDescr.getAttribute('id') || '';
@@ -507,7 +518,30 @@ class Toolbar {
             if (iconOnly !== null) {
                 this.properties.iconOnly = Toolbar.normalizeBoolean(iconOnly);
             }
-            this.render();
+            if (this.usesDeclarativeElement) {
+                this.updateDeclarativeIcon();
+            } else {
+                this.render();
+            }
+        }
+        updateDeclarativeIcon() {
+            if (!this.element) {
+                return;
+            }
+            const hasIcon = !!this.properties.icon;
+            const iconContainer = this.element.querySelector('.toolbar-icon');
+            if (!hasIcon) {
+                if (iconContainer) {
+                    iconContainer.remove();
+                }
+                return;
+            }
+            const newWrapper = this.createIconElement(this.properties.icon);
+            if (iconContainer) {
+                iconContainer.replaceWith(newWrapper);
+            } else {
+                this.element.insertBefore(newWrapper, this.element.firstChild);
+            }
         }
         render() {
             if (!this.element) return;
@@ -554,6 +588,18 @@ class Toolbar {
         }
         build() {
             if (!this.toolbar || !this.properties.id) return;
+            if (this.existingElement) {
+                this.element = this.existingElement;
+                this.applyCommonAttributes();
+                const elementDisabled = this.element.classList.contains('disabled')
+                    || this.element.hasAttribute('disabled')
+                    || this.element.getAttribute('aria-disabled') === 'true';
+                if (elementDisabled) {
+                    this.properties.isDisabled = true;
+                }
+                if (this.properties.isDisabled) this.disable();
+                return;
+            }
             this.element = this.createElement();
             this.applyCommonAttributes();
             this.render();
@@ -616,34 +662,82 @@ class Toolbar {
             return document.createElement('button');
         }
         build() {
+            const usingExisting = !!this.existingElement;
             super.build();
             if (!this.element) return;
             const hasIcon = !!this.properties.icon;
             const hasTitle = !!(this.properties.title && this.properties.title.trim().length);
             const iconOnly = hasIcon && (this.properties.iconOnly || !hasTitle);
-            this.element.type = this.properties.type || 'button';
-            this.element.classList.add('btn', 'btn-sm', this.getVariantClass(), 'd-inline-flex', 'align-items-center');
-            if (!iconOnly) {
-                this.element.classList.add('gap-2');
-            } else {
-                this.element.classList.remove('gap-2');
+            const variantClass = this.getVariantClass();
+            const typeAttr = this.properties.type || 'button';
+            if ('type' in this.element) {
+                this.element.type = typeAttr;
+            } else if (!usingExisting) {
+                this.element.setAttribute('type', typeAttr);
             }
-            if (this.properties.id) this.element.classList.add(`${this.properties.id}_btn`);
-            this.handleMouseOver = () => {
-                if (!this.properties.isDisabled) this.element.classList.add('highlighted');
-            };
-            this.handleMouseOut = () => {
-                this.element.classList.remove('highlighted');
-            };
-            this.handleClick = event => {
-                event.preventDefault();
-                this.callAction(event);
-            };
-            this.handleMouseDown = e => { e.preventDefault(); e.stopPropagation(); };
+            if (usingExisting) {
+                if (!this.element.classList.contains('btn')) {
+                    this.element.classList.add('btn');
+                }
+                if (!this.element.classList.contains('btn-sm')) {
+                    this.element.classList.add('btn-sm');
+                }
+                if (this.properties.id) this.element.classList.add(`${this.properties.id}_btn`);
+            } else {
+                this.element.classList.add('btn', 'btn-sm', variantClass, 'd-inline-flex', 'align-items-center');
+                if (!iconOnly) {
+                    this.element.classList.add('gap-2');
+                } else {
+                    this.element.classList.remove('gap-2');
+                }
+                if (this.properties.id) this.element.classList.add(`${this.properties.id}_btn`);
+            }
+            this._bindEvents();
+        }
+        _ensureHandlers() {
+            if (!this.handleMouseOver) {
+                this.handleMouseOver = () => {
+                    if (!this.properties.isDisabled) this.element.classList.add('highlighted');
+                };
+            }
+            if (!this.handleMouseOut) {
+                this.handleMouseOut = () => {
+                    this.element.classList.remove('highlighted');
+                };
+            }
+            if (!this.handleClick) {
+                this.handleClick = event => {
+                    event.preventDefault();
+                    this.callAction(event);
+                };
+            }
+            if (!this.handleMouseDown) {
+                this.handleMouseDown = e => { e.preventDefault(); e.stopPropagation(); };
+            }
+        }
+        _bindEvents() {
+            if (!this.element) return;
+            this._ensureHandlers();
+            this._unbindEvents();
             this.element.addEventListener('mouseover', this.handleMouseOver);
             this.element.addEventListener('mouseout', this.handleMouseOut);
             this.element.addEventListener('click', this.handleClick);
             this.element.addEventListener('mousedown', this.handleMouseDown);
+        }
+        _unbindEvents() {
+            if (!this.element) return;
+            if (this.handleMouseOver) {
+                this.element.removeEventListener('mouseover', this.handleMouseOver);
+            }
+            if (this.handleMouseOut) {
+                this.element.removeEventListener('mouseout', this.handleMouseOut);
+            }
+            if (this.handleClick) {
+                this.element.removeEventListener('click', this.handleClick);
+            }
+            if (this.handleMouseDown) {
+                this.element.removeEventListener('mousedown', this.handleMouseDown);
+            }
         }
         getVariantClass() {
             const source = [this.properties.id, this.properties.action, this.properties.title]
@@ -656,7 +750,7 @@ class Toolbar {
             if (/(delete|remove|cancel|close|list|back|del|drop|down|up|move|exit)/.test(source)) {
                 return 'btn-outline-secondary';
             }
-            return 'btn-secondary';
+            return 'btn-light';
         }
         callAction(data) {
             if (!this.properties.isDisabled) {
@@ -675,12 +769,7 @@ class Toolbar {
             return this.element.classList.contains('active') || this.element.classList.contains('pressed');
         }
         destroy() {
-            if (this.element) {
-                this.element.removeEventListener('mouseover', this.handleMouseOver);
-                this.element.removeEventListener('mouseout', this.handleMouseOut);
-                this.element.removeEventListener('click', this.handleClick);
-                this.element.removeEventListener('mousedown', this.handleMouseDown);
-            }
+            this._unbindEvents();
             super.destroy();
         }
     };
@@ -689,24 +778,37 @@ class Toolbar {
         build() {
             super.build();
             if (!this.element) return;
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.id = this.properties.id;
-            input.style.display = 'none';
-            this.handleFileChange = evt => {
-                const file = evt.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = e => {
-                    if (!this.properties.isDisabled) {
-                        this.toolbar.callAction(this.properties.action, e.target);
-                    }
+            let input = this.element.querySelector('[data-role="toolbar-file-input"]');
+            if (!input) {
+                input = this.element.querySelector('input[type="file"]');
+            }
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'file';
+                input.style.display = 'none';
+                this.element.appendChild(input);
+            }
+            if (this.properties.id) {
+                input.id = this.properties.id;
+            }
+            if (!this.handleFileChange) {
+                this.handleFileChange = evt => {
+                    const file = evt.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        if (!this.properties.isDisabled) {
+                            this.toolbar.callAction(this.properties.action, e.target);
+                        }
+                    };
+                    reader.readAsDataURL(file);
                 };
-                reader.readAsDataURL(file);
-            };
+            }
+            if (this.fileInput && this.fileInput !== input && this.handleFileChange) {
+                this.fileInput.removeEventListener('change', this.handleFileChange);
+            }
             input.addEventListener('change', this.handleFileChange);
             this.fileInput = input;
-            this.element.appendChild(input);
         }
         callAction() {
             if (this.fileInput) this.fileInput.click();

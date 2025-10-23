@@ -104,7 +104,7 @@
             <nav class="e-topframe py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
                 <div class="container-fluid d-flex align-items-start justify-content-start gap-3 flex-wrap py-0">
                     <div class="d-flex align-items-center flex-shrink-0" data-role="toolbar-brand">
-                        <button type="button" class="btn py-2 btn-sm btn-light d-inline-flex align-items-center gap-2 rounded-1 px-3 flex-shrink-0 text-secondary" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
+                        <button type="button" class="btn py-2 btn-sm btn-light d-inline-flex align-items-center gap-2 rounded-1 px-3 flex-shrink-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
                             <xsl:attribute name="data-bs-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:attribute name="aria-controls"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:if test="string-length(normalize-space($SIDEBAR_LABEL)) &gt; 0">
@@ -134,7 +134,7 @@
                     <header class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
                         <div class="d-flex align-items-center gap-2 flex-wrap" data-role="sidebar-environment"></div>
                         <div class="d-flex align-items-center gap-2 ms-auto" data-role="sidebar-actions">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-role="sidebar-close" data-bs-dismiss="offcanvas">
+                            <button type="button" class="btn btn-sm btn-light" data-role="sidebar-close" data-bs-dismiss="offcanvas">
                                 <xsl:if test="string-length(normalize-space($CLOSE_LABEL)) &gt; 0">
                                     <xsl:attribute name="aria-label"><xsl:value-of select="$CLOSE_LABEL"/></xsl:attribute>
                                     <xsl:value-of select="$CLOSE_LABEL"/>
