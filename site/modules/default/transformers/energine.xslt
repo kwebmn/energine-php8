@@ -46,12 +46,6 @@
                 <xsl:apply-templates select="$COMPONENTS[@componentAction='showPageToolbar']"/>
                 <xsl:apply-templates select="document"/>
 
-                <xsl:if test="not(//property[@name='single'])">
-                    <!-- Google Fonts -->
-                    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&amp;display=swap" rel="stylesheet"
-                    />
-                </xsl:if>
-
                 <xsl:if test="/document/@debug != '0'">
                     <xsl:if test="not(//property[@name='single'])">
                         <link href="site/modules/default/stylesheets/default.css" rel="stylesheet" type="text/css" media="all"/>
