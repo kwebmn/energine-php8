@@ -1,5 +1,7 @@
 import Energine from './Energine.js';
 import Form from './Form.js';
+import ModalBox from './ModalBox.js';
+import Cookie from './Cookie.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -173,15 +175,89 @@ class DivForm extends Form {
             this.processServerResponse.bind(this)
         );
     }
-}
 
-// --- Mixin методов из Form.Label (setLabel, prepareLabel, restoreLabel, showTree) ---
-Object.assign(DivForm.prototype, {
-    setLabel: Form.Label.setLabel,
-    prepareLabel: Form.Label.prepareLabel,
-    restoreLabel: Form.Label.restoreLabel,
-    showTree: Form.Label.showTree
-});
+    setLabel(result) {
+        let id = '', name = '', segment = '';
+
+        if (result != null) {
+            if (result) {
+                id = result.smap_id;
+                name = result.smap_name;
+                segment = result.smap_segment;
+            }
+
+            const hiddenFieldId = this.obj?.getAttribute('hidden_field');
+            const spanFieldId = this.obj?.getAttribute('span_field');
+
+            const hiddenField = hiddenFieldId ? document.getElementById(hiddenFieldId) : null;
+            const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
+
+            if (hiddenField) hiddenField.value = id;
+            if (spanField) {
+                if ('value' in spanField) {
+                    spanField.value = name;
+                } else {
+                    spanField.textContent = name;
+                }
+            }
+
+            const segmentObject = document.getElementById('smap_pid_segment');
+            if (segmentObject) segmentObject.textContent = segment;
+
+            Cookie.write(
+                'last_selected_smap',
+                JSON.stringify({ id, name, segment }),
+                { path: new URL(Energine.base).pathname, duration: 1 }
+            );
+        }
+    }
+
+    prepareLabel(treeURL, restore = false) {
+        this.obj = document.getElementById('sitemap_selector');
+        if (this.obj) {
+            this.obj.addEventListener('click', this.showTree.bind(this, treeURL));
+            if (restore) {
+                this.restoreLabel();
+            }
+        }
+    }
+
+    showTree(url) {
+        ModalBox.open({
+            url: this.singlePath + url,
+            onClose: this.setLabel.bind(this)
+        });
+    }
+
+    restoreLabel() {
+        let savedData = Cookie.read('last_selected_smap');
+        if (this.obj && savedData) {
+            try {
+                savedData = JSON.parse(savedData);
+            } catch {
+                return;
+            }
+
+            const hiddenFieldId = this.obj.getAttribute('hidden_field');
+            const spanFieldId = this.obj.getAttribute('span_field');
+
+            const hiddenField = hiddenFieldId ? document.getElementById(hiddenFieldId) : null;
+            const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
+
+            if (hiddenField) hiddenField.value = savedData.id;
+            if (spanField) {
+                if ('value' in spanField) {
+                    spanField.value = savedData.name;
+                } else {
+                    spanField.textContent = savedData.name;
+                }
+            }
+
+            const segmentObject = document.getElementById('smap_pid_segment');
+            if (segmentObject) segmentObject.textContent = savedData.segment;
+        }
+    }
+}
 
 export { DivForm };
 export default DivForm;

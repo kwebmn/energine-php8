@@ -18,10 +18,8 @@ const getCodeMirror = () => globalScope?.CodeMirror;
  * <ul>
  *     <li>[Form]{@link Form}</li>
  *     <li>[Form.Uploader]{@link Form.Uploader}</li>
- *     <li>[Form.Sked]{@link Form.Sked}</li>
  *     <li>[Form.SmapSelector]{@link Form.SmapSelector}</li>
  *     <li>[Form.AttachmentSelector]{@link Form.AttachmentSelector}</li>
- *     <li>[Form.Label]{@link Form.Label}</li>
  *     <li>[Form.RichEditor]{@link Form.RichEditor}</li>
  * </ul>
  *
@@ -31,7 +29,6 @@ const getCodeMirror = () => globalScope?.CodeMirror;
  * @requires Toolbar
  * @requires Validator
  * @requires ModalBox
- * @requires Overlay
  * @requires datepicker
 *
  * @author Pavel Dubenko
@@ -313,7 +310,6 @@ class Form {
     }
 
     constructor(element) {
-        // this.overlay = new Overlay();
 
         // Получаем элемент формы
         this.componentElement = (typeof element === 'string')
@@ -434,83 +430,6 @@ class Form {
                 }
             });
         }
-
-        // GOOGLE TRANSLATE Ctrl + *
-        window.addEventListener('keypress', (evt) => {
-            if (!(evt.target instanceof Element)) {
-                return;
-            }
-
-            if (evt.code === 'Digit8' && evt.shiftKey) { // shift + *
-                const fieldId = evt.target.id;
-                if (!fieldId || fieldId.length < 2) {
-                    return;
-                }
-
-                const fieldBase = fieldId.substring(0, fieldId.length - 2);
-                const parent = evt.target.closest('[data-role="pane-item"]');
-                if (!parent || !parent.id) {
-                    return;
-                }
-
-                const anchors = document.querySelectorAll('a[lang_abbr]');
-                const parentHref = `#${parent.id}`;
-                const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
-                let toLangAbbr = anchor?.getAttribute('lang_abbr');
-                if (!toLangAbbr) {
-                    return;
-                }
-
-                if (toLangAbbr === 'ua') {
-                    toLangAbbr = 'uk';
-                }
-
-                const srcTextElement = document.getElementById(`${fieldBase}_1`);
-                if (!srcTextElement || !('value' in srcTextElement)) {
-                    return;
-                }
-
-                const srcText = srcTextElement.value;
-                if (!srcText) {
-                    return;
-                }
-
-                const params = new URLSearchParams({
-                    client: 'gtx',
-                    sl: 'ru',
-                    tl: toLangAbbr,
-                    dt: 't',
-                    q: srcText
-                });
-
-                fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`)
-                    .then((response) => response.text())
-                    .then((resultText) => {
-                        if (!resultText) {
-                            return;
-                        }
-
-                        let translated = resultText.substring(4);
-                        const endIndex = translated.indexOf('","');
-                        if (endIndex !== -1) {
-                            translated = translated.substring(0, endIndex);
-                        }
-
-                        if (!translated) {
-                            return;
-                        }
-
-                        translated = translated.charAt(0).toUpperCase() + translated.slice(1);
-
-                        if ('value' in evt.target) {
-                            evt.target.value = translated;
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Google Translate request failed', error);
-                    });
-            }
-        });
 
         // CRUD
         this.componentElement.querySelectorAll('[data-action="crud"]').forEach(crudEl => {
@@ -660,7 +579,6 @@ class Form {
 
         if (!this.validator.validate()) return;
 
-        // this.overlay.show();
         showLoader();
 
         Energine.request(
@@ -680,14 +598,12 @@ class Form {
             response.afterClose = nextActionSelector.getValue();
         }
         ModalBox.setReturnValue(response);
-        // this.overlay.hide();
         hideLoader();
         this.close();
     }
 
     // processServerError
     processServerError(response) {
-        // this.overlay.hide();
         hideLoader();
     }
 
@@ -824,7 +740,6 @@ class Form {
         const path = linkInput ? (linkInput.value || null) : null;
         const quickUploadPid = button?.dataset?.quickUploadPid;
         const quickUploadEnabled = button?.dataset?.quickUploadEnabled === '1';
-        // let overlay = this.overlay;
         let processResult = this.processFileResult.bind(this);
 
         if (!quickUploadEnabled || !quickUploadPid) return;
@@ -836,7 +751,6 @@ class Form {
                 if (result && result.data) {
                     let upl_id = result.data;
                     if (upl_id) {
-                        // overlay.show();
                         showLoader();
                         fetch(this.singlePath + `file-library/${quickUploadPid}/get-data/`, {
                             method: 'POST',
@@ -849,7 +763,6 @@ class Form {
                             .then(response => response.json())
                             .then(data => {
                                 if (data && data.data && data.data.length === 2) {
-                                    // overlay.hide();
                                     hideLoader();
                                     processResult(data.data[1], button);
                                 }
@@ -1920,117 +1833,6 @@ class FormAttachmentSelector {
 // Для совместимости:
 Form.AttachmentSelector = FormAttachmentSelector;
 
-
-// Предназначен для последующей имплементации
-// Содержит метод setLabel использующийся для привязки кнопки выбора разделов
-/**
- * Contain the methods that will be implemented in other classes.
- *
- * @namespace
- */
-Form.Label = {
-    /**
-     * Устанавливает label.
-     * @param {Object} result
-     */
-    setLabel(result) {
-        let id = '', name = '', segment = '';
-
-        // Проверка на null или undefined
-        if (result != null) {
-            if (result) {
-                id = result.smap_id;
-                name = result.smap_name;
-                segment = result.smap_segment;
-            }
-
-            // Получаем элементы через id из this.obj атрибутов
-            const hiddenFieldId = this.obj?.getAttribute('hidden_field');
-            const spanFieldId = this.obj?.getAttribute('span_field');
-
-            const hiddenField = hiddenFieldId ? document.getElementById(hiddenFieldId) : null;
-            const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
-
-            if (hiddenField) hiddenField.value = id;
-            if (spanField) {
-                if ('value' in spanField) {
-                    spanField.value = name;
-                } else {
-                    spanField.textContent = name;
-                }
-            }
-
-            const segmentObject = document.getElementById('smap_pid_segment');
-            if (segmentObject) segmentObject.textContent = segment;
-
-            Cookie.write(
-                'last_selected_smap',
-                JSON.stringify({ id, name, segment }),
-                { path: new URL(Energine.base).pathname, duration: 1 }
-            );
-        }
-    },
-
-    /**
-     * Готовит label.
-     * @param {string} treeURL
-     * @param {boolean} restore
-     */
-    prepareLabel(treeURL, restore = false) {
-        // selector element
-        this.obj = document.getElementById('sitemap_selector');
-        if (this.obj) {
-            // Навесим обработчик, прокидывая URL как аргумент
-            this.obj.addEventListener('click', this.showTree.bind(this, treeURL));
-            if (restore) {
-                this.restoreLabel();
-            }
-        }
-    },
-
-    /**
-     * Показывает дерево.
-     * @param {string} url
-     */
-    showTree(url) {
-        ModalBox.open({
-            url: this.singlePath + url,
-            onClose: this.setLabel.bind(this)
-        });
-    },
-
-    /**
-     * Восстанавливает label из Cookie.
-     */
-    restoreLabel() {
-        let savedData = Cookie.read('last_selected_smap');
-        if (this.obj && savedData) {
-            try {
-                savedData = JSON.parse(savedData);
-            } catch {
-                return;
-            }
-
-            const hiddenFieldId = this.obj.getAttribute('hidden_field');
-            const spanFieldId = this.obj.getAttribute('span_field');
-
-            const hiddenField = hiddenFieldId ? document.getElementById(hiddenFieldId) : null;
-            const spanField = spanFieldId ? document.getElementById(spanFieldId) : null;
-
-            if (hiddenField) hiddenField.value = savedData.id;
-            if (spanField) {
-                if ('value' in spanField) {
-                    spanField.value = savedData.name;
-                } else {
-                    spanField.textContent = savedData.name;
-                }
-            }
-
-            const segmentObject = document.getElementById('smap_pid_segment');
-            if (segmentObject) segmentObject.textContent = savedData.segment;
-        }
-    }
-};
 
 /**
  * The rich editor form.

@@ -46,7 +46,6 @@
     <!-- поле с автодополнением (textbox) -->
     <xsl:template match="field[@type='textbox'][ancestor::component[@type='form']]" mode="field_input">
         <xsl:variable name="SEPARATOR" select="@separator"/>
-<!--        <script type="text/javascript" src="scripts/AcplField.js"></script>-->
         <input data-role="acpl">
             <xsl:attribute name="class">
                 <xsl:text>form-control</xsl:text>
