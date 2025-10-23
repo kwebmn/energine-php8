@@ -119,7 +119,6 @@
                         <div class="d-flex align-items-center gap-2 flex-wrap justify-content-start w-100 min-w-0 py-2 py-lg-0" data-role="toolbar-primary">
                             <xsl:apply-templates select="toolbar"/>
                         </div>
-                        <div class="e-toolbar-editband bg-body border shadow-sm rounded-3 px-3 py-2 d-flex align-items-center gap-2 flex-wrap w-100 justify-content-start" data-role="toolbar-editband" hidden="hidden"/>
                     </div>
                 </div>
             </nav>

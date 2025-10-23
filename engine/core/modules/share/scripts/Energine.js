@@ -1,3 +1,5 @@
+import { initializeToolbars, registerToolbarComponent } from './Toolbar.js';
+
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
@@ -856,6 +858,306 @@ const existingConfig = (() => {
 if (existingConfig && Object.keys(existingConfig).length) {
     Energine.boot(existingConfig);
 }
+
+const datasetFalseValues = new Set(['0', 'false', 'no', 'off']);
+
+const parseJSONAttribute = (value, fallback = null) => {
+    if (typeof value !== 'string') {
+        return fallback;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return fallback;
+    }
+
+    try {
+        return JSON.parse(trimmed);
+    } catch (error) {
+        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse JSON dataset value');
+        return fallback;
+    }
+};
+
+const scheduleRetry = (task, options = {}) => {
+    if (typeof task !== 'function') {
+        return null;
+    }
+
+    const {
+        attempts = 5,
+        delay = 50,
+        onError = null,
+    } = options;
+
+    const schedule = (globalScope && typeof globalScope.setTimeout === 'function')
+        ? globalScope.setTimeout.bind(globalScope)
+        : (typeof setTimeout === 'function' ? setTimeout : null);
+
+    let remainingAttempts = Number.isFinite(attempts)
+        ? (attempts > 0 ? attempts : 0)
+        : Infinity;
+
+    const execute = () => {
+        let result = null;
+        try {
+            result = task();
+        } catch (error) {
+            if (typeof onError === 'function') {
+                onError(error);
+            } else {
+                Energine.safeConsoleError(error, '[Energine.autoBootstrap] Retriable task threw an error');
+            }
+        }
+
+        if (result || !schedule || remainingAttempts <= 0) {
+            return result;
+        }
+
+        remainingAttempts -= 1;
+        schedule(execute, delay);
+        return result;
+    };
+
+    return execute();
+};
+
+const getGlobalConstructor = (name) => {
+    if (!name || typeof name !== 'string' || !globalScope) {
+        return null;
+    }
+
+    const ctor = globalScope[name];
+    return typeof ctor === 'function' ? ctor : null;
+};
+
+const instantiateComponentBehavior = (descriptor = {}) => {
+    if (!descriptor || typeof descriptor !== 'object') {
+        return null;
+    }
+
+    const { id, behavior } = descriptor;
+    if (!id || !behavior || typeof document === 'undefined') {
+        return null;
+    }
+
+    const element = document.getElementById(id);
+    if (!element) {
+        return null;
+    }
+
+    const Constructor = getGlobalConstructor(behavior);
+    if (!Constructor) {
+        return null;
+    }
+
+    try {
+        const instance = new Constructor(element);
+        if (globalScope) {
+            globalScope[id] = instance;
+        }
+        if (typeof registerToolbarComponent === 'function') {
+            try {
+                registerToolbarComponent(id, instance);
+            } catch (error) {
+                Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${id}"`);
+            }
+        }
+        return instance;
+    } catch (error) {
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behavior}"`);
+    }
+
+    return null;
+};
+
+const bootstrapPageToolbarFromConfig = (config = {}) => {
+    if (!config || typeof config !== 'object' || typeof document === 'undefined') {
+        return null;
+    }
+
+    const { name, behavior, rootSelector, toolbarSelector } = config;
+    if (!name || !behavior) {
+        return null;
+    }
+
+    const root = document.querySelector(rootSelector || `[data-page-toolbar="${name}"]`);
+    if (!root) {
+        return null;
+    }
+
+    const toolbarElement = root.querySelector(toolbarSelector || '[data-toolbar]');
+    if (!toolbarElement) {
+        return null;
+    }
+
+    if (toolbarElement.dataset && !toolbarElement.dataset.toolbarHydrated) {
+        toolbarElement.dataset.toolbarHydrated = 'pending';
+    }
+
+    const Constructor = getGlobalConstructor(behavior);
+    if (!Constructor) {
+        return null;
+    }
+
+    if (globalScope && globalScope.Toolbar && globalScope.Toolbar.registry) {
+        const existing = globalScope.Toolbar.registry.get(toolbarElement);
+        if (existing && typeof existing.destroy === 'function') {
+            try {
+                existing.destroy();
+            } catch (error) {
+                console.warn('[Energine.autoBootstrap] Failed to dispose existing toolbar instance', error);
+            }
+        }
+        globalScope.Toolbar.registry.delete(toolbarElement);
+    }
+
+    try {
+        const instance = new Constructor(toolbarElement, { root });
+
+        if (globalScope && typeof name === 'string' && name) {
+            try {
+                globalScope[name] = instance;
+            } catch (error) {
+                console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
+            }
+        }
+
+        return instance;
+    } catch (error) {
+        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create page toolbar instance');
+    }
+
+    return null;
+};
+
+const instantiatePageEditorFromConfig = (config = {}) => {
+    if (!config || typeof config !== 'object') {
+        return null;
+    }
+
+    const { behavior, id } = config;
+    const Constructor = getGlobalConstructor(behavior);
+    if (!Constructor) {
+        return null;
+    }
+
+    try {
+        const instance = new Constructor();
+        if (globalScope && id) {
+            globalScope[id] = instance;
+        }
+        return instance;
+    } catch (error) {
+        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create PageEditor instance');
+    }
+
+    return null;
+};
+
+let autoBootstrapExecuted = false;
+
+const autoBootstrapRuntime = () => {
+    if (autoBootstrapExecuted || typeof document === 'undefined') {
+        return;
+    }
+
+    const scriptEl = Energine.resolveModuleScriptElement();
+    if (!scriptEl || !scriptEl.dataset) {
+        return;
+    }
+
+    const { dataset } = scriptEl;
+    if (dataset.run && datasetFalseValues.has(dataset.run.toLowerCase())) {
+        return;
+    }
+
+    autoBootstrapExecuted = true;
+
+    const config = Energine.createConfigFromScriptDataset();
+    const runtime = Energine.boot(config);
+
+    if (globalScope && globalScope.__energineBridge && typeof globalScope.__energineBridge.setRuntime === 'function') {
+        try {
+            globalScope.__energineBridge.setRuntime(runtime);
+        } catch (error) {
+            runtime.safeConsoleError(error, '[Energine.autoBootstrap] Failed to sync bridge runtime');
+        }
+    }
+
+    const attachedRuntime = Energine.attachToWindow(globalScope, runtime);
+
+    const componentDescriptors = parseJSONAttribute(dataset.components, []);
+    const pageToolbarConfig = parseJSONAttribute(dataset.pageToolbarConfig, null);
+    const pageEditorConfig = parseJSONAttribute(dataset.pageEditorConfig, null);
+
+    if (Array.isArray(componentDescriptors) && globalScope) {
+        componentDescriptors.forEach((descriptor) => {
+            if (descriptor && typeof descriptor.id === 'string' && typeof globalScope[descriptor.id] === 'undefined') {
+                globalScope[descriptor.id] = null;
+            }
+        });
+    }
+
+    const bootstrapDom = () => {
+        if (pageToolbarConfig) {
+            attachedRuntime.addTask(() => scheduleRetry(
+                () => bootstrapPageToolbarFromConfig(pageToolbarConfig),
+                { attempts: 20, delay: 150 },
+            ));
+        }
+
+        if (Array.isArray(componentDescriptors)) {
+            componentDescriptors.forEach((descriptor) => {
+                attachedRuntime.addTask(() => scheduleRetry(
+                    () => instantiateComponentBehavior(descriptor),
+                    {
+                        attempts: 20,
+                        delay: 120,
+                        onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
+                    },
+                ));
+            });
+        }
+
+        if (pageEditorConfig) {
+            attachedRuntime.addTask(() => scheduleRetry(
+                () => instantiatePageEditorFromConfig(pageEditorConfig),
+                { attempts: 20, delay: 150 },
+            ));
+        }
+
+        attachedRuntime.addTask(() => {
+            if (typeof initializeToolbars === 'function') {
+                try {
+                    initializeToolbars(document);
+                } catch (error) {
+                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+                }
+            }
+        });
+    };
+
+    const runTasks = () => {
+        try {
+            attachedRuntime.run();
+        } catch (error) {
+            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to run queued tasks');
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            bootstrapDom();
+            runTasks();
+        }, { once: true });
+    } else {
+        bootstrapDom();
+        runTasks();
+    }
+};
+
+autoBootstrapRuntime();
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 
