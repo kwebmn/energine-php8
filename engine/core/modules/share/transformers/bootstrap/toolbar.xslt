@@ -87,32 +87,41 @@
                 <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>
             </xsl:if>
             <xsl:attribute name="class">
-                <xsl:text>btn btn-sm </xsl:text>
+                <xsl:text>btn btn-sm rounded-1 </xsl:text>
                 <xsl:choose>
                     <xsl:when test="$IS_PAGE_TOOLBAR">
-                        <xsl:text>btn-light d-flex align-items-center </xsl:text>
+                        <xsl:text>btn-light border border-secondary-subtle text-secondary d-flex align-items-center </xsl:text>
                         <xsl:choose>
                             <xsl:when test="$ICON_ONLY">
                                 <xsl:text>justify-content-center px-2 </xsl:text>
                             </xsl:when>
                             <xsl:otherwise>
-                                <xsl:text>gap-2 justify-content-start text-start </xsl:text>
+                                <xsl:text>gap-2 justify-content-start text-start px-3 </xsl:text>
                             </xsl:otherwise>
                         </xsl:choose>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:if test="$HAS_ICON">
-                            <xsl:text>d-inline-flex align-items-center </xsl:text>
-                            <xsl:choose>
-                                <xsl:when test="$ICON_ONLY">
-                                    <xsl:text>justify-content-center px-2 </xsl:text>
-                                </xsl:when>
-                                <xsl:otherwise>
-                                    <xsl:text>gap-2 </xsl:text>
-                                </xsl:otherwise>
-                            </xsl:choose>
-                        </xsl:if>
-                        <xsl:text>btn-outline-secondary</xsl:text>
+                        <xsl:text>btn-light border border-secondary-subtle text-secondary </xsl:text>
+                        <xsl:choose>
+                            <xsl:when test="$ICON_ONLY">
+                                <xsl:choose>
+                                    <xsl:when test="$HAS_ICON">
+                                        <xsl:text>d-inline-flex align-items-center justify-content-center px-2 </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>justify-content-center px-2 </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:if test="$HAS_ICON">
+                                    <xsl:text>d-inline-flex align-items-center gap-2 px-3 </xsl:text>
+                                </xsl:if>
+                                <xsl:if test="not($HAS_ICON)">
+                                    <xsl:text>px-3 </xsl:text>
+                                </xsl:if>
+                            </xsl:otherwise>
+                        </xsl:choose>
                     </xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
@@ -182,6 +191,7 @@
                 <xsl:otherwise>btn-light</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
+        <xsl:variable name="IS_PRIMARY" select="$BUTTON_VARIANT='btn-primary'"/>
 
         <xsl:element name="{$CONTROL}">
             <xsl:if test="@mode=1">
@@ -209,32 +219,68 @@
                 </xsl:if>
                 <xsl:attribute name="data-type"><xsl:value-of select="$control-type"/></xsl:attribute>
             <xsl:attribute name="class">
-                <xsl:text>btn btn-sm </xsl:text>
+                <xsl:text>btn btn-sm rounded-1 </xsl:text>
                 <xsl:choose>
                     <xsl:when test="$IS_PAGE_TOOLBAR">
-                        <xsl:text>btn-light d-flex align-items-center </xsl:text>
+                        <xsl:text>d-flex align-items-center </xsl:text>
                         <xsl:choose>
                             <xsl:when test="$ICON_ONLY">
-                                <xsl:text>justify-content-center px-2 </xsl:text>
+                                <xsl:choose>
+                                    <xsl:when test="$IS_PRIMARY">
+                                        <xsl:text>btn-primary justify-content-center px-2 </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary justify-content-center px-2 </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
                             </xsl:when>
                             <xsl:otherwise>
-                                <xsl:text>gap-2 justify-content-start text-start </xsl:text>
+                                <xsl:choose>
+                                    <xsl:when test="$IS_PRIMARY">
+                                        <xsl:text>btn-primary gap-2 justify-content-start text-start px-3 </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary gap-2 justify-content-start text-start px-3 </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
                             </xsl:otherwise>
                         </xsl:choose>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:if test="$HAS_ICON">
-                            <xsl:text>d-inline-flex align-items-center </xsl:text>
-                            <xsl:choose>
-                                <xsl:when test="$ICON_ONLY">
-                                    <xsl:text>justify-content-center px-2 </xsl:text>
-                                </xsl:when>
-                                <xsl:otherwise>
-                                    <xsl:text>gap-2 </xsl:text>
-                                </xsl:otherwise>
-                            </xsl:choose>
-                        </xsl:if>
-                        <xsl:value-of select="$BUTTON_VARIANT"/>
+                        <xsl:choose>
+                            <xsl:when test="$ICON_ONLY">
+                                <xsl:choose>
+                                    <xsl:when test="$IS_PRIMARY">
+                                        <xsl:if test="$HAS_ICON">
+                                            <xsl:text>d-inline-flex align-items-center </xsl:text>
+                                        </xsl:if>
+                                        <xsl:text>btn-primary justify-content-center px-2 </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:if test="$HAS_ICON">
+                                            <xsl:text>d-inline-flex align-items-center </xsl:text>
+                                        </xsl:if>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary justify-content-center px-2 </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:if test="$HAS_ICON">
+                                    <xsl:text>d-inline-flex align-items-center gap-2 px-3 </xsl:text>
+                                </xsl:if>
+                                <xsl:choose>
+                                    <xsl:when test="$IS_PRIMARY">
+                                        <xsl:text>btn-primary </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                                <xsl:if test="not($HAS_ICON)">
+                                    <xsl:text>px-3 </xsl:text>
+                                </xsl:if>
+                            </xsl:otherwise>
+                        </xsl:choose>
                     </xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
@@ -294,6 +340,7 @@
                 <xsl:otherwise>btn-light</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
+        <xsl:variable name="IS_LINK_PRIMARY" select="$LINK_VARIANT='btn-primary'"/>
         <a href="{$BASE}{$LANG_ABBR}{@click}">
             <xsl:if test="ancestor::toolbar[1]/@name and @id">
                 <xsl:attribute name="id"><xsl:value-of select="concat(ancestor::toolbar[1]/@name, @id)"/></xsl:attribute>
@@ -309,32 +356,68 @@
                 <xsl:attribute name="data-bs-toggle">tooltip</xsl:attribute>
             </xsl:if>
             <xsl:attribute name="class">
-                <xsl:text>btn btn-sm </xsl:text>
+                <xsl:text>btn btn-sm rounded-1 </xsl:text>
                 <xsl:choose>
                     <xsl:when test="$IS_PAGE_TOOLBAR">
-                        <xsl:text>btn-light d-flex align-items-center </xsl:text>
+                        <xsl:text>d-flex align-items-center </xsl:text>
                         <xsl:choose>
                             <xsl:when test="$ICON_ONLY">
-                                <xsl:text>justify-content-center px-2 </xsl:text>
+                                <xsl:choose>
+                                    <xsl:when test="$IS_LINK_PRIMARY">
+                                        <xsl:text>btn-primary justify-content-center px-2 </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary justify-content-center px-2 </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
                             </xsl:when>
                             <xsl:otherwise>
-                                <xsl:text>gap-2 justify-content-start text-start </xsl:text>
+                                <xsl:choose>
+                                    <xsl:when test="$IS_LINK_PRIMARY">
+                                        <xsl:text>btn-primary gap-2 justify-content-start text-start px-3 </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary gap-2 justify-content-start text-start px-3 </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
                             </xsl:otherwise>
                         </xsl:choose>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:if test="$HAS_ICON">
-                            <xsl:text>d-inline-flex align-items-center </xsl:text>
-                            <xsl:choose>
-                                <xsl:when test="$ICON_ONLY">
-                                    <xsl:text>justify-content-center px-2 </xsl:text>
-                                </xsl:when>
-                                <xsl:otherwise>
-                                    <xsl:text>gap-2 </xsl:text>
-                                </xsl:otherwise>
-                            </xsl:choose>
-                        </xsl:if>
-                        <xsl:value-of select="$LINK_VARIANT"/>
+                        <xsl:choose>
+                            <xsl:when test="$ICON_ONLY">
+                                <xsl:choose>
+                                    <xsl:when test="$IS_LINK_PRIMARY">
+                                        <xsl:if test="$HAS_ICON">
+                                            <xsl:text>d-inline-flex align-items-center </xsl:text>
+                                        </xsl:if>
+                                        <xsl:text>btn-primary justify-content-center px-2 </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:if test="$HAS_ICON">
+                                            <xsl:text>d-inline-flex align-items-center </xsl:text>
+                                        </xsl:if>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary justify-content-center px-2 </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:if test="$HAS_ICON">
+                                    <xsl:text>d-inline-flex align-items-center gap-2 px-3 </xsl:text>
+                                </xsl:if>
+                                <xsl:choose>
+                                    <xsl:when test="$IS_LINK_PRIMARY">
+                                        <xsl:text>btn-primary </xsl:text>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>btn-light border border-secondary-subtle text-secondary </xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                                <xsl:if test="not($HAS_ICON)">
+                                    <xsl:text>px-3 </xsl:text>
+                                </xsl:if>
+                            </xsl:otherwise>
+                        </xsl:choose>
                     </xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>

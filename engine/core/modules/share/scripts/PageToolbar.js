@@ -696,33 +696,11 @@ class PageToolbar extends Toolbar {
         this.element.classList.remove('gap-2', 'bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2', 'ms-auto', 'justify-content-end');
         this.element.classList.add('bg-transparent', 'p-0', 'flex-grow-1', 'min-w-0');
         this.element.querySelectorAll('button.btn').forEach(button => {
-            button.classList.add('rounded-1', 'px-3');
-            button.classList.add('btn-sm');
-            if (!button.classList.contains('btn-primary')) {
-                button.classList.remove('btn-secondary', 'btn-outline-secondary');
-                button.classList.add('btn-light', 'border', 'border-secondary-subtle',  'text-secondary');
-            }
             const label = button.textContent ? button.textContent.trim() : '';
             if (label && !button.getAttribute('title')) {
                 button.setAttribute('title', label);
             }
         });
-
-        const updateResponsiveToolbar = () => {
-            const compact = window.innerWidth < 576;
-            this.element.classList.toggle('e-toolbar-compact', compact);
-            this.element.querySelectorAll('button.btn').forEach(button => {
-                if (compact) {
-                    button.classList.remove('px-3');
-                    button.classList.add('px-2');
-                } else {
-                    button.classList.add('px-3');
-                    button.classList.remove('px-2');
-                }
-            });
-        };
-        updateResponsiveToolbar();
-        window.addEventListener('resize', updateResponsiveToolbar);
 
         const editControlIds = ['add', 'edit', 'delete'];
         const editButtons = editControlIds
@@ -737,7 +715,6 @@ class PageToolbar extends Toolbar {
             
 
             editButtons.forEach(button => {
-                button.classList.add('shadow-sm');
                 editBand.appendChild(button);
             });
 
