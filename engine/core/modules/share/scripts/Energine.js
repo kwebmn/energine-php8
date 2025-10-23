@@ -879,6 +879,15 @@ const parseJSONAttribute = (value, fallback = null) => {
     }
 };
 
+const readDatasetString = (value) => {
+    if (typeof value !== 'string') {
+        return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+};
+
 const scheduleRetry = (task, options = {}) => {
     if (typeof task !== 'function') {
         return null;
@@ -1088,7 +1097,18 @@ const autoBootstrapRuntime = () => {
     const attachedRuntime = Energine.attachToWindow(globalScope, runtime);
 
     const componentDescriptors = parseJSONAttribute(dataset.components, []);
-    const pageToolbarConfig = parseJSONAttribute(dataset.pageToolbarConfig, null);
+    const pageToolbarName = readDatasetString(dataset.pageToolbarName);
+    const pageToolbarBehavior = readDatasetString(dataset.pageToolbarBehavior);
+    const pageToolbarRootSelector = readDatasetString(dataset.pageToolbarRootSelector);
+    const pageToolbarToolbarSelector = readDatasetString(dataset.pageToolbarToolbarSelector);
+    const pageToolbarConfig = (pageToolbarName && pageToolbarBehavior)
+        ? {
+            name: pageToolbarName,
+            behavior: pageToolbarBehavior,
+            ...(pageToolbarRootSelector ? { rootSelector: pageToolbarRootSelector } : {}),
+            ...(pageToolbarToolbarSelector ? { toolbarSelector: pageToolbarToolbarSelector } : {}),
+        }
+        : null;
     const pageEditorConfig = parseJSONAttribute(dataset.pageEditorConfig, null);
 
     if (Array.isArray(componentDescriptors) && globalScope) {
