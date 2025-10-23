@@ -244,14 +244,31 @@ class EnergineCore {
         if (this.moduleScriptElement && document.contains(this.moduleScriptElement)) {
             return this.moduleScriptElement;
         }
-        if (!this.moduleUrl) {
-            return null;
-        }
 
         const scripts = document.getElementsByTagName('script');
+        const candidates = [];
+
         for (let i = scripts.length - 1; i >= 0; i -= 1) {
             const script = scripts[i];
-            if (script.type !== 'module' || !script.src) {
+            if (script.type !== 'module') {
+                continue;
+            }
+
+            const hasConfigDataset = script.dataset && (
+                typeof script.dataset.base !== 'undefined'
+                || typeof script.dataset.static !== 'undefined'
+                || typeof script.dataset.resizer !== 'undefined'
+                || typeof script.dataset.media !== 'undefined'
+                || typeof script.dataset.root !== 'undefined'
+                || typeof script.dataset.lang !== 'undefined'
+                || typeof script.dataset.singleMode !== 'undefined'
+            );
+
+            if (hasConfigDataset) {
+                candidates.push(script);
+            }
+
+            if (!this.moduleUrl || !script.src) {
                 continue;
             }
 
@@ -264,6 +281,12 @@ class EnergineCore {
             } catch {
                 // ignore malformed URLs
             }
+        }
+
+        if (candidates.length) {
+            const script = candidates[0];
+            this.moduleScriptElement = script;
+            return script;
         }
 
         return null;
