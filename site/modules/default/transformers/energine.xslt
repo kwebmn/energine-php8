@@ -43,6 +43,7 @@
 
             </head>
             <body>
+                <xsl:attribute name="data-energine-run">1</xsl:attribute>
                 <xsl:apply-templates select="$COMPONENTS[@componentAction='showPageToolbar']"/>
                 <xsl:apply-templates select="document"/>
 

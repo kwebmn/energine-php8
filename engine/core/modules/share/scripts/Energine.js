@@ -55,6 +55,10 @@ class EnergineCore {
             : '';
         this.moduleScriptElement = null;
 
+        this.pendingBehaviors = new Map();
+        this.pendingBehaviorWatcher = null;
+        this.autoBootCompleted = false;
+
         this.translationStore = {};
         this.translations = this.createTranslationsFacade();
 
@@ -300,6 +304,198 @@ class EnergineCore {
                 this[key] = values[key];
             }
         });
+    }
+
+    readTranslationsFromDOM(root = (typeof document !== 'undefined' ? document : null)) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return {};
+        }
+
+        const translations = {};
+        root.querySelectorAll('script[type="application/json"][data-energine-translations]').forEach((script) => {
+            if (!script) {
+                return;
+            }
+            if (script.dataset && script.dataset.energineProcessed === '1') {
+                return;
+            }
+            const content = typeof script.textContent === 'string' ? script.textContent.trim() : '';
+            if (!content) {
+                if (script.dataset) {
+                    script.dataset.energineProcessed = '1';
+                }
+                return;
+            }
+            try {
+                const parsed = JSON.parse(content);
+                if (parsed && typeof parsed === 'object') {
+                    Object.assign(translations, parsed);
+                }
+                if (script.dataset) {
+                    script.dataset.energineProcessed = '1';
+                }
+            } catch (error) {
+                this.safeConsoleError(error, 'parseTranslationsFromDOM');
+            }
+        });
+
+        return translations;
+    }
+
+    resolveBehaviorConstructor(name) {
+        if (!name || typeof name !== 'string') {
+            return null;
+        }
+        const normalized = name.trim();
+        if (!normalized) {
+            return null;
+        }
+        if (this.globalScope && typeof this.globalScope[normalized] === 'function') {
+            return this.globalScope[normalized];
+        }
+        return null;
+    }
+
+    hydrateElementBehaviors(element) {
+        const isElementNode = (typeof HTMLElement !== 'undefined' && element instanceof HTMLElement)
+            || (element && element.nodeType === 1);
+        if (!isElementNode) {
+            return [];
+        }
+
+        const dataset = element.dataset || {};
+        const rawValue = dataset.eJs || element.getAttribute('data-e-js') || '';
+        const behaviorNames = rawValue.split(/[\s,]+/).map((name) => name.trim()).filter(Boolean);
+        if (!behaviorNames.length) {
+            return [];
+        }
+
+        if (!element.__energineBehaviors || typeof element.__energineBehaviors !== 'object') {
+            element.__energineBehaviors = {};
+        }
+        const assigned = element.__energineBehaviors;
+        const instances = [];
+
+        behaviorNames.forEach((name) => {
+            if (!name || assigned[name]) {
+                return;
+            }
+            const Constructor = this.resolveBehaviorConstructor(name);
+            if (typeof Constructor !== 'function') {
+                this.queuePendingBehavior(name, element);
+                return;
+            }
+            try {
+                const instance = new Constructor(element);
+                assigned[name] = instance;
+                instances.push(instance);
+            } catch (error) {
+                this.safeConsoleError(error, `hydrate:${name}`);
+            }
+        });
+
+        if (instances.length && dataset) {
+            dataset.eJsApplied = '1';
+        }
+
+        return instances;
+    }
+
+    hydrateDeclarativeBehaviors(root = (typeof document !== 'undefined' ? document : null)) {
+        if (!root) {
+            return [];
+        }
+        const results = [];
+        const elements = [];
+        const isElementNode = (typeof HTMLElement !== 'undefined' && root instanceof HTMLElement)
+            || (root && root.nodeType === 1);
+        if (isElementNode && ((root.dataset && root.dataset.eJs) || (typeof root.getAttribute === 'function' && root.getAttribute('data-e-js')))) {
+            elements.push(root);
+        }
+        if (typeof root.querySelectorAll === 'function') {
+            root.querySelectorAll('[data-e-js]').forEach((element) => {
+                if (!elements.includes(element)) {
+                    elements.push(element);
+                }
+            });
+        }
+
+        elements.forEach((element) => {
+            const instances = this.hydrateElementBehaviors(element);
+            if (Array.isArray(instances) && instances.length) {
+                results.push(...instances);
+            }
+        });
+
+        return results;
+    }
+
+    queuePendingBehavior(name, element) {
+        if (!name || typeof name !== 'string') {
+            return;
+        }
+        const normalized = name.trim();
+        if (!normalized) {
+            return;
+        }
+        if (!this.pendingBehaviors || !(this.pendingBehaviors instanceof Map)) {
+            this.pendingBehaviors = new Map();
+        }
+        let bucket = this.pendingBehaviors.get(normalized);
+        if (!bucket) {
+            bucket = new Set();
+            this.pendingBehaviors.set(normalized, bucket);
+        }
+        if (element) {
+            bucket.add(element);
+        }
+        this.startPendingBehaviorWatcher();
+    }
+
+    startPendingBehaviorWatcher() {
+        if (!this.pendingBehaviors || !(this.pendingBehaviors instanceof Map) || !this.pendingBehaviors.size) {
+            return;
+        }
+        if (!this.globalScope || typeof this.globalScope.setInterval !== 'function') {
+            return;
+        }
+        if (this.pendingBehaviorWatcher) {
+            return;
+        }
+
+        this.pendingBehaviorWatcher = this.globalScope.setInterval(() => {
+            if (!this.pendingBehaviors || !this.pendingBehaviors.size) {
+                this.stopPendingBehaviorWatcher();
+                return;
+            }
+            const pendingNames = Array.from(this.pendingBehaviors.keys());
+            pendingNames.forEach((name) => {
+                const Constructor = this.resolveBehaviorConstructor(name);
+                if (typeof Constructor !== 'function') {
+                    return;
+                }
+                const elements = this.pendingBehaviors.get(name);
+                if (!elements || !(elements instanceof Set)) {
+                    this.pendingBehaviors.delete(name);
+                    return;
+                }
+                elements.forEach((element) => {
+                    this.hydrateElementBehaviors(element);
+                });
+                this.pendingBehaviors.delete(name);
+            });
+
+            if (!this.pendingBehaviors.size) {
+                this.stopPendingBehaviorWatcher();
+            }
+        }, 100);
+    }
+
+    stopPendingBehaviorWatcher() {
+        if (this.pendingBehaviorWatcher && this.globalScope && typeof this.globalScope.clearInterval === 'function') {
+            this.globalScope.clearInterval(this.pendingBehaviorWatcher);
+        }
+        this.pendingBehaviorWatcher = null;
     }
 
     serializeToFormEncoded(obj, prefix) {
@@ -676,6 +872,44 @@ class EnergineCore {
         }
     }
 
+    autoBootFromDOM() {
+        if (this.autoBootCompleted) {
+            return this;
+        }
+        if (typeof document === 'undefined') {
+            return this;
+        }
+
+        const body = document.body;
+        const dataset = body && body.dataset ? body.dataset : {};
+        const shouldRun = !!(body && (
+            dataset.energineRun === '1'
+            || dataset.energineRun === 'true'
+            || body.hasAttribute('data-energine-run')
+        ));
+
+        if (!shouldRun) {
+            return this;
+        }
+
+        const runtime = this.boot(this.createConfigFromScriptDataset());
+        this.attachToWindow(this.globalScope, runtime);
+
+        const translations = this.readTranslationsFromDOM(document);
+        if (translations && Object.keys(translations).length) {
+            runtime.stageTranslations(translations);
+        }
+
+        runtime.hydrateDeclarativeBehaviors(document);
+        runtime.startPendingBehaviorWatcher();
+
+        this.autoBootCompleted = true;
+
+        runtime.run();
+
+        return runtime;
+    }
+
     boot(config = {}) {
         const { translations: translationsConfig, tasks, ...rest } = config;
 
@@ -839,6 +1073,7 @@ class EnergineCore {
 }
 
 const Energine = new EnergineCore(globalScope);
+Energine.attachToWindow(globalScope, Energine);
 
 const existingConfig = (() => {
     if (!globalScope) {
@@ -856,6 +1091,28 @@ const existingConfig = (() => {
 if (existingConfig && Object.keys(existingConfig).length) {
     Energine.boot(existingConfig);
 }
+
+const scheduleAutoBoot = () => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    const execute = () => {
+        try {
+            Energine.autoBootFromDOM();
+        } catch (error) {
+            Energine.safeConsoleError(error, 'autoBootFromDOM');
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', execute, { once: true });
+    } else {
+        execute();
+    }
+};
+
+scheduleAutoBoot();
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 
