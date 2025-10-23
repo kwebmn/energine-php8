@@ -219,13 +219,16 @@
                         <xsl:otherwise>main_toolbar</xsl:otherwise>
                     </xsl:choose>
                 </xsl:variable>
-                <xsl:attribute name="data-page-toolbar-config">
-                    <xsl:text>{&quot;name&quot;:&quot;</xsl:text>
-                    <xsl:value-of select="$PAGE_TOOLBAR_NAME"/>
-                    <xsl:text>&quot;,&quot;behavior&quot;:&quot;</xsl:text>
-                    <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>
-                    <xsl:text>&quot;}</xsl:text>
-                </xsl:attribute>
+                <xsl:if test="string-length(normalize-space($PAGE_TOOLBAR_NAME)) &gt; 0">
+                    <xsl:attribute name="data-page-toolbar-name">
+                        <xsl:value-of select="$PAGE_TOOLBAR_NAME"/>
+                    </xsl:attribute>
+                </xsl:if>
+                <xsl:if test="string-length(normalize-space($PAGE_TOOLBAR/javascript/behavior/@name)) &gt; 0">
+                    <xsl:attribute name="data-page-toolbar-behavior">
+                        <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>
+                    </xsl:attribute>
+                </xsl:if>
             </xsl:if>
             <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
                 <xsl:variable name="PAGE_EDITOR_COMPONENT" select="$COMPONENTS[javascript/behavior[@name='PageEditor']][1]"/>
