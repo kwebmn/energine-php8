@@ -991,6 +991,10 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
         return null;
     }
 
+    if (toolbarElement.dataset && !toolbarElement.dataset.toolbarHydrated) {
+        toolbarElement.dataset.toolbarHydrated = 'pending';
+    }
+
     const Constructor = getGlobalConstructor(behavior);
     if (!Constructor) {
         return null;
@@ -1009,7 +1013,17 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
     }
 
     try {
-        return new Constructor(toolbarElement, { root });
+        const instance = new Constructor(toolbarElement, { root });
+
+        if (globalScope && typeof name === 'string' && name) {
+            try {
+                globalScope[name] = instance;
+            } catch (error) {
+                console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
+            }
+        }
+
+        return instance;
     } catch (error) {
         Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create page toolbar instance');
     }
