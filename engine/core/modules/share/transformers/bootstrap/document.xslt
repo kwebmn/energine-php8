@@ -191,6 +191,7 @@
                     <xsl:otherwise>false</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
+            <xsl:attribute name="data-energine-run">1</xsl:attribute>
         </script>
         <xsl:if test="/document/@debug != '0'">
             <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">
@@ -202,97 +203,6 @@
         </xsl:if>
         <xsl:apply-templates select="." mode="scripts"/>
         <xsl:apply-templates select="document/translations"/>
-        <script type="module">
-            <xsl:text>            import { bootEnergine, attachToWindow, createConfigFromScriptDataset, safeConsoleError } from "</xsl:text>
-            <xsl:value-of select="$ENERGINE_URL"/>
-            <xsl:text>";</xsl:text>
-            <xsl:text>&#10;            import { initializeToolbars, registerToolbarComponent } from "</xsl:text>
-            <xsl:value-of select="/document/properties/property[@name='base']/@static"/>
-            <xsl:text>scripts/Toolbar.js";</xsl:text>
-            <xsl:text>&#10;&#10;            const config = createConfigFromScriptDataset();</xsl:text>
-            <xsl:text>&#10;&#10;            const runtime = bootEnergine(config);</xsl:text>
-            <xsl:text>&#10;            if (window.__energineBridge &amp;&amp; typeof window.__energineBridge.setRuntime === 'function') {</xsl:text>
-            <xsl:text>&#10;                window.__energineBridge.setRuntime(runtime);</xsl:text>
-            <xsl:text>&#10;            }</xsl:text>
-            <xsl:text>&#10;            const Energine = attachToWindow(window, runtime);</xsl:text>
-
-            <xsl:if test="count($COMPONENTS[recordset]/javascript/behavior[@name!='PageEditor']) &gt; 0">
-                <xsl:for-each select="$COMPONENTS[recordset]/javascript[behavior[@name!='PageEditor']]">
-                    globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] = globalThis['<xsl:value-of select="generate-id(../recordset)"/>'] || null;
-                </xsl:for-each>
-            </xsl:if>
-
-            <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar']"/>
-                <xsl:variable name="PAGE_TOOLBAR_NAME">
-                    <xsl:choose>
-                        <xsl:when test="string-length(normalize-space($PAGE_TOOLBAR/toolbar/@name)) &gt; 0">
-                            <xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>
-                        </xsl:when>
-                        <xsl:otherwise>main_toolbar</xsl:otherwise>
-                    </xsl:choose>
-                </xsl:variable>
-                const bootstrapPageToolbar = () => {
-                    const toolbarRoot = document.querySelector('[data-page-toolbar="<xsl:value-of select="$PAGE_TOOLBAR_NAME"/>"]');
-                    if (!toolbarRoot) {
-                        return null;
-                    }
-                    const toolbarElement = toolbarRoot.querySelector('[data-toolbar]');
-                    if (!toolbarElement) {
-                        return null;
-                    }
-                    if (window.Toolbar &amp;&amp; window.Toolbar.registry) {
-                        const existing = window.Toolbar.registry.get(toolbarElement);
-                        if (existing &amp;&amp; typeof existing.destroy === 'function') {
-                            try {
-                                existing.destroy();
-                            } catch (error) {
-                                console.warn('[document.xslt] Failed to dispose existing toolbar instance', error);
-                            }
-                        }
-                        window.Toolbar.registry.delete(toolbarElement);
-                    }
-                    return new <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>(toolbarElement, { root: toolbarRoot });
-                };
-                const initialPageToolbar = bootstrapPageToolbar();
-                if (!initialPageToolbar) {
-                    Energine.addTask(() => bootstrapPageToolbar());
-                } else {
-                    Energine.addTask(() => initialPageToolbar);
-                }
-            </xsl:if>
-            <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
-                <xsl:variable name="objectID" select="generate-id(../../recordset[not(@name)])"/>
-                {
-                    const componentElement = document.getElementById('<xsl:value-of select="$objectID"/>');
-                    if (componentElement) {
-                        try {
-                            const instance = new <xsl:value-of select="@name"/>(componentElement);
-                            globalThis['<xsl:value-of select="$objectID"/>'] = instance;
-                            registerToolbarComponent('<xsl:value-of select="$objectID"/>', instance);
-                        } catch (e) {
-                            safeConsoleError(e);
-                        }
-                    }
-                }
-            </xsl:for-each>
-            <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
-                <xsl:if test="position()=1">
-                    <xsl:variable name="objectID" select="generate-id($COMPONENTS[javascript/behavior[@name='PageEditor']]/recordset)"/>
-                    try {
-                    globalThis['<xsl:value-of select="$objectID"/>'] = new PageEditor();
-                    }
-                    catch (e) {
-                    safeConsoleError(e);
-                    }
-                </xsl:if>
-            </xsl:if>
-
-            initializeToolbars(document);
-
-            document.addEventListener('DOMContentLoaded', () => Energine.run());
-        </script>
-
         <xsl:if test="not(//property[@name='single'])">
             <xsl:if test="$DOC_PROPS[@name='google_analytics'] and ($DOC_PROPS[@name='google_analytics'] != '')">
                 <xsl:value-of select="$DOC_PROPS[@name='google_analytics']" disable-output-escaping="yes"/>

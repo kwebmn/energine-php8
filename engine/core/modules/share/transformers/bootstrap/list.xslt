@@ -30,8 +30,25 @@
     </xsl:template>
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
+        <xsl:variable name="COMPONENT" select=".."/>
         <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <xsl:variable name="BEHAVIOR" select="../javascript/behavior/@name"/>
+        <div data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+            <xsl:if test="$COMPONENT/@name">
+                <xsl:attribute name="data-e-component"><xsl:value-of select="$COMPONENT/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@module">
+                <xsl:attribute name="data-e-module"><xsl:value-of select="$COMPONENT/@module"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@componentAction">
+                <xsl:attribute name="data-e-action"><xsl:value-of select="$COMPONENT/@componentAction"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@sample">
+                <xsl:attribute name="data-e-sample"><xsl:value-of select="$COMPONENT/@sample"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="string-length($BEHAVIOR) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
             <xsl:if test="../@quickUploadPath">
                 <xsl:attribute name="quick_upload_path">
                     <xsl:value-of select="../@quickUploadPath"/>

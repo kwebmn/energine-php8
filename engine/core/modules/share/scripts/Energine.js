@@ -49,6 +49,9 @@ class EnergineCore {
         this.forceJSON = false;
         this.supportContentEdit = true;
         this.tasks = [];
+        this.componentInstances = new WeakMap();
+        this.hasBooted = false;
+        this.hasScheduledAutoStart = false;
 
         this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
             ? import.meta.url
@@ -653,27 +656,45 @@ class EnergineCore {
     }
 
     addTask(task, priority = 5) {
+        if (typeof task !== 'function') {
+            return;
+        }
+        if (!Array.isArray(this.tasks)) {
+            this.tasks = [];
+        }
         if (!this.tasks[priority]) {
             this.tasks[priority] = [];
         }
         this.tasks[priority].push(task);
     }
 
-    run() {
-        if (!this.tasks) {
+    flushTasks() {
+        if (!Array.isArray(this.tasks) || !this.tasks.length) {
             return;
         }
-
-        for (const priority of this.tasks) {
-            if (!priority) continue;
-            for (const func of priority) {
-                try {
-                    func();
-                } catch (e) {
-                    this.safeConsoleError(e);
-                }
+        const queued = this.tasks.slice();
+        this.tasks = [];
+        queued.forEach((priorityTasks) => {
+            if (!priorityTasks) {
+                return;
             }
-        }
+            priorityTasks.forEach((fn) => {
+                if (typeof fn !== 'function') {
+                    return;
+                }
+                try {
+                    fn();
+                } catch (error) {
+                    this.safeConsoleError(error, 'task');
+                }
+            });
+        });
+    }
+
+    run(root = (typeof document !== 'undefined' ? document : null)) {
+        this.flushTasks();
+        this.activateBehaviors(root);
+        this.hydrateToolbars(root);
     }
 
     boot(config = {}) {
@@ -688,6 +709,15 @@ class EnergineCore {
         if (Array.isArray(tasks)) {
             this.tasks = tasks;
         }
+
+        this.hasBooted = true;
+
+        if (this.bridge && typeof this.bridge.setRuntime === 'function') {
+            this.bridge.setRuntime(this);
+        }
+
+        this.attachToWindow();
+        this.scheduleAutoStart();
 
         return this;
     }
@@ -718,29 +748,40 @@ class EnergineCore {
         this.addTask(task, priority);
     }
 
+    normalizeBoolean(value, defaultValue = false) {
+        if (typeof value === 'boolean') {
+            return value;
+        }
+        if (typeof value === 'number') {
+            return value !== 0;
+        }
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            if (normalized === '') {
+                return defaultValue;
+            }
+            return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalized);
+        }
+        if (value === null || typeof value === 'undefined') {
+            return defaultValue;
+        }
+        return Boolean(value);
+    }
+
     createConfigFromProps(props = {}) {
         const config = { ...props };
 
-        const normalizeBoolean = (value) => {
-            if (typeof value === 'boolean') return value;
-            if (typeof value === 'number') return value !== 0;
-            if (typeof value === 'string') {
-                return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-            }
-            return Boolean(value);
-        };
-
         if (Object.prototype.hasOwnProperty.call(config, 'debug')) {
-            config.debug = normalizeBoolean(config.debug);
+            config.debug = this.normalizeBoolean(config.debug);
         }
         if (Object.prototype.hasOwnProperty.call(config, 'forceJSON')) {
-            config.forceJSON = normalizeBoolean(config.forceJSON);
+            config.forceJSON = this.normalizeBoolean(config.forceJSON);
         }
         if (Object.prototype.hasOwnProperty.call(config, 'supportContentEdit')) {
-            config.supportContentEdit = normalizeBoolean(config.supportContentEdit);
+            config.supportContentEdit = this.normalizeBoolean(config.supportContentEdit, true);
         }
         if (Object.prototype.hasOwnProperty.call(config, 'singleMode')) {
-            config.singleMode = normalizeBoolean(config.singleMode);
+            config.singleMode = this.normalizeBoolean(config.singleMode);
         }
 
         return config;
@@ -756,6 +797,150 @@ class EnergineCore {
             ? { ...this.bridge.pendingConfig }
             : {};
         return this.createConfigFromProps({ ...bridgeConfig, ...overrides });
+    }
+
+    resolveAutoRunFlagFromScript() {
+        const scriptEl = this.resolveModuleScriptElement();
+        if (!scriptEl || !scriptEl.dataset) {
+            return null;
+        }
+        if (typeof scriptEl.dataset.energineRun !== 'undefined') {
+            return this.normalizeBoolean(scriptEl.dataset.energineRun);
+        }
+        if (typeof scriptEl.dataset.run !== 'undefined') {
+            return this.normalizeBoolean(scriptEl.dataset.run);
+        }
+        return null;
+    }
+
+    shouldAutoRun() {
+        if (typeof document === 'undefined') {
+            return false;
+        }
+        const body = document.body || null;
+        if (body) {
+            if (body.dataset && typeof body.dataset.energineRun !== 'undefined') {
+                return this.normalizeBoolean(body.dataset.energineRun, true);
+            }
+            const attrValue = body.getAttribute('data-energine-run');
+            if (attrValue !== null) {
+                return this.normalizeBoolean(attrValue, true);
+            }
+        }
+        const scriptFlag = this.resolveAutoRunFlagFromScript();
+        if (scriptFlag !== null) {
+            return scriptFlag;
+        }
+        return false;
+    }
+
+    resolveBehaviorClass(className) {
+        if (!className) {
+            return undefined;
+        }
+        const scope = this.globalScope || (typeof globalThis !== 'undefined' ? globalThis : undefined);
+        if (scope && typeof scope[className] === 'function') {
+            return scope[className];
+        }
+        if (typeof globalThis !== 'undefined' && typeof globalThis[className] === 'function') {
+            return globalThis[className];
+        }
+        return undefined;
+    }
+
+    isElementInitialized(element) {
+        if (!element) {
+            return false;
+        }
+        if (element.dataset && element.dataset.eJsApplied === '1') {
+            return true;
+        }
+        return this.componentInstances.has(element);
+    }
+
+    markElementInitialized(element, instance) {
+        if (!element) {
+            return;
+        }
+        if (element.dataset) {
+            element.dataset.eJsApplied = '1';
+        } else {
+            element.setAttribute('data-e-js-applied', '1');
+        }
+        this.componentInstances.set(element, instance || true);
+    }
+
+    activateBehaviors(root = (typeof document !== 'undefined' ? document : null)) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return;
+        }
+        const elements = root.querySelectorAll('[data-e-js]');
+        elements.forEach((element) => {
+            if (!(element instanceof HTMLElement)) {
+                return;
+            }
+            if (this.isElementInitialized(element)) {
+                return;
+            }
+            const dataset = element.dataset || {};
+            const behaviorName = dataset.eJs || element.getAttribute('data-e-js');
+            if (!behaviorName) {
+                return;
+            }
+            const BehaviorClass = this.resolveBehaviorClass(behaviorName);
+            if (typeof BehaviorClass !== 'function') {
+                this.safeConsoleError(
+                    new Error(`Behavior "${behaviorName}" is not available in global scope`),
+                    'activateBehaviors',
+                );
+                return;
+            }
+            try {
+                const instance = new BehaviorClass(element, dataset);
+                this.markElementInitialized(element, instance);
+            } catch (error) {
+                this.safeConsoleError(error, behaviorName);
+            }
+        });
+    }
+
+    hydrateToolbars(root = (typeof document !== 'undefined' ? document : null)) {
+        const scope = this.globalScope || (typeof globalThis !== 'undefined' ? globalThis : undefined);
+        const toolbarLib = scope && scope.Toolbar;
+        if (!toolbarLib || typeof toolbarLib.initFromDOM !== 'function') {
+            return;
+        }
+        try {
+            toolbarLib.initFromDOM(root || (typeof document !== 'undefined' ? document : null));
+        } catch (error) {
+            this.safeConsoleError(error, 'toolbar');
+        }
+    }
+
+    autoStart(root = (typeof document !== 'undefined' ? document : null)) {
+        if (!this.shouldAutoRun()) {
+            return;
+        }
+        this.run(root);
+    }
+
+    scheduleAutoStart() {
+        if (this.hasScheduledAutoStart || typeof document === 'undefined') {
+            return;
+        }
+        this.hasScheduledAutoStart = true;
+        const trigger = () => {
+            try {
+                this.autoStart(typeof document !== 'undefined' ? document : null);
+            } catch (error) {
+                this.safeConsoleError(error, 'autoStart');
+            }
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', trigger, { once: true });
+        } else {
+            trigger();
+        }
     }
 
     safeConsoleError(e, context = '') {
@@ -840,22 +1025,10 @@ class EnergineCore {
 
 const Energine = new EnergineCore(globalScope);
 
-const existingConfig = (() => {
-    if (!globalScope) {
-        return undefined;
-    }
-    if (globalScope.__energineBridge && globalScope.__energineBridge.pendingConfig) {
-        return { ...globalScope.__energineBridge.pendingConfig };
-    }
-    if (typeof globalScope.Energine === 'object') {
-        return { ...globalScope.Energine };
-    }
-    return undefined;
-})();
+const scriptConfig = Energine.createConfigFromScriptDataset();
+const initialConfig = Energine.createConfigFromBridgePending(scriptConfig);
 
-if (existingConfig && Object.keys(existingConfig).length) {
-    Energine.boot(existingConfig);
-}
+Energine.boot(initialConfig);
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 

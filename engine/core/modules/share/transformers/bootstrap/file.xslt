@@ -20,8 +20,25 @@
     </xsl:template>
     
     <xsl:template match="recordset[parent::component[@class='ImageManager']]">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR" select="../javascript/behavior/@name"/>
         <xsl:variable name="IDD"><xsl:value-of select="generate-id(record)"/></xsl:variable>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}"  single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <div data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}"  single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+            <xsl:if test="$COMPONENT/@name">
+                <xsl:attribute name="data-e-component"><xsl:value-of select="$COMPONENT/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@module">
+                <xsl:attribute name="data-e-module"><xsl:value-of select="$COMPONENT/@module"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@componentAction">
+                <xsl:attribute name="data-e-action"><xsl:value-of select="$COMPONENT/@componentAction"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@sample">
+                <xsl:attribute name="data-e-sample"><xsl:value-of select="$COMPONENT/@sample"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="string-length($BEHAVIOR) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
             <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
@@ -61,9 +78,14 @@
                 <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
             </xsl:if>
             <xsl:attribute name="data-toolbar-scope">image-manager</xsl:attribute>
-            <xsl:if test="ancestor::component[1]/recordset">
-                <xsl:attribute name="data-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
-            </xsl:if>
+            <xsl:choose>
+                <xsl:when test="ancestor::component[1]/@name">
+                    <xsl:attribute name="data-toolbar-component"><xsl:value-of select="ancestor::component[1]/@name"/></xsl:attribute>
+                </xsl:when>
+                <xsl:when test="ancestor::component[1]/@sample">
+                    <xsl:attribute name="data-toolbar-component"><xsl:value-of select="ancestor::component[1]/@sample"/></xsl:attribute>
+                </xsl:when>
+            </xsl:choose>
             <xsl:apply-templates/>
         </div>
     </xsl:template>

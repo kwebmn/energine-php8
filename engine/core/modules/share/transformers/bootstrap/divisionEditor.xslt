@@ -14,8 +14,25 @@
     
     <!-- вывод дерева разделов -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR" select="../javascript/behavior/@name"/>
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+        <div data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+            <xsl:if test="$COMPONENT/@name">
+                <xsl:attribute name="data-e-component"><xsl:value-of select="$COMPONENT/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@module">
+                <xsl:attribute name="data-e-module"><xsl:value-of select="$COMPONENT/@module"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@componentAction">
+                <xsl:attribute name="data-e-action"><xsl:value-of select="$COMPONENT/@componentAction"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@sample">
+                <xsl:attribute name="data-e-sample"><xsl:value-of select="$COMPONENT/@sample"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="string-length($BEHAVIOR) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
             <div class="card-header pb-0" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
@@ -45,7 +62,24 @@
         
     <!-- вывод дерева разделов в боковом тулбаре -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivSidebar'][@sample='DivisionEditor'][@componentAction='main'][@type='list']]">
-        <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3 p-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR" select="../javascript/behavior/@name"/>
+        <div class="division-editor d-flex flex-column flex-xl-row gap-3 p-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+            <xsl:if test="$COMPONENT/@name">
+                <xsl:attribute name="data-e-component"><xsl:value-of select="$COMPONENT/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@module">
+                <xsl:attribute name="data-e-module"><xsl:value-of select="$COMPONENT/@module"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@componentAction">
+                <xsl:attribute name="data-e-action"><xsl:value-of select="$COMPONENT/@componentAction"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="$COMPONENT/@sample">
+                <xsl:attribute name="data-e-sample"><xsl:value-of select="$COMPONENT/@sample"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="string-length($BEHAVIOR) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
             <aside id="treeContainer" data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
             <main data-role="editor-content" class="division-editor__content flex-grow-1"></main>
         </div>

@@ -23,10 +23,22 @@
     </xsl:template>
 
     <xsl:template match="component[@sample='TextBlock' and @editable]/recordset/record">
-        <div id="{generate-id(.)}" class="nrgnEditor" single_template="{$BASE}{$LANG_ABBR}{../../@single_template}" num="{../../@num}">
+        <div class="nrgnEditor" single_template="{$BASE}{$LANG_ABBR}{../../@single_template}" num="{../../@num}">
+            <xsl:if test="../../@name">
+                <xsl:attribute name="data-e-component"><xsl:value-of select="../../@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="../../@module">
+                <xsl:attribute name="data-e-module"><xsl:value-of select="../../@module"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="../../@sample">
+                <xsl:attribute name="data-e-sample"><xsl:value-of select="../../@sample"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="../../javascript/behavior/@name">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="../../javascript/behavior/@name"/></xsl:attribute>
+            </xsl:if>
             <xsl:if test="not(../../@global)">
                 <xsl:attribute name="eID"><xsl:value-of select="$ID"/></xsl:attribute>
-            </xsl:if>            
+            </xsl:if>
             <xsl:if test=". = ''">
                 <p>--<xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></p>
             </xsl:if>
