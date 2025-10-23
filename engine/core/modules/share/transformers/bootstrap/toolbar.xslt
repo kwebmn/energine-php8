@@ -8,7 +8,19 @@
     
     <!-- Собственно панель управления -->
     <xsl:template match="toolbar">
-        <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar">
+        <xsl:variable name="IS_PAGE_TOOLBAR" select="boolean(ancestor::component[@componentAction='showPageToolbar'])"/>
+        <div role="toolbar">
+            <xsl:attribute name="class">
+                <xsl:text>btn-toolbar flex-wrap align-items-center</xsl:text>
+                <xsl:choose>
+                    <xsl:when test="$IS_PAGE_TOOLBAR">
+                        <xsl:text> d-flex gap-2</xsl:text>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <xsl:text> gap-2</xsl:text>
+                    </xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
             <xsl:if test="@name">
                 <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
             </xsl:if>
@@ -23,6 +35,7 @@
     </xsl:template>
 
     <xsl:template match="toolbar/control[@type='switcher']">
+        <xsl:variable name="IS_PAGE_TOOLBAR" select="boolean(ancestor::component[@componentAction='showPageToolbar'])"/>
         <xsl:variable name="ICON_RAW" select="@icon"/>
         <xsl:variable name="ICON_NORMALIZED" select="normalize-space($ICON_RAW)"/>
         <xsl:variable name="ALT_ICON" select="normalize-space(@aicon)"/>
@@ -75,18 +88,33 @@
             </xsl:if>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
-                <xsl:if test="$HAS_ICON">
-                    <xsl:text>d-inline-flex align-items-center </xsl:text>
-                    <xsl:choose>
-                        <xsl:when test="$ICON_ONLY">
-                            <xsl:text>justify-content-center px-2 </xsl:text>
-                        </xsl:when>
-                        <xsl:otherwise>
-                            <xsl:text>gap-2 </xsl:text>
-                        </xsl:otherwise>
-                    </xsl:choose>
-                </xsl:if>
-                <xsl:text>btn-outline-secondary</xsl:text>
+                <xsl:choose>
+                    <xsl:when test="$IS_PAGE_TOOLBAR">
+                        <xsl:text>btn-light d-flex align-items-center </xsl:text>
+                        <xsl:choose>
+                            <xsl:when test="$ICON_ONLY">
+                                <xsl:text>justify-content-center px-2 </xsl:text>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:text>gap-2 justify-content-start text-start </xsl:text>
+                            </xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <xsl:if test="$HAS_ICON">
+                            <xsl:text>d-inline-flex align-items-center </xsl:text>
+                            <xsl:choose>
+                                <xsl:when test="$ICON_ONLY">
+                                    <xsl:text>justify-content-center px-2 </xsl:text>
+                                </xsl:when>
+                                <xsl:otherwise>
+                                    <xsl:text>gap-2 </xsl:text>
+                                </xsl:otherwise>
+                            </xsl:choose>
+                        </xsl:if>
+                        <xsl:text>btn-outline-secondary</xsl:text>
+                    </xsl:otherwise>
+                </xsl:choose>
             </xsl:attribute>
             <xsl:if test="$HAS_ICON">
                 <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
@@ -125,6 +153,7 @@
                 <xsl:otherwise/>
             </xsl:choose>
         </xsl:variable>
+        <xsl:variable name="IS_PAGE_TOOLBAR" select="boolean(ancestor::component[@componentAction='showPageToolbar'])"/>
         <xsl:variable name="CONTROL">
                 <xsl:choose>
                         <xsl:when test="@type = 'button'">button</xsl:when>
@@ -181,18 +210,33 @@
                 <xsl:attribute name="data-type"><xsl:value-of select="$control-type"/></xsl:attribute>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
-                <xsl:if test="$HAS_ICON">
-                    <xsl:text>d-inline-flex align-items-center </xsl:text>
-                    <xsl:choose>
-                        <xsl:when test="$ICON_ONLY">
-                            <xsl:text>justify-content-center px-2 </xsl:text>
-                        </xsl:when>
-                        <xsl:otherwise>
-                            <xsl:text>gap-2 </xsl:text>
-                        </xsl:otherwise>
-                    </xsl:choose>
-                </xsl:if>
-                <xsl:value-of select="$BUTTON_VARIANT"/>
+                <xsl:choose>
+                    <xsl:when test="$IS_PAGE_TOOLBAR">
+                        <xsl:text>btn-light d-flex align-items-center </xsl:text>
+                        <xsl:choose>
+                            <xsl:when test="$ICON_ONLY">
+                                <xsl:text>justify-content-center px-2 </xsl:text>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:text>gap-2 justify-content-start text-start </xsl:text>
+                            </xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <xsl:if test="$HAS_ICON">
+                            <xsl:text>d-inline-flex align-items-center </xsl:text>
+                            <xsl:choose>
+                                <xsl:when test="$ICON_ONLY">
+                                    <xsl:text>justify-content-center px-2 </xsl:text>
+                                </xsl:when>
+                                <xsl:otherwise>
+                                    <xsl:text>gap-2 </xsl:text>
+                                </xsl:otherwise>
+                            </xsl:choose>
+                        </xsl:if>
+                        <xsl:value-of select="$BUTTON_VARIANT"/>
+                    </xsl:otherwise>
+                </xsl:choose>
             </xsl:attribute>
             <xsl:if test="string-length(normalize-space(@icon-only)) &gt; 0">
                 <xsl:attribute name="data-icon-only"><xsl:value-of select="@icon-only"/></xsl:attribute>
@@ -241,6 +285,7 @@
                 <xsl:otherwise/>
             </xsl:choose>
         </xsl:variable>
+        <xsl:variable name="IS_PAGE_TOOLBAR" select="boolean(ancestor::component[@componentAction='showPageToolbar'])"/>
         <xsl:variable name="LINK_KEY" select="translate(concat(@id, '|', @click, '|', @title), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
         <xsl:variable name="LINK_VARIANT">
             <xsl:choose>
@@ -265,18 +310,33 @@
             </xsl:if>
             <xsl:attribute name="class">
                 <xsl:text>btn btn-sm </xsl:text>
-                <xsl:if test="$HAS_ICON">
-                    <xsl:text>d-inline-flex align-items-center </xsl:text>
-                    <xsl:choose>
-                        <xsl:when test="$ICON_ONLY">
-                            <xsl:text>justify-content-center px-2 </xsl:text>
-                        </xsl:when>
-                        <xsl:otherwise>
-                            <xsl:text>gap-2 </xsl:text>
-                        </xsl:otherwise>
-                    </xsl:choose>
-                </xsl:if>
-                <xsl:value-of select="$LINK_VARIANT"/>
+                <xsl:choose>
+                    <xsl:when test="$IS_PAGE_TOOLBAR">
+                        <xsl:text>btn-light d-flex align-items-center </xsl:text>
+                        <xsl:choose>
+                            <xsl:when test="$ICON_ONLY">
+                                <xsl:text>justify-content-center px-2 </xsl:text>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:text>gap-2 justify-content-start text-start </xsl:text>
+                            </xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <xsl:if test="$HAS_ICON">
+                            <xsl:text>d-inline-flex align-items-center </xsl:text>
+                            <xsl:choose>
+                                <xsl:when test="$ICON_ONLY">
+                                    <xsl:text>justify-content-center px-2 </xsl:text>
+                                </xsl:when>
+                                <xsl:otherwise>
+                                    <xsl:text>gap-2 </xsl:text>
+                                </xsl:otherwise>
+                            </xsl:choose>
+                        </xsl:if>
+                        <xsl:value-of select="$LINK_VARIANT"/>
+                    </xsl:otherwise>
+                </xsl:choose>
             </xsl:attribute>
             <xsl:if test="$ICON_ONLY and string-length(normalize-space($ARIA_LABEL)) &gt; 0">
                 <xsl:attribute name="aria-label"><xsl:value-of select="normalize-space($ARIA_LABEL)"/></xsl:attribute>

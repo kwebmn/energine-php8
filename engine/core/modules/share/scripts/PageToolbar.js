@@ -59,17 +59,6 @@ class PageToolbar extends Toolbar {
 
     }
 
-    appendControl(...args) {
-        const previousControls = Array.isArray(this.controls) ? this.controls.slice() : [];
-        super.appendControl(...args);
-        const newControls = Array.isArray(this.controls)
-            ? this.controls.filter(control => !previousControls.includes(control))
-            : [];
-        if (newControls.length) {
-            newControls.forEach(control => this._applyButtonStylingToControl(control));
-        }
-    }
-
     _hydrateFromElement(element, descriptors = null) {
         if (!(element instanceof HTMLElement)) {
             return;
@@ -91,87 +80,6 @@ class PageToolbar extends Toolbar {
                 this.appendControl(controlInstance);
             }
         });
-    }
-
-    _applyButtonStylingToControl(control) {
-        const element = control?.element instanceof HTMLElement ? control.element : null;
-        if (!element || !element.classList.contains('btn')) {
-            return;
-        }
-
-        const variantClasses = Array.from(element.classList).filter(className => (
-            className.startsWith('btn-')
-            && className !== 'btn'
-            && className !== 'btn-sm'
-            && className !== 'btn-light'
-        ));
-        variantClasses.forEach(className => element.classList.remove(className));
-
-        element.classList.add('btn-light');
-
-        if (element.classList.contains('d-inline-flex')) {
-            element.classList.remove('d-inline-flex');
-            element.classList.add('d-flex');
-        }
-
-        element.classList.add('align-items-center');
-
-        element.classList.remove('justify-content-center', 'justify-content-between', 'justify-content-start');
-
-        const isIconOnly = !!control?.properties?.iconOnly;
-        if (isIconOnly) {
-            element.classList.remove('gap-2');
-            element.classList.add('justify-content-center');
-        } else {
-            element.classList.add('gap-2', 'justify-content-start', 'text-start');
-        }
-
-        element.classList.remove('w-100');
-    }
-
-    _styleToolbarButtons() {
-        if (!Array.isArray(this.controls) || !this.controls.length) {
-            return;
-        }
-        this.controls.forEach(control => this._applyButtonStylingToControl(control));
-    }
-
-    _applyToolbarLayoutClasses(root) {
-        const toolbarElement = this.element instanceof HTMLElement ? this.element : null;
-        if (toolbarElement) {
-            toolbarElement.classList.remove('flex-column', 'align-items-stretch');
-            toolbarElement.classList.remove('w-100');
-            toolbarElement.classList.add('d-flex');
-            toolbarElement.classList.add('flex-wrap');
-            toolbarElement.classList.add('align-items-center');
-            if (!toolbarElement.classList.contains('gap-1') && !toolbarElement.classList.contains('gap-2')) {
-                toolbarElement.classList.add('gap-2');
-            }
-        }
-
-        if (!root) {
-            return;
-        }
-
-        const primaryArea = root.querySelector('[data-role="toolbar-primary"]');
-        if (primaryArea) {
-            primaryArea.classList.remove('flex-column', 'align-items-stretch');
-            primaryArea.classList.add('d-flex');
-            primaryArea.classList.add('flex-wrap');
-            primaryArea.classList.add('align-items-center');
-            primaryArea.classList.add('gap-2');
-            primaryArea.classList.add('justify-content-start');
-        }
-
-        const editBand = root.querySelector('[data-role="toolbar-editband"]');
-        if (editBand) {
-            editBand.classList.remove('flex-column', 'align-items-stretch');
-            editBand.classList.add('d-flex');
-            editBand.classList.add('flex-wrap');
-            editBand.classList.add('align-items-center');
-            editBand.classList.add('gap-2');
-            editBand.classList.add('justify-content-start');
-        }
     }
 
     static _addClass(el, cls) { el.classList.add(cls); }
@@ -434,9 +342,6 @@ class PageToolbar extends Toolbar {
                 this._sidebarEventHandlers.push({ element: button, type: 'click', handler: handleToggleClick });
             });
         }
-
-        this._applyToolbarLayoutClasses(root);
-        this._styleToolbarButtons();
 
         return true;
     }
