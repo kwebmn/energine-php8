@@ -90,7 +90,7 @@
                 <xsl:text>btn btn-sm rounded-1 </xsl:text>
                 <xsl:choose>
                     <xsl:when test="$IS_PAGE_TOOLBAR">
-                        <xsl:text>btn-light border border-secondary-subtle d-flex align-items-center </xsl:text>
+                        <xsl:text>btn-light d-flex align-items-center </xsl:text>
                         <xsl:choose>
                             <xsl:when test="$ICON_ONLY">
                                 <xsl:text>justify-content-center px-2 </xsl:text>
@@ -101,7 +101,7 @@
                         </xsl:choose>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:text>btn-light border border-secondary-subtle </xsl:text>
+                        <xsl:text>btn-light </xsl:text>
                         <xsl:choose>
                             <xsl:when test="$ICON_ONLY">
                                 <xsl:choose>
@@ -230,7 +230,7 @@
                                         <xsl:text>btn-primary justify-content-center px-2 </xsl:text>
                                     </xsl:when>
                                     <xsl:otherwise>
-                                        <xsl:text>btn-light border border-secondary-subtle justify-content-center px-2 </xsl:text>
+                                        <xsl:text>btn-light justify-content-center px-2 </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                             </xsl:when>
@@ -240,7 +240,7 @@
                                         <xsl:text>btn-primary gap-2 justify-content-start text-start px-3 </xsl:text>
                                     </xsl:when>
                                     <xsl:otherwise>
-                                        <xsl:text>btn-light border border-secondary-subtle gap-2 justify-content-start text-start px-3 </xsl:text>
+                                        <xsl:text>btn-light gap-2 justify-content-start text-start px-3 </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                             </xsl:otherwise>
@@ -260,7 +260,7 @@
                                         <xsl:if test="$HAS_ICON">
                                             <xsl:text>d-inline-flex align-items-center </xsl:text>
                                         </xsl:if>
-                                        <xsl:text>btn-light border border-secondary-subtle justify-content-center px-2 </xsl:text>
+                                        <xsl:text>btn-light justify-content-center px-2 </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                             </xsl:when>
@@ -273,7 +273,7 @@
                                         <xsl:text>btn-primary </xsl:text>
                                     </xsl:when>
                                     <xsl:otherwise>
-                                        <xsl:text>btn-light border border-secondary-subtle </xsl:text>
+                                        <xsl:text>btn-light </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                                 <xsl:if test="not($HAS_ICON)">
@@ -367,7 +367,7 @@
                                         <xsl:text>btn-primary justify-content-center px-2 </xsl:text>
                                     </xsl:when>
                                     <xsl:otherwise>
-                                        <xsl:text>btn-light border border-secondary-subtle justify-content-center px-2 </xsl:text>
+                                        <xsl:text>btn-light justify-content-center px-2 </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                             </xsl:when>
@@ -377,7 +377,7 @@
                                         <xsl:text>btn-primary gap-2 justify-content-start text-start px-3 </xsl:text>
                                     </xsl:when>
                                     <xsl:otherwise>
-                                        <xsl:text>btn-light border border-secondary-subtle gap-2 justify-content-start text-start px-3 </xsl:text>
+                                        <xsl:text>btn-light gap-2 justify-content-start text-start px-3 </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                             </xsl:otherwise>
@@ -397,7 +397,7 @@
                                         <xsl:if test="$HAS_ICON">
                                             <xsl:text>d-inline-flex align-items-center </xsl:text>
                                         </xsl:if>
-                                        <xsl:text>btn-light border border-secondary-subtle justify-content-center px-2 </xsl:text>
+                                        <xsl:text>btn-light justify-content-center px-2 </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                             </xsl:when>
@@ -410,7 +410,7 @@
                                         <xsl:text>btn-primary </xsl:text>
                                     </xsl:when>
                                     <xsl:otherwise>
-                                        <xsl:text>btn-light border border-secondary-subtle </xsl:text>
+                                        <xsl:text>btn-light </xsl:text>
                                     </xsl:otherwise>
                                 </xsl:choose>
                                 <xsl:if test="not($HAS_ICON)">
