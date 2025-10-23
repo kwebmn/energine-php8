@@ -23,16 +23,6 @@
         </footer>
     </xsl:template>
 
-    <xsl:template match="component[@name='footerTextBlock']">
-        <xsl:if test="string-length(normalize-space(recordset/record/field)) &gt; 0">
-            <div class="col-12 col-lg-5">
-                <div class="text-muted">
-                    <xsl:value-of select="recordset/record/field" disable-output-escaping="yes"/>
-                </div>
-            </div>
-        </xsl:if>
-    </xsl:template>
-
     <xsl:template match="component" mode="footer-column">
         <xsl:param name="columnClass" select="'col-6 col-md-4 col-xl-3'"/>
         <div class="{$columnClass}">
