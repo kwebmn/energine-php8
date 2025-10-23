@@ -879,6 +879,49 @@ const parseJSONAttribute = (value, fallback = null) => {
     }
 };
 
+const scheduleRetry = (task, options = {}) => {
+    if (typeof task !== 'function') {
+        return null;
+    }
+
+    const {
+        attempts = 5,
+        delay = 50,
+        onError = null,
+    } = options;
+
+    const schedule = (globalScope && typeof globalScope.setTimeout === 'function')
+        ? globalScope.setTimeout.bind(globalScope)
+        : (typeof setTimeout === 'function' ? setTimeout : null);
+
+    let remainingAttempts = Number.isFinite(attempts)
+        ? (attempts > 0 ? attempts : 0)
+        : Infinity;
+
+    const execute = () => {
+        let result = null;
+        try {
+            result = task();
+        } catch (error) {
+            if (typeof onError === 'function') {
+                onError(error);
+            } else {
+                Energine.safeConsoleError(error, '[Energine.autoBootstrap] Retriable task threw an error');
+            }
+        }
+
+        if (result || !schedule || remainingAttempts <= 0) {
+            return result;
+        }
+
+        remainingAttempts -= 1;
+        schedule(execute, delay);
+        return result;
+    };
+
+    return execute();
+};
+
 const getGlobalConstructor = (name) => {
     if (!name || typeof name !== 'string' || !globalScope) {
         return null;
@@ -1044,35 +1087,41 @@ const autoBootstrapRuntime = () => {
 
     const bootstrapDom = () => {
         if (pageToolbarConfig) {
-            const initialToolbar = bootstrapPageToolbarFromConfig(pageToolbarConfig);
-            if (!initialToolbar) {
-                attachedRuntime.addTask(() => bootstrapPageToolbarFromConfig(pageToolbarConfig));
-            } else {
-                attachedRuntime.addTask(() => initialToolbar);
-            }
+            attachedRuntime.addTask(() => scheduleRetry(
+                () => bootstrapPageToolbarFromConfig(pageToolbarConfig),
+                { attempts: 20, delay: 150 },
+            ));
         }
 
         if (Array.isArray(componentDescriptors)) {
             componentDescriptors.forEach((descriptor) => {
-                try {
-                    instantiateComponentBehavior(descriptor);
-                } catch (error) {
-                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed');
-                }
+                attachedRuntime.addTask(() => scheduleRetry(
+                    () => instantiateComponentBehavior(descriptor),
+                    {
+                        attempts: 20,
+                        delay: 120,
+                        onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
+                    },
+                ));
             });
         }
 
         if (pageEditorConfig) {
-            instantiatePageEditorFromConfig(pageEditorConfig);
+            attachedRuntime.addTask(() => scheduleRetry(
+                () => instantiatePageEditorFromConfig(pageEditorConfig),
+                { attempts: 20, delay: 150 },
+            ));
         }
 
-        if (typeof initializeToolbars === 'function') {
-            try {
-                initializeToolbars(document);
-            } catch (error) {
-                Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+        attachedRuntime.addTask(() => {
+            if (typeof initializeToolbars === 'function') {
+                try {
+                    initializeToolbars(document);
+                } catch (error) {
+                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+                }
             }
-        }
+        });
     };
 
     const runTasks = () => {
