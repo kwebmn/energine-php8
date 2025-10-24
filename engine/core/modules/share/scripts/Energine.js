@@ -616,7 +616,7 @@ class EnergineCore {
         return typeof Constructor === 'function' ? Constructor : null;
     }
 
-    instantiateBehavior(element, behaviorName = null) {
+    instantiateBehavior(element, behaviorName = null, options = {}) {
         if (!(element instanceof HTMLElement)) {
             return null;
         }
@@ -636,9 +636,16 @@ class EnergineCore {
             return null;
         }
 
+        const { suppressMissingBehaviorErrors = false } = options || {};
+
         const Constructor = this.getBehaviorConstructor(behavior);
         if (!Constructor) {
-            this.safeConsoleError(new Error(`Behavior constructor "${behavior}" is not available`), '[Energine.initDOM]');
+            if (!suppressMissingBehaviorErrors) {
+                this.safeConsoleError(
+                    new Error(`Behavior constructor "${behavior}" is not available`),
+                    '[Energine.initDOM]',
+                );
+            }
             return null;
         }
 
@@ -671,7 +678,7 @@ class EnergineCore {
         return null;
     }
 
-    initPageToolbars(root = (typeof document !== 'undefined' ? document : null)) {
+    initPageToolbars(root = (typeof document !== 'undefined' ? document : null), options = {}) {
         if (!root || typeof root.querySelectorAll !== 'function') {
             return;
         }
@@ -682,11 +689,11 @@ class EnergineCore {
             const behavior = (typeof dataset.eJs === 'string' && dataset.eJs.trim())
                 || (typeof dataset.pageToolbarBehavior === 'string' && dataset.pageToolbarBehavior.trim())
                 || 'PageToolbar';
-            this.instantiateBehavior(element, behavior);
+            this.instantiateBehavior(element, behavior, options);
         });
     }
 
-    initPageEditors(root = (typeof document !== 'undefined' ? document : null)) {
+    initPageEditors(root = (typeof document !== 'undefined' ? document : null), options = {}) {
         if (!root || typeof root.querySelectorAll !== 'function') {
             return;
         }
@@ -697,40 +704,40 @@ class EnergineCore {
             const behavior = (typeof dataset.eJs === 'string' && dataset.eJs.trim())
                 || (typeof dataset.pageEditorBehavior === 'string' && dataset.pageEditorBehavior.trim())
                 || 'PageEditor';
-            this.instantiateBehavior(element, behavior);
+            this.instantiateBehavior(element, behavior, options);
         });
     }
 
-    initComponents(root = (typeof document !== 'undefined' ? document : null)) {
+    initComponents(root = (typeof document !== 'undefined' ? document : null), options = {}) {
         if (!root || typeof root.querySelectorAll !== 'function') {
             return;
         }
 
         const elements = root.querySelectorAll('[data-e-js]');
         elements.forEach((element) => {
-            this.instantiateBehavior(element);
+            this.instantiateBehavior(element, null, options);
         });
     }
 
-    initDOM(root = (typeof document !== 'undefined' ? document : null)) {
+    initDOM(root = (typeof document !== 'undefined' ? document : null), options = {}) {
         if (!root) {
             return;
         }
 
         try {
-            this.initPageToolbars(root);
+            this.initPageToolbars(root, options);
         } catch (error) {
             this.safeConsoleError(error, '[Energine.initDOM] Failed to initialize page toolbars');
         }
 
         try {
-            this.initPageEditors(root);
+            this.initPageEditors(root, options);
         } catch (error) {
             this.safeConsoleError(error, '[Energine.initDOM] Failed to initialize page editors');
         }
 
         try {
-            this.initComponents(root);
+            this.initComponents(root, options);
         } catch (error) {
             this.safeConsoleError(error, '[Energine.initDOM] Failed to initialize components');
         }
@@ -790,18 +797,31 @@ const autoBootstrapRuntime = () => {
     const config = Energine.createConfigFromScriptDataset();
     Energine.boot(config);
 
-    const runInitialization = () => {
+    const runInitialization = (options = {}) => {
         try {
-            Energine.initDOM(document);
+            Energine.initDOM(document, options);
         } catch (error) {
             Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize DOM');
         }
     };
 
+    const runFirstPass = () => runInitialization({ suppressMissingBehaviorErrors: true });
+    const runFinalPass = () => runInitialization({ suppressMissingBehaviorErrors: false });
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', runInitialization, { once: true });
+        document.addEventListener('DOMContentLoaded', runFirstPass, { once: true });
     } else {
-        runInitialization();
+        runFirstPass();
+    }
+
+    if (typeof window !== 'undefined') {
+        if (document.readyState === 'complete') {
+            runFinalPass();
+        } else {
+            window.addEventListener('load', runFinalPass, { once: true });
+        }
+    } else {
+        runFinalPass();
     }
 };
 
@@ -823,7 +843,7 @@ export const showLoader = (container) => Energine.showLoader(container);
 
 export const hideLoader = (container) => Energine.hideLoader(container);
 
-export const initDOM = (root) => Energine.initDOM(root);
+export const initDOM = (root, options) => Energine.initDOM(root, options);
 
 export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
 
