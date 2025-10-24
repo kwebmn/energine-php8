@@ -277,9 +277,8 @@
     
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="/document/translations[translation[@component=//component[@editable]/@name]]">
-        <script type="module">
-            import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+        <script type="application/json" data-energine-translations="1">
+            <xsl:value-of select="/document/translations/@json" disable-output-escaping="yes" />
         </script>
     </xsl:template>
 
