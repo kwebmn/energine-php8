@@ -18,7 +18,7 @@ const getCodeMirror = () => globalScope?.CodeMirror;
  * <ul>
  *     <li>[Form]{@link Form}</li>
  *     <li>[Form.Uploader]{@link Form.Uploader}</li>
- *     <li>[Form.SmapSelector]{@link Form.SmapSelector}</li>
+ *     <li>[Form.SiteMapSelector]{@link Form.SiteMapSelector}</li>
  *     <li>[Form.AttachmentSelector]{@link Form.AttachmentSelector}</li>
  *     <li>[Form.RichEditor]{@link Form.RichEditor}</li>
  * </ul>
@@ -299,7 +299,7 @@ class Form {
         }
 
         controls.forEach((control) => {
-            Form.applyBootstrapControlClasses(control);
+            Form.styleInputControl(control);
             Form.prepareFloatingLabel(control);
             Form.synchronizeInvalidState(control);
         });
@@ -372,9 +372,9 @@ class Form {
             new AcplField(el);
         });
 
-        // SmapSelector
+        // SiteMapSelector
         this.form.querySelectorAll('[data-action="open-smap"]').forEach(el => {
-            new Form.SmapSelector(el, this);
+            new Form.SiteMapSelector(el, this);
         });
 
         // AttachmentSelector
@@ -384,10 +384,10 @@ class Form {
 
         // File field actions
         this.form.querySelectorAll('[data-action="open-filelib"]').forEach(button => {
-            button.addEventListener('click', () => this.openFileLib(button));
+            button.addEventListener('click', () => this.openFileLibrary(button));
         });
         this.form.querySelectorAll('[data-action="quick-upload"]').forEach(button => {
-            button.addEventListener('click', () => this.openQuickUpload(button));
+            button.addEventListener('click', () => this.openQuickUploadDialog(button));
         });
         this.form.querySelectorAll('[data-action="clear-file"]').forEach(button => {
             button.addEventListener('click', () => this.clearFileField(button));
@@ -692,8 +692,8 @@ class Form {
         clearButton?.removeAttribute('hidden');
     }
 
-    // openFileLib
-    openFileLib(button) {
+    // openFileLibrary
+    openFileLibrary(button) {
         const linkId = button?.dataset?.link;
         const linkInput = linkId ? document.getElementById(linkId) : null;
         const path = linkInput ? (linkInput.value || null) : null;
@@ -726,8 +726,8 @@ class Form {
 
     }
 
-    // openQuickUpload
-    openQuickUpload(button) {
+    // openQuickUploadDialog
+    openQuickUploadDialog(button) {
         const inputId = button?.dataset?.input;
         const fileInput = inputId ? document.getElementById(inputId) : null;
         if (fileInput) {
@@ -776,7 +776,7 @@ class Form {
 
     // --- Вспомогательные методы ---
 
-    static applyBootstrapControlClasses(control) {
+    static styleInputControl(control) {
         if (!Form.isElement(control)) {
             return;
         }
@@ -1707,13 +1707,13 @@ Form.Uploader = FormUploader;
 
 
 /**
- * The smap (parent ID selector) selector.
+ * The site map (parent page) selector.
  *
  * @constructor
  * @param {string|Element} selector The element id.
  * @param {Form} form The form.
  */
-class FormSmapSelector {
+class FormSiteMapSelector {
     /**
      * @param {Element|string} selector - элемент или его селектор
      * @param {Form} form
@@ -1772,7 +1772,8 @@ class FormSmapSelector {
 }
 
 // Для совместимости:
-Form.SmapSelector = FormSmapSelector;
+Form.SiteMapSelector = FormSiteMapSelector;
+Form.SmapSelector = FormSiteMapSelector;
 ;
 
 /**
