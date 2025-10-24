@@ -1,5 +1,7 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine from './Energine.js';
 import loadCKEditor from './ckeditor/loader.js';
+import { request } from './energine-network.js';
+import { showLoader, hideLoader } from './energine-ui.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -267,7 +269,7 @@ class BlockEditor {
             params.num = this.num;
         }
 
-        Energine.request(
+        request(
             this.singlePath + 'save-text',
             params,
             (response) => {

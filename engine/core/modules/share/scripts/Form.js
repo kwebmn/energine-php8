@@ -1,4 +1,6 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine from './Energine.js';
+import { request } from './energine-network.js';
+import { showLoader, hideLoader } from './energine-ui.js';
 import TabPane from './TabPane.js';
 import Toolbar from './Toolbar.js';
 import Validator from './Validator.js';
@@ -40,8 +42,8 @@ const getCodeMirror = () => globalScope?.CodeMirror;
  */
 
 class Form {
-    // Класс Energine.request как статическое свойство
-    static request = Energine.request;
+    // Класс request как статическое свойство
+    static request = request;
 
     static previewIconMap = {
         default: 'fa-solid fa-file text-secondary',
@@ -309,7 +311,7 @@ class Form {
     }
 
     request(...args) {
-        return Energine.request(...args);
+        return request(...args);
     }
 
     constructor(element) {
@@ -547,7 +549,7 @@ class Form {
                             const previousSelection = isMultiSelect
                                 ? Array.from(control.selectedOptions || []).map((option) => option.value)
                                 : (isSelectElement ? control.value : null);
-                            Energine.request(
+                            request(
                                 `${this.singlePath}${dataField}/fk-values/`,
                                 null,
                                 (data) => {
@@ -663,7 +665,7 @@ class Form {
         // this.overlay.show();
         showLoader();
 
-        Energine.request(
+        request(
             this.buildSaveURL(),
             Form.toQueryString(this.form),
             this.processServerResponse.bind(this),

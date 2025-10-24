@@ -1,4 +1,5 @@
 import Energine from '../../share/scripts/Energine.js';
+import { noticeBox, alertBox } from '../../share/scripts/energine-ui.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -100,7 +101,7 @@ class SignIn {
   _handleResult(result, isLogout = false, form = null) {
     if (result?.result) {
       if (form) this._clearValidation(form);
-      Energine.noticeBox(result.message, 'success', () => {
+      noticeBox(result.message, 'success', () => {
         const redirect = isLogout
           ? `/${Energine.lang}/`
           : `/${Energine.lang}/${result.redirect}`;
@@ -116,14 +117,14 @@ class SignIn {
       if (!fieldHandled) {
         this._showFormError(form, message);
       }
-      Energine.alertBox(result?.message ?? 'Сталася помилка', 'error');
+      alertBox(result?.message ?? 'Сталася помилка', 'error');
     }
   }
 
   _handleError(err) {
     // Единый обработчик сетевых/HTTP ошибок
     console.error(err);
-    Energine.alertBox('Помилка з’єднання. Спробуйте ще раз.', 'error');
+    alertBox('Помилка з’єднання. Спробуйте ще раз.', 'error');
   }
 
   _clearValidation(form) {

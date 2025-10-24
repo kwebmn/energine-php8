@@ -1,6 +1,7 @@
 import Energine from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
+import { request } from './energine-network.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -24,7 +25,7 @@ class SiteManager extends GridManager {
      */
     reset() {
         if (Energine.translations && confirm(Energine.translations.get('MSG_CONFIRM_TEMPLATES_RESET'))) {
-            Energine.request(
+            request(
                 `${this.singlePath}reset/${this.grid.getSelectedRecordKey()}/reset-templates/`,
                 null,
                 (response) => {

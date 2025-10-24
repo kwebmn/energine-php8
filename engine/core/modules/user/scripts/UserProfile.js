@@ -1,5 +1,6 @@
 import Energine from '../../share/scripts/Energine.js';
 import ValidForm from '../../share/scripts/ValidForm.js';
+import { noticeBox } from '../../share/scripts/energine-ui.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -36,9 +37,9 @@ class UserProfile extends ValidForm {
 
             $.post(saveUrl, data, (result) => {
                 if (result.result) {
-                    Energine.noticeBox(result.message, 'success');
+                    noticeBox(result.message, 'success');
                 } else {
-                    Energine.noticeBox(result.message, 'error');
+                    noticeBox(result.message, 'error');
                 }
             }, 'json');
 

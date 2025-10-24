@@ -1,6 +1,7 @@
 import Energine from '../../share/scripts/Energine.js';
 import Toolbar from '../../share/scripts/Toolbar.js';
 import ModalBox from '../../share/scripts/ModalBox.js';
+import { request } from '../../share/scripts/energine-network.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -8,7 +9,7 @@ const globalScope = typeof window !== 'undefined'
 
 class FeedToolbar extends Toolbar {
     // Сохраняем request для совместимости
-    static request = Energine.request;
+    static request = request;
 
     constructor(Container) {
         super('feed_toolbar');
@@ -129,16 +130,16 @@ class FeedToolbar extends Toolbar {
     del() {
         const MSG_CONFIRM_DELETE = (Energine.translations?.get('MSG_CONFIRM_DELETE]')) || 'Do you really want to delete selected record?';
         if (globalScope?.confirm?.(MSG_CONFIRM_DELETE)) {
-            Energine.request(this.singlePath + this.selected + '/delete/', null, this._reload.bind(this));
+            request(this.singlePath + this.selected + '/delete/', null, this._reload.bind(this));
         }
     }
 
     up() {
-        Energine.request(this.singlePath + this.selected + '/up/', null, this._aftermove.bind(this, 'up'));
+        request(this.singlePath + this.selected + '/up/', null, this._aftermove.bind(this, 'up'));
     }
 
     down() {
-        Energine.request(this.singlePath + this.selected + '/down/', null, this._aftermove.bind(this, 'down'));
+        request(this.singlePath + this.selected + '/down/', null, this._aftermove.bind(this, 'down'));
     }
 
     _aftermove(direction) {

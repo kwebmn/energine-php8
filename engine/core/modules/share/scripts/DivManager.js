@@ -1,7 +1,9 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine from './Energine.js';
 import TabPane from './TabPane.js';
 import './Toolbar.js';
 import './ModalBox.js';
+import { request } from './energine-network.js';
+import { showLoader, hideLoader } from './energine-ui.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -136,7 +138,7 @@ class DivManager {
 
     loadTree() {
         showLoader(this.treeContainer);
-        Energine.request(
+        request(
             this.singlePath + this.site + '/get-data/',
             'languageID=' + this.langId,
             response => {
@@ -234,7 +236,7 @@ class DivManager {
         if (!window.confirm(MSG_CONFIRM_DELETE)) return;
         const node = this.getSelectedNode();
         const nodeId = node?.id;
-        Energine.request(
+        request(
             this.singlePath + nodeId + '/delete',
             '',
             response => {
@@ -259,7 +261,7 @@ class DivManager {
         if (!node) return;
         const nodeId = node.id;
 
-        Energine.request(
+        request(
             this.singlePath + nodeId + '/up',
             '',
             (response) => {
@@ -274,7 +276,7 @@ class DivManager {
         if (!node) return;
         const nodeId = node.id;
 
-        Energine.request(
+        request(
             this.singlePath + nodeId + '/down',
             '',
             (response) => {
@@ -341,7 +343,7 @@ class DivManager {
     refreshNode() {
         const node = this.getSelectedNode();
         const nodeId = node?.id;
-        Energine.request(
+        request(
             this.singlePath + 'get-node-data',
             `languageID=${this.langId}&id=${nodeId}`,
             response => {

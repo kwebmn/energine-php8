@@ -1,6 +1,8 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
+import { request } from './energine-network.js';
+import { showLoader, hideLoader } from './energine-ui.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -41,10 +43,10 @@ class TagEditor extends GridManager {
      * Overridden parent close action.
      */
     close() {
-        // Use global loader and Energine.request; close modal even on error
+        // Use global loader and request helper; close modal even on error
         showLoader();
 
-        Energine.request(
+        request(
             `${this.singlePath}tags/get-tags/`,
             {
                 json: 1,

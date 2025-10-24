@@ -1,4 +1,6 @@
-import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn } from './Energine.js';
+import EnergineModule from './Energine.js';
+import { showLoader as showLoaderFn, hideLoader as hideLoaderFn } from './energine-ui.js';
+import { request } from './energine-network.js';
 import TabPaneModule from './TabPane.js';
 import ToolbarModule from './Toolbar.js';
 import ModalBoxModule from './ModalBox.js';
@@ -1815,7 +1817,7 @@ class GridManager {
         }
 
         setTimeout(() => {
-            Energine.request(
+            request(
                 this.buildRequestURL(pageNum),
                 this.buildRequestPostBody(),
                 this.processServerResponse.bind(this),
@@ -1970,7 +1972,7 @@ class GridManager {
     moveTo(dir, fromId, toId) {
         toId = toId || '';
         showLoader();
-        Energine.request(
+        request(
             `${this.singlePath}move/${fromId}/${dir}/${toId}/`,
             null,
             () => {
@@ -2007,7 +2009,7 @@ class GridManager {
             'Do you really want to delete the chosen record?';
         if (confirm(MSG_CONFIRM_DELETE)) {
             showLoader();
-            Energine.request(
+            request(
                 `${this.singlePath}${this.grid.getSelectedRecordKey()}/delete/`,
                 null,
                 () => {
@@ -2033,7 +2035,7 @@ class GridManager {
     }
     up() {
         const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
-        Energine.request(
+        request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/up/`,
             payload || undefined,
             this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)
@@ -2041,7 +2043,7 @@ class GridManager {
     }
     down() {
         const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
-        Energine.request(
+        request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/down/`,
             payload || undefined,
             this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)

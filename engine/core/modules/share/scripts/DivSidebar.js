@@ -1,4 +1,5 @@
-import Energine, { showLoader } from './Energine.js';
+import Energine from './Energine.js';
+import { showLoader } from './energine-ui.js';
 import DivManager from './DivManager.js';
 import './ModalBox.js';
 

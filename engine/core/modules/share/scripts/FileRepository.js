@@ -1,4 +1,5 @@
 import Energine from './Energine.js';
+import { request } from './energine-network.js';
 import GridManager, { Grid } from './GridManager.js';
 import Cookie from './Cookie.js';
 import ModalBox from './ModalBox.js';
@@ -275,7 +276,7 @@ class FileRepository extends GridManager {
                 const targetPID = this.resolveTargetPID({ preferSelectedFolder: true });
                 this.xhrFileUpload('uploader', files, (uploadResult) => {
                     if (!uploadResult.error) {
-                        Energine.request(
+                        request(
                             this.singlePath + 'save',
                             {
                                 'componentAction': 'add',
@@ -475,7 +476,7 @@ class FileRepository extends GridManager {
 
     uploadZip(data) {
         const targetPID = this.resolveTargetPID();
-        Energine.request(
+        request(
             `${this.singlePath}upload-zip`,
             `PID=${targetPID}&data=${encodeURIComponent(data.result)}`,
             response => { console.log(response); }

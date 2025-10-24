@@ -1,4 +1,5 @@
 import Energine from '../../share/scripts/Energine.js';
+import { noticeBox, alertBox } from '../../share/scripts/energine-ui.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -76,8 +77,8 @@ class RecoverPassword {
             const redirect = () => {
                 globalScope.location.href = `/${Energine.lang}/login/`;
             };
-            if (typeof Energine.noticeBox === 'function') {
-                Energine.noticeBox(result.message, 'success', redirect);
+            if (typeof noticeBox === 'function') {
+                noticeBox(result.message, 'success', redirect);
             } else {
                 alert(result.message);
                 redirect();
@@ -85,8 +86,8 @@ class RecoverPassword {
             return;
         }
 
-        if (typeof Energine.alertBox === 'function') {
-            Energine.alertBox(result.message);
+        if (typeof alertBox === 'function') {
+            alertBox(result.message);
         } else {
             alert(result.message);
         }

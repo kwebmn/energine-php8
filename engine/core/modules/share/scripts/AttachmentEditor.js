@@ -1,6 +1,7 @@
 import Energine from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
+import { request } from './energine-network.js';
 import {
     bindDragAndDrop,
     createUploadUid,
@@ -42,7 +43,7 @@ class AttachmentEditor extends GridManager {
                     files,
                     (uploadResult) => {
                         if (!uploadResult.error) {
-                            Energine.request(
+                            request(
                                 `${this.singlePath}file-library/save/`,
                                 {
                                     'componentAction': 'add',
@@ -170,7 +171,7 @@ class AttachmentEditor extends GridManager {
             }
         };
 
-        Energine.request(
+        request(
             `${this.singlePath}savequickupload/`,
             {
                 json: 1,
