@@ -6,11 +6,13 @@ import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
 import loadCKEditor from './ckeditor/loader.js';
+import ValidFormModule from './ValidForm.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const ValidForm = ValidFormModule || globalScope?.ValidForm;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
