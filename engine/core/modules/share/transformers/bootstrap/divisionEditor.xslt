@@ -25,7 +25,7 @@
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+        <div data-role="pane" class="card">
             <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
                 <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
             </xsl:if>
@@ -48,7 +48,7 @@
             <div class="card-body" data-pane-part="body">
                 <div class="tab-content" data-role="tab-content">
                     <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item">
-                        <div id="treeContainer" data-role="tree-panel">
+                        <div data-role="tree-panel">
                             <xsl:apply-templates select="$COMPONENTS[@class='SiteList']" mode="insideEditor"/>
                         </div>
                     </div>
@@ -73,7 +73,7 @@
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3 p-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+        <div class="division-editor d-flex flex-column flex-xl-row gap-3 p-3">
             <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
                 <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
             </xsl:if>
@@ -82,7 +82,7 @@
             <xsl:attribute name="data-e-lang-id"><xsl:value-of select="$LANG_ID"/></xsl:attribute>
             <xsl:attribute name="data-e-site"><xsl:value-of select="../@site"/></xsl:attribute>
             <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
-            <aside id="treeContainer" data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
+            <aside data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
             <main data-role="editor-content" class="division-editor__content flex-grow-1"></main>
         </div>
     </xsl:template>

@@ -1432,7 +1432,6 @@ class GridManager {
         const dataset = this.element?.dataset || {};
         this.singlePath = dataset.eSingleTemplate
             || this.element.getAttribute('data-e-single-template')
-            || this.element.getAttribute('single_template')
             || '';
     }
 
@@ -2058,7 +2057,6 @@ class GridManager {
         const dataset = this.element?.dataset || {};
         const base = dataset.eSingleTemplate
             || this.element.getAttribute('data-e-single-template')
-            || this.element.getAttribute('single_template')
             || this.singlePath;
         window.open(`${base}print/`);
     }
@@ -2066,7 +2064,6 @@ class GridManager {
         const dataset = this.element?.dataset || {};
         const base = dataset.eSingleTemplate
             || this.element.getAttribute('data-e-single-template')
-            || this.element.getAttribute('single_template')
             || this.singlePath;
         window.location.href = `${base}csv/`;
     }

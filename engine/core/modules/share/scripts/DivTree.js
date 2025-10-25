@@ -14,14 +14,11 @@ class DivTree extends DivManager {
 
         const dataset = this.element?.dataset || {};
         this.langId = dataset.eLangId
-            || this.element.getAttribute('data-e-lang-id')
-            || this.element.getAttribute('lang_id');
+            || this.element.getAttribute('data-e-lang-id');
         this.singlePath = dataset.eSingleTemplate
-            || this.element.getAttribute('data-e-single-template')
-            || this.element.getAttribute('single_template');
+            || this.element.getAttribute('data-e-single-template');
         this.site = dataset.eSite
-            || this.element.getAttribute('data-e-site')
-            || this.element.getAttribute('site');
+            || this.element.getAttribute('data-e-site');
 
         this.currentID = 0;
 

@@ -17,7 +17,7 @@
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" tag_id="{../@tag_id}">
+        <div data-role="pane" class="card">
             <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
                 <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
             </xsl:if>

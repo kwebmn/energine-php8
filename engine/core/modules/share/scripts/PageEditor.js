@@ -96,8 +96,7 @@ class PageEditor {
             area.setAttribute('contenteditable', true);
             this.isActive = false;
             this.singlePath = dataset.eSingleTemplate
-                || area.getAttribute('data-e-single-template')
-                || area.getAttribute('single_template');
+                || area.getAttribute('data-e-single-template');
             this.ID = area.getAttribute('eID') || '';
             this.num = area.getAttribute('num') || '';
             if (!area.id) {
@@ -193,8 +192,7 @@ class BlockEditor {
          */
         const dataset = this.area.dataset || {};
         this.singlePath = dataset.eSingleTemplate
-            || this.area.getAttribute('data-e-single-template')
-            || this.area.getAttribute('single_template');
+            || this.area.getAttribute('data-e-single-template');
 
         /**
          * Block editor ID.
@@ -234,8 +232,7 @@ class BlockEditor {
 
                 if (this.editor) {
                     this.editor.singleTemplate = dataset.eSingleTemplate
-                        || this.area.getAttribute('data-e-single-template')
-                        || this.area.getAttribute('single_template');
+                        || this.area.getAttribute('data-e-single-template');
                     this.editor.editorId = this.area.id;
                     applyEditorOutline(this.area, this.editor);
                 } else {

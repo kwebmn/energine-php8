@@ -20,17 +20,7 @@
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <div
-                id="{generate-id(.)}"
-                single-template="{../@single_template}"
-                txt_add="{//translation[@const='BTN_ADD']}"
-                txt_edit="{//translation[@const='BTN_EDIT']}"
-                txt_delete="{//translation[@const='BTN_DELETE']}"
-                txt_confirm="{//translation[@const='MSG_CONFIRM_DELETE']}"
-                txt_refresh="{//translation[@const='BTN_REFRESH']}"
-                txt_up="{//translation[@const='BTN_UP']}"
-                txt_down="{//translation[@const='BTN_DOWN']}"
-        >
+        <div>
             <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
                 <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
             </xsl:if>
@@ -42,7 +32,7 @@
             <xsl:attribute name="data-e-txt-refresh"><xsl:value-of select="//translation[@const='BTN_REFRESH']"/></xsl:attribute>
             <xsl:attribute name="data-e-txt-up"><xsl:value-of select="//translation[@const='BTN_UP']"/></xsl:attribute>
             <xsl:attribute name="data-e-txt-down"><xsl:value-of select="//translation[@const='BTN_DOWN']"/></xsl:attribute>
-            <div id="filter-tree" style="font-size: 1em;padding:1em;">
+            <div data-role="filter-tree" style="font-size: 1em;padding:1em;">
 
             </div>
         </div>

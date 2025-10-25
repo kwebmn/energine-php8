@@ -45,12 +45,12 @@ class PageToolbar extends Toolbar {
 
         if (config.mode === 'declarative') {
             if (this.element?.dataset) {
-                this.element.dataset.toolbarHydrated = '1';
+                this.element.dataset.eToolbarHydrated = '1';
             }
             const componentRef = config.componentRef
-                || this.element?.dataset?.toolbarComponent
+                || this.element?.dataset?.eToolbarComponent
                 || this.element?.dataset?.componentRef
-                || this._layoutConfig?.dataset?.toolbarComponent
+                || this._layoutConfig?.dataset?.eToolbarComponent
                 || null;
             Toolbar.registerToolbarInstance(this, componentRef);
         }
@@ -197,7 +197,7 @@ class PageToolbar extends Toolbar {
         const sidebarEnvironmentTarget = root.querySelector('[data-role="sidebar-environment"]');
         if (sidebarEnvironmentTarget && !sidebarEnvironmentTarget.childElementCount) {
             const environmentOverride = PageToolbar._resolveDatasetValue(
-                ['environmentLabel', 'environment', 'environmentName'],
+                ['eEnvironmentLabel', 'eEnvironment', 'environmentLabel', 'environment', 'environmentName'],
                 this._layoutConfig,
                 dataset,
                 rootDataset,
@@ -215,13 +215,13 @@ class PageToolbar extends Toolbar {
         }
 
         const offcanvasSelectorValue = PageToolbar._resolveDatasetValue(
-            ['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'],
+            ['eOffcanvasTarget', 'eSidebarTarget', 'offcanvasTarget', 'sidebarTarget', 'sidebarSelector'],
             this._layoutConfig,
             dataset,
             rootDataset
         );
         const offcanvasIdValue = PageToolbar._resolveDatasetValue(
-            ['sidebarId', 'offcanvasId'],
+            ['eSidebarId', 'eOffcanvasId', 'sidebarId', 'offcanvasId'],
             this._layoutConfig,
             dataset,
             rootDataset
@@ -277,7 +277,7 @@ class PageToolbar extends Toolbar {
         };
 
         const rawInitialState = PageToolbar._resolveDatasetValue(
-            ['sidebarExpanded', 'sidebarState', 'sidebarVisible', 'sidebar'],
+            ['eSidebarExpanded', 'eSidebarState', 'sidebarExpanded', 'sidebarState', 'sidebarVisible', 'sidebar'],
             this._layoutConfig,
             dataset,
             rootDataset
@@ -370,14 +370,14 @@ class PageToolbar extends Toolbar {
         const normalizedDock = (typeof dockRaw === 'string' ? dockRaw : '').trim().toLowerCase();
         const dockingMode = normalizedDock || 'sticky';
 
-        const originalRootDock = root.dataset ? root.dataset.toolbarDock : undefined;
-        const originalTopDock = topFrame.dataset ? topFrame.dataset.toolbarDock : undefined;
+        const originalRootDock = root.dataset ? root.dataset.eToolbarDock : undefined;
+        const originalTopDock = topFrame.dataset ? topFrame.dataset.eToolbarDock : undefined;
 
         if (root.dataset) {
-            root.dataset.toolbarDock = dockingMode;
+            root.dataset.eToolbarDock = dockingMode;
         }
         if (topFrame.dataset) {
-            topFrame.dataset.toolbarDock = dockingMode;
+            topFrame.dataset.eToolbarDock = dockingMode;
         }
 
         const topFrameAddedClasses = [];
@@ -548,16 +548,16 @@ class PageToolbar extends Toolbar {
             }
             if (root.dataset) {
                 if (typeof originalRootDock === 'string') {
-                    root.dataset.toolbarDock = originalRootDock;
+                    root.dataset.eToolbarDock = originalRootDock;
                 } else {
-                    delete root.dataset.toolbarDock;
+                    delete root.dataset.eToolbarDock;
                 }
             }
             if (topFrame.dataset) {
                 if (typeof originalTopDock === 'string') {
-                    topFrame.dataset.toolbarDock = originalTopDock;
+                    topFrame.dataset.eToolbarDock = originalTopDock;
                 } else {
-                    delete topFrame.dataset.toolbarDock;
+                    delete topFrame.dataset.eToolbarDock;
                 }
             }
         });
@@ -683,7 +683,7 @@ class PageToolbar extends Toolbar {
 
         const environmentLabel = PageToolbar._extractEnvironmentLabel();
 
-        const toolbarIdBase = this.element.dataset.toolbar || this.name || 'toolbar';
+        const toolbarIdBase = this.element.dataset.eToolbar || this.name || 'toolbar';
 
         const actionsColumn = document.createElement('div');
         actionsColumn.classList.add('d-flex', 'flex-column', 'gap-2', 'flex-grow-1', 'min-w-0');
@@ -1160,13 +1160,13 @@ class PageToolbar extends Toolbar {
             const properties = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
 
             const componentPath = PageToolbar._resolveDatasetValue(
-                ['eComponentPath', 'eComponent', 'eComponentUrl', 'eComponentBase', 'componentPath', 'component', 'componentUrl', 'componentBase', 'toolbarComponentPath', 'sidebarUrl', 'sidebarSource', 'eSidebarUrl'],
+                ['eComponentPath', 'eComponent', 'eComponentUrl', 'eComponentBase'],
                 options,
                 dataset,
                 rootDataset
             ) || '';
             const documentId = PageToolbar._resolveDatasetValue(
-                ['eDocumentId', 'eDocId', 'documentId', 'docId', 'doc', 'document', 'recordId', 'smapId', 'id'],
+                ['eDocumentId', 'eDocId'],
                 options,
                 dataset,
                 rootDataset
@@ -1174,28 +1174,21 @@ class PageToolbar extends Toolbar {
             const toolbarName = options.toolbarName
                 || dataset.eToolbarName
                 || dataset.ePageToolbar
-                || dataset.toolbar
-                || dataset.pageToolbar
                 || rootDataset.eToolbarName
                 || rootDataset.ePageToolbar
-                || rootDataset.toolbar
-                || rootDataset.pageToolbar
                 || '';
             const componentRef = options.componentRef
                 || dataset.eToolbarComponent
-                || dataset.toolbarComponent
-                || dataset.componentRef
                 || rootDataset.eToolbarComponent
-                || rootDataset.toolbarComponent
                 || null;
             const descriptors = PageToolbar._extractDescriptorsFromElement(element);
             const layout = {
                 root: root || null,
                 dataset,
                 rootDataset,
-                sidebarTarget: PageToolbar._resolveDatasetValue(['eOffcanvasTarget', 'eSidebarTarget', 'offcanvasTarget', 'sidebarTarget', 'sidebarSelector'], options, dataset, rootDataset),
-                sidebarId: PageToolbar._resolveDatasetValue(['eSidebarId', 'eOffcanvasId', 'sidebarId', 'offcanvasId'], options, dataset, rootDataset),
-                sidebarUrl: PageToolbar._resolveDatasetValue(['eSidebarUrl', 'sidebarUrl', 'sidebarSrc', 'offcanvasUrl'], options, dataset, rootDataset),
+                sidebarTarget: PageToolbar._resolveDatasetValue(['eOffcanvasTarget', 'eSidebarTarget'], options, dataset, rootDataset),
+                sidebarId: PageToolbar._resolveDatasetValue(['eSidebarId', 'eOffcanvasId'], options, dataset, rootDataset),
+                sidebarUrl: PageToolbar._resolveDatasetValue(['eSidebarUrl'], options, dataset, rootDataset),
             };
 
             return {
@@ -1270,10 +1263,12 @@ class PageToolbar extends Toolbar {
         if (!(element instanceof HTMLElement)) {
             return null;
         }
-        if (element.dataset?.pageToolbar || element.dataset?.pageToolbarRoot || element.dataset?.toolbarScope === 'page') {
+        if (element.dataset?.eToolbarName
+            || element.dataset?.eToolbarScope === 'page'
+            || element.matches?.('[data-role="page-toolbar-root"]')) {
             return element;
         }
-        return element.closest('[data-page-toolbar],[data-page-toolbar-root],[data-toolbar-root]')
+        return element.closest('[data-e-toolbar-name],[data-e-toolbar-scope="page"],[data-role="page-toolbar-root"]')
             || element.closest('.e-topframe')
             || null;
     }

@@ -1073,9 +1073,7 @@ const attachToolbarBinding = (element, instance) => {
 
     const dataset = element.dataset || {};
     const componentRef = dataset.eToolbarComponent
-        || dataset.toolbarComponent
-        || element.getAttribute('data-e-toolbar-component')
-        || element.getAttribute('data-toolbar-component');
+        || element.getAttribute('data-e-toolbar-component');
 
     if (!componentRef) {
         return;
@@ -1233,18 +1231,18 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
         return null;
     }
 
-    const root = document.querySelector(rootSelector || `[data-page-toolbar="${name}"]`);
+    const root = document.querySelector(rootSelector || `[data-e-toolbar-name="${name}"]`);
     if (!root) {
         return null;
     }
 
-    const toolbarElement = root.querySelector(toolbarSelector || '[data-toolbar], [data-e-toolbar]');
+    const toolbarElement = root.querySelector(toolbarSelector || '[data-e-toolbar]');
     if (!toolbarElement) {
         return null;
     }
 
-    if (toolbarElement.dataset && !toolbarElement.dataset.toolbarHydrated) {
-        toolbarElement.dataset.toolbarHydrated = 'pending';
+    if (toolbarElement.dataset && !toolbarElement.dataset.eToolbarHydrated) {
+        toolbarElement.dataset.eToolbarHydrated = 'pending';
     }
 
     const instance = instantiateBehaviorForElement(toolbarElement, behavior, { silentOnMissing: true });

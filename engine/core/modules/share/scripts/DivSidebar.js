@@ -32,12 +32,10 @@ class DivSidebar extends DivManager {
         this.tabPane = new TabPane(this.element);
         const dataset = this.element.dataset || {};
         this.langId = dataset.eLangId
-            || this.element.getAttribute('data-e-lang-id')
-            || this.element.getAttribute('lang_id');
+            || this.element.getAttribute('data-e-lang-id');
 
         // --- Создание структуры дерева (div для jsTree) ---
         this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
-            || this.element.querySelector('#treeContainer')
             || this.element;
         let divTree = this.treeContainer.querySelector('#divTree');
         if (!divTree) {
@@ -47,11 +45,9 @@ class DivSidebar extends DivManager {
         }
 
         this.singlePath = dataset.eSingleTemplate
-            || this.element.getAttribute('data-e-single-template')
-            || this.element.getAttribute('single_template');
+            || this.element.getAttribute('data-e-single-template');
         this.site = dataset.eSite
-            || this.element.getAttribute('data-e-site')
-            || this.element.getAttribute('site');
+            || this.element.getAttribute('data-e-site');
 
 
         // Energine.translations['BTN_ADD'] = 'test';

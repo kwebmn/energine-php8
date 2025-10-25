@@ -32,7 +32,7 @@
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}"  single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <div data-role="pane" class="card">
             <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
                 <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
             </xsl:if>
@@ -75,11 +75,10 @@
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
         <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar">
             <xsl:if test="@name">
-                <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:attribute name="data-e-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
             </xsl:if>
-            <xsl:attribute name="data-toolbar-scope">image-manager</xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-scope">image-manager</xsl:attribute>
             <xsl:if test="ancestor::component[1]/recordset">
-                <xsl:attribute name="data-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
                 <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
             </xsl:if>
             <xsl:apply-templates/>

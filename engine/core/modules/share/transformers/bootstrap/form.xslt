@@ -69,7 +69,7 @@
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        <div id="{generate-id(.)}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" template="{$BASE}{$LANG_ABBR}{../@template}">
+        <div>
             <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
                 <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
             </xsl:if>
@@ -148,9 +148,7 @@
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
-    <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100"
-         template="{$BASE}{$LANG_ABBR}{../@template}"
-         single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+    <div data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100">
         <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
             <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
         </xsl:if>

@@ -333,8 +333,7 @@ class Form {
 
         const dataset = this.componentElement.dataset || {};
         this.singlePath = dataset.eSingleTemplate
-            || this.componentElement.getAttribute('data-e-single-template')
-            || this.componentElement.getAttribute('single_template');
+            || this.componentElement.getAttribute('data-e-single-template');
 
         // Внешний элемент формы
         this.form = this.componentElement.closest('form');
@@ -1842,9 +1841,7 @@ class FormSmapSelector {
         // Предполагаем, что у componentElement есть атрибут 'template' (или data-template)
         const dataset = this.form.componentElement.dataset || {};
         const template = dataset.eTemplate
-            || this.form.componentElement.getAttribute('data-e-template')
-            || this.form.componentElement.getAttribute('template')
-            || dataset.template;
+            || this.form.componentElement.getAttribute('data-e-template');
         ModalBox.open({
             url: template + 'selector/',
             onClose: this.setName.bind(this)
@@ -1910,9 +1907,7 @@ class FormAttachmentSelector {
         // Получаем шаблон из атрибута или data-атрибута
         const dataset = this.form.componentElement.dataset || {};
         const template = dataset.eTemplate
-            || this.form.componentElement.getAttribute('data-e-template')
-            || this.form.componentElement.getAttribute('template')
-            || dataset.template;
+            || this.form.componentElement.getAttribute('data-e-template');
 
         ModalBox.open({
             url: template + 'file-library/',

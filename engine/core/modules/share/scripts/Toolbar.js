@@ -314,12 +314,12 @@ class Toolbar {
             return null;
         }
 
-        if (element.dataset && element.dataset.toolbarHydrated) {
+        if (element.dataset && element.dataset.eToolbarHydrated) {
             return (Toolbar.registry && Toolbar.registry.get(element)) || null;
         }
 
         const dataset = element.dataset || {};
-        const toolbarName = dataset.toolbar || options.name || '';
+        const toolbarName = dataset.eToolbar || options.name || '';
         const props = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
         const childElements = Array.from(element.children || []).filter(child => child instanceof HTMLElement);
         const descriptors = childElements.map(child => Toolbar.extractControlDescriptor(child)).filter(Boolean);
@@ -329,7 +329,7 @@ class Toolbar {
         const toolbar = new Toolbar(element, props);
         if (toolbarName) {
             toolbar.name = toolbarName;
-            toolbar.element.dataset.toolbar = toolbarName;
+            toolbar.element.dataset.eToolbar = toolbarName;
             toolbar.element.classList.add(toolbarName);
         }
 
@@ -341,10 +341,10 @@ class Toolbar {
         });
 
         if (toolbar.element?.dataset) {
-            toolbar.element.dataset.toolbarHydrated = '1';
+            toolbar.element.dataset.eToolbarHydrated = '1';
         }
 
-        const componentRef = dataset.toolbarComponent || dataset.componentRef || null;
+        const componentRef = dataset.eToolbarComponent || dataset.componentRef || null;
         Toolbar.registerToolbarInstance(toolbar, componentRef);
 
         return toolbar;
@@ -355,7 +355,7 @@ class Toolbar {
             return [];
         }
         const toolbars = [];
-        root.querySelectorAll('[data-toolbar]').forEach(element => {
+        root.querySelectorAll('[data-e-toolbar]').forEach(element => {
             const toolbar = Toolbar.hydrate(element);
             if (toolbar) {
                 toolbars.push(toolbar);

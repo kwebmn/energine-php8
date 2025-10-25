@@ -24,8 +24,7 @@ class ValidForm {
             if (this.form) {
                 // Сохраняем путь (если есть)
                 this.singlePath = dataset.eSingleTemplate
-                    || this.componentElement.getAttribute('data-e-single-template')
-                    || this.componentElement.getAttribute('single_template');
+                    || this.componentElement.getAttribute('data-e-single-template');
                 this.form.classList.add('form');
                 // Навешиваем валидацию на submit
                 this.form.addEventListener('submit', this.validateForm.bind(this));

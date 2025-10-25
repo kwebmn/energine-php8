@@ -66,7 +66,6 @@ class DivManager {
 
         // --- Создание структуры дерева (div для jsTree) ---
         this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
-            || this.element.querySelector('#treeContainer')
             || this.element;
         let divTree = this.treeContainer.querySelector('#divTree');
         if (!divTree) {
@@ -89,11 +88,9 @@ class DivManager {
         this.treeContainer.classList.toggle('mb-lg-0', !isSingleMode);
 
         this.singlePath = dataset.eSingleTemplate
-            || this.element.getAttribute('data-e-single-template')
-            || this.element.getAttribute('single_template');
+            || this.element.getAttribute('data-e-single-template');
         this.site = dataset.eSite
-            || this.element.getAttribute('data-e-site')
-            || this.element.getAttribute('site');
+            || this.element.getAttribute('data-e-site');
 
         // --- Инициализация jsTree (без данных) ---
         this.jstree = $(divTree);
