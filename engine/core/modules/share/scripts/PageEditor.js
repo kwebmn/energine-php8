@@ -103,10 +103,20 @@ class PageEditor {
             if (!area.id) {
                 area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
             }
-            this.editor = CKEDITOR.inline(area.id);
-            this.editor.singleTemplate = this.singlePath;
-            this.editor.editorId = area.id;
-            applyEditorOutline(this.area, this.editor);
+
+            const existingEditor = (CKEDITOR.instances && CKEDITOR.instances[area.id])
+                ? CKEDITOR.instances[area.id]
+                : null;
+
+            this.editor = existingEditor || CKEDITOR.inline(area.id);
+
+            if (this.editor) {
+                this.editor.singleTemplate = this.singlePath;
+                this.editor.editorId = area.id;
+                applyEditorOutline(this.area, this.editor);
+            } else {
+                console.warn('[PageEditor.BlockEditor] Failed to acquire CKEditor instance for element', area);
+            }
             //this.overlay = new Overlay();
             // Если нужны события blur/focus, можно раскомментировать:
             /*
@@ -215,13 +225,22 @@ class BlockEditor {
                     this.area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
                 }
 
-                this.editor = CKEDITOR.inline(this.area.id);
+                const existingEditor = (CKEDITOR.instances && CKEDITOR.instances[this.area.id])
+                    ? CKEDITOR.instances[this.area.id]
+                    : null;
+
+                this.editor = existingEditor || CKEDITOR.inline(this.area.id);
                 const dataset = this.area.dataset || {};
-                this.editor.singleTemplate = dataset.eSingleTemplate
-                    || this.area.getAttribute('data-e-single-template')
-                    || this.area.getAttribute('single_template');
-                this.editor.editorId = this.area.id;
-                applyEditorOutline(this.area, this.editor);
+
+                if (this.editor) {
+                    this.editor.singleTemplate = dataset.eSingleTemplate
+                        || this.area.getAttribute('data-e-single-template')
+                        || this.area.getAttribute('single_template');
+                    this.editor.editorId = this.area.id;
+                    applyEditorOutline(this.area, this.editor);
+                } else {
+                    console.warn('[BlockEditor] Failed to acquire CKEditor instance for element', this.area);
+                }
 
                 return this.editor;
             })
