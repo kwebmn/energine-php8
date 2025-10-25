@@ -192,55 +192,6 @@
                     <xsl:otherwise>false</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
-            <xsl:if test="count($COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']) &gt; 0">
-                <xsl:attribute name="data-components">
-                    <xsl:text>[</xsl:text>
-                    <xsl:for-each select="$COMPONENTS[@componentAction!='showPageToolbar']/javascript/behavior[@name!='PageEditor']">
-                        <xsl:variable name="OBJECT_ID" select="generate-id(../../recordset[not(@name)])"/>
-                        <xsl:if test="position() &gt; 1">
-                            <xsl:text>,</xsl:text>
-                        </xsl:if>
-                        <xsl:text>{&quot;id&quot;:&quot;</xsl:text>
-                        <xsl:value-of select="$OBJECT_ID"/>
-                        <xsl:text>&quot;,&quot;behavior&quot;:&quot;</xsl:text>
-                        <xsl:value-of select="@name"/>
-                        <xsl:text>&quot;}</xsl:text>
-                    </xsl:for-each>
-                    <xsl:text>]</xsl:text>
-                </xsl:attribute>
-            </xsl:if>
-            <xsl:if test="$COMPONENTS[@componentAction='showPageToolbar']">
-                <xsl:variable name="PAGE_TOOLBAR" select="$COMPONENTS[@componentAction='showPageToolbar'][1]"/>
-                <xsl:variable name="PAGE_TOOLBAR_NAME">
-                    <xsl:choose>
-                        <xsl:when test="string-length(normalize-space($PAGE_TOOLBAR/toolbar/@name)) &gt; 0">
-                            <xsl:value-of select="$PAGE_TOOLBAR/toolbar/@name"/>
-                        </xsl:when>
-                        <xsl:otherwise>main_toolbar</xsl:otherwise>
-                    </xsl:choose>
-                </xsl:variable>
-                <xsl:if test="string-length(normalize-space($PAGE_TOOLBAR_NAME)) &gt; 0">
-                    <xsl:attribute name="data-page-toolbar-name">
-                        <xsl:value-of select="$PAGE_TOOLBAR_NAME"/>
-                    </xsl:attribute>
-                </xsl:if>
-                <xsl:if test="string-length(normalize-space($PAGE_TOOLBAR/javascript/behavior/@name)) &gt; 0">
-                    <xsl:attribute name="data-page-toolbar-behavior">
-                        <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>
-                    </xsl:attribute>
-                </xsl:if>
-            </xsl:if>
-            <xsl:if test="$COMPONENTS/javascript/behavior[@name='PageEditor']">
-                <xsl:variable name="PAGE_EDITOR_COMPONENT" select="$COMPONENTS[javascript/behavior[@name='PageEditor']][1]"/>
-                <xsl:variable name="PAGE_EDITOR_ID" select="generate-id($PAGE_EDITOR_COMPONENT/recordset)"/>
-                <xsl:attribute name="data-page-editor-config">
-                    <xsl:text>{&quot;id&quot;:&quot;</xsl:text>
-                    <xsl:value-of select="$PAGE_EDITOR_ID"/>
-                    <xsl:text>&quot;,&quot;behavior&quot;:&quot;</xsl:text>
-                    <xsl:value-of select="$PAGE_EDITOR_COMPONENT/javascript/behavior[@name='PageEditor']/@name"/>
-                    <xsl:text>&quot;}</xsl:text>
-                </xsl:attribute>
-            </xsl:if>
         </script>
         <xsl:if test="/document/@debug != '0'">
             <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">

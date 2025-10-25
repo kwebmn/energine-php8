@@ -36,6 +36,8 @@ const noticeIconMap = {
     question: { variant: 'primary', icon: 'fa-circle-question' },
 };
 
+const behaviorRegistry = new Map();
+
 class EnergineCore {
     constructor(scope) {
         this.globalScope = scope;
@@ -720,6 +722,14 @@ class EnergineCore {
         this.addTask(task, priority);
     }
 
+    scanComponents(root = (typeof document !== 'undefined' ? document : null)) {
+        return scanForComponents(root);
+    }
+
+    registerBehavior(name, ctor) {
+        return registerBehaviorClass(name, ctor);
+    }
+
     createConfigFromProps(props = {}) {
         const config = { ...props };
 
@@ -973,8 +983,53 @@ const scheduleRetry = (task, options = {}) => {
     return execute();
 };
 
+const scanForComponents = (root = (typeof document !== 'undefined' ? document : null)) => {
+    const resolvedRoot = root || (typeof document !== 'undefined' ? document : null);
+    if (!resolvedRoot) {
+        return [];
+    }
+
+    const instances = [];
+    const seen = new Set();
+
+    const enqueue = (element) => {
+        if (!(element instanceof HTMLElement)) {
+            return;
+        }
+        if (element.dataset?.eReady === '1' && element.__energineInstance) {
+            return;
+        }
+        if (seen.has(element)) {
+            return;
+        }
+        seen.add(element);
+        const instance = instantiateElementBehavior(element);
+        if (instance) {
+            instances.push(instance);
+        }
+    };
+
+    if (resolvedRoot instanceof HTMLElement) {
+        enqueue(resolvedRoot);
+    }
+
+    if (typeof resolvedRoot.querySelectorAll === 'function') {
+        resolvedRoot.querySelectorAll('[data-e-js]').forEach(enqueue);
+    }
+
+    return instances;
+};
+
 const getGlobalConstructor = (name) => {
-    if (!name || typeof name !== 'string' || !globalScope) {
+    if (!name || typeof name !== 'string') {
+        return null;
+    }
+
+    if (behaviorRegistry.has(name)) {
+        return behaviorRegistry.get(name);
+    }
+
+    if (!globalScope) {
         return null;
     }
 
@@ -982,41 +1037,61 @@ const getGlobalConstructor = (name) => {
     return typeof ctor === 'function' ? ctor : null;
 };
 
-const instantiateComponentBehavior = (descriptor = {}) => {
-    if (!descriptor || typeof descriptor !== 'object') {
+const registerBehaviorClass = (name, ctor) => {
+    if (!name || typeof name !== 'string' || typeof ctor !== 'function') {
         return null;
     }
 
-    const { id, behavior } = descriptor;
-    if (!id || !behavior || typeof document === 'undefined') {
+    behaviorRegistry.set(name, ctor);
+    return ctor;
+};
+
+const instantiateElementBehavior = (element) => {
+    if (!(element instanceof HTMLElement)) {
         return null;
     }
 
-    const element = document.getElementById(id);
-    if (!element) {
+    const dataset = element.dataset || {};
+    if (dataset.eReady === '1' && element.__energineInstance) {
+        return element.__energineInstance;
+    }
+
+    const behaviorName = dataset.eJs || dataset.behavior;
+    if (!behaviorName) {
         return null;
     }
 
-    const Constructor = getGlobalConstructor(behavior);
+    const Constructor = getGlobalConstructor(behaviorName);
     if (!Constructor) {
         return null;
     }
 
     try {
-        const instance = new Constructor(element);
-        if (globalScope) {
-            globalScope[id] = instance;
+        const instance = new Constructor(element, dataset);
+        element.__energineInstance = instance;
+        if (dataset) {
+            dataset.eReady = '1';
         }
-        if (typeof registerToolbarComponent === 'function') {
+
+        if (globalScope && dataset.eId) {
             try {
-                registerToolbarComponent(id, instance);
+                globalScope[dataset.eId] = instance;
             } catch (error) {
-                Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${id}"`);
+                console.warn(`[Energine.autoBootstrap] Failed to expose component "${dataset.eId}"`, error);
             }
         }
+
+        if (typeof registerToolbarComponent === 'function' && dataset.eId) {
+            try {
+                registerToolbarComponent(dataset.eId, instance);
+            } catch (error) {
+                Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${dataset.eId}"`);
+            }
+        }
+
         return instance;
     } catch (error) {
-        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behavior}"`);
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behaviorName}"`);
     }
 
     return null;
@@ -1082,30 +1157,6 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
     return null;
 };
 
-const instantiatePageEditorFromConfig = (config = {}) => {
-    if (!config || typeof config !== 'object') {
-        return null;
-    }
-
-    const { behavior, id } = config;
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
-        return null;
-    }
-
-    try {
-        const instance = new Constructor();
-        if (globalScope && id) {
-            globalScope[id] = instance;
-        }
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create PageEditor instance');
-    }
-
-    return null;
-};
-
 let autoBootstrapExecuted = false;
 
 const autoBootstrapRuntime = () => {
@@ -1138,58 +1189,16 @@ const autoBootstrapRuntime = () => {
 
     const attachedRuntime = Energine.attachToWindow(globalScope, runtime);
 
-    const componentDescriptors = parseJSONAttribute(dataset.components, []);
-    const pageToolbarName = readDatasetString(dataset.pageToolbarName);
-    const pageToolbarBehavior = readDatasetString(dataset.pageToolbarBehavior);
-    const pageToolbarRootSelector = readDatasetString(dataset.pageToolbarRootSelector);
-    const pageToolbarToolbarSelector = readDatasetString(dataset.pageToolbarToolbarSelector);
-    const pageToolbarConfig = (pageToolbarName && pageToolbarBehavior)
-        ? {
-            name: pageToolbarName,
-            behavior: pageToolbarBehavior,
-            ...(pageToolbarRootSelector ? { rootSelector: pageToolbarRootSelector } : {}),
-            ...(pageToolbarToolbarSelector ? { toolbarSelector: pageToolbarToolbarSelector } : {}),
-        }
-        : null;
-    const pageEditorConfig = parseJSONAttribute(dataset.pageEditorConfig, null);
-
-    if (Array.isArray(componentDescriptors) && globalScope) {
-        componentDescriptors.forEach((descriptor) => {
-            if (descriptor && typeof descriptor.id === 'string' && typeof globalScope[descriptor.id] === 'undefined') {
-                globalScope[descriptor.id] = null;
-            }
-        });
-    }
-
     const bootstrapDom = () => {
         applyTranslationsFromScripts(attachedRuntime);
 
-        if (pageToolbarConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => bootstrapPageToolbarFromConfig(pageToolbarConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
-
-        if (Array.isArray(componentDescriptors)) {
-            componentDescriptors.forEach((descriptor) => {
-                attachedRuntime.addTask(() => scheduleRetry(
-                    () => instantiateComponentBehavior(descriptor),
-                    {
-                        attempts: 20,
-                        delay: 120,
-                        onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
-                    },
-                ));
-            });
-        }
-
-        if (pageEditorConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => instantiatePageEditorFromConfig(pageEditorConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
+        attachedRuntime.addTask(() => {
+            try {
+                scanForComponents(document);
+            } catch (error) {
+                Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to scan components');
+            }
+        });
 
         attachedRuntime.addTask(() => {
             if (typeof initializeToolbars === 'function') {
@@ -1238,6 +1247,10 @@ export const createConfigFromScriptDataset = (overrides = {}) => Energine.create
 export const createConfigFromBridgePending = (overrides = {}) => Energine.createConfigFromBridgePending(overrides);
 
 export const safeConsoleError = (error, context = '') => Energine.safeConsoleError(error, context);
+
+export const scanComponents = (root = (typeof document !== 'undefined' ? document : null)) => scanForComponents(root);
+
+export const registerBehavior = (name, ClassRef) => registerBehaviorClass(name, ClassRef);
 
 export const showLoader = (container) => Energine.showLoader(container);
 

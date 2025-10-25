@@ -6,7 +6,19 @@
 
     <xsl:template match="recordset[parent::component[@class='TagEditor'][@type='list']]">
         <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" tag_id="{../@tag_id}">
+        <xsl:variable name="COMPONENT_UID" select="generate-id(.)"/>
+        <div data-role="pane" class="card">
+            <xsl:attribute name="data-e-id"><xsl:value-of select="$COMPONENT_UID"/></xsl:attribute>
+            <xsl:if test="../javascript/behavior/@name">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="../javascript/behavior/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template">
+                <xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-e-single-template">
+                <xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-e-tag-id"><xsl:value-of select="../@tag_id"/></xsl:attribute>
             <xsl:call-template name="BUILD_GRID"/>
             <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">

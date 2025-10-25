@@ -15,11 +15,12 @@ class TagEditor extends GridManager {
      */
     constructor(element) {
         super(element);
+        const dataset = this.element?.dataset || {};
         /**
          * Tag id.
          * @type {string}
          */
-        this.tag_id = this.element.getAttribute('tag_id');
+        this.tag_id = dataset.eTagId || this.element.getAttribute('tag_id');
     }
 
     /**

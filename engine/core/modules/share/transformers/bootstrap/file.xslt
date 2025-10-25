@@ -21,7 +21,18 @@
     
     <xsl:template match="recordset[parent::component[@class='ImageManager']]">
         <xsl:variable name="IDD"><xsl:value-of select="generate-id(record)"/></xsl:variable>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}"  single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <xsl:variable name="COMPONENT_UID" select="generate-id(.)"/>
+        <div data-role="pane" class="card">
+            <xsl:attribute name="data-e-id"><xsl:value-of select="$COMPONENT_UID"/></xsl:attribute>
+            <xsl:if test="../javascript/behavior/@name">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="../javascript/behavior/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template">
+                <xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-e-single-template">
+                <xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/>
+            </xsl:attribute>
             <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">

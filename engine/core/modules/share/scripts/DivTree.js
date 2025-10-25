@@ -11,9 +11,10 @@ class DivTree extends DivManager {
     constructor(el) {
         super(el); // Создаст дерево, this.tree, this.treeRoot и всё остальное
 
-        this.langId = this.element.getAttribute('lang_id');
-        this.singlePath = this.element.getAttribute('single_template');
-        this.site = this.element.getAttribute('site');
+        const dataset = this.element?.dataset || {};
+        this.langId = dataset.eLangId || this.element.getAttribute('lang_id');
+        this.singlePath = dataset.eSingleTemplate || this.element.getAttribute('single_template');
+        this.site = dataset.eSite || this.element.getAttribute('site');
 
         this.currentID = 0;
 

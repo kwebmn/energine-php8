@@ -19,7 +19,8 @@ class FiltersTreeEditor {
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
-        this.singlePath = this.componentElement.getAttribute('single-template');
+        const dataset = this.componentElement?.dataset || {};
+        this.singlePath = dataset.eSingleTemplate || this.componentElement.getAttribute('single-template');
         Energine.loadCSS('scripts/jstree/themes/default/style.css');
         this.initTree();
         this.initKeyboard();
@@ -94,7 +95,7 @@ class FiltersTreeEditor {
                 items: function (o, cb) {
                     return {
                         "create": {
-                            label: self.componentElement.getAttribute('txt_add'),
+                            label: dataset.eTxtAdd || self.componentElement.getAttribute('txt_add'),
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
@@ -111,7 +112,7 @@ class FiltersTreeEditor {
                             }
                         },
                         "edit": {
-                            label: self.componentElement.getAttribute('txt_edit'),
+                            label: dataset.eTxtEdit || self.componentElement.getAttribute('txt_edit'),
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
@@ -125,11 +126,11 @@ class FiltersTreeEditor {
                             }
                         },
                         "delete": {
-                            label: self.componentElement.getAttribute('txt_delete'),
+                            label: dataset.eTxtDelete || self.componentElement.getAttribute('txt_delete'),
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
-                                if (confirm(self.componentElement.getAttribute('txt_confirm'))) {
+                                if (confirm(dataset.eTxtConfirm || self.componentElement.getAttribute('txt_confirm'))) {
                                     $.get(
                                         `${self.singlePath}${obj.id}/delete/`,
                                         function() {
@@ -142,7 +143,7 @@ class FiltersTreeEditor {
                         },
                         "refresh": {
                             separator_before: true,
-                            label: self.componentElement.getAttribute('txt_refresh'),
+                            label: dataset.eTxtRefresh || self.componentElement.getAttribute('txt_refresh'),
                             action: function() {
                                 $('#filter-tree').jstree(true).load_node('#');
                                 $('#filter-tree').jstree("deselect_all");
@@ -150,7 +151,7 @@ class FiltersTreeEditor {
                         },
                         "up": {
                             separator_before: true,
-                            label: self.componentElement.getAttribute('txt_up'),
+                            label: dataset.eTxtUp || self.componentElement.getAttribute('txt_up'),
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
@@ -158,7 +159,7 @@ class FiltersTreeEditor {
                             }
                         },
                         "down": {
-                            label: self.componentElement.getAttribute('txt_down'),
+                            label: dataset.eTxtDown || self.componentElement.getAttribute('txt_down'),
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);

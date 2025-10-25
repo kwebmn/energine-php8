@@ -22,9 +22,10 @@ class AttachmentEditor extends GridManager {
     constructor(element) {
         super(element);
 
-        this.quick_upload_path = this.element.getAttribute('quick_upload_path');
-        this.quick_upload_pid = this.element.getAttribute('quick_upload_pid');
-        this.quick_upload_enabled = this.element.getAttribute('quick_upload_enabled');
+        const dataset = this.element?.dataset || {};
+        this.quick_upload_path = dataset.eQuickUploadPath || this.element.getAttribute('quick_upload_path');
+        this.quick_upload_pid = dataset.eQuickUploadPid || this.element.getAttribute('quick_upload_pid');
+        this.quick_upload_enabled = dataset.eQuickUploadEnabled || this.element.getAttribute('quick_upload_enabled');
 
         // Drag & Drop
         this.repository = this;
