@@ -1103,13 +1103,24 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null) => 
     return null;
 };
 
+const createScanResultContainer = () => {
+    const container = [];
+    container.metrics = { initialized: 0, failed: 0, skipped: 0 };
+    container.pending = 0;
+    container.failed = 0;
+    container.skipped = 0;
+    return container;
+};
+
 const scanForComponents = (root = (typeof document !== 'undefined' ? document : null)) => {
+    const emptyResult = createScanResultContainer();
+
     if (!root || typeof root.querySelectorAll !== 'function') {
-        return [];
+        return emptyResult;
     }
 
     const nodes = Array.from(root.querySelectorAll('[data-e-js]'));
-    const instantiated = [];
+    const instantiated = createScanResultContainer();
 
     nodes.forEach((element) => {
         if (!(element instanceof HTMLElement)) {
@@ -1121,12 +1132,19 @@ const scanForComponents = (root = (typeof document !== 'undefined' ? document : 
         const alreadyReady = normalizeDatasetBoolean(dataset.eReady);
 
         if (alreadyReady && !shouldRefresh && element.__energineBehavior) {
+            instantiated.metrics.skipped += 1;
+            instantiated.skipped = instantiated.metrics.skipped;
             return;
         }
 
         const instance = instantiateBehaviorForElement(element);
         if (instance) {
             instantiated.push(instance);
+            instantiated.metrics.initialized += 1;
+        } else {
+            instantiated.metrics.failed += 1;
+            instantiated.failed = instantiated.metrics.failed;
+            instantiated.pending = instantiated.metrics.failed;
         }
     });
 
@@ -1281,7 +1299,10 @@ const autoBootstrapRuntime = () => {
                 }
 
                 const initialized = scanForComponents(document);
-                return Array.isArray(initialized);
+                const pending = initialized && typeof initialized.pending === 'number'
+                    ? initialized.pending
+                    : 0;
+                return Array.isArray(initialized) && pending === 0;
             },
             {
                 attempts: 20,
