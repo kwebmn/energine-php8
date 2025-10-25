@@ -1046,11 +1046,12 @@ const registerBehaviorClass = (name, ctor) => {
     return ctor;
 };
 
-const instantiateElementBehavior = (element) => {
+const instantiateElementBehavior = (element, options = {}) => {
     if (!(element instanceof HTMLElement)) {
         return null;
     }
 
+    const { allowRetry = true } = options;
     const dataset = element.dataset || {};
     if (dataset.eReady === '1' && element.__energineInstance) {
         return element.__energineInstance;
@@ -1063,6 +1064,15 @@ const instantiateElementBehavior = (element) => {
 
     const Constructor = getGlobalConstructor(behaviorName);
     if (!Constructor) {
+        if (allowRetry && dataset.eHydrationPending !== '1') {
+            if (dataset) {
+                dataset.eHydrationPending = '1';
+            }
+            scheduleRetry(
+                () => instantiateElementBehavior(element, { allowRetry: false }),
+                { attempts: 30, delay: 120 },
+            );
+        }
         return null;
     }
 
@@ -1071,6 +1081,7 @@ const instantiateElementBehavior = (element) => {
         element.__energineInstance = instance;
         if (dataset) {
             dataset.eReady = '1';
+            delete dataset.eHydrationPending;
         }
 
         if (globalScope && dataset.eId) {
