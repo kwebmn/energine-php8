@@ -27,6 +27,61 @@
 3. **Автопоиск контейнеров.** Модуль `Energine.js` после `boot()` находит все элементы с `data-e-js` и вызывает конструктор указанного behavior-класса, передавая сам элемент. Повторная инициализация предотвращается пометкой `data-e-ready="1"` или сохранением ссылки `element.__energineInstance`.
 4. **Отказ от JSON-конфигураций в XSLT.** `document.xslt` больше не генерирует массивы `{id, behavior}`. Вся конфигурация (`PageToolbar`, `PageEditor` и т.д.) читается из DOM `dataset`.
 
+### 2.1 Пример «до/после»
+
+```xslt
+<!-- Было -->
+<div id="{generate-id(.)}"
+     template="{$BASE}{$LANG_ABBR}{../@template}"
+     single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+    <xsl:apply-templates select="items"/>
+</div>
+<script>
+    bootEnergine([{"id": "{generate-id(.)}", "behavior": "{javascript/behavior/@name}"}]);
+</script>
+
+<!-- Стало -->
+<div data-e-js="{javascript/behavior/@name}"
+     data-e-template="{$BASE}{$LANG_ABBR}{../@template}"
+     data-e-single-template="{$BASE}{$LANG_ABBR}{../@single_template}">
+    <xsl:apply-templates select="items"/>
+</div>
+<!-- Без inline-скриптов: Energine.js найдёт элемент сам -->
+```
+
+```js
+// Было
+const el = document.getElementById(component.id);
+const behavior = new window[component.behavior](component.id);
+behavior.singleTemplate = el.getAttribute('single_template');
+
+// Стало
+import { registerBehavior } from './Energine.js';
+
+class GridManager {
+    constructor(element) {
+        this.el = element;
+        this.template = element.dataset.eTemplate;
+        this.singleTemplate = element.dataset.eSingleTemplate;
+    }
+}
+
+registerBehavior('GridManager', GridManager);
+```
+
+### 2.2 Таблица сопоставления атрибутов
+
+| Старый атрибут/поле             | Новый `data-e-*`                      | Тип/формат                                          | Комментарий |
+|---------------------------------|--------------------------------------|-----------------------------------------------------|-------------|
+| `template`                      | `data-e-template`                    | строка пути                                         | Используем абсолютный/относительный путь как раньше. |
+| `single_template`               | `data-e-single-template`             | строка пути                                         | Для форм, модалок и валидации. |
+| `quick_upload_path`             | `data-e-quick-upload-path`           | строка пути                                         | Для drag-n-drop аплоадеров. |
+| `move_from_id`                  | `data-e-move-from-id`                | числовой/строковый идентификатор                    | Значение не преобразуется. |
+| `data-page-toolbar-*`           | `data-e-toolbar-*`                    | строка/JSON (для сложных конфигураций)              | Префикс `toolbar` остаётся внутри `data-e-`. |
+| События (`onaction`, `onsave`)  | `data-e-on-action`, `data-e-on-save` | строка с именем события или JSON для нескольких     | Имена событий переводим в kebab-case. |
+| Флаги (`is_popup="1"`)          | `data-e-is-popup="true"`             | `'true'/'false'` либо `'1'/'0'` (строки)            | Значение приводим к строке, в JS приводим к bool. |
+| Произвольные параметры `paramX` | `data-e-param-x`                     | строка/число/JSON                                   | Kebab-case и `data-e-` обязательны. |
+
 ## 3. План работ по слоям
 
 ### 3.1 XSLT-шаблоны
@@ -48,6 +103,11 @@
 1. **Рантайм `Energine.js`.**
    - Добавить функцию `scanForComponents(root = document)` → `root.querySelectorAll('[data-e-js]:not([data-e-ready])')` инициализирует behavior-классы.
    - Встроить маппинг `const className = element.dataset.eJs; const ClassRef = globalThis[className] || importedRegistry.get(className);` и вызвать `new ClassRef(element, element.dataset);`. После успешной инициализации помечать элемент (`element.dataset.eReady = '1'`).
+   - **API рантайма.**
+     - `scanForComponents(root = document): HTMLElement[]` — возвращает список успешно инициализированных элементов и используется повторно после AJAX/SSI-вставок.
+     - `registerBehavior(name: string, ClassRef: BehaviorCtor): void` — добавляет класс в реестр; повторный вызов с тем же именем логирует предупреждение и перезаписывает ссылку только под флагом `FORCE_REGISTER`.
+     - Контракт конструктора: `new Behavior(element: HTMLElement, dataset: DOMStringMap)` возвращает экземпляр с методами `destroy()` и `reinit(nextDataset?)` (по желанию). `scanForComponents` перед переинициализацией вызывает `destroy()`, затем снимает `data-e-ready` и повторно запускает сканирование.
+     - Повторная инициализация: внешние модули вызывают `scanForComponents(container)` после частичного обновления DOM; чтобы не создавать дубликатов, рантайм сверяет `element.__energineBehavior` и повторно создаёт экземпляр только если флаг `data-e-refresh="1"`.
 
 2. **Поведенческие классы.**
    - Обновить все места, где используется `getAttribute('single_template')`/`getAttribute('template')`, на чтение из `dataset` (`element.dataset.eSingleTemplate`, `element.dataset.eTemplate`).
@@ -61,6 +121,13 @@
 
 1. Провести аудит всех `*.component.xml` и `*.component.php`, чтобы определить, какие `@sample` используются и какие параметры передаются в XSLT. Документировать соответствие `@sample` → JS-класс.
 2. Обновить документацию для разработчиков XSLT: новые компоненты обязаны задавать `data-e-js` и `data-e-*` вместо `id` и произвольных атрибутов.
+3. **Чеклист внедрения.**
+   1. Сформировать перечень файлов `engine/**/**.component.xml`, где объявлены `javascript/behavior`; для каждого файла отметить, какие параметры уносятся в `data-e-*`.
+   2. Найти сопряжённые `*.component.php` и убедиться, что серверные методы больше не ожидают `id` в запросах; при необходимости добавить поддержку чтения `data-e-*`.
+   3. Выполнить поиск `rg "generate-id"` по репозиторию и зафиксировать участки, требующие миграции на `data-e-js`.
+   4. Проверить фронтовые шаблоны (`document.xslt`, `toolbar.xslt`, модули редакторов) на наличие `data-page-toolbar-*` и заменить на документированные `data-e-*`.
+   5. Валидировать Git-хук `.git/hooks/applypatch-msg.sample`: запустить `bash .git/hooks/applypatch-msg.sample <<<"Component refactor test"` и убедиться, что hook возвращает код 0 и корректно проверяет формат сообщения; описать ожидаемый формат в документации.
+   6. После правок прогнать smoke-тесты UI и PHP-юнит-тесты, убедившись, что серверная часть корректно возвращает значения для новых атрибутов.
 
 ## 4. План внедрения
 
@@ -73,6 +140,10 @@
 - **Неинициализированные компоненты.** Возможны ситуации, когда `data-e-js` указывает на класс, не зарегистрированный в глобальной области. Нужно централизованно регистрировать все поведенческие классы и логировать ошибки с указанием селектора.
 - **Брейкинг для сторонних модулей.** Внутренние расширения, напрямую использующие `getElementById`, должны получить патч и перейти на поиск через `dataset` либо `data-e-*`-селекторы.
 - **Изменение CSS/JS селекторов.** Атрибуты `template`/`single_template` могли использоваться в стилях или скриптах. Перед заменой выполнить поиск по репозиторию и уведомить команды о необходимости обновить селекторы.
+- **Наблюдаемость.**
+  - При неизвестном `data-e-js` логировать `console.error('[energine] Unknown behavior', className, element)` и отправлять событие `component_init_failed` в существующий логгер (Sentry/Graylog) с `element.dataset`.
+  - В `scanForComponents` подсчитывать `initialized`, `failed` и `skipped` и публиковать метрики в Prometheus/StatsD (`energine_components_total{status="ok|fail"}`) раз в тик boot-а.
+  - Для перезапусков компонента сохранять timestamp в `element.dataset.eInitTs` и репортить в telemetry, если компонент переинициализируется более 3 раз за страницу — это симптом утечек.
 
 ## 6. Результат
 
