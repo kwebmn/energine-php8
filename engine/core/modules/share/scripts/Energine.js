@@ -939,6 +939,7 @@ const scheduleRetry = (task, options = {}) => {
         attempts = 5,
         delay = 50,
         onError = null,
+        onGiveUp = null,
     } = options;
 
     const schedule = (globalScope && typeof globalScope.setTimeout === 'function')
@@ -962,6 +963,13 @@ const scheduleRetry = (task, options = {}) => {
         }
 
         if (result || !schedule || remainingAttempts <= 0) {
+            if (!result && (remainingAttempts <= 0 || !schedule) && typeof onGiveUp === 'function') {
+                try {
+                    onGiveUp();
+                } catch (error) {
+                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] onGiveUp callback failed');
+                }
+            }
             return result;
         }
 
@@ -983,6 +991,35 @@ const getGlobalConstructor = (name) => {
 };
 
 const behaviorRegistry = new Map();
+const pendingBehaviors = new Map();
+const PENDING_BEHAVIOR = Symbol('Energine.pendingBehavior');
+
+const recordPendingBehavior = (name) => {
+    if (!name) {
+        return;
+    }
+
+    if (!pendingBehaviors.has(name)) {
+        pendingBehaviors.set(name, {
+            count: 0,
+            lastSeen: Date.now(),
+        });
+    }
+
+    const entry = pendingBehaviors.get(name);
+    entry.count += 1;
+    entry.lastSeen = Date.now();
+};
+
+const clearPendingBehavior = (name) => {
+    if (!name || !pendingBehaviors.has(name)) {
+        return;
+    }
+
+    pendingBehaviors.delete(name);
+};
+
+const getPendingBehaviorNames = () => Array.from(pendingBehaviors.keys()).sort();
 
 const resolveRegisteredBehavior = (name) => {
     if (!name || typeof name !== 'string') {
@@ -1051,7 +1088,7 @@ const attachToolbarBinding = (element, instance) => {
     }
 };
 
-const instantiateBehaviorForElement = (element, explicitBehaviorName = null) => {
+const instantiateBehaviorForElement = (element, explicitBehaviorName = null, options = {}) => {
     if (!(element instanceof HTMLElement)) {
         return null;
     }
@@ -1059,6 +1096,8 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null) => 
     const dataset = element.dataset || {};
     const shouldRefresh = normalizeDatasetBoolean(dataset.eRefresh);
     const isReady = normalizeDatasetBoolean(dataset.eReady);
+
+    const { silentOnMissing = false } = options || {};
 
     if (isReady && !shouldRefresh && element.__energineBehavior) {
         return element.__energineBehavior;
@@ -1071,8 +1110,14 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null) => 
 
     const Constructor = resolveRegisteredBehavior(behaviorName);
     if (!Constructor) {
-        Energine.safeConsoleError(new Error(`Unknown behavior: ${behaviorName}`), '[Energine.autoBootstrap] Behavior registry');
-        return null;
+        recordPendingBehavior(behaviorName);
+        if (!silentOnMissing) {
+            const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
+            if (Energine && typeof Energine.debug === 'boolean' && Energine.debug && typeof console !== 'undefined' && console.info) {
+                console.info(message);
+            }
+        }
+        return PENDING_BEHAVIOR;
     }
 
     if (shouldRefresh && element.__energineBehavior) {
@@ -1091,6 +1136,8 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null) => 
 
         attachToolbarBinding(element, instance);
 
+        clearPendingBehavior(behaviorName);
+
         if (globalScope && element.id && typeof globalScope[element.id] === 'undefined') {
             globalScope[element.id] = instance;
         }
@@ -1105,7 +1152,7 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null) => 
 
 const createScanResultContainer = () => {
     const container = [];
-    container.metrics = { initialized: 0, failed: 0, skipped: 0 };
+    container.metrics = { initialized: 0, failed: 0, skipped: 0, pending: 0 };
     container.pending = 0;
     container.failed = 0;
     container.skipped = 0;
@@ -1137,16 +1184,22 @@ const scanForComponents = (root = (typeof document !== 'undefined' ? document : 
             return;
         }
 
-        const instance = instantiateBehaviorForElement(element);
-        if (instance) {
+        const instance = instantiateBehaviorForElement(element, null, { silentOnMissing: true });
+        if (instance && instance !== PENDING_BEHAVIOR) {
             instantiated.push(instance);
             instantiated.metrics.initialized += 1;
+        } else if (instance === PENDING_BEHAVIOR) {
+            instantiated.metrics.pending += 1;
+            instantiated.pending = instantiated.metrics.pending;
         } else {
             instantiated.metrics.failed += 1;
             instantiated.failed = instantiated.metrics.failed;
-            instantiated.pending = instantiated.metrics.failed;
         }
     });
+
+    instantiated.failed = instantiated.metrics.failed;
+    instantiated.pending = instantiated.metrics.pending;
+    instantiated.skipped = instantiated.metrics.skipped;
 
     return instantiated;
 };
@@ -1166,7 +1219,8 @@ const instantiateComponentBehavior = (descriptor = {}) => {
         return null;
     }
 
-    return instantiateBehaviorForElement(element, behavior);
+    const instance = instantiateBehaviorForElement(element, behavior, { silentOnMissing: true });
+    return instance === PENDING_BEHAVIOR ? null : instance;
 };
 
 const bootstrapPageToolbarFromConfig = (config = {}) => {
@@ -1193,7 +1247,10 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
         toolbarElement.dataset.toolbarHydrated = 'pending';
     }
 
-    const instance = instantiateBehaviorForElement(toolbarElement, behavior);
+    const instance = instantiateBehaviorForElement(toolbarElement, behavior, { silentOnMissing: true });
+    if (instance === PENDING_BEHAVIOR) {
+        return null;
+    }
 
     if (instance && globalScope && typeof name === 'string' && name) {
         try {
@@ -1221,7 +1278,8 @@ const instantiatePageEditorFromConfig = (config = {}) => {
         return null;
     }
 
-    return instantiateBehaviorForElement(element, behavior);
+    const instance = instantiateBehaviorForElement(element, behavior, { silentOnMissing: true });
+    return instance === PENDING_BEHAVIOR ? null : instance;
 };
 
 let autoBootstrapExecuted = false;
@@ -1308,6 +1366,13 @@ const autoBootstrapRuntime = () => {
                 attempts: 20,
                 delay: 150,
                 onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
+                onGiveUp: () => {
+                    const unresolved = getPendingBehaviorNames();
+                    if (Array.isArray(unresolved) && unresolved.length) {
+                        const details = unresolved.join(', ');
+                        Energine.safeConsoleError(new Error(`Unresolved behaviors after bootstrap: ${details}`), '[Energine.autoBootstrap] Behavior registry');
+                    }
+                },
             },
         ));
 
@@ -1381,6 +1446,7 @@ export const registerBehavior = (name, ClassRef, options = {}) => {
         return false;
     }
 
+    clearPendingBehavior(normalizedName);
     behaviorRegistry.set(normalizedName, ClassRef);
     return true;
 };
