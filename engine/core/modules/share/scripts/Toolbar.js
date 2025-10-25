@@ -472,23 +472,33 @@ class Toolbar {
             if (this.toolbar && this.toolbar.name && this.properties.id) {
                 this.element.id = `${this.toolbar.name}${this.properties.id}`;
             }
-            this.element.dataset.controlId = this.properties.id;
-            if (typeof this.properties.action === 'string' && this.properties.action) {
-                this.element.dataset.action = this.properties.action;
-            } else if (this.element.dataset && 'action' in this.element.dataset) {
-                delete this.element.dataset.action;
-            }
-            if (typeof this.properties.type === 'string' && this.properties.type) {
-                this.element.dataset.type = this.properties.type;
-            } else if (this.element.dataset && 'type' in this.element.dataset) {
-                delete this.element.dataset.type;
-            }
-            if (typeof this.properties.title === 'string' && this.properties.title) {
-                this.element.dataset.title = this.properties.title;
-            }
-            if (typeof this.properties.icon === 'string' && this.properties.icon) {
-                this.element.dataset.icon = this.properties.icon;
-            }
+
+            const ensureDataAttribute = (attr, value) => {
+                const attrName = `data-${attr}`;
+                if (typeof value === 'string' && value) {
+                    if (this.element.dataset) {
+                        this.element.dataset[attr.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
+                    }
+                    this.element.setAttribute(attrName, value);
+                } else {
+                    if (this.element.dataset) {
+                        const datasetKey = attr.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+                        if (datasetKey in this.element.dataset) {
+                            delete this.element.dataset[datasetKey];
+                        }
+                    }
+                    if (this.element.hasAttribute(attrName)) {
+                        this.element.removeAttribute(attrName);
+                    }
+                }
+            };
+
+            ensureDataAttribute('control-id', this.properties.id);
+            ensureDataAttribute('action', this.properties.action);
+            ensureDataAttribute('type', this.properties.type);
+            ensureDataAttribute('title', this.properties.title);
+            ensureDataAttribute('icon', this.properties.icon);
+
             this.element.setAttribute('unselectable', 'on');
             this.updateTooltip();
         }
