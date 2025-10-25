@@ -30,7 +30,9 @@ class DivSidebar extends DivManager {
 
         this.toolbar = null;
         this.tabPane = new TabPane(this.element);
-        this.langId = this.element.getAttribute('lang_id');
+        const dataset = this.element?.dataset || {};
+
+        this.langId = dataset.eLangId || this.element.getAttribute('lang_id');
 
         // --- Создание структуры дерева (div для jsTree) ---
         this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
@@ -43,8 +45,8 @@ class DivSidebar extends DivManager {
             this.treeContainer.appendChild(divTree);
         }
 
-        this.singlePath = this.element.getAttribute('single_template');
-        this.site = this.element.getAttribute('site');
+        this.singlePath = dataset.eSingleTemplate || this.element.getAttribute('single_template');
+        this.site = dataset.eSite || this.element.getAttribute('site');
 
 
         // Energine.translations['BTN_ADD'] = 'test';

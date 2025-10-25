@@ -1429,7 +1429,10 @@ class GridManager {
         this.gridPendingSelection = null;
         this.selectionControls = [];
         this.hasSelection = false;
-        this.singlePath = this.element.getAttribute('single_template') || '';
+
+        const dataset = this.element?.dataset || {};
+        this.singlePath = dataset.eSingleTemplate || this.element.getAttribute('single_template') || '';
+        this.templatePath = dataset.eTemplate || this.element.getAttribute('template') || '';
     }
 
     /**
@@ -1540,7 +1543,8 @@ class GridManager {
      * @private
      */
     _initializeMoveState() {
-        const moveFromId = this.element.getAttribute('move_from_id');
+        const dataset = this.element?.dataset || {};
+        const moveFromId = dataset.eMoveFromId || this.element.getAttribute('move_from_id');
         if (moveFromId) {
             this.setMvElementId(moveFromId);
         }
@@ -2048,10 +2052,14 @@ class GridManager {
         );
     }
     print() {
-        window.open(`${this.element.getAttribute('single_template')}print/`);
+        const dataset = this.element?.dataset || {};
+        const singlePath = dataset.eSingleTemplate || this.element.getAttribute('single_template') || '';
+        window.open(`${singlePath}print/`);
     }
     csv() {
-        window.location.href = `${this.element.getAttribute('single_template')}csv/`;
+        const dataset = this.element?.dataset || {};
+        const singlePath = dataset.eSingleTemplate || this.element.getAttribute('single_template') || '';
+        window.location.href = `${singlePath}csv/`;
     }
 
     // --- Static stub for Filter (should be redefined elsewhere) ---

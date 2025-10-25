@@ -92,11 +92,12 @@ class PageEditor {
         constructor(area, CKEDITOR) {
             PageEditor.configureCKEditor(CKEDITOR);
             this.area = area;
+            const dataset = this.area?.dataset || {};
             area.setAttribute('contenteditable', true);
             this.isActive = false;
-            this.singlePath = area.getAttribute('single_template');
-            this.ID = area.getAttribute('eID') || '';
-            this.num = area.getAttribute('num') || '';
+            this.singlePath = dataset.eSingleTemplate || area.getAttribute('single_template');
+            this.ID = dataset.eEid || area.getAttribute('eID') || '';
+            this.num = dataset.eNum || area.getAttribute('num') || '';
             if (!area.id) {
                 area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
             }
@@ -167,6 +168,7 @@ class BlockEditor {
          */
         this.area = area;
         this.area.setAttribute('contenteditable', 'true');
+        const dataset = this.area?.dataset || {};
 
         /**
          * Defines whether the editor is active.
@@ -178,19 +180,19 @@ class BlockEditor {
          * Single path.
          * @type {string}
          */
-        this.singlePath = this.area.getAttribute('single_template');
+        this.singlePath = dataset.eSingleTemplate || this.area.getAttribute('single_template');
 
         /**
          * Block editor ID.
          * @type {string}
          */
-        this.ID = this.area.getAttribute('eID') || '';
+        this.ID = dataset.eEid || this.area.getAttribute('eID') || '';
 
         /**
          * Text block ID.
          * @type {string}
          */
-        this.num = this.area.getAttribute('num') || '';
+        this.num = dataset.eNum || this.area.getAttribute('num') || '';
 
         /**
          * Editor.
@@ -210,7 +212,7 @@ class BlockEditor {
                 }
 
                 this.editor = CKEDITOR.inline(this.area.id);
-                this.editor.singleTemplate = this.area.getAttribute('single_template');
+                this.editor.singleTemplate = dataset.eSingleTemplate || this.area.getAttribute('single_template');
                 this.editor.editorId = this.area.id;
                 applyEditorOutline(this.area, this.editor);
 

@@ -23,10 +23,19 @@
     </xsl:template>
 
     <xsl:template match="component[@sample='TextBlock' and @editable]/recordset/record">
-        <div id="{generate-id(.)}" class="nrgnEditor" single_template="{$BASE}{$LANG_ABBR}{../../@single_template}" num="{../../@num}">
+        <xsl:variable name="COMPONENT_UID" select="generate-id(.)"/>
+        <div class="nrgnEditor">
+            <xsl:attribute name="data-e-id"><xsl:value-of select="$COMPONENT_UID"/></xsl:attribute>
+            <xsl:if test="../../javascript/behavior/@name">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="../../javascript/behavior/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-single-template">
+                <xsl:value-of select="concat($BASE, $LANG_ABBR, ../../@single_template)"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-e-num"><xsl:value-of select="../../@num"/></xsl:attribute>
             <xsl:if test="not(../../@global)">
-                <xsl:attribute name="eID"><xsl:value-of select="$ID"/></xsl:attribute>
-            </xsl:if>            
+                <xsl:attribute name="data-e-eid"><xsl:value-of select="$ID"/></xsl:attribute>
+            </xsl:if>
             <xsl:if test=". = ''">
                 <p>--<xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text></p>
             </xsl:if>

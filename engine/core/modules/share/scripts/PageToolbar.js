@@ -16,7 +16,8 @@ class PageToolbar extends Toolbar {
         this.componentPath = config.componentPath;
         this.documentId = config.documentId;
         this.layoutManager = null;
-        this.layoutRoot = config.layout?.root || null;
+        this.mountElement = config.mountElement instanceof HTMLElement ? config.mountElement : (config.layout?.root || config.element || null);
+        this.layoutRoot = config.layout?.root || this.mountElement || null;
         this.sidebarToggleButton = null;
         this.sidebarToggleButtons = [];
         this._updateSidebarToggleState = null;
@@ -134,11 +135,16 @@ class PageToolbar extends Toolbar {
 
     _setupDeclarativeLayoutIfPossible() {
         const element = this.element instanceof HTMLElement ? this.element : null;
-        if (!element || typeof document === 'undefined') {
+        const hostElement = this.mountElement instanceof HTMLElement ? this.mountElement : element;
+        if (!hostElement || typeof document === 'undefined') {
             return false;
         }
 
-        const root = this.layoutRoot || PageToolbar._findDeclarativeRoot(element);
+        const root = this.layoutRoot
+            || PageToolbar._findDeclarativeRoot(hostElement)
+            || PageToolbar._findDeclarativeRoot(element)
+            || hostElement
+            || element;
         if (!root) {
             return false;
         }
@@ -146,9 +152,14 @@ class PageToolbar extends Toolbar {
         this.layoutRoot = root;
         this.layoutManager = root;
 
-        const dataset = element.dataset || {};
+        const dataset = hostElement?.dataset || {};
+        const toolbarDataset = element?.dataset || {};
         const rootDataset = root.dataset || {};
-        this._layoutConfig = Object.assign({}, this._layoutConfig || {}, { dataset, rootDataset });
+        this._layoutConfig = Object.assign({}, this._layoutConfig || {}, {
+            dataset,
+            toolbarDataset,
+            rootDataset,
+        });
 
         const html = document.documentElement;
         if (html) {
@@ -166,8 +177,9 @@ class PageToolbar extends Toolbar {
                 ['editbandControls', 'editBandControls', 'editControls'],
                 this._layoutConfig,
                 dataset,
+                toolbarDataset,
                 rootDataset,
-                editBandContainer.dataset || {}
+                editBandContainer.dataset || {},
             );
             const controlIds = (typeof editBandControlsRaw === 'string'
                 ? editBandControlsRaw.split(',').map(chunk => chunk.trim()).filter(Boolean)
@@ -200,8 +212,9 @@ class PageToolbar extends Toolbar {
                 ['environmentLabel', 'environment', 'environmentName'],
                 this._layoutConfig,
                 dataset,
+                toolbarDataset,
                 rootDataset,
-                sidebarEnvironmentTarget.dataset || {}
+                sidebarEnvironmentTarget.dataset || {},
             );
             const environmentLabel = (typeof environmentOverride === 'string' && environmentOverride.trim())
                 ? environmentOverride.trim()
@@ -218,12 +231,14 @@ class PageToolbar extends Toolbar {
             ['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'],
             this._layoutConfig,
             dataset,
+            toolbarDataset,
             rootDataset
         );
         const offcanvasIdValue = PageToolbar._resolveDatasetValue(
             ['sidebarId', 'offcanvasId'],
             this._layoutConfig,
             dataset,
+            toolbarDataset,
             rootDataset
         );
         const normalizedOffcanvasSelector = PageToolbar._normalizeSelector(offcanvasSelectorValue, offcanvasIdValue);
@@ -271,7 +286,7 @@ class PageToolbar extends Toolbar {
             if (root.dataset) {
                 root.dataset.sidebarExpanded = state ? '1' : '0';
             }
-            if (element !== root && element.dataset) {
+            if (element !== root && element?.dataset) {
                 element.dataset.sidebarExpanded = state ? '1' : '0';
             }
         };
@@ -280,6 +295,7 @@ class PageToolbar extends Toolbar {
             ['sidebarExpanded', 'sidebarState', 'sidebarVisible', 'sidebar'],
             this._layoutConfig,
             dataset,
+            toolbarDataset,
             rootDataset
         );
         let initialState = PageToolbar._parseSidebarState(rawInitialState);
@@ -348,6 +364,7 @@ class PageToolbar extends Toolbar {
 
         return true;
     }
+
 
     _configureTopframeDocking(root, dataset = {}, rootDataset = {}) {
         if (!root) {
@@ -1152,49 +1169,99 @@ class PageToolbar extends Toolbar {
         }
 
         if (args[0] instanceof HTMLElement) {
-            const element = args[0];
+            const mountElement = args[0];
             const options = (args[1] && typeof args[1] === 'object' && !Array.isArray(args[1])) ? args[1] : {};
-            const dataset = element.dataset || {};
-            const root = options.root || PageToolbar._findDeclarativeRoot(element);
+            const hostDataset = mountElement.dataset || {};
+            const root = options.root || PageToolbar._findDeclarativeRoot(mountElement) || mountElement;
             const rootDataset = root && root.dataset ? root.dataset : {};
-            const properties = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
+
+            const toolbarNameHint = options.toolbarName
+                || hostDataset.toolbar
+                || hostDataset.pageToolbar
+                || rootDataset.toolbar
+                || rootDataset.pageToolbar
+                || '';
+
+            let toolbarElement = mountElement;
+            let toolbarDataset = hostDataset;
+            const searchRoots = [];
+            if (mountElement instanceof HTMLElement) {
+                searchRoots.push(mountElement);
+            }
+            if (root instanceof HTMLElement && root !== mountElement) {
+                searchRoots.push(root);
+            }
+            const selectorCandidates = [];
+            if (toolbarNameHint) {
+                selectorCandidates.push(`[data-toolbar="${toolbarNameHint}"]`);
+            }
+            selectorCandidates.push('[data-role="toolbar-primary"] [data-toolbar]');
+            selectorCandidates.push('[data-toolbar]');
+
+            if (!mountElement.dataset?.toolbar) {
+                for (const scope of searchRoots) {
+                    if (!scope || typeof scope.querySelector !== 'function') {
+                        continue;
+                    }
+                    for (const selector of selectorCandidates) {
+                        const candidate = scope.querySelector(selector);
+                        if (candidate instanceof HTMLElement) {
+                            toolbarElement = candidate;
+                            toolbarDataset = candidate.dataset || {};
+                            break;
+                        }
+                    }
+                    if (toolbarElement !== mountElement) {
+                        break;
+                    }
+                }
+            }
+
+            const mergedDataset = Object.assign({}, hostDataset, toolbarDataset);
+            const properties = Toolbar.extractPropertiesFromDataset(mergedDataset, options.properties);
 
             const componentPath = PageToolbar._resolveDatasetValue(
                 ['componentPath', 'component', 'componentUrl', 'componentBase', 'toolbarComponentPath', 'sidebarUrl', 'sidebarSource'],
                 options,
-                dataset,
+                hostDataset,
+                toolbarDataset,
                 rootDataset
             ) || '';
             const documentId = PageToolbar._resolveDatasetValue(
                 ['documentId', 'docId', 'doc', 'document', 'recordId', 'smapId', 'id'],
                 options,
-                dataset,
+                hostDataset,
+                toolbarDataset,
                 rootDataset
             ) || '';
             const toolbarName = options.toolbarName
-                || dataset.toolbar
-                || dataset.pageToolbar
+                || toolbarDataset.toolbar
+                || hostDataset.toolbar
+                || hostDataset.pageToolbar
                 || rootDataset.toolbar
                 || rootDataset.pageToolbar
                 || '';
             const componentRef = options.componentRef
-                || dataset.toolbarComponent
-                || dataset.componentRef
+                || toolbarDataset.toolbarComponent
+                || toolbarDataset.componentRef
+                || hostDataset.toolbarComponent
+                || hostDataset.componentRef
                 || rootDataset.toolbarComponent
                 || null;
-            const descriptors = PageToolbar._extractDescriptorsFromElement(element);
+            const descriptors = PageToolbar._extractDescriptorsFromElement(toolbarElement);
             const layout = {
                 root: root || null,
-                dataset,
+                dataset: hostDataset,
+                toolbarDataset,
                 rootDataset,
-                sidebarTarget: PageToolbar._resolveDatasetValue(['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'], options, dataset, rootDataset),
-                sidebarId: PageToolbar._resolveDatasetValue(['sidebarId', 'offcanvasId'], options, dataset, rootDataset),
-                sidebarUrl: PageToolbar._resolveDatasetValue(['sidebarUrl', 'sidebarSrc', 'offcanvasUrl'], options, dataset, rootDataset),
+                sidebarTarget: PageToolbar._resolveDatasetValue(['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'], options, hostDataset, toolbarDataset, rootDataset),
+                sidebarId: PageToolbar._resolveDatasetValue(['sidebarId', 'offcanvasId'], options, hostDataset, toolbarDataset, rootDataset),
+                sidebarUrl: PageToolbar._resolveDatasetValue(['sidebarUrl', 'sidebarSrc', 'offcanvasUrl'], options, hostDataset, toolbarDataset, rootDataset),
             };
 
             return {
                 mode: 'declarative',
-                element,
+                element: toolbarElement,
                 toolbarName,
                 componentPath,
                 documentId,
@@ -1204,6 +1271,7 @@ class PageToolbar extends Toolbar {
                 componentRef,
                 layout,
                 shouldDock: false,
+                mountElement,
             };
         }
 

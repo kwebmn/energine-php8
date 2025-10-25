@@ -473,6 +473,22 @@ class Toolbar {
                 this.element.id = `${this.toolbar.name}${this.properties.id}`;
             }
             this.element.dataset.controlId = this.properties.id;
+            if (typeof this.properties.action === 'string' && this.properties.action) {
+                this.element.dataset.action = this.properties.action;
+            } else if (this.element.dataset && 'action' in this.element.dataset) {
+                delete this.element.dataset.action;
+            }
+            if (typeof this.properties.type === 'string' && this.properties.type) {
+                this.element.dataset.type = this.properties.type;
+            } else if (this.element.dataset && 'type' in this.element.dataset) {
+                delete this.element.dataset.type;
+            }
+            if (typeof this.properties.title === 'string' && this.properties.title) {
+                this.element.dataset.title = this.properties.title;
+            }
+            if (typeof this.properties.icon === 'string' && this.properties.icon) {
+                this.element.dataset.icon = this.properties.icon;
+            }
             this.element.setAttribute('unselectable', 'on');
             this.updateTooltip();
         }
@@ -836,6 +852,11 @@ class Toolbar {
         build() {
             super.build();
             this.element.setAttribute('data-bs-toggle', 'button');
+            if (typeof this.properties.aicon === 'string' && this.properties.aicon) {
+                this.element.dataset.aicon = this.properties.aicon;
+            } else if (this.element.dataset && 'aicon' in this.element.dataset) {
+                delete this.element.dataset.aicon;
+            }
             const toggle = () => {
                 if (this.properties.state) {
                     if (this.properties.aicon) {
@@ -851,6 +872,9 @@ class Toolbar {
                     this.element.classList.remove('active', 'pressed');
                 }
                 this.element.setAttribute('aria-pressed', this.properties.state ? 'true' : 'false');
+                if (this.element.dataset) {
+                    this.element.dataset.state = this.properties.state ? '1' : '0';
+                }
             };
             this.handleSwitch = () => {
                 if (!this.properties.isDisabled) {
