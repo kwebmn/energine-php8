@@ -14,7 +14,25 @@
     <!-- вывод дерева разделов -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-lang-id"><xsl:value-of select="$LANG_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-site"><xsl:value-of select="../@site"/></xsl:attribute>
             <div class="card-header pb-0" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
@@ -44,7 +62,26 @@
         
     <!-- вывод дерева разделов в боковом тулбаре -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivSidebar'][@sample='DivisionEditor'][@componentAction='main'][@type='list']]">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3 p-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-lang-id"><xsl:value-of select="$LANG_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-site"><xsl:value-of select="../@site"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
             <aside id="treeContainer" data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
             <main data-role="editor-content" class="division-editor__content flex-grow-1"></main>
         </div>

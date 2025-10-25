@@ -982,6 +982,157 @@ const getGlobalConstructor = (name) => {
     return typeof ctor === 'function' ? ctor : null;
 };
 
+const behaviorRegistry = new Map();
+
+const resolveRegisteredBehavior = (name) => {
+    if (!name || typeof name !== 'string') {
+        return null;
+    }
+
+    if (behaviorRegistry.has(name)) {
+        return behaviorRegistry.get(name);
+    }
+
+    return getGlobalConstructor(name);
+};
+
+const normalizeDatasetBoolean = (value) => {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'string') {
+        return !datasetFalseValues.has(value.trim().toLowerCase());
+    }
+    if (typeof value === 'number') {
+        return value !== 0;
+    }
+    return Boolean(value);
+};
+
+const disposeExistingBehaviorInstance = (element) => {
+    if (!element) {
+        return;
+    }
+
+    const existing = element.__energineBehavior;
+    if (existing && typeof existing.destroy === 'function') {
+        try {
+            existing.destroy();
+        } catch (error) {
+            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to dispose existing component instance');
+        }
+    }
+
+    element.__energineBehavior = null;
+    if (element.dataset) {
+        delete element.dataset.eReady;
+    }
+};
+
+const attachToolbarBinding = (element, instance) => {
+    if (!element || typeof registerToolbarComponent !== 'function') {
+        return;
+    }
+
+    const dataset = element.dataset || {};
+    const componentRef = dataset.eToolbarComponent
+        || dataset.toolbarComponent
+        || element.getAttribute('data-e-toolbar-component')
+        || element.getAttribute('data-toolbar-component');
+
+    if (!componentRef) {
+        return;
+    }
+
+    try {
+        registerToolbarComponent(componentRef, instance);
+    } catch (error) {
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${componentRef}"`);
+    }
+};
+
+const instantiateBehaviorForElement = (element, explicitBehaviorName = null) => {
+    if (!(element instanceof HTMLElement)) {
+        return null;
+    }
+
+    const dataset = element.dataset || {};
+    const shouldRefresh = normalizeDatasetBoolean(dataset.eRefresh);
+    const isReady = normalizeDatasetBoolean(dataset.eReady);
+
+    if (isReady && !shouldRefresh && element.__energineBehavior) {
+        return element.__energineBehavior;
+    }
+
+    const behaviorName = explicitBehaviorName || dataset.eJs || element.getAttribute('data-e-js');
+    if (!behaviorName) {
+        return null;
+    }
+
+    const Constructor = resolveRegisteredBehavior(behaviorName);
+    if (!Constructor) {
+        Energine.safeConsoleError(new Error(`Unknown behavior: ${behaviorName}`), '[Energine.autoBootstrap] Behavior registry');
+        return null;
+    }
+
+    if (shouldRefresh && element.__energineBehavior) {
+        disposeExistingBehaviorInstance(element);
+        if (element.dataset) {
+            delete element.dataset.eRefresh;
+        }
+    }
+
+    try {
+        const instance = new Constructor(element, dataset);
+        element.__energineBehavior = instance;
+        if (element.dataset) {
+            element.dataset.eReady = '1';
+        }
+
+        attachToolbarBinding(element, instance);
+
+        if (globalScope && element.id && typeof globalScope[element.id] === 'undefined') {
+            globalScope[element.id] = instance;
+        }
+
+        return instance;
+    } catch (error) {
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behaviorName}"`);
+    }
+
+    return null;
+};
+
+const scanForComponents = (root = (typeof document !== 'undefined' ? document : null)) => {
+    if (!root || typeof root.querySelectorAll !== 'function') {
+        return [];
+    }
+
+    const nodes = Array.from(root.querySelectorAll('[data-e-js]'));
+    const instantiated = [];
+
+    nodes.forEach((element) => {
+        if (!(element instanceof HTMLElement)) {
+            return;
+        }
+
+        const dataset = element.dataset || {};
+        const shouldRefresh = normalizeDatasetBoolean(dataset.eRefresh);
+        const alreadyReady = normalizeDatasetBoolean(dataset.eReady);
+
+        if (alreadyReady && !shouldRefresh && element.__energineBehavior) {
+            return;
+        }
+
+        const instance = instantiateBehaviorForElement(element);
+        if (instance) {
+            instantiated.push(instance);
+        }
+    });
+
+    return instantiated;
+};
+
 const instantiateComponentBehavior = (descriptor = {}) => {
     if (!descriptor || typeof descriptor !== 'object') {
         return null;
@@ -997,29 +1148,7 @@ const instantiateComponentBehavior = (descriptor = {}) => {
         return null;
     }
 
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
-        return null;
-    }
-
-    try {
-        const instance = new Constructor(element);
-        if (globalScope) {
-            globalScope[id] = instance;
-        }
-        if (typeof registerToolbarComponent === 'function') {
-            try {
-                registerToolbarComponent(id, instance);
-            } catch (error) {
-                Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${id}"`);
-            }
-        }
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behavior}"`);
-    }
-
-    return null;
+    return instantiateBehaviorForElement(element, behavior);
 };
 
 const bootstrapPageToolbarFromConfig = (config = {}) => {
@@ -1037,7 +1166,7 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
         return null;
     }
 
-    const toolbarElement = root.querySelector(toolbarSelector || '[data-toolbar]');
+    const toolbarElement = root.querySelector(toolbarSelector || '[data-toolbar], [data-e-toolbar]');
     if (!toolbarElement) {
         return null;
     }
@@ -1046,40 +1175,17 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
         toolbarElement.dataset.toolbarHydrated = 'pending';
     }
 
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
-        return null;
-    }
+    const instance = instantiateBehaviorForElement(toolbarElement, behavior);
 
-    if (globalScope && globalScope.Toolbar && globalScope.Toolbar.registry) {
-        const existing = globalScope.Toolbar.registry.get(toolbarElement);
-        if (existing && typeof existing.destroy === 'function') {
-            try {
-                existing.destroy();
-            } catch (error) {
-                console.warn('[Energine.autoBootstrap] Failed to dispose existing toolbar instance', error);
-            }
+    if (instance && globalScope && typeof name === 'string' && name) {
+        try {
+            globalScope[name] = instance;
+        } catch (error) {
+            console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
         }
-        globalScope.Toolbar.registry.delete(toolbarElement);
     }
 
-    try {
-        const instance = new Constructor(toolbarElement, { root });
-
-        if (globalScope && typeof name === 'string' && name) {
-            try {
-                globalScope[name] = instance;
-            } catch (error) {
-                console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
-            }
-        }
-
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create page toolbar instance');
-    }
-
-    return null;
+    return instance;
 };
 
 const instantiatePageEditorFromConfig = (config = {}) => {
@@ -1088,22 +1194,16 @@ const instantiatePageEditorFromConfig = (config = {}) => {
     }
 
     const { behavior, id } = config;
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
+    if (!behavior || !id || typeof document === 'undefined') {
         return null;
     }
 
-    try {
-        const instance = new Constructor();
-        if (globalScope && id) {
-            globalScope[id] = instance;
-        }
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create PageEditor instance');
+    const element = document.getElementById(id);
+    if (!element) {
+        return null;
     }
 
-    return null;
+    return instantiateBehaviorForElement(element, behavior);
 };
 
 let autoBootstrapExecuted = false;
@@ -1164,32 +1264,31 @@ const autoBootstrapRuntime = () => {
     const bootstrapDom = () => {
         applyTranslationsFromScripts(attachedRuntime);
 
-        if (pageToolbarConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => bootstrapPageToolbarFromConfig(pageToolbarConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
+        attachedRuntime.addTask(() => scheduleRetry(
+            () => {
+                if (pageToolbarConfig) {
+                    bootstrapPageToolbarFromConfig(pageToolbarConfig);
+                }
 
-        if (Array.isArray(componentDescriptors)) {
-            componentDescriptors.forEach((descriptor) => {
-                attachedRuntime.addTask(() => scheduleRetry(
-                    () => instantiateComponentBehavior(descriptor),
-                    {
-                        attempts: 20,
-                        delay: 120,
-                        onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
-                    },
-                ));
-            });
-        }
+                if (Array.isArray(componentDescriptors) && componentDescriptors.length) {
+                    componentDescriptors.forEach((descriptor) => {
+                        instantiateComponentBehavior(descriptor);
+                    });
+                }
 
-        if (pageEditorConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => instantiatePageEditorFromConfig(pageEditorConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
+                if (pageEditorConfig) {
+                    instantiatePageEditorFromConfig(pageEditorConfig);
+                }
+
+                const initialized = scanForComponents(document);
+                return Array.isArray(initialized);
+            },
+            {
+                attempts: 20,
+                delay: 150,
+                onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
+            },
+        ));
 
         attachedRuntime.addTask(() => {
             if (typeof initializeToolbars === 'function') {
@@ -1244,5 +1343,29 @@ export const showLoader = (container) => Energine.showLoader(container);
 export const hideLoader = (container) => Energine.hideLoader(container);
 
 export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
+
+export const registerBehavior = (name, ClassRef, options = {}) => {
+    if (!name || typeof name !== 'string' || typeof ClassRef !== 'function') {
+        return false;
+    }
+
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+        return false;
+    }
+
+    const { force = false } = options || {};
+    if (behaviorRegistry.has(normalizedName) && !force) {
+        console.warn(`[Energine.autoBootstrap] Behavior "${normalizedName}" is already registered. Pass { force: true } to overwrite.`);
+        return false;
+    }
+
+    behaviorRegistry.set(normalizedName, ClassRef);
+    return true;
+};
+
+export const getRegisteredBehavior = (name) => resolveRegisteredBehavior(name);
+
+export const autoScanComponents = (root) => scanForComponents(root);
 
 export default Energine;

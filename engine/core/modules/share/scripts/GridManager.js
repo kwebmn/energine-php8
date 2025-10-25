@@ -1,4 +1,4 @@
-import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn } from './Energine.js';
+import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import TabPaneModule from './TabPane.js';
 import ToolbarModule from './Toolbar.js';
 import ModalBoxModule from './ModalBox.js';
@@ -1429,7 +1429,11 @@ class GridManager {
         this.gridPendingSelection = null;
         this.selectionControls = [];
         this.hasSelection = false;
-        this.singlePath = this.element.getAttribute('single_template') || '';
+        const dataset = this.element?.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template')
+            || this.element.getAttribute('single_template')
+            || '';
     }
 
     /**
@@ -1540,7 +1544,10 @@ class GridManager {
      * @private
      */
     _initializeMoveState() {
-        const moveFromId = this.element.getAttribute('move_from_id');
+        const dataset = this.element?.dataset || {};
+        const moveFromId = dataset.eMoveFromId
+            || this.element.getAttribute('data-e-move-from-id')
+            || this.element.getAttribute('move_from_id');
         if (moveFromId) {
             this.setMvElementId(moveFromId);
         }
@@ -2048,10 +2055,20 @@ class GridManager {
         );
     }
     print() {
-        window.open(`${this.element.getAttribute('single_template')}print/`);
+        const dataset = this.element?.dataset || {};
+        const base = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template')
+            || this.element.getAttribute('single_template')
+            || this.singlePath;
+        window.open(`${base}print/`);
     }
     csv() {
-        window.location.href = `${this.element.getAttribute('single_template')}csv/`;
+        const dataset = this.element?.dataset || {};
+        const base = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template')
+            || this.element.getAttribute('single_template')
+            || this.singlePath;
+        window.location.href = `${base}csv/`;
     }
 
     // --- Static stub for Filter (should be redefined elsewhere) ---
@@ -2472,6 +2489,18 @@ export function attachGridManagerGlobals(target = globalScope) {
 }
 
 attachGridManagerGlobals();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('GridManager', GridManager);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[GridManager] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[GridManager] Failed to register behavior', error);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     /**

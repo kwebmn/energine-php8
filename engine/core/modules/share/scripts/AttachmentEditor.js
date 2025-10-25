@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
 import {
@@ -22,9 +22,17 @@ class AttachmentEditor extends GridManager {
     constructor(element) {
         super(element);
 
-        this.quick_upload_path = this.element.getAttribute('quick_upload_path');
-        this.quick_upload_pid = this.element.getAttribute('quick_upload_pid');
-        this.quick_upload_enabled = this.element.getAttribute('quick_upload_enabled');
+        const dataset = this.element?.dataset || {};
+        this.quick_upload_path = dataset.eQuickUploadPath
+            || this.element.getAttribute('data-e-quick-upload-path')
+            || this.element.getAttribute('quick_upload_path');
+        this.quick_upload_pid = dataset.eQuickUploadPid
+            || this.element.getAttribute('data-e-quick-upload-pid')
+            || this.element.getAttribute('quick_upload_pid');
+        const enabledRaw = dataset.eQuickUploadEnabled
+            || this.element.getAttribute('data-e-quick-upload-enabled')
+            || this.element.getAttribute('quick_upload_enabled');
+        this.quick_upload_enabled = ['1', 'true', 'yes', 'on'].includes(String(enabledRaw).toLowerCase());
 
         // Drag & Drop
         this.repository = this;
@@ -260,3 +268,15 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('AttachmentEditor', AttachmentEditor);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[AttachmentEditor] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[AttachmentEditor] Failed to register behavior', error);
+    }
+}

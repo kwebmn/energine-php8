@@ -83,13 +83,20 @@
             <xsl:attribute name="data-e-js">PageToolbar</xsl:attribute>
             <xsl:attribute name="data-toolbar-scope">page</xsl:attribute>
             <xsl:attribute name="data-page-toolbar"><xsl:value-of select="$TOOLBAR_NAME"/></xsl:attribute>
+            <xsl:attribute name="data-e-page-toolbar"><xsl:value-of select="$TOOLBAR_NAME"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-name"><xsl:value-of select="$TOOLBAR_NAME"/></xsl:attribute>
             <xsl:attribute name="data-component-path"><xsl:value-of select="$COMPONENT_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-component-path"><xsl:value-of select="$COMPONENT_PATH"/></xsl:attribute>
             <xsl:attribute name="data-document-id"><xsl:value-of select="$DOCUMENT_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-document-id"><xsl:value-of select="$DOCUMENT_ID"/></xsl:attribute>
             <xsl:attribute name="data-sidebar-id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-sidebar-id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
             <xsl:attribute name="data-offcanvas-id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
             <xsl:attribute name="data-sidebar-url"><xsl:value-of select="$SIDEBAR_URL"/></xsl:attribute>
+            <xsl:attribute name="data-e-sidebar-url"><xsl:value-of select="$SIDEBAR_URL"/></xsl:attribute>
             <xsl:attribute name="data-sidebar-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
             <xsl:attribute name="data-offcanvas-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-offcanvas-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
             <xsl:attribute name="data-sidebar-expanded">0</xsl:attribute>
             <xsl:attribute name="data-sidebar-state">closed</xsl:attribute>
             <xsl:attribute name="data-toolbar-dock">

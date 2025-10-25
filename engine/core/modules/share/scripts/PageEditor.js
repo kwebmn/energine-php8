@@ -1,4 +1,4 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine, { showLoader, hideLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import loadCKEditor from './ckeditor/loader.js';
 
 const globalScope = typeof window !== 'undefined'
@@ -92,9 +92,12 @@ class PageEditor {
         constructor(area, CKEDITOR) {
             PageEditor.configureCKEditor(CKEDITOR);
             this.area = area;
+            const dataset = area.dataset || {};
             area.setAttribute('contenteditable', true);
             this.isActive = false;
-            this.singlePath = area.getAttribute('single_template');
+            this.singlePath = dataset.eSingleTemplate
+                || area.getAttribute('data-e-single-template')
+                || area.getAttribute('single_template');
             this.ID = area.getAttribute('eID') || '';
             this.num = area.getAttribute('num') || '';
             if (!area.id) {
@@ -178,7 +181,10 @@ class BlockEditor {
          * Single path.
          * @type {string}
          */
-        this.singlePath = this.area.getAttribute('single_template');
+        const dataset = this.area.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.area.getAttribute('data-e-single-template')
+            || this.area.getAttribute('single_template');
 
         /**
          * Block editor ID.
@@ -210,7 +216,10 @@ class BlockEditor {
                 }
 
                 this.editor = CKEDITOR.inline(this.area.id);
-                this.editor.singleTemplate = this.area.getAttribute('single_template');
+                const dataset = this.area.dataset || {};
+                this.editor.singleTemplate = dataset.eSingleTemplate
+                    || this.area.getAttribute('data-e-single-template')
+                    || this.area.getAttribute('single_template');
                 this.editor.editorId = this.area.id;
                 applyEditorOutline(this.area, this.editor);
 
@@ -307,4 +316,16 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('PageEditor', PageEditor);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[PageEditor] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[PageEditor] Failed to register behavior', error);
+    }
+}
 ;

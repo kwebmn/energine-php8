@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import Toolbar from './Toolbar.js';
 import ModalBox from './ModalBox.js';
 import Cookie from './Cookie.js';
@@ -1160,26 +1160,32 @@ class PageToolbar extends Toolbar {
             const properties = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
 
             const componentPath = PageToolbar._resolveDatasetValue(
-                ['componentPath', 'component', 'componentUrl', 'componentBase', 'toolbarComponentPath', 'sidebarUrl', 'sidebarSource'],
+                ['eComponentPath', 'eComponent', 'eComponentUrl', 'eComponentBase', 'componentPath', 'component', 'componentUrl', 'componentBase', 'toolbarComponentPath', 'sidebarUrl', 'sidebarSource', 'eSidebarUrl'],
                 options,
                 dataset,
                 rootDataset
             ) || '';
             const documentId = PageToolbar._resolveDatasetValue(
-                ['documentId', 'docId', 'doc', 'document', 'recordId', 'smapId', 'id'],
+                ['eDocumentId', 'eDocId', 'documentId', 'docId', 'doc', 'document', 'recordId', 'smapId', 'id'],
                 options,
                 dataset,
                 rootDataset
             ) || '';
             const toolbarName = options.toolbarName
+                || dataset.eToolbarName
+                || dataset.ePageToolbar
                 || dataset.toolbar
                 || dataset.pageToolbar
+                || rootDataset.eToolbarName
+                || rootDataset.ePageToolbar
                 || rootDataset.toolbar
                 || rootDataset.pageToolbar
                 || '';
             const componentRef = options.componentRef
+                || dataset.eToolbarComponent
                 || dataset.toolbarComponent
                 || dataset.componentRef
+                || rootDataset.eToolbarComponent
                 || rootDataset.toolbarComponent
                 || null;
             const descriptors = PageToolbar._extractDescriptorsFromElement(element);
@@ -1187,9 +1193,9 @@ class PageToolbar extends Toolbar {
                 root: root || null,
                 dataset,
                 rootDataset,
-                sidebarTarget: PageToolbar._resolveDatasetValue(['offcanvasTarget', 'sidebarTarget', 'sidebarSelector'], options, dataset, rootDataset),
-                sidebarId: PageToolbar._resolveDatasetValue(['sidebarId', 'offcanvasId'], options, dataset, rootDataset),
-                sidebarUrl: PageToolbar._resolveDatasetValue(['sidebarUrl', 'sidebarSrc', 'offcanvasUrl'], options, dataset, rootDataset),
+                sidebarTarget: PageToolbar._resolveDatasetValue(['eOffcanvasTarget', 'eSidebarTarget', 'offcanvasTarget', 'sidebarTarget', 'sidebarSelector'], options, dataset, rootDataset),
+                sidebarId: PageToolbar._resolveDatasetValue(['eSidebarId', 'eOffcanvasId', 'sidebarId', 'offcanvasId'], options, dataset, rootDataset),
+                sidebarUrl: PageToolbar._resolveDatasetValue(['eSidebarUrl', 'sidebarUrl', 'sidebarSrc', 'offcanvasUrl'], options, dataset, rootDataset),
             };
 
             return {
@@ -1399,3 +1405,15 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('PageToolbar', PageToolbar);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[PageToolbar] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[PageToolbar] Failed to register behavior', error);
+    }
+}

@@ -23,9 +23,11 @@
             </xsl:attribute>
             <xsl:if test="@name">
                 <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:attribute name="data-e-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
             </xsl:if>
             <xsl:if test="ancestor::component[1]/recordset">
                 <xsl:attribute name="data-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
+                <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
             </xsl:if>
             <xsl:for-each select="properties/property">
                 <xsl:attribute name="data-prop-{translate(@name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')}"><xsl:value-of select="."/></xsl:attribute>

@@ -1,4 +1,4 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine, { showLoader, hideLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import TabPane from './TabPane.js';
 import Toolbar from './Toolbar.js';
 import Validator from './Validator.js';
@@ -329,7 +329,10 @@ class Form {
             throw new Error('Form: не найден componentElement по селектору или элементу: ' + element);
         }
 
-        this.singlePath = this.componentElement.getAttribute('single_template');
+        const dataset = this.componentElement.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.componentElement.getAttribute('data-e-single-template')
+            || this.componentElement.getAttribute('single_template');
 
         // Внешний элемент формы
         this.form = this.componentElement.closest('form');
@@ -1835,8 +1838,11 @@ class FormSmapSelector {
 
     showSelector() {
         // Предполагаем, что у componentElement есть атрибут 'template' (или data-template)
-        const template = this.form.componentElement.getAttribute('template') ||
-            this.form.componentElement.dataset.template;
+        const dataset = this.form.componentElement.dataset || {};
+        const template = dataset.eTemplate
+            || this.form.componentElement.getAttribute('data-e-template')
+            || this.form.componentElement.getAttribute('template')
+            || dataset.template;
         ModalBox.open({
             url: template + 'selector/',
             onClose: this.setName.bind(this)
@@ -1900,8 +1906,11 @@ class FormAttachmentSelector {
 
     showSelector() {
         // Получаем шаблон из атрибута или data-атрибута
-        const template = this.form.componentElement.getAttribute('template') ||
-            this.form.componentElement.dataset.template;
+        const dataset = this.form.componentElement.dataset || {};
+        const template = dataset.eTemplate
+            || this.form.componentElement.getAttribute('data-e-template')
+            || this.form.componentElement.getAttribute('template')
+            || dataset.template;
 
         ModalBox.open({
             url: template + 'file-library/',
@@ -2166,3 +2175,16 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('Form', Form);
+        registerEnergineBehavior('ValidForm', ValidForm);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[Form] Failed to register behaviors');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[Form] Failed to register behaviors', error);
+    }
+}

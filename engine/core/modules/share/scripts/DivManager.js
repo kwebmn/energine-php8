@@ -1,4 +1,4 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine, { showLoader, hideLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import TabPane from './TabPane.js';
 import './Toolbar.js';
 import './ModalBox.js';
@@ -53,7 +53,10 @@ class DivManager {
 
         this.toolbar = null;
         this.tabPane = new TabPane(this.element);
-        this.langId = this.element.getAttribute('lang_id');
+        const dataset = this.element?.dataset || {};
+        this.langId = dataset.eLangId
+            || this.element.getAttribute('data-e-lang-id')
+            || this.element.getAttribute('lang_id');
 
         const isSingleMode = document.body?.classList?.contains('e-singlemode-layout');
 
@@ -85,8 +88,12 @@ class DivManager {
         this.treeContainer.classList.add('mb-3');
         this.treeContainer.classList.toggle('mb-lg-0', !isSingleMode);
 
-        this.singlePath = this.element.getAttribute('single_template');
-        this.site = this.element.getAttribute('site');
+        this.singlePath = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template')
+            || this.element.getAttribute('single_template');
+        this.site = dataset.eSite
+            || this.element.getAttribute('data-e-site')
+            || this.element.getAttribute('site');
 
         // --- Инициализация jsTree (без данных) ---
         this.jstree = $(divTree);
@@ -365,3 +372,15 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('DivManager', DivManager);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[DivManager] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[DivManager] Failed to register behavior', error);
+    }
+}
