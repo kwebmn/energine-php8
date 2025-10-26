@@ -33,6 +33,7 @@
             <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
             <xsl:attribute name="data-e-lang-id"><xsl:value-of select="$LANG_ID"/></xsl:attribute>
             <xsl:attribute name="data-e-site"><xsl:value-of select="../@site"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
             <div class="card-header pb-0" data-pane-part="header" data-pane-toolbar="top">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
