@@ -17,6 +17,7 @@ class PageToolbar extends Toolbar {
         this.documentId = config.documentId;
         this.layoutManager = null;
         this.layoutRoot = config.layout?.root || null;
+        this.toolbarRoot = config.layout?.toolbarRoot || this.layoutRoot;
         this.sidebarToggleButton = null;
         this.sidebarToggleButtons = [];
         this._updateSidebarToggleState = null;
@@ -51,6 +52,7 @@ class PageToolbar extends Toolbar {
                 || this.element?.dataset?.eToolbarComponent
                 || this.element?.dataset?.componentRef
                 || this._layoutConfig?.dataset?.eToolbarComponent
+                || this._layoutConfig?.toolbarDataset?.eToolbarComponent
                 || null;
             Toolbar.registerToolbarInstance(this, componentRef);
         }
@@ -148,7 +150,11 @@ class PageToolbar extends Toolbar {
 
         const dataset = element.dataset || {};
         const rootDataset = root.dataset || {};
-        this._layoutConfig = Object.assign({}, this._layoutConfig || {}, { dataset, rootDataset });
+        this._layoutConfig = Object.assign({}, this._layoutConfig || {}, {
+            dataset,
+            toolbarDataset: dataset,
+            rootDataset,
+        });
 
         const html = document.documentElement;
         if (html) {
@@ -1152,48 +1158,63 @@ class PageToolbar extends Toolbar {
         }
 
         if (args[0] instanceof HTMLElement) {
-            const element = args[0];
+            const rootElement = args[0];
             const options = (args[1] && typeof args[1] === 'object' && !Array.isArray(args[1])) ? args[1] : {};
-            const dataset = element.dataset || {};
-            const root = options.root || PageToolbar._findDeclarativeRoot(element);
-            const rootDataset = root && root.dataset ? root.dataset : {};
-            const properties = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
+            const dataset = rootElement.dataset || {};
+            const toolbarElement = (options.toolbarElement instanceof HTMLElement && rootElement.contains(options.toolbarElement))
+                ? options.toolbarElement
+                : (rootElement.matches('[data-e-toolbar]')
+                    ? rootElement
+                    : rootElement.querySelector('[data-e-toolbar]'));
+            const effectiveElement = toolbarElement || rootElement;
+            const toolbarDataset = effectiveElement.dataset || {};
+            const root = options.root instanceof HTMLElement
+                ? options.root
+                : PageToolbar._findDeclarativeRoot(rootElement) || PageToolbar._findDeclarativeRoot(effectiveElement);
+            const rootDataset = root && root.dataset ? root.dataset : dataset;
+            const properties = Toolbar.extractPropertiesFromDataset(toolbarDataset, options.properties);
 
             const componentPath = PageToolbar._resolveDatasetValue(
                 ['eComponentPath', 'eComponent', 'eComponentUrl', 'eComponentBase'],
                 options,
                 dataset,
+                toolbarDataset,
                 rootDataset
             ) || '';
             const documentId = PageToolbar._resolveDatasetValue(
                 ['eDocumentId', 'eDocId'],
                 options,
                 dataset,
+                toolbarDataset,
                 rootDataset
             ) || '';
             const toolbarName = options.toolbarName
+                || toolbarDataset.eToolbar
                 || dataset.eToolbarName
                 || dataset.ePageToolbar
                 || rootDataset.eToolbarName
                 || rootDataset.ePageToolbar
                 || '';
             const componentRef = options.componentRef
+                || toolbarDataset.eToolbarComponent
                 || dataset.eToolbarComponent
                 || rootDataset.eToolbarComponent
                 || null;
-            const descriptors = PageToolbar._extractDescriptorsFromElement(element);
+            const descriptors = PageToolbar._extractDescriptorsFromElement(effectiveElement);
             const layout = {
                 root: root || null,
+                toolbarRoot: rootElement,
                 dataset,
+                toolbarDataset,
                 rootDataset,
-                sidebarTarget: PageToolbar._resolveDatasetValue(['eOffcanvasTarget', 'eSidebarTarget'], options, dataset, rootDataset),
-                sidebarId: PageToolbar._resolveDatasetValue(['eSidebarId', 'eOffcanvasId'], options, dataset, rootDataset),
-                sidebarUrl: PageToolbar._resolveDatasetValue(['eSidebarUrl'], options, dataset, rootDataset),
+                sidebarTarget: PageToolbar._resolveDatasetValue(['eOffcanvasTarget', 'eSidebarTarget'], options, dataset, toolbarDataset, rootDataset),
+                sidebarId: PageToolbar._resolveDatasetValue(['eSidebarId', 'eOffcanvasId'], options, dataset, toolbarDataset, rootDataset),
+                sidebarUrl: PageToolbar._resolveDatasetValue(['eSidebarUrl'], options, dataset, toolbarDataset, rootDataset),
             };
 
             return {
                 mode: 'declarative',
-                element,
+                element: effectiveElement,
                 toolbarName,
                 componentPath,
                 documentId,
