@@ -57,6 +57,8 @@ class PageToolbar extends Toolbar {
             Toolbar.registerToolbarInstance(this, componentRef);
         }
 
+        this._ensureDefaultControlActions();
+
         this.setupLayout();
 
     }
@@ -83,6 +85,54 @@ class PageToolbar extends Toolbar {
                     controlInstance.useExistingElement(descriptor.element);
                 }
                 this.appendControl(controlInstance);
+            }
+        });
+    }
+
+    _ensureDefaultControlActions() {
+        if (!Array.isArray(this.controls) || !this.controls.length) {
+            return;
+        }
+
+        const fallbackActions = {
+            editMode: 'editMode',
+            transEditor: 'showTransEditor',
+            language: 'showLangEditor',
+            user: 'showUserEditor',
+            role: 'showRoleEditor',
+            fileRepository: 'showFileRepository',
+            siteEditor: 'showSiteEditor',
+            tmplEditor: 'showTmplEditor',
+        };
+
+        this.controls.forEach(control => {
+            if (!control || typeof control !== 'object') {
+                return;
+            }
+
+            const controlId = control.properties?.id || '';
+            if (!controlId || control.properties?.action) {
+                return;
+            }
+
+            const fallbackAction = fallbackActions[controlId];
+            if (!fallbackAction || typeof this[fallbackAction] !== 'function') {
+                return;
+            }
+
+            if (typeof control.setAction === 'function') {
+                control.setAction(fallbackAction);
+            } else if (control.properties) {
+                control.properties.action = fallbackAction;
+            }
+
+            if (control.element instanceof HTMLElement) {
+                try {
+                    control.element.dataset.action = fallbackAction;
+                    control.element.setAttribute('data-action', fallbackAction);
+                } catch (error) {
+                    // ignore dataset failures
+                }
             }
         });
     }

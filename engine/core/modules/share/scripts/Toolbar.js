@@ -179,7 +179,14 @@ class Toolbar {
         const controlId = dataset.controlId || element.getAttribute('data-control-id') || '';
         const title = dataset.title || element.getAttribute('data-title') || '';
         const tooltip = element.getAttribute('title') || dataset.tooltip || '';
-        const action = dataset.action || element.getAttribute('data-action') || '';
+        const rawAction = dataset.action
+            || element.getAttribute('data-action')
+            || element.getAttribute('data-click')
+            || element.getAttribute('onclick')
+            || element.getAttribute('onClick')
+            || element.getAttribute('action')
+            || '';
+        const action = Toolbar.normalizeActionName(rawAction);
         const icon = dataset.icon || element.getAttribute('data-icon') || '';
         const iconOnly = dataset.iconOnly || element.getAttribute('data-icon-only') || '';
         const disabled = element.hasAttribute('disabled')
@@ -417,6 +424,20 @@ class Toolbar {
             return normalized === 'true' || normalized === '1' || normalized === 'disabled' || normalized === 'yes' || normalized === 'on';
         }
         return false;
+    }
+
+    static normalizeActionName(value) {
+        if (typeof value === 'undefined' || value === null) {
+            return '';
+        }
+        let candidate = String(value).trim();
+        if (!candidate) {
+            return '';
+        }
+        candidate = candidate.replace(/^javascript\s*:/i, '');
+        candidate = candidate.replace(/\(\s*\)$/, '');
+        candidate = candidate.replace(/;+\s*$/, '');
+        return candidate.trim();
     }
 
     static Control = class {
