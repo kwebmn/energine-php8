@@ -98,7 +98,7 @@ class PageEditor {
             this.singlePath = dataset.eSingleTemplate
                 || area.getAttribute('data-e-single-template');
             this.ID = area.getAttribute('eID') || '';
-            this.num = area.getAttribute('num') || '';
+            this.num = dataset.num ?? area.getAttribute('num') ?? '';
             if (!area.id) {
                 area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
             }
@@ -142,14 +142,15 @@ class PageEditor {
 
         if (!async) showLoader();
 
-        let data = 'data=' + encodeURIComponent(this.editor.getData());
-        if (this.ID) data += '&ID=' + this.ID;
-        if (this.num) data += '&num=' + this.num;
+        const payload = new URLSearchParams();
+        payload.set('data', this.editor.getData());
+        if (this.ID) payload.set('ID', this.ID);
+        payload.set('num', this.num ?? '');
 
         fetch(this.singlePath + 'save-text', {
             method: 'POST',
-            body: data,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: payload,
+            credentials: 'same-origin',
         })
             .then(response => response.text())
             .then(response => {
