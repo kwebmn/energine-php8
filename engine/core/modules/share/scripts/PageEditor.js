@@ -282,37 +282,39 @@ class BlockEditor {
             showLoader();
         }
 
-        const params = {
-            data: this.editor.getData(),
-        };
+        const params = new URLSearchParams();
+        params.append('data', this.editor.getData());
         if (this.ID) {
-            params.ID = this.ID;
+            params.append('ID', this.ID);
         }
         if (this.num) {
-            params.num = this.num;
+            params.append('num', this.num);
         }
 
-        Energine.request(
-            this.singlePath + 'save-text',
-            params,
-            (response) => {
-                if (onSuccess) onSuccess.call(this, response);
-                this.editor.resetDirty && this.editor.resetDirty();
-                if (!async) {
-                    hideLoader();
-                }
+        fetch(this.singlePath + 'save-text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             },
-            () => {
+            body: params.toString(),
+        })
+            .then((response) => response.text())
+            .then((responseText) => {
+                if (onSuccess) onSuccess.call(this, responseText);
+                if (this.editor.resetDirty) {
+                    this.editor.resetDirty();
+                }
+            })
+            .catch((error) => {
+                if (typeof console !== 'undefined' && console.error) {
+                    console.error('[BlockEditor] Failed to save text block', error);
+                }
+            })
+            .finally(() => {
                 if (!async) {
                     hideLoader();
                 }
-            },
-            () => {
-                if (!async) {
-                    hideLoader();
-                }
-            }
-        );
+            });
     }
 }
 
