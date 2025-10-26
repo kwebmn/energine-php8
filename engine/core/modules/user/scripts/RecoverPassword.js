@@ -1,4 +1,4 @@
-import Energine from '../../share/scripts/Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -11,16 +11,24 @@ class RecoverPassword {
             ? document.querySelector(element)
             : element;
 
+        const dataset = this.componentElement?.dataset || {};
+
         // getProperty => getAttribute (если это DOM-элемент)
-        this.singlePath = this.componentElement.getAttribute('single_template');
-        this.path = this.componentElement.getAttribute('template');
+        this.singlePath = dataset.eSingleTemplate
+            || this.componentElement?.getAttribute('data-e-single-template')
+            || this.componentElement?.getAttribute('single_template')
+            || '';
+        this.path = dataset.eTemplate
+            || this.componentElement?.getAttribute('data-e-template')
+            || this.componentElement?.getAttribute('template')
+            || '';
 
         // Ссылка на this (для вложенных функций, если не использовать стрелочные)
         this.bindFormHandlers();
     }
 
     bindFormHandlers() {
-        const recoverForm = document.getElementById('recover_form');
+        const recoverForm = this.componentElement?.querySelector('#recover_form');
         if (recoverForm) {
             recoverForm.addEventListener('submit', (event) => {
                 event.preventDefault();
@@ -34,7 +42,7 @@ class RecoverPassword {
             });
         }
 
-        const recoverForm2 = document.getElementById('recover_form2');
+        const recoverForm2 = this.componentElement?.querySelector('#recover_form2');
         if (recoverForm2) {
             recoverForm2.addEventListener('submit', (event) => {
                 event.preventDefault();
@@ -106,3 +114,15 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('RecoverPassword', RecoverPassword);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[RecoverPassword] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[RecoverPassword] Failed to register behavior', error);
+    }
+}

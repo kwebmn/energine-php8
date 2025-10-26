@@ -8,7 +8,7 @@
         <div class="feed">
             <xsl:choose>
                 <xsl:when test="recordset/@empty">
-                    <div class="empty_message" id="{generate-id(recordset)}"><xsl:value-of select="recordset/@empty" disable-output-escaping="yes"/></div>
+                    <div class="empty_message"><xsl:value-of select="recordset/@empty" disable-output-escaping="yes"/></div>
                 </xsl:when>
                 <xsl:otherwise>
                     <xsl:apply-templates/>
@@ -19,7 +19,10 @@
 
     <!-- компонент feed в режиме списка -->
     <xsl:template match="recordset[parent::component[@exttype='feed'][@type='list']]">
-        <ul id="{generate-id(.)}" class="feed_list">
+        <xsl:variable name="LIST_ID" select="generate-id(.)"/>
+        <ul class="feed_list">
+            <xsl:attribute name="id"><xsl:value-of select="$LIST_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-feed-id"><xsl:value-of select="$LIST_ID"/></xsl:attribute>
             <xsl:apply-templates/>
         </ul>
     </xsl:template>
@@ -50,7 +53,10 @@
     </xsl:template>
 
     <xsl:template match="record[ancestor::component[@exttype='feed'][@type='form']]">
-        <div class="feed_view" id="{generate-id(../.)}">
+        <xsl:variable name="VIEW_ID" select="generate-id(..)"/>
+        <div class="feed_view">
+            <xsl:attribute name="id"><xsl:value-of select="$VIEW_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-feed-view-id"><xsl:value-of select="$VIEW_ID"/></xsl:attribute>
             <xsl:if test="$COMPONENTS[@editable]">
                 <xsl:attribute name="current">
                     <xsl:value-of select="field[@index='PRI']"/>
@@ -94,12 +100,27 @@
 
     <xsl:template match="component[@exttype='feededitor'][@type='list']">
         <xsl:if test="recordset">
-            <xsl:variable name="LINK">
-                <xsl:value-of select="@linkedComponent"/>
+            <xsl:variable name="COMPONENT" select="."/>
+            <xsl:variable name="LINK" select="@linkedComponent"/>
+            <xsl:variable name="TOOLBAR_ID" select="generate-id(recordset)"/>
+            <xsl:variable name="LINKED_LIST_ID" select="generate-id($COMPONENTS[@name=$LINK]/recordset)"/>
+            <xsl:variable name="BEHAVIOR">
+                <xsl:choose>
+                    <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                        <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                    </xsl:when>
+                    <xsl:otherwise>FeedToolbar</xsl:otherwise>
+                </xsl:choose>
             </xsl:variable>
-            <ul id="{generate-id(recordset)}" style="display:none;"
-                single_template="{$BASE}{$LANG_ABBR}{@single_template}"
-                linkedTo="{generate-id($COMPONENTS[@name=$LINK]/recordset)}">
+            <ul style="display:none;">
+                <xsl:attribute name="id"><xsl:value-of select="$TOOLBAR_ID"/></xsl:attribute>
+                <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                    <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+                </xsl:if>
+                <xsl:attribute name="single_template"><xsl:value-of select="concat($BASE, $LANG_ABBR, @single_template)"/></xsl:attribute>
+                <xsl:attribute name="linkedTo"><xsl:value-of select="$LINKED_LIST_ID"/></xsl:attribute>
+                <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, @single_template)"/></xsl:attribute>
+                <xsl:attribute name="data-e-linked-to"><xsl:value-of select="$LINKED_LIST_ID"/></xsl:attribute>
                 <xsl:for-each select="toolbar/control">
                     <li id="{@id}" title="{@title}" type="{@type}" action="{@onclick}"></li>
                 </xsl:for-each>
