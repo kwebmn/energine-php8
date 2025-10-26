@@ -18,11 +18,13 @@ class ValidForm {
             : element;
 
         if (this.componentElement) {
+            const dataset = this.componentElement.dataset || {};
             // Находим родительскую форму
             this.form = this.componentElement.closest('form');
             if (this.form) {
                 // Сохраняем путь (если есть)
-                this.singlePath = this.componentElement.getAttribute('single_template');
+                this.singlePath = dataset.eSingleTemplate
+                    || this.componentElement.getAttribute('data-e-single-template');
                 this.form.classList.add('form');
                 // Навешиваем валидацию на submit
                 this.form.addEventListener('submit', this.validateForm.bind(this));

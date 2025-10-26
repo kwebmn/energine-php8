@@ -220,12 +220,12 @@
                     </xsl:choose>
                 </xsl:variable>
                 <xsl:if test="string-length(normalize-space($PAGE_TOOLBAR_NAME)) &gt; 0">
-                    <xsl:attribute name="data-page-toolbar-name">
+                    <xsl:attribute name="data-e-toolbar-name">
                         <xsl:value-of select="$PAGE_TOOLBAR_NAME"/>
                     </xsl:attribute>
                 </xsl:if>
                 <xsl:if test="string-length(normalize-space($PAGE_TOOLBAR/javascript/behavior/@name)) &gt; 0">
-                    <xsl:attribute name="data-page-toolbar-behavior">
+                    <xsl:attribute name="data-e-toolbar-behavior">
                         <xsl:value-of select="$PAGE_TOOLBAR/javascript/behavior/@name"/>
                     </xsl:attribute>
                 </xsl:if>

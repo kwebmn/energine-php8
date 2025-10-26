@@ -12,9 +12,10 @@ class Toolbar {
 
         if (toolbarNameOrElement instanceof HTMLElement) {
             this.element = toolbarNameOrElement;
-            this.name = this.element.dataset?.toolbar || '';
+            const dataset = this.element.dataset || {};
+            this.name = dataset.eToolbar || '';
             if (!this.name && typeof toolbarNameOrElement.getAttribute === 'function') {
-                this.name = toolbarNameOrElement.getAttribute('data-toolbar') || '';
+                this.name = toolbarNameOrElement.getAttribute('data-e-toolbar') || '';
             }
             if (!this.name && typeof toolbarNameOrElement.className === 'string') {
                 const nameMatch = /([\w-]+)_toolbar/.exec(toolbarNameOrElement.className);
@@ -28,7 +29,7 @@ class Toolbar {
             this.element.classList.add('flex-wrap', 'gap-2', 'align-items-center');
             this.element.setAttribute('role', 'toolbar');
             if (this.name) {
-                this.element.dataset.toolbar = this.name;
+                this.element.dataset.eToolbar = this.name;
                 this.element.classList.add(this.name);
             }
         } else {
@@ -40,7 +41,7 @@ class Toolbar {
                 this.element.setAttribute('role', 'toolbar');
                 if (toolbarName) {
                     this.element.classList.add(toolbarName);
-                    this.element.dataset.toolbar = toolbarName;
+                    this.element.dataset.eToolbar = toolbarName;
                 }
             }
         }
@@ -173,12 +174,20 @@ class Toolbar {
             return null;
         }
         const dataset = element.dataset || {};
-        const rawType = dataset.type || element.getAttribute('data-type') || element.tagName.toLowerCase();
-        const type = (rawType || 'button').toLowerCase();
+        const declaredType = dataset.type || element.getAttribute('data-type');
+        const rawType = declaredType || element.tagName.toLowerCase();
+        let type = (rawType || 'button').toLowerCase();
         const controlId = dataset.controlId || element.getAttribute('data-control-id') || '';
         const title = dataset.title || element.getAttribute('data-title') || '';
         const tooltip = element.getAttribute('title') || dataset.tooltip || '';
-        const action = dataset.action || element.getAttribute('data-action') || '';
+        const rawAction = dataset.action
+            || element.getAttribute('data-action')
+            || element.getAttribute('data-click')
+            || element.getAttribute('onclick')
+            || element.getAttribute('onClick')
+            || element.getAttribute('action')
+            || '';
+        const action = Toolbar.normalizeActionName(rawAction);
         const icon = dataset.icon || element.getAttribute('data-icon') || '';
         const iconOnly = dataset.iconOnly || element.getAttribute('data-icon-only') || '';
         const disabled = element.hasAttribute('disabled')
@@ -187,6 +196,29 @@ class Toolbar {
 
         if (!controlId && type !== 'separator') {
             return null;
+        }
+
+        const ariaPressedAttr = element.getAttribute('aria-pressed');
+        const bootstrapToggle = (element.getAttribute('data-bs-toggle') || '').toLowerCase();
+        const hasToggleDataset = typeof dataset.state !== 'undefined' || element.getAttribute('data-state') !== null;
+        const hasPressedClass = element.classList
+            ? (element.classList.contains('active') || element.classList.contains('pressed'))
+            : false;
+        const shouldForceSwitcher = (
+            type === 'switcher'
+            || (
+                (type === 'button' || type === 'link' || type === 'a')
+                && (
+                    ariaPressedAttr !== null
+                    || bootstrapToggle === 'button'
+                    || hasToggleDataset
+                    || hasPressedClass
+                )
+            )
+        );
+
+        if (shouldForceSwitcher) {
+            type = 'switcher';
         }
 
         const descriptor = {
@@ -206,7 +238,10 @@ class Toolbar {
 
         if (type === 'switcher') {
             descriptor.props.aicon = dataset.altIcon || element.getAttribute('data-alt-icon') || '';
-            descriptor.props.state = dataset.state || element.getAttribute('data-state') || '';
+            const stateFromDataset = dataset.state || element.getAttribute('data-state') || '';
+            const stateFromAria = ariaPressedAttr !== null ? (ariaPressedAttr === 'true' ? '1' : '0') : '';
+            const stateFromClasses = hasPressedClass ? '1' : '';
+            descriptor.props.state = stateFromDataset || stateFromAria || stateFromClasses || '';
         }
 
         if (type === 'select') {
@@ -314,12 +349,12 @@ class Toolbar {
             return null;
         }
 
-        if (element.dataset && element.dataset.toolbarHydrated) {
+        if (element.dataset && element.dataset.eToolbarHydrated) {
             return (Toolbar.registry && Toolbar.registry.get(element)) || null;
         }
 
         const dataset = element.dataset || {};
-        const toolbarName = dataset.toolbar || options.name || '';
+        const toolbarName = dataset.eToolbar || options.name || '';
         const props = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
         const childElements = Array.from(element.children || []).filter(child => child instanceof HTMLElement);
         const descriptors = childElements.map(child => Toolbar.extractControlDescriptor(child)).filter(Boolean);
@@ -329,7 +364,7 @@ class Toolbar {
         const toolbar = new Toolbar(element, props);
         if (toolbarName) {
             toolbar.name = toolbarName;
-            toolbar.element.dataset.toolbar = toolbarName;
+            toolbar.element.dataset.eToolbar = toolbarName;
             toolbar.element.classList.add(toolbarName);
         }
 
@@ -341,10 +376,10 @@ class Toolbar {
         });
 
         if (toolbar.element?.dataset) {
-            toolbar.element.dataset.toolbarHydrated = '1';
+            toolbar.element.dataset.eToolbarHydrated = '1';
         }
 
-        const componentRef = dataset.toolbarComponent || dataset.componentRef || null;
+        const componentRef = dataset.eToolbarComponent || dataset.componentRef || null;
         Toolbar.registerToolbarInstance(toolbar, componentRef);
 
         return toolbar;
@@ -355,7 +390,7 @@ class Toolbar {
             return [];
         }
         const toolbars = [];
-        root.querySelectorAll('[data-toolbar]').forEach(element => {
+        root.querySelectorAll('[data-e-toolbar]').forEach(element => {
             const toolbar = Toolbar.hydrate(element);
             if (toolbar) {
                 toolbars.push(toolbar);
@@ -416,6 +451,20 @@ class Toolbar {
             return normalized === 'true' || normalized === '1' || normalized === 'disabled' || normalized === 'yes' || normalized === 'on';
         }
         return false;
+    }
+
+    static normalizeActionName(value) {
+        if (typeof value === 'undefined' || value === null) {
+            return '';
+        }
+        let candidate = String(value).trim();
+        if (!candidate) {
+            return '';
+        }
+        candidate = candidate.replace(/^javascript\s*:/i, '');
+        candidate = candidate.replace(/\(\s*\)$/, '');
+        candidate = candidate.replace(/;+\s*$/, '');
+        return candidate.trim();
     }
 
     static Control = class {

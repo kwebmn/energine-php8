@@ -30,25 +30,42 @@
     </xsl:template>
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
-        <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="NAME" select="$COMPONENT/@name"/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <div data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
             <xsl:if test="../@quickUploadPath">
-                <xsl:attribute name="quick_upload_path">
+                <xsl:attribute name="data-e-quick-upload-path">
                     <xsl:value-of select="../@quickUploadPath"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@quickUploadPid">
-                <xsl:attribute name="quick_upload_pid">
+                <xsl:attribute name="data-e-quick-upload-pid">
                     <xsl:value-of select="../@quickUploadPid"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@quickUploadEnabled">
-                <xsl:attribute name="quick_upload_enabled">
+                <xsl:attribute name="data-e-quick-upload-enabled">
                     <xsl:value-of select="../@quickUploadEnabled"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@moveFromId">
-                <xsl:attribute name="move_from_id">
+                <xsl:attribute name="data-e-move-from-id">
                     <xsl:value-of select="../@moveFromId"/>
                 </xsl:attribute>
             </xsl:if>

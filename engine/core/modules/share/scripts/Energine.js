@@ -326,9 +326,13 @@ class EnergineCore {
     }
 
     async request(uri, data, onSuccess, onUserError, onServerError = () => {}, method = 'post') {
-        let url = uri + (this.forceJSON ? '?json' : '');
+        let url = uri;
         const isGet = method.toLowerCase() === 'get';
-        const headers = { 'X-Request': 'json' };
+        const headers = {
+            'X-Request': 'json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, text/plain, */*',
+        };
         const fetchOpts = { method: method.toUpperCase(), headers };
 
         if (this.forceJSON) {
@@ -939,6 +943,7 @@ const scheduleRetry = (task, options = {}) => {
         attempts = 5,
         delay = 50,
         onError = null,
+        onGiveUp = null,
     } = options;
 
     const schedule = (globalScope && typeof globalScope.setTimeout === 'function')
@@ -962,6 +967,13 @@ const scheduleRetry = (task, options = {}) => {
         }
 
         if (result || !schedule || remainingAttempts <= 0) {
+            if (!result && (remainingAttempts <= 0 || !schedule) && typeof onGiveUp === 'function') {
+                try {
+                    onGiveUp();
+                } catch (error) {
+                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] onGiveUp callback failed');
+                }
+            }
             return result;
         }
 
@@ -982,6 +994,218 @@ const getGlobalConstructor = (name) => {
     return typeof ctor === 'function' ? ctor : null;
 };
 
+const behaviorRegistry = new Map();
+const pendingBehaviors = new Map();
+const PENDING_BEHAVIOR = Symbol('Energine.pendingBehavior');
+
+const recordPendingBehavior = (name) => {
+    if (!name) {
+        return;
+    }
+
+    if (!pendingBehaviors.has(name)) {
+        pendingBehaviors.set(name, {
+            count: 0,
+            lastSeen: Date.now(),
+        });
+    }
+
+    const entry = pendingBehaviors.get(name);
+    entry.count += 1;
+    entry.lastSeen = Date.now();
+};
+
+const clearPendingBehavior = (name) => {
+    if (!name || !pendingBehaviors.has(name)) {
+        return;
+    }
+
+    pendingBehaviors.delete(name);
+};
+
+const getPendingBehaviorNames = () => Array.from(pendingBehaviors.keys()).sort();
+
+const resolveRegisteredBehavior = (name) => {
+    if (!name || typeof name !== 'string') {
+        return null;
+    }
+
+    if (behaviorRegistry.has(name)) {
+        return behaviorRegistry.get(name);
+    }
+
+    return getGlobalConstructor(name);
+};
+
+const normalizeDatasetBoolean = (value) => {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'string') {
+        return !datasetFalseValues.has(value.trim().toLowerCase());
+    }
+    if (typeof value === 'number') {
+        return value !== 0;
+    }
+    return Boolean(value);
+};
+
+const disposeExistingBehaviorInstance = (element) => {
+    if (!element) {
+        return;
+    }
+
+    const existing = element.__energineBehavior;
+    if (existing && typeof existing.destroy === 'function') {
+        try {
+            existing.destroy();
+        } catch (error) {
+            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to dispose existing component instance');
+        }
+    }
+
+    element.__energineBehavior = null;
+    if (element.dataset) {
+        delete element.dataset.eReady;
+    }
+};
+
+const attachToolbarBinding = (element, instance) => {
+    if (!element || typeof registerToolbarComponent !== 'function') {
+        return;
+    }
+
+    const dataset = element.dataset || {};
+    const componentRef = dataset.eToolbarComponent
+        || element.getAttribute('data-e-toolbar-component');
+
+    if (!componentRef) {
+        return;
+    }
+
+    try {
+        registerToolbarComponent(componentRef, instance);
+    } catch (error) {
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${componentRef}"`);
+    }
+};
+
+const instantiateBehaviorForElement = (element, explicitBehaviorName = null, options = {}) => {
+    if (!(element instanceof HTMLElement)) {
+        return null;
+    }
+
+    const dataset = element.dataset || {};
+    const shouldRefresh = normalizeDatasetBoolean(dataset.eRefresh);
+    const isReady = normalizeDatasetBoolean(dataset.eReady);
+
+    const { silentOnMissing = false } = options || {};
+
+    if (isReady && !shouldRefresh && element.__energineBehavior) {
+        return element.__energineBehavior;
+    }
+
+    const behaviorName = explicitBehaviorName || dataset.eJs || element.getAttribute('data-e-js');
+    if (!behaviorName) {
+        return null;
+    }
+
+    const Constructor = resolveRegisteredBehavior(behaviorName);
+    if (!Constructor) {
+        recordPendingBehavior(behaviorName);
+        if (!silentOnMissing) {
+            const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
+            if (Energine && typeof Energine.debug === 'boolean' && Energine.debug && typeof console !== 'undefined' && console.info) {
+                console.info(message);
+            }
+        }
+        return PENDING_BEHAVIOR;
+    }
+
+    if (shouldRefresh && element.__energineBehavior) {
+        disposeExistingBehaviorInstance(element);
+        if (element.dataset) {
+            delete element.dataset.eRefresh;
+        }
+    }
+
+    try {
+        const instance = new Constructor(element, dataset);
+        element.__energineBehavior = instance;
+        if (element.dataset) {
+            element.dataset.eReady = '1';
+        }
+
+        attachToolbarBinding(element, instance);
+
+        clearPendingBehavior(behaviorName);
+
+        if (globalScope && element.id && typeof globalScope[element.id] === 'undefined') {
+            globalScope[element.id] = instance;
+        }
+
+        return instance;
+    } catch (error) {
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behaviorName}"`);
+    }
+
+    return null;
+};
+
+const createScanResultContainer = () => {
+    const container = [];
+    container.metrics = { initialized: 0, failed: 0, skipped: 0, pending: 0 };
+    container.pending = 0;
+    container.failed = 0;
+    container.skipped = 0;
+    return container;
+};
+
+const scanForComponents = (root = (typeof document !== 'undefined' ? document : null)) => {
+    const emptyResult = createScanResultContainer();
+
+    if (!root || typeof root.querySelectorAll !== 'function') {
+        return emptyResult;
+    }
+
+    const nodes = Array.from(root.querySelectorAll('[data-e-js]'));
+    const instantiated = createScanResultContainer();
+
+    nodes.forEach((element) => {
+        if (!(element instanceof HTMLElement)) {
+            return;
+        }
+
+        const dataset = element.dataset || {};
+        const shouldRefresh = normalizeDatasetBoolean(dataset.eRefresh);
+        const alreadyReady = normalizeDatasetBoolean(dataset.eReady);
+
+        if (alreadyReady && !shouldRefresh && element.__energineBehavior) {
+            instantiated.metrics.skipped += 1;
+            instantiated.skipped = instantiated.metrics.skipped;
+            return;
+        }
+
+        const instance = instantiateBehaviorForElement(element, null, { silentOnMissing: true });
+        if (instance && instance !== PENDING_BEHAVIOR) {
+            instantiated.push(instance);
+            instantiated.metrics.initialized += 1;
+        } else if (instance === PENDING_BEHAVIOR) {
+            instantiated.metrics.pending += 1;
+            instantiated.pending = instantiated.metrics.pending;
+        } else {
+            instantiated.metrics.failed += 1;
+            instantiated.failed = instantiated.metrics.failed;
+        }
+    });
+
+    instantiated.failed = instantiated.metrics.failed;
+    instantiated.pending = instantiated.metrics.pending;
+    instantiated.skipped = instantiated.metrics.skipped;
+
+    return instantiated;
+};
+
 const instantiateComponentBehavior = (descriptor = {}) => {
     if (!descriptor || typeof descriptor !== 'object') {
         return null;
@@ -997,29 +1221,8 @@ const instantiateComponentBehavior = (descriptor = {}) => {
         return null;
     }
 
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
-        return null;
-    }
-
-    try {
-        const instance = new Constructor(element);
-        if (globalScope) {
-            globalScope[id] = instance;
-        }
-        if (typeof registerToolbarComponent === 'function') {
-            try {
-                registerToolbarComponent(id, instance);
-            } catch (error) {
-                Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${id}"`);
-            }
-        }
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behavior}"`);
-    }
-
-    return null;
+    const instance = instantiateBehaviorForElement(element, behavior, { silentOnMissing: true });
+    return instance === PENDING_BEHAVIOR ? null : instance;
 };
 
 const bootstrapPageToolbarFromConfig = (config = {}) => {
@@ -1032,54 +1235,34 @@ const bootstrapPageToolbarFromConfig = (config = {}) => {
         return null;
     }
 
-    const root = document.querySelector(rootSelector || `[data-page-toolbar="${name}"]`);
+    const root = document.querySelector(rootSelector || `[data-e-toolbar-name="${name}"]`);
     if (!root) {
         return null;
     }
 
-    const toolbarElement = root.querySelector(toolbarSelector || '[data-toolbar]');
+    const toolbarElement = root.querySelector(toolbarSelector || '[data-e-toolbar]');
     if (!toolbarElement) {
         return null;
     }
 
-    if (toolbarElement.dataset && !toolbarElement.dataset.toolbarHydrated) {
-        toolbarElement.dataset.toolbarHydrated = 'pending';
+    if (toolbarElement.dataset && !toolbarElement.dataset.eToolbarHydrated) {
+        toolbarElement.dataset.eToolbarHydrated = 'pending';
     }
 
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
+    const instance = instantiateBehaviorForElement(toolbarElement, behavior, { silentOnMissing: true });
+    if (instance === PENDING_BEHAVIOR) {
         return null;
     }
 
-    if (globalScope && globalScope.Toolbar && globalScope.Toolbar.registry) {
-        const existing = globalScope.Toolbar.registry.get(toolbarElement);
-        if (existing && typeof existing.destroy === 'function') {
-            try {
-                existing.destroy();
-            } catch (error) {
-                console.warn('[Energine.autoBootstrap] Failed to dispose existing toolbar instance', error);
-            }
+    if (instance && globalScope && typeof name === 'string' && name) {
+        try {
+            globalScope[name] = instance;
+        } catch (error) {
+            console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
         }
-        globalScope.Toolbar.registry.delete(toolbarElement);
     }
 
-    try {
-        const instance = new Constructor(toolbarElement, { root });
-
-        if (globalScope && typeof name === 'string' && name) {
-            try {
-                globalScope[name] = instance;
-            } catch (error) {
-                console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
-            }
-        }
-
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create page toolbar instance');
-    }
-
-    return null;
+    return instance;
 };
 
 const instantiatePageEditorFromConfig = (config = {}) => {
@@ -1088,22 +1271,17 @@ const instantiatePageEditorFromConfig = (config = {}) => {
     }
 
     const { behavior, id } = config;
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
+    if (!behavior || !id || typeof document === 'undefined') {
         return null;
     }
 
-    try {
-        const instance = new Constructor();
-        if (globalScope && id) {
-            globalScope[id] = instance;
-        }
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create PageEditor instance');
+    const element = document.getElementById(id);
+    if (!element) {
+        return null;
     }
 
-    return null;
+    const instance = instantiateBehaviorForElement(element, behavior, { silentOnMissing: true });
+    return instance === PENDING_BEHAVIOR ? null : instance;
 };
 
 let autoBootstrapExecuted = false;
@@ -1164,32 +1342,41 @@ const autoBootstrapRuntime = () => {
     const bootstrapDom = () => {
         applyTranslationsFromScripts(attachedRuntime);
 
-        if (pageToolbarConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => bootstrapPageToolbarFromConfig(pageToolbarConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
+        attachedRuntime.addTask(() => scheduleRetry(
+            () => {
+                if (pageToolbarConfig) {
+                    bootstrapPageToolbarFromConfig(pageToolbarConfig);
+                }
 
-        if (Array.isArray(componentDescriptors)) {
-            componentDescriptors.forEach((descriptor) => {
-                attachedRuntime.addTask(() => scheduleRetry(
-                    () => instantiateComponentBehavior(descriptor),
-                    {
-                        attempts: 20,
-                        delay: 120,
-                        onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
-                    },
-                ));
-            });
-        }
+                if (Array.isArray(componentDescriptors) && componentDescriptors.length) {
+                    componentDescriptors.forEach((descriptor) => {
+                        instantiateComponentBehavior(descriptor);
+                    });
+                }
 
-        if (pageEditorConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => instantiatePageEditorFromConfig(pageEditorConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
+                if (pageEditorConfig) {
+                    instantiatePageEditorFromConfig(pageEditorConfig);
+                }
+
+                const initialized = scanForComponents(document);
+                const pending = initialized && typeof initialized.pending === 'number'
+                    ? initialized.pending
+                    : 0;
+                return Array.isArray(initialized) && pending === 0;
+            },
+            {
+                attempts: 20,
+                delay: 150,
+                onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
+                onGiveUp: () => {
+                    const unresolved = getPendingBehaviorNames();
+                    if (Array.isArray(unresolved) && unresolved.length) {
+                        const details = unresolved.join(', ');
+                        Energine.safeConsoleError(new Error(`Unresolved behaviors after bootstrap: ${details}`), '[Energine.autoBootstrap] Behavior registry');
+                    }
+                },
+            },
+        ));
 
         attachedRuntime.addTask(() => {
             if (typeof initializeToolbars === 'function') {
@@ -1244,5 +1431,30 @@ export const showLoader = (container) => Energine.showLoader(container);
 export const hideLoader = (container) => Energine.hideLoader(container);
 
 export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
+
+export const registerBehavior = (name, ClassRef, options = {}) => {
+    if (!name || typeof name !== 'string' || typeof ClassRef !== 'function') {
+        return false;
+    }
+
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+        return false;
+    }
+
+    const { force = false } = options || {};
+    if (behaviorRegistry.has(normalizedName) && !force) {
+        console.warn(`[Energine.autoBootstrap] Behavior "${normalizedName}" is already registered. Pass { force: true } to overwrite.`);
+        return false;
+    }
+
+    clearPendingBehavior(normalizedName);
+    behaviorRegistry.set(normalizedName, ClassRef);
+    return true;
+};
+
+export const getRegisteredBehavior = (name) => resolveRegisteredBehavior(name);
+
+export const autoScanComponents = (root) => scanForComponents(root);
 
 export default Energine;

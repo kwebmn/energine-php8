@@ -1,4 +1,4 @@
-import Energine, { showLoader } from './Energine.js';
+import Energine, { showLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import DivManager from './DivManager.js';
 import './ModalBox.js';
 
@@ -30,11 +30,12 @@ class DivSidebar extends DivManager {
 
         this.toolbar = null;
         this.tabPane = new TabPane(this.element);
-        this.langId = this.element.getAttribute('lang_id');
+        const dataset = this.element.dataset || {};
+        this.langId = dataset.eLangId
+            || this.element.getAttribute('data-e-lang-id');
 
         // --- Создание структуры дерева (div для jsTree) ---
         this.treeContainer = this.element.querySelector('[data-role="tree-panel"]')
-            || this.element.querySelector('#treeContainer')
             || this.element;
         let divTree = this.treeContainer.querySelector('#divTree');
         if (!divTree) {
@@ -43,8 +44,10 @@ class DivSidebar extends DivManager {
             this.treeContainer.appendChild(divTree);
         }
 
-        this.singlePath = this.element.getAttribute('single_template');
-        this.site = this.element.getAttribute('site');
+        this.singlePath = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template');
+        this.site = dataset.eSite
+            || this.element.getAttribute('data-e-site');
 
 
         // Energine.translations['BTN_ADD'] = 'test';
@@ -225,3 +228,15 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('DivSidebar', DivSidebar);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[DivSidebar] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[DivSidebar] Failed to register behavior', error);
+    }
+}

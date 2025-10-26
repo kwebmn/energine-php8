@@ -58,13 +58,30 @@
     </xsl:template>
     
     <xsl:template match="recordset[parent::component[@type='form']]">
-    	<div id="{generate-id(.)}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" template="{$BASE}{$LANG_ABBR}{../@template}">
-    		<xsl:apply-templates/>
-    	</div>
-		<xsl:if test="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
-			<div class="note">
-				<xsl:value-of select="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']" disable-output-escaping="yes"/>
-			</div>
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <div>
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
+            <xsl:apply-templates/>
+        </div>
+                <xsl:if test="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
+                        <div class="note">
+                                <xsl:value-of select="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']" disable-output-escaping="yes"/>
+                        </div>
 		</xsl:if>
     </xsl:template>
 
@@ -119,10 +136,25 @@
     
     <!-- форма как часть grid-а выводится в другом стиле -->
    <xsl:template match="recordset[parent::component[@type='form' and @exttype='grid']]">
+    <xsl:variable name="COMPONENT" select=".."/>
     <xsl:variable name="FIELDS" select="record/field"/>
-    <div id="{generate-id(.)}" data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100"
-         template="{$BASE}{$LANG_ABBR}{../@template}"
-         single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+    <xsl:variable name="BEHAVIOR">
+        <xsl:choose>
+            <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="$COMPONENT/@sample"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <div data-role="pane" class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column h-100">
+        <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+            <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+        </xsl:if>
+        <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+        <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+        <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
         <div class="card-header bg-body-tertiary border-bottom flex-shrink-0 pb-0" data-pane-part="header" data-pane-toolbar="top">
             <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">

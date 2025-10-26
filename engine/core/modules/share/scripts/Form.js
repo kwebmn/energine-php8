@@ -1,4 +1,4 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine, { showLoader, hideLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import TabPane from './TabPane.js';
 import Toolbar from './Toolbar.js';
 import Validator from './Validator.js';
@@ -6,11 +6,13 @@ import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
 import loadCKEditor from './ckeditor/loader.js';
+import ValidFormModule from './ValidForm.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const ValidForm = ValidFormModule || globalScope?.ValidForm;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
@@ -329,7 +331,9 @@ class Form {
             throw new Error('Form: не найден componentElement по селектору или элементу: ' + element);
         }
 
-        this.singlePath = this.componentElement.getAttribute('single_template');
+        const dataset = this.componentElement.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.componentElement.getAttribute('data-e-single-template');
 
         // Внешний элемент формы
         this.form = this.componentElement.closest('form');
@@ -424,7 +428,6 @@ class Form {
 
         // Ensure iframes that host grids expand to available height inside forms
         this._enhanceEmbeddedGridIframes();
-        window.addEventListener('resize', () => this._enhanceEmbeddedGridIframes());
 
         // Если открыто в ModalBox
         if (window.parent.ModalBox?.initialized && window.parent.ModalBox.getCurrent()) {
@@ -1160,7 +1163,7 @@ class Form {
     /**
      * Make embedded iframes that host grids stretch to the full available height
      * of their container. Applies safe flex/min-height fixes to ancestor containers
-     * and sets iframe height to 100% with responsive recalculation.
+     * and sets iframe height to 100%.
      */
     _enhanceEmbeddedGridIframes() {
         if (!this.form) return;
@@ -1194,6 +1197,8 @@ class Form {
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.style.border = 'none';
+            iframe.style.flex = '1 1 auto';
+            iframe.style.minHeight = '0';
 
             // Ensure parent chain can allocate height
             const paneBody = iframe.closest('[data-pane-part="body"]');
@@ -1203,12 +1208,21 @@ class Form {
             ensureFlexChain(tabContent);
             ensureFlexChain(tabPane);
 
-            // If explicit pixel sizing is needed (older browsers), set height to parent height
+            // Ensure iframe parent can stretch while preventing cumulative inline heights.
             try {
                 const host = iframe.parentElement;
-                const rect = host.getBoundingClientRect();
-                if (rect && rect.height > 0) {
-                    iframe.style.height = rect.height + 'px';
+                if (host) {
+                    const hostStyle = window.getComputedStyle(host);
+                    if (hostStyle.display.indexOf('flex') === -1) {
+                        host.style.display = 'flex';
+                        host.style.flexDirection = 'column';
+                    }
+                    if (!host.style.minHeight || host.style.minHeight === '' || host.style.minHeight === 'auto') {
+                        host.style.minHeight = '0';
+                    }
+                    if (!host.style.flex || host.style.flex === '') {
+                        host.style.flex = '1 1 auto';
+                    }
                 }
             } catch (e) { /* ignore */ }
 
@@ -1835,8 +1849,9 @@ class FormSmapSelector {
 
     showSelector() {
         // Предполагаем, что у componentElement есть атрибут 'template' (или data-template)
-        const template = this.form.componentElement.getAttribute('template') ||
-            this.form.componentElement.dataset.template;
+        const dataset = this.form.componentElement.dataset || {};
+        const template = dataset.eTemplate
+            || this.form.componentElement.getAttribute('data-e-template');
         ModalBox.open({
             url: template + 'selector/',
             onClose: this.setName.bind(this)
@@ -1900,8 +1915,9 @@ class FormAttachmentSelector {
 
     showSelector() {
         // Получаем шаблон из атрибута или data-атрибута
-        const template = this.form.componentElement.getAttribute('template') ||
-            this.form.componentElement.dataset.template;
+        const dataset = this.form.componentElement.dataset || {};
+        const template = dataset.eTemplate
+            || this.form.componentElement.getAttribute('data-e-template');
 
         ModalBox.open({
             url: template + 'file-library/',
@@ -2166,3 +2182,16 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('Form', Form);
+        registerEnergineBehavior('ValidForm', ValidForm);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[Form] Failed to register behaviors');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[Form] Failed to register behaviors', error);
+    }
+}

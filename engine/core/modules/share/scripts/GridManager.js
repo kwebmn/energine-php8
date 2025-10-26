@@ -1,4 +1,4 @@
-import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn } from './Energine.js';
+import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import TabPaneModule from './TabPane.js';
 import ToolbarModule from './Toolbar.js';
 import ModalBoxModule from './ModalBox.js';
@@ -1429,7 +1429,10 @@ class GridManager {
         this.gridPendingSelection = null;
         this.selectionControls = [];
         this.hasSelection = false;
-        this.singlePath = this.element.getAttribute('single_template') || '';
+        const dataset = this.element?.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template')
+            || '';
     }
 
     /**
@@ -1540,7 +1543,10 @@ class GridManager {
      * @private
      */
     _initializeMoveState() {
-        const moveFromId = this.element.getAttribute('move_from_id');
+        const dataset = this.element?.dataset || {};
+        const moveFromId = dataset.eMoveFromId
+            || this.element.getAttribute('data-e-move-from-id')
+            || this.element.getAttribute('move_from_id');
         if (moveFromId) {
             this.setMvElementId(moveFromId);
         }
@@ -1642,6 +1648,7 @@ class GridManager {
         }
 
         this.setupSelectionControls();
+        this.syncToolbarStateAfterAttach();
     }
 
     /**
@@ -1679,10 +1686,41 @@ class GridManager {
             if (control && control.element) {
                 control.element.dataset.requiresSelection = 'true';
             }
+            if (
+                control
+                && typeof control.enable === 'function'
+                && typeof control.initially_disabled === 'function'
+                && control.initially_disabled()
+            ) {
+                control.enable(true);
+            }
             control._disabledBySelection = false;
         });
 
         this.updateSelectionDependentControls(!!(this.grid && this.grid.getSelectedItem()));
+    }
+
+    /**
+     * Restore toolbar state when it attaches later than initial data load.
+     */
+    syncToolbarStateAfterAttach() {
+        if (!this.toolbar) {
+            return;
+        }
+
+        const addControl = (typeof this.toolbar.getControlById === 'function')
+            ? this.toolbar.getControlById('add')
+            : null;
+
+        if (addControl && typeof addControl.enable === 'function') {
+            addControl.enable(true);
+        }
+
+        if (this.grid && !this.grid.isEmpty() && typeof this.toolbar.enableControls === 'function') {
+            this.toolbar.enableControls();
+        }
+
+        this.updateSelectionDependentControls(this.hasSelection);
     }
 
     /**
@@ -1897,7 +1935,7 @@ class GridManager {
         }
 
         if (addControl && typeof addControl.enable === 'function') {
-            addControl.enable();
+            addControl.enable(true);
         }
 
         this.grid.build();
@@ -2048,10 +2086,18 @@ class GridManager {
         );
     }
     print() {
-        window.open(`${this.element.getAttribute('single_template')}print/`);
+        const dataset = this.element?.dataset || {};
+        const base = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template')
+            || this.singlePath;
+        window.open(`${base}print/`);
     }
     csv() {
-        window.location.href = `${this.element.getAttribute('single_template')}csv/`;
+        const dataset = this.element?.dataset || {};
+        const base = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template')
+            || this.singlePath;
+        window.location.href = `${base}csv/`;
     }
 
     // --- Static stub for Filter (should be redefined elsewhere) ---
@@ -2472,6 +2518,18 @@ export function attachGridManagerGlobals(target = globalScope) {
 }
 
 attachGridManagerGlobals();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('GridManager', GridManager);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[GridManager] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[GridManager] Failed to register behavior', error);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     /**
