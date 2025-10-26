@@ -1,3 +1,5 @@
+import ModalBox from './ModalBox.js';
+
 /**
  * @file Contain the description of the next classes:
  * <ul>
@@ -15,6 +17,7 @@
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+const ModalBoxHost = ModalBox || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 
 /**
  * Words — работа с разделёнными строками.
@@ -148,9 +151,20 @@ class ActiveList {
             item.addEventListener('mouseover', () => {
                 this.selectItem(idx);
             });
-            item.addEventListener('click', () => {
-                this._fireEvent('choose', this.items[this.selected]);
-            });
+            const pointerHandler = (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                this.selectItem(idx);
+                this._fireEvent('choose', this.items[idx]);
+            };
+            item.addEventListener('mousedown', pointerHandler);
+            try {
+                item.addEventListener('touchstart', pointerHandler, { passive: false });
+            } catch (error) {
+                item.addEventListener('touchstart', pointerHandler);
+            }
         });
     }
 
@@ -368,6 +382,11 @@ class AcplField {
         this.element.classList.add('form-control');
 
         this.componentId = this.element.getAttribute('component_id');
+        this.componentElement = this.element.closest('[data-e-js]');
+        const componentDataset = this.componentElement?.dataset || {};
+        this.singlePath = componentDataset.eSingleTemplate
+            || this.componentElement?.getAttribute?.('data-e-single-template')
+            || '';
 
         this.container = this.element.closest('.input-group');
         if (this.container) {
@@ -454,6 +473,21 @@ class AcplField {
             return true;
         }
 
+        if (this.singlePath && ModalBoxHost && typeof ModalBoxHost.open === 'function') {
+            const fieldId = this.button?.dataset?.target;
+            const linkInput = fieldId ? document.getElementById(fieldId) : this.element;
+
+            ModalBoxHost.open({
+                url: `${this.singlePath}tags/show/`,
+                onClose: (result) => {
+                    if (result && linkInput) {
+                        linkInput.value = result;
+                    }
+                }
+            });
+            return true;
+        }
+
         return false;
     }
 
@@ -514,15 +548,41 @@ class AcplField {
             return [];
         }
 
+        const candidates = [];
         const normalized = (this.url.includes('?') || this.url.endsWith('/'))
             ? this.url
             : `${this.url}/`;
 
-        if (normalized === this.url) {
-            return [normalized];
+        candidates.push(normalized);
+        if (normalized !== this.url) {
+            candidates.push(this.url);
         }
 
-        return [normalized, this.url];
+        const seen = new Set();
+        return candidates
+            .map((candidate) => this.ensureJsonQuery(candidate))
+            .filter((candidate) => {
+                if (!candidate || seen.has(candidate)) {
+                    return false;
+                }
+                seen.add(candidate);
+                return true;
+            });
+    }
+
+    ensureJsonQuery(url) {
+        if (!url) {
+            return url;
+        }
+
+        const [base, hash = ''] = url.split('#');
+        const hasJson = /([?&])json(?:=[^&#]*)?(?:&|#|$)/.test(base);
+
+        const resultBase = hasJson
+            ? base
+            : `${base}${base.includes('?') ? '&' : '?'}json=1`;
+
+        return hash ? `${resultBase}#${hash}` : resultBase;
     }
 
     parseResponse(resp, requestUrl) {
@@ -559,8 +619,12 @@ class AcplField {
 
             return fetch(requestUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'value=' + encodeURIComponent(str)
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'json=1&value=' + encodeURIComponent(str),
+                credentials: 'same-origin'
             })
                 .then((resp) => this.parseResponse(resp, requestUrl))
                 .catch((error) => {
