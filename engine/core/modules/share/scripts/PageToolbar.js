@@ -1002,7 +1002,8 @@ class PageToolbar extends Toolbar {
         // Деактивируем editBlocks если editMode включён
         const editBlocksButton = this.getControlById('editBlocks');
         const editModeControl = this.getControlById('editMode');
-        if (editModeControl && typeof editModeControl.getState === 'function' && editModeControl.getState() && editBlocksButton) {
+        const editModeState = PageToolbar._resolveControlState(editModeControl);
+        if (editBlocksButton && editModeState === 1) {
             editBlocksButton.disable();
         }
     }
@@ -1010,7 +1011,8 @@ class PageToolbar extends Toolbar {
     // Actions
     editMode() {
         const editModeControl = this.getControlById('editMode');
-        if (editModeControl && editModeControl.getState() == 0) {
+        const state = PageToolbar._resolveControlState(editModeControl);
+        if (state === 0 || state === null) {
             this._reloadWindowInEditMode();
         } else {
             this.onEditModeUnpressed(true);
@@ -1446,6 +1448,76 @@ class PageToolbar extends Toolbar {
             }
         }
         return '';
+    }
+
+    static _normalizeControlStateValue(value) {
+        if (typeof value === 'undefined' || value === null) {
+            return null;
+        }
+        if (typeof value === 'boolean') {
+            return value ? 1 : 0;
+        }
+        if (typeof value === 'number') {
+            return value ? 1 : 0;
+        }
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed.length) {
+                return null;
+            }
+            if (/^-?\d+$/.test(trimmed)) {
+                return parseInt(trimmed, 10) ? 1 : 0;
+            }
+            return Toolbar.normalizeBoolean(trimmed) ? 1 : 0;
+        }
+        return null;
+    }
+
+    static _resolveControlState(control) {
+        if (!control || typeof control !== 'object') {
+            return null;
+        }
+
+        if (typeof control.getState === 'function') {
+            try {
+                const value = control.getState();
+                const normalized = PageToolbar._normalizeControlStateValue(value);
+                if (normalized !== null) {
+                    return normalized;
+                }
+            } catch (error) {
+                // ignore state read errors and try fallbacks
+            }
+        }
+
+        if (control.properties && Object.prototype.hasOwnProperty.call(control.properties, 'state')) {
+            const normalized = PageToolbar._normalizeControlStateValue(control.properties.state);
+            if (normalized !== null) {
+                return normalized;
+            }
+        }
+
+        const element = control.element instanceof HTMLElement ? control.element : null;
+        if (element) {
+            const datasetState = element.dataset ? element.dataset.state : undefined;
+            const normalizedDatasetState = PageToolbar._normalizeControlStateValue(datasetState);
+            if (normalizedDatasetState !== null) {
+                return normalizedDatasetState;
+            }
+
+            if (typeof element.getAttribute === 'function') {
+                const ariaPressed = element.getAttribute('aria-pressed');
+                if (ariaPressed !== null) {
+                    return ariaPressed === 'true' ? 1 : 0;
+                }
+            }
+
+            if (element.classList && (element.classList.contains('active') || element.classList.contains('pressed'))) {
+                return 1;
+            }
+        }
+
+        return null;
     }
 
     static _findDeclarativeRoot(element) {

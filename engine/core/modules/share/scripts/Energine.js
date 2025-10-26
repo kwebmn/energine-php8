@@ -326,10 +326,23 @@ class EnergineCore {
     }
 
     async request(uri, data, onSuccess, onUserError, onServerError = () => {}, method = 'post') {
-        let url = uri + (this.forceJSON ? '?json' : '');
+        let url = uri;
         const isGet = method.toLowerCase() === 'get';
-        const headers = { 'X-Request': 'json' };
+        const headers = {
+            'X-Request': 'json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, text/plain, */*',
+        };
         const fetchOpts = { method: method.toUpperCase(), headers };
+
+        const ensureJsonQueryParam = () => {
+            if (/(?:\?|&)json(?:[=&]|$)/i.test(url)) {
+                return;
+            }
+            url += (url.includes('?') ? '&' : '?') + 'json=1';
+        };
+
+        ensureJsonQueryParam();
 
         if (this.forceJSON) {
             headers['Content-Type'] = 'application/json';

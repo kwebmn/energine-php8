@@ -174,8 +174,9 @@ class Toolbar {
             return null;
         }
         const dataset = element.dataset || {};
-        const rawType = dataset.type || element.getAttribute('data-type') || element.tagName.toLowerCase();
-        const type = (rawType || 'button').toLowerCase();
+        const declaredType = dataset.type || element.getAttribute('data-type');
+        const rawType = declaredType || element.tagName.toLowerCase();
+        let type = (rawType || 'button').toLowerCase();
         const controlId = dataset.controlId || element.getAttribute('data-control-id') || '';
         const title = dataset.title || element.getAttribute('data-title') || '';
         const tooltip = element.getAttribute('title') || dataset.tooltip || '';
@@ -197,6 +198,29 @@ class Toolbar {
             return null;
         }
 
+        const ariaPressedAttr = element.getAttribute('aria-pressed');
+        const bootstrapToggle = (element.getAttribute('data-bs-toggle') || '').toLowerCase();
+        const hasToggleDataset = typeof dataset.state !== 'undefined' || element.getAttribute('data-state') !== null;
+        const hasPressedClass = element.classList
+            ? (element.classList.contains('active') || element.classList.contains('pressed'))
+            : false;
+        const shouldForceSwitcher = (
+            type === 'switcher'
+            || (
+                (type === 'button' || type === 'link' || type === 'a')
+                && (
+                    ariaPressedAttr !== null
+                    || bootstrapToggle === 'button'
+                    || hasToggleDataset
+                    || hasPressedClass
+                )
+            )
+        );
+
+        if (shouldForceSwitcher) {
+            type = 'switcher';
+        }
+
         const descriptor = {
             type,
             element,
@@ -214,7 +238,10 @@ class Toolbar {
 
         if (type === 'switcher') {
             descriptor.props.aicon = dataset.altIcon || element.getAttribute('data-alt-icon') || '';
-            descriptor.props.state = dataset.state || element.getAttribute('data-state') || '';
+            const stateFromDataset = dataset.state || element.getAttribute('data-state') || '';
+            const stateFromAria = ariaPressedAttr !== null ? (ariaPressedAttr === 'true' ? '1' : '0') : '';
+            const stateFromClasses = hasPressedClass ? '1' : '';
+            descriptor.props.state = stateFromDataset || stateFromAria || stateFromClasses || '';
         }
 
         if (type === 'select') {
