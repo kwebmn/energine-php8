@@ -1198,6 +1198,8 @@ class Form {
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.style.border = 'none';
+            iframe.style.flex = '1 1 auto';
+            iframe.style.minHeight = '0';
 
             // Ensure parent chain can allocate height
             const paneBody = iframe.closest('[data-pane-part="body"]');
@@ -1207,12 +1209,21 @@ class Form {
             ensureFlexChain(tabContent);
             ensureFlexChain(tabPane);
 
-            // If explicit pixel sizing is needed (older browsers), set height to parent height
+            // Ensure iframe parent can stretch while preventing cumulative inline heights.
             try {
                 const host = iframe.parentElement;
-                const rect = host.getBoundingClientRect();
-                if (rect && rect.height > 0) {
-                    iframe.style.height = rect.height + 'px';
+                if (host) {
+                    const hostStyle = window.getComputedStyle(host);
+                    if (hostStyle.display.indexOf('flex') === -1) {
+                        host.style.display = 'flex';
+                        host.style.flexDirection = 'column';
+                    }
+                    if (!host.style.minHeight || host.style.minHeight === '' || host.style.minHeight === 'auto') {
+                        host.style.minHeight = '0';
+                    }
+                    if (!host.style.flex || host.style.flex === '') {
+                        host.style.flex = '1 1 auto';
+                    }
                 }
             } catch (e) { /* ignore */ }
 
