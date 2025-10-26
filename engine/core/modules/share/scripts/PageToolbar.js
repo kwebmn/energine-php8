@@ -61,6 +61,8 @@ class PageToolbar extends Toolbar {
 
         this.setupLayout();
 
+        this._ensureRoutingConfigFromLayout();
+
     }
 
     _hydrateFromElement(element, descriptors = null) {
@@ -87,6 +89,32 @@ class PageToolbar extends Toolbar {
                 this.appendControl(controlInstance);
             }
         });
+    }
+
+    _ensureRoutingConfigFromLayout() {
+        const datasetSources = PageToolbar._collectDatasetSources(this);
+
+        if (!this.componentPath) {
+            const resolvedPath = PageToolbar._resolveDatasetValue(
+                ['eComponentPath', 'eComponent', 'eComponentUrl', 'eComponentBase'],
+                ...datasetSources
+            );
+            if (resolvedPath) {
+                this.componentPath = PageToolbar._normalizeComponentPath(resolvedPath);
+            }
+        } else {
+            this.componentPath = PageToolbar._normalizeComponentPath(this.componentPath);
+        }
+
+        if (!this.documentId) {
+            const resolvedDocumentId = PageToolbar._resolveDatasetValue(
+                ['eDocumentId', 'eDocId', 'documentId', 'docId'],
+                ...datasetSources
+            );
+            if (resolvedDocumentId) {
+                this.documentId = resolvedDocumentId;
+            }
+        }
     }
 
     _ensureDefaultControlActions() {
@@ -200,10 +228,12 @@ class PageToolbar extends Toolbar {
 
         const dataset = element.dataset || {};
         const rootDataset = root.dataset || {};
+        const combinedDataset = Object.assign({}, rootDataset || {}, dataset || {});
         this._layoutConfig = Object.assign({}, this._layoutConfig || {}, {
-            dataset,
+            dataset: rootDataset,
             toolbarDataset: dataset,
             rootDataset,
+            combinedDataset,
         });
 
         const html = document.documentElement;
@@ -1208,20 +1238,26 @@ class PageToolbar extends Toolbar {
         }
 
         if (args[0] instanceof HTMLElement) {
-            const rootElement = args[0];
+            const rootElementRaw = args[0];
             const options = (args[1] && typeof args[1] === 'object' && !Array.isArray(args[1])) ? args[1] : {};
-            const dataset = rootElement.dataset || {};
-            const toolbarElement = (options.toolbarElement instanceof HTMLElement && rootElement.contains(options.toolbarElement))
+            const dataset = rootElementRaw.dataset || {};
+            const toolbarElement = (options.toolbarElement instanceof HTMLElement && rootElementRaw.contains(options.toolbarElement))
                 ? options.toolbarElement
-                : (rootElement.matches('[data-e-toolbar]')
-                    ? rootElement
-                    : rootElement.querySelector('[data-e-toolbar]'));
-            const effectiveElement = toolbarElement || rootElement;
+                : (rootElementRaw.matches('[data-e-toolbar]')
+                    ? rootElementRaw
+                    : rootElementRaw.querySelector('[data-e-toolbar]'));
+            const effectiveElement = toolbarElement || rootElementRaw;
             const toolbarDataset = effectiveElement.dataset || {};
+            const layoutRootCandidate = PageToolbar._findDeclarativeRoot(rootElementRaw)
+                || PageToolbar._findDeclarativeRoot(effectiveElement)
+                || null;
+            const rootDataset = layoutRootCandidate && layoutRootCandidate.dataset
+                ? layoutRootCandidate.dataset
+                : (options.rootDataset || {});
+            const combinedDataset = Object.assign({}, rootDataset || {}, toolbarDataset || {}, dataset || {});
             const root = options.root instanceof HTMLElement
                 ? options.root
-                : PageToolbar._findDeclarativeRoot(rootElement) || PageToolbar._findDeclarativeRoot(effectiveElement);
-            const rootDataset = root && root.dataset ? root.dataset : dataset;
+                : layoutRootCandidate;
             const properties = Toolbar.extractPropertiesFromDataset(toolbarDataset, options.properties);
 
             const componentPath = PageToolbar._resolveDatasetValue(
@@ -1229,14 +1265,16 @@ class PageToolbar extends Toolbar {
                 options,
                 dataset,
                 toolbarDataset,
-                rootDataset
+                rootDataset,
+                combinedDataset
             ) || '';
             const documentId = PageToolbar._resolveDatasetValue(
                 ['eDocumentId', 'eDocId'],
                 options,
                 dataset,
                 toolbarDataset,
-                rootDataset
+                rootDataset,
+                combinedDataset
             ) || '';
             const toolbarName = options.toolbarName
                 || toolbarDataset.eToolbar
@@ -1252,14 +1290,15 @@ class PageToolbar extends Toolbar {
                 || null;
             const descriptors = PageToolbar._extractDescriptorsFromElement(effectiveElement);
             const layout = {
-                root: root || null,
-                toolbarRoot: rootElement,
-                dataset,
+                root: root || layoutRootCandidate || null,
+                toolbarRoot: rootElementRaw,
+                dataset: rootDataset,
                 toolbarDataset,
                 rootDataset,
-                sidebarTarget: PageToolbar._resolveDatasetValue(['eOffcanvasTarget', 'eSidebarTarget'], options, dataset, toolbarDataset, rootDataset),
-                sidebarId: PageToolbar._resolveDatasetValue(['eSidebarId', 'eOffcanvasId'], options, dataset, toolbarDataset, rootDataset),
-                sidebarUrl: PageToolbar._resolveDatasetValue(['eSidebarUrl'], options, dataset, toolbarDataset, rootDataset),
+                combinedDataset,
+                sidebarTarget: PageToolbar._resolveDatasetValue(['eOffcanvasTarget', 'eSidebarTarget'], options, dataset, toolbarDataset, rootDataset, combinedDataset),
+                sidebarId: PageToolbar._resolveDatasetValue(['eSidebarId', 'eOffcanvasId'], options, dataset, toolbarDataset, rootDataset, combinedDataset),
+                sidebarUrl: PageToolbar._resolveDatasetValue(['eSidebarUrl'], options, dataset, toolbarDataset, rootDataset, combinedDataset),
             };
 
             return {
@@ -1304,6 +1343,85 @@ class PageToolbar extends Toolbar {
         return Array.from(element.children || [])
             .map(child => Toolbar.extractControlDescriptor(child))
             .filter(Boolean);
+    }
+
+    static _collectDatasetSources(instance) {
+        const sources = [];
+        const push = (source) => {
+            if (source && typeof source === 'object') {
+                sources.push(source);
+            }
+        };
+
+        if (!instance || typeof instance !== 'object') {
+            return sources;
+        }
+
+        const layoutConfig = instance._layoutConfig || {};
+        push(layoutConfig.combinedDataset);
+        push(layoutConfig.dataset);
+        push(layoutConfig.rootDataset);
+        push(layoutConfig.toolbarDataset);
+        push(layoutConfig);
+
+        const potentialElements = new Set();
+        if (instance.layoutRoot instanceof HTMLElement) {
+            potentialElements.add(instance.layoutRoot);
+        }
+        if (instance.toolbarRoot instanceof HTMLElement) {
+            potentialElements.add(instance.toolbarRoot);
+        }
+        if (instance.element instanceof HTMLElement) {
+            potentialElements.add(instance.element);
+        }
+
+        potentialElements.forEach(element => {
+            if (element && element.dataset) {
+                push(element.dataset);
+            }
+            if (element?.closest) {
+                const carrier = element.closest('[data-e-component-path],[data-e-component],[data-component-path],[data-component-url],[data-e-document-id],[data-document-id]');
+                if (carrier && carrier.dataset) {
+                    push(carrier.dataset);
+                }
+            }
+        });
+
+        if (typeof document !== 'undefined') {
+            const toolbarName = instance?.name
+                || instance?.element?.dataset?.eToolbar
+                || instance?.element?.dataset?.eToolbarName
+                || '';
+            if (toolbarName) {
+                const script = document.querySelector(`script[data-e-toolbar-name="${toolbarName}"]`);
+                if (script && script.dataset) {
+                    push(script.dataset);
+                }
+            }
+        }
+
+        return sources;
+    }
+
+    static _normalizeComponentPath(value) {
+        if (typeof value === 'undefined' || value === null) {
+            return '';
+        }
+        let candidate = String(value).trim();
+        if (!candidate) {
+            return '';
+        }
+        const anchorIndex = candidate.search(/[?#]/);
+        if (anchorIndex === -1) {
+            if (!candidate.endsWith('/')) {
+                candidate = `${candidate}/`;
+            }
+            return candidate;
+        }
+        const base = candidate.slice(0, anchorIndex);
+        const suffix = candidate.slice(anchorIndex);
+        const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+        return `${normalizedBase}${suffix}`;
     }
 
     static _resolveDatasetValue(keys, ...sources) {
