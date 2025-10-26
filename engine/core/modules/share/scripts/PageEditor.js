@@ -98,7 +98,10 @@ class PageEditor {
             this.singlePath = dataset.eSingleTemplate
                 || area.getAttribute('data-e-single-template');
             this.ID = area.getAttribute('eID') || '';
-            this.num = area.getAttribute('num') || '';
+            this.num = dataset.eNum
+                ?? area.getAttribute('data-e-num')
+                ?? area.getAttribute('num')
+                ?? '';
             if (!area.id) {
                 area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
             }
@@ -142,14 +145,15 @@ class PageEditor {
 
         if (!async) showLoader();
 
-        let data = 'data=' + encodeURIComponent(this.editor.getData());
-        if (this.ID) data += '&ID=' + this.ID;
-        if (this.num) data += '&num=' + this.num;
+        const payload = new URLSearchParams();
+        payload.set('data', this.editor.getData());
+        if (this.ID) payload.set('ID', this.ID);
+        payload.set('num', this.num ?? '');
 
         fetch(this.singlePath + 'save-text', {
             method: 'POST',
-            body: data,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: payload,
+            credentials: 'same-origin',
         })
             .then(response => response.text())
             .then(response => {
@@ -204,7 +208,10 @@ class BlockEditor {
          * Text block ID.
          * @type {string}
          */
-        this.num = this.area.getAttribute('num') || '';
+        this.num = dataset.eNum
+            || this.area.getAttribute('data-e-num')
+            || this.area.getAttribute('num')
+            || '';
 
         /**
          * Editor.
@@ -282,37 +289,37 @@ class BlockEditor {
             showLoader();
         }
 
-        const params = {
-            data: this.editor.getData(),
-        };
+        const params = new URLSearchParams();
+        params.append('data', this.editor.getData());
         if (this.ID) {
-            params.ID = this.ID;
+            params.append('ID', this.ID);
         }
-        if (this.num) {
-            params.num = this.num;
-        }
+        params.append('num', this.num ?? '');
 
-        Energine.request(
-            this.singlePath + 'save-text',
-            params,
-            (response) => {
-                if (onSuccess) onSuccess.call(this, response);
-                this.editor.resetDirty && this.editor.resetDirty();
-                if (!async) {
-                    hideLoader();
-                }
+        fetch(this.singlePath + 'save-text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             },
-            () => {
+            body: params.toString(),
+        })
+            .then((response) => response.text())
+            .then((responseText) => {
+                if (onSuccess) onSuccess.call(this, responseText);
+                if (this.editor.resetDirty) {
+                    this.editor.resetDirty();
+                }
+            })
+            .catch((error) => {
+                if (typeof console !== 'undefined' && console.error) {
+                    console.error('[BlockEditor] Failed to save text block', error);
+                }
+            })
+            .finally(() => {
                 if (!async) {
                     hideLoader();
                 }
-            },
-            () => {
-                if (!async) {
-                    hideLoader();
-                }
-            }
-        );
+            });
     }
 }
 
