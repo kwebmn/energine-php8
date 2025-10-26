@@ -265,14 +265,14 @@ class PageToolbar extends Toolbar {
                     button.setAttribute('aria-controls', sidebarFrame.id);
                 }
                 if (button.dataset) {
-                    button.dataset.sidebarState = state ? 'open' : 'closed';
+                    button.dataset.eSidebarState = state ? 'open' : 'closed';
                 }
             });
             if (root.dataset) {
-                root.dataset.sidebarExpanded = state ? '1' : '0';
+                root.dataset.eSidebarExpanded = state ? '1' : '0';
             }
             if (element !== root && element.dataset) {
-                element.dataset.sidebarExpanded = state ? '1' : '0';
+                element.dataset.eSidebarExpanded = state ? '1' : '0';
             }
         };
 
@@ -588,10 +588,10 @@ class PageToolbar extends Toolbar {
         }
 
         if (this.layoutRoot?.dataset) {
-            this.layoutRoot.dataset.sidebarExpanded = state ? '1' : '0';
+            this.layoutRoot.dataset.eSidebarExpanded = state ? '1' : '0';
         }
         if (this.element?.dataset && this.element !== this.layoutRoot) {
-            this.element.dataset.sidebarExpanded = state ? '1' : '0';
+            this.element.dataset.eSidebarExpanded = state ? '1' : '0';
         }
     }
 
