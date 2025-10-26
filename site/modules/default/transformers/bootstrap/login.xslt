@@ -2,22 +2,36 @@
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
     <xsl:template match="component[@name='signIn']">
-        <xsl:variable name="COMPONENT_ID" select="concat('signIn-', generate-id(.))"/>
-        <xsl:variable name="TABS_ID" select="concat('auth-tabs-', generate-id(.))"/>
-        <xsl:variable name="LOGIN_TAB_ID" select="concat('auth-login-tab-', generate-id(.))"/>
-        <xsl:variable name="LOGIN_PANE_ID" select="concat('auth-login-pane-', generate-id(.))"/>
-        <xsl:variable name="REGISTER_TAB_ID" select="concat('auth-register-tab-', generate-id(.))"/>
-        <xsl:variable name="REGISTER_PANE_ID" select="concat('auth-register-pane-', generate-id(.))"/>
-        <xsl:variable name="LOGIN_EMAIL_ID" select="concat('login-email-', generate-id(.))"/>
-        <xsl:variable name="LOGIN_PASSWORD_ID" select="concat('login-password-', generate-id(.))"/>
-        <xsl:variable name="REGISTER_NAME_ID" select="concat('register-name-', generate-id(.))"/>
-        <xsl:variable name="REGISTER_EMAIL_ID" select="concat('register-email-', generate-id(.))"/>
-        <xsl:variable name="REGISTER_PASSWORD_ID" select="concat('register-password-', generate-id(.))"/>
+        <xsl:variable name="COMPONENT" select="."/>
+        <xsl:variable name="COMPONENT_ID" select="concat('signIn-', generate-id($COMPONENT))"/>
+        <xsl:variable name="TABS_ID" select="concat('auth-tabs-', generate-id($COMPONENT))"/>
+        <xsl:variable name="LOGIN_TAB_ID" select="concat('auth-login-tab-', generate-id($COMPONENT))"/>
+        <xsl:variable name="LOGIN_PANE_ID" select="concat('auth-login-pane-', generate-id($COMPONENT))"/>
+        <xsl:variable name="REGISTER_TAB_ID" select="concat('auth-register-tab-', generate-id($COMPONENT))"/>
+        <xsl:variable name="REGISTER_PANE_ID" select="concat('auth-register-pane-', generate-id($COMPONENT))"/>
+        <xsl:variable name="LOGIN_EMAIL_ID" select="concat('login-email-', generate-id($COMPONENT))"/>
+        <xsl:variable name="LOGIN_PASSWORD_ID" select="concat('login-password-', generate-id($COMPONENT))"/>
+        <xsl:variable name="REGISTER_NAME_ID" select="concat('register-name-', generate-id($COMPONENT))"/>
+        <xsl:variable name="REGISTER_EMAIL_ID" select="concat('register-email-', generate-id($COMPONENT))"/>
+        <xsl:variable name="REGISTER_PASSWORD_ID" select="concat('register-password-', generate-id($COMPONENT))"/>
         <xsl:variable name="IS_USER" select="//property[@name='is_user'] &gt; 0"/>
         <xsl:variable name="TEMPLATE_PATH" select="concat($LANG_ABBR, @single_template)"/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>SignIn</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
 
         <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
             <xsl:attribute name="template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="@single_template"/></xsl:attribute>
             <div class="row justify-content-center">
                 <div class="col-xl-5 col-md-8">
                     <div class="card shadow-lg border-0">
@@ -159,7 +173,21 @@
     </xsl:template>
 
     <xsl:template match="component[@name='recoverPassword' and @componentAction='main']">
+        <xsl:variable name="COMPONENT" select="."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>RecoverPassword</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="@template"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="@single_template"/></xsl:attribute>
             <div class="row justify-content-center">
                 <div class="col-xl-5 col-md-8">
                     <div class="card shadow-lg border-0">
@@ -184,7 +212,21 @@
     </xsl:template>
 
     <xsl:template match="component[@name='recoverPassword' and @componentAction='send']">
+        <xsl:variable name="COMPONENT" select="."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>RecoverPassword</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="@template"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="@single_template"/></xsl:attribute>
             <div class="row justify-content-center">
                 <div class="col-lg-6 text-center">
                     <div class="alert alert-success" role="alert">
@@ -196,7 +238,21 @@
     </xsl:template>
 
     <xsl:template match="component[@name='recoverPassword' and @componentAction='recover']">
+        <xsl:variable name="COMPONENT" select="."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>RecoverPassword</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <div class="container py-5" id="{generate-id(recordset)}" template="{@template}" single_template="{@single_template}">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="@template"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="@single_template"/></xsl:attribute>
             <div class="row justify-content-center">
                 <div class="col-xl-5 col-md-8">
                     <div class="card shadow-lg border-0">

@@ -865,33 +865,6 @@ if (existingConfig && Object.keys(existingConfig).length) {
 
 const datasetFalseValues = new Set(['0', 'false', 'no', 'off']);
 
-const parseJSONAttribute = (value, fallback = null) => {
-    if (typeof value !== 'string') {
-        return fallback;
-    }
-
-    const trimmed = value.trim();
-    if (!trimmed) {
-        return fallback;
-    }
-
-    try {
-        return JSON.parse(trimmed);
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse JSON dataset value');
-        return fallback;
-    }
-};
-
-const readDatasetString = (value) => {
-    if (typeof value !== 'string') {
-        return undefined;
-    }
-
-    const trimmed = value.trim();
-    return trimmed ? trimmed : undefined;
-};
-
 const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
 
 const applyTranslationsFromScripts = (runtime) => {
@@ -1206,84 +1179,6 @@ const scanForComponents = (root = (typeof document !== 'undefined' ? document : 
     return instantiated;
 };
 
-const instantiateComponentBehavior = (descriptor = {}) => {
-    if (!descriptor || typeof descriptor !== 'object') {
-        return null;
-    }
-
-    const { id, behavior } = descriptor;
-    if (!id || !behavior || typeof document === 'undefined') {
-        return null;
-    }
-
-    const element = document.getElementById(id);
-    if (!element) {
-        return null;
-    }
-
-    const instance = instantiateBehaviorForElement(element, behavior, { silentOnMissing: true });
-    return instance === PENDING_BEHAVIOR ? null : instance;
-};
-
-const bootstrapPageToolbarFromConfig = (config = {}) => {
-    if (!config || typeof config !== 'object' || typeof document === 'undefined') {
-        return null;
-    }
-
-    const { name, behavior, rootSelector, toolbarSelector } = config;
-    if (!name || !behavior) {
-        return null;
-    }
-
-    const root = document.querySelector(rootSelector || `[data-e-toolbar-name="${name}"]`);
-    if (!root) {
-        return null;
-    }
-
-    const toolbarElement = root.querySelector(toolbarSelector || '[data-e-toolbar]');
-    if (!toolbarElement) {
-        return null;
-    }
-
-    if (toolbarElement.dataset && !toolbarElement.dataset.eToolbarHydrated) {
-        toolbarElement.dataset.eToolbarHydrated = 'pending';
-    }
-
-    const instance = instantiateBehaviorForElement(toolbarElement, behavior, { silentOnMissing: true });
-    if (instance === PENDING_BEHAVIOR) {
-        return null;
-    }
-
-    if (instance && globalScope && typeof name === 'string' && name) {
-        try {
-            globalScope[name] = instance;
-        } catch (error) {
-            console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
-        }
-    }
-
-    return instance;
-};
-
-const instantiatePageEditorFromConfig = (config = {}) => {
-    if (!config || typeof config !== 'object') {
-        return null;
-    }
-
-    const { behavior, id } = config;
-    if (!behavior || !id || typeof document === 'undefined') {
-        return null;
-    }
-
-    const element = document.getElementById(id);
-    if (!element) {
-        return null;
-    }
-
-    const instance = instantiateBehaviorForElement(element, behavior, { silentOnMissing: true });
-    return instance === PENDING_BEHAVIOR ? null : instance;
-};
-
 let autoBootstrapExecuted = false;
 
 const autoBootstrapRuntime = () => {
@@ -1316,48 +1211,11 @@ const autoBootstrapRuntime = () => {
 
     const attachedRuntime = Energine.attachToWindow(globalScope, runtime);
 
-    const componentDescriptors = parseJSONAttribute(dataset.components, []);
-    const pageToolbarName = readDatasetString(dataset.pageToolbarName);
-    const pageToolbarBehavior = readDatasetString(dataset.pageToolbarBehavior);
-    const pageToolbarRootSelector = readDatasetString(dataset.pageToolbarRootSelector);
-    const pageToolbarToolbarSelector = readDatasetString(dataset.pageToolbarToolbarSelector);
-    const pageToolbarConfig = (pageToolbarName && pageToolbarBehavior)
-        ? {
-            name: pageToolbarName,
-            behavior: pageToolbarBehavior,
-            ...(pageToolbarRootSelector ? { rootSelector: pageToolbarRootSelector } : {}),
-            ...(pageToolbarToolbarSelector ? { toolbarSelector: pageToolbarToolbarSelector } : {}),
-        }
-        : null;
-    const pageEditorConfig = parseJSONAttribute(dataset.pageEditorConfig, null);
-
-    if (Array.isArray(componentDescriptors) && globalScope) {
-        componentDescriptors.forEach((descriptor) => {
-            if (descriptor && typeof descriptor.id === 'string' && typeof globalScope[descriptor.id] === 'undefined') {
-                globalScope[descriptor.id] = null;
-            }
-        });
-    }
-
     const bootstrapDom = () => {
         applyTranslationsFromScripts(attachedRuntime);
 
         attachedRuntime.addTask(() => scheduleRetry(
             () => {
-                if (pageToolbarConfig) {
-                    bootstrapPageToolbarFromConfig(pageToolbarConfig);
-                }
-
-                if (Array.isArray(componentDescriptors) && componentDescriptors.length) {
-                    componentDescriptors.forEach((descriptor) => {
-                        instantiateComponentBehavior(descriptor);
-                    });
-                }
-
-                if (pageEditorConfig) {
-                    instantiatePageEditorFromConfig(pageEditorConfig);
-                }
-
                 const initialized = scanForComponents(document);
                 const pending = initialized && typeof initialized.pending === 'number'
                     ? initialized.pending
