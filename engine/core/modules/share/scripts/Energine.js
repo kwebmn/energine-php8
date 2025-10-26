@@ -335,15 +335,6 @@ class EnergineCore {
         };
         const fetchOpts = { method: method.toUpperCase(), headers };
 
-        const ensureJsonQueryParam = () => {
-            if (/(?:\?|&)json(?:[=&]|$)/i.test(url)) {
-                return;
-            }
-            url += (url.includes('?') ? '&' : '?') + 'json=1';
-        };
-
-        ensureJsonQueryParam();
-
         if (this.forceJSON) {
             headers['Content-Type'] = 'application/json';
             if (!isGet) {
