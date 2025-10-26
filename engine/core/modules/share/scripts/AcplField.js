@@ -509,14 +509,60 @@ class AcplField {
         }
     }
 
+    getRequestUrl() {
+        if (!this.url) {
+            return '';
+        }
+
+        if (this.url.includes('?') || this.url.endsWith('/')) {
+            return this.url;
+        }
+
+        return `${this.url}/`;
+    }
+
+    parseResponse(resp, requestUrl) {
+        if (!resp.ok) {
+            throw new Error(`Request failed with status ${resp.status}`);
+        }
+
+        const contentType = resp.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            return resp.json();
+        }
+
+        return resp.text().then((text) => {
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                const err = new SyntaxError(`Unexpected response for ${requestUrl}`);
+                err.cause = { originalError: error, body: text };
+                throw err;
+            }
+        });
+    }
+
     requestValues(str) {
-        fetch(this.url, {
+        const requestUrl = this.getRequestUrl();
+
+        if (!requestUrl) {
+            return;
+        }
+
+        fetch(requestUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'value=' + encodeURIComponent(str)
         })
-            .then(resp => resp.json())
-            .then(data => this._prepareData(data));
+            .then((resp) => this.parseResponse(resp, requestUrl))
+            .then(data => this._prepareData(data))
+            .catch((error) => {
+                if (typeof console !== 'undefined' && console.error) {
+                    console.error('[AcplField] Failed to fetch suggestions', error);
+                }
+                this.list.hide();
+            });
     }
 
     setValues(data) {
