@@ -72,7 +72,7 @@
  1. **Генерация разметки**
     - Тулбар и кнопки генерируются XSLT как чистый HTML. Простейшая структура:
       ```html
-      <div class="toolbar" data-toolbar="main">
+      <div class="toolbar" data-e-toolbar="main">
         <button type="button" data-action="add" data-confirm="Добавить запись?">
           <i class="fa fa-plus"></i>
           <span>Добавить</span>
@@ -84,7 +84,7 @@
 
     **Наследуемые соглашения PageToolbar**
 
-    - Текущая система рендерит верхнюю панель (`.e-topframe`) с контейнером `<div class="btn-toolbar ..." data-toolbar="main_toolbar">`, в котором каждая кнопка имеет идентификатор вида `main_toolbar{controlId}` и атрибут `data-control-id`. Эти значения участвуют в логике `PageToolbar.js` и должны сохраняться XSLT-шаблоном, но перемещаются в `data-*`.
+    - Текущая система рендерит верхнюю панель (`.e-topframe`) с контейнером `<div class="btn-toolbar ..." data-e-toolbar="main_toolbar">`, в котором каждая кнопка имеет идентификатор вида `main_toolbar{controlId}` и атрибут `data-control-id`. Эти значения участвуют в логике `PageToolbar.js` и должны сохраняться XSLT-шаблоном, но перемещаются в `data-*`.
     - Для кнопок используется классическая Bootstrap-структура (`btn btn-sm ...`), иконки FontAwesome (`<i class="fa ..."></i>`) и вспомогательные подписи `<span class="toolbar-control-label">`. XSLT обязан выпускать тот же набор классов и элементов, чтобы не нарушить внешний вид до момента рефакторинга стилей.
     - Специальные типы элементов (например, `type="switcher"` для режимов) транслируются в явные `data-type="switcher"`, чтобы JS мог определить поведение без чтения нестандартных HTML-атрибутов. Дополнительно сохраняется ARIA (`aria-pressed`, `aria-controls`) и `data-bs-*` для интеграции с Bootstrap.
     - Рядом с основной панелью располагается offcanvas-блок (`#main_toolbar-sidebar`), содержащий `<iframe>` с административной панелью. Его триггеры (кнопка бургер-меню) должны описываться XSLT через `data-bs-toggle="offcanvas"`/`data-bs-target` и соответствующие ID, а JS лишь инициализирует/слушает события Bootstrap.
@@ -129,8 +129,8 @@
 
 ### 5.3. Инициализация и связка с `Energine.js`
 
-- После переноса разметки XSLT добавляет на `<body>` и/или корневые блоки `data-energine-run`, `data-page-toolbar`, `data-toolbar-scope` и другие параметры, которые считывает модуль `Energine.js` при автозапуске.
-- `PageToolbar` при создании должен обходить уже существующую разметку (например, `document.querySelectorAll('[data-toolbar="main"] [data-action]')`) и назначать обработчики. Никакого программного `document.createElement` на этапе инициализации, кроме как для динамических узлов (например, всплывающих подсказок), не допускается.
+- После переноса разметки XSLT добавляет на `<body>` и/или корневые блоки `data-energine-run`, `data-page-toolbar`, `data-e-toolbar-scope` и другие параметры, которые считывает модуль `Energine.js` при автозапуске.
+- `PageToolbar` при создании должен обходить уже существующую разметку (например, `document.querySelectorAll('[data-e-toolbar="main"] [data-action]')`) и назначать обработчики. Никакого программного `document.createElement` на этапе инициализации, кроме как для динамических узлов (например, всплывающих подсказок), не допускается.
 - Состояние сайдбара (открыт/закрыт) хранится в `dataset` (`data-sidebar-expanded`) и синхронизируется с cookie через существующие методы класса, чтобы восстановление при перезагрузке не требовало перестраивания DOM вручную.【F:engine/core/modules/share/scripts/PageToolbar.js†L154-L212】
 - Локализационные строки продолжают передаваться из PHP как JSON (один общий объект переводов), поскольку XSLT не управляет текстами интерфейса. `Energine.js` читает JSON-блок переводов, объединяет его с данными `data-*` и передает в модули тулбаров.
 
@@ -187,7 +187,7 @@
    - Для совместимости временно допускается вызов `window.Energine.attachToWindow()` из сторонних модулей, но этот метод просто возвращает уже созданный инстанс без дополнительных побочных эффектов.
 
 4. **Изменения в XSLT**
-   - Блок `<script type="module">` внутри `document.xslt`, который импортирует `bootEnergine`, создаёт `componentToolbars` и вручную откладывает запуск через `Energine.addTask`, должен быть удалён. Вместо этого XSLT расставляет `data-*` атрибуты (`data-energine-run`, `data-component`, `data-toolbar`, `data-behavior`) и доверяет модулю, что тот автоматически найдёт и проинициализирует элементы сразу после загрузки.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L212-L304】
+- Блок `<script type="module">` внутри `document.xslt`, который импортирует `bootEnergine`, создаёт `componentToolbars` и вручную откладывает запуск через `Energine.addTask`, должен быть удалён. Вместо этого XSLT расставляет `data-*` атрибуты (`data-energine-run`, `data-component`, `data-e-toolbar`, `data-behavior`) и доверяет модулю, что тот автоматически найдёт и проинициализирует элементы сразу после загрузки.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L212-L304】
 
 5. **Актуализация сопутствующих модулей**
    - Модули, которые сейчас обращаются к глобальным переменным (например, `GridManager` ожидает `window.Energine` с методом `loadCSS`), должны получать доступ к API из того же контейнера `window.Energine`. После упразднения моста нет необходимости в проверках `if (window.Energine || {}).loadCSS` — объект гарантированно существует к моменту вызова, потому что рантайм инициализирован до подключения зависимостей.【F:engine/core/modules/share/scripts/GridManager.js†L29-L551】
@@ -253,7 +253,7 @@
 
 ### 9.4. HTML, генерируемый текущей административной панелью
 
-- Верхняя панель (`.e-topframe`) содержит как основной тулбар (`.btn-toolbar[data-toolbar]`), так и offcanvas-сайдбар (`#main_toolbar-sidebar`) с `<iframe>` административной панели. Идентификаторы вида `main_toolbar*` и `data-control-id` используются для связывания кнопок с JS-логикой `PageToolbar`.
+- Верхняя панель (`.e-topframe`) содержит как основной тулбар (`.btn-toolbar[data-e-toolbar]`), так и offcanvas-сайдбар (`#main_toolbar-sidebar`) с `<iframe>` административной панели. Идентификаторы вида `main_toolbar*` и `data-control-id` используются для связывания кнопок с JS-логикой `PageToolbar`.
 - Каждая кнопка одновременно содержит `data-bs-toggle`, `aria-*` и пользовательские атрибуты (`type="switcher"`, `data-control-id`). Существующая реализация сочетает Bootstrap и пользовательские состояния, поэтому при миграции XSLT должен выпускать весь набор атрибутов, а JS — нормализовать их в единый объект состояния.
 - JSON-конфигурация, передаваемая в `new PageToolbar([...])`, дублирует информацию, уже присутствующую в DOM (идентификаторы, заголовки, иконки). При переносе на XSLT необходимо устранить дублирование: данные выводятся единожды в HTML, а модуль `PageToolbar` читает их из `dataset` (`data-*`).
 - Подключение модулей сейчас выполняется inline-скриптом, который импортирует `Energine.js`, создаёт рантайм и регистрирует `PageToolbar`. Этот код переносится в модульную загрузку: XSLT оставляет только `<script type="module" src=".../Energine.js" data-*="...">`, а остальная логика инициируется из модуля после `DOMContentLoaded`.

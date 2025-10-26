@@ -495,10 +495,10 @@
     <xsl:template match="toolbar[parent::component[@exttype='grid']]">
         <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar">
             <xsl:if test="@name">
-                <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:attribute name="data-e-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
             </xsl:if>
-            <xsl:attribute name="data-toolbar-scope">grid</xsl:attribute>
-            <xsl:attribute name="data-toolbar-component"><xsl:value-of select="generate-id(../recordset)"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-scope">grid</xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(../recordset)"/></xsl:attribute>
             <xsl:for-each select="properties/property">
                 <xsl:attribute name="data-prop-{translate(@name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')}"><xsl:value-of select="."/></xsl:attribute>
             </xsl:for-each>

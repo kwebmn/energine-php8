@@ -12,9 +12,10 @@ class Toolbar {
 
         if (toolbarNameOrElement instanceof HTMLElement) {
             this.element = toolbarNameOrElement;
-            this.name = this.element.dataset?.toolbar || '';
+            const dataset = this.element.dataset || {};
+            this.name = dataset.eToolbar || '';
             if (!this.name && typeof toolbarNameOrElement.getAttribute === 'function') {
-                this.name = toolbarNameOrElement.getAttribute('data-toolbar') || '';
+                this.name = toolbarNameOrElement.getAttribute('data-e-toolbar') || '';
             }
             if (!this.name && typeof toolbarNameOrElement.className === 'string') {
                 const nameMatch = /([\w-]+)_toolbar/.exec(toolbarNameOrElement.className);
@@ -28,7 +29,7 @@ class Toolbar {
             this.element.classList.add('flex-wrap', 'gap-2', 'align-items-center');
             this.element.setAttribute('role', 'toolbar');
             if (this.name) {
-                this.element.dataset.toolbar = this.name;
+                this.element.dataset.eToolbar = this.name;
                 this.element.classList.add(this.name);
             }
         } else {
@@ -40,7 +41,7 @@ class Toolbar {
                 this.element.setAttribute('role', 'toolbar');
                 if (toolbarName) {
                     this.element.classList.add(toolbarName);
-                    this.element.dataset.toolbar = toolbarName;
+                    this.element.dataset.eToolbar = toolbarName;
                 }
             }
         }
