@@ -428,7 +428,6 @@ class Form {
 
         // Ensure iframes that host grids expand to available height inside forms
         this._enhanceEmbeddedGridIframes();
-        window.addEventListener('resize', () => this._enhanceEmbeddedGridIframes());
 
         // Если открыто в ModalBox
         if (window.parent.ModalBox?.initialized && window.parent.ModalBox.getCurrent()) {
@@ -1164,7 +1163,7 @@ class Form {
     /**
      * Make embedded iframes that host grids stretch to the full available height
      * of their container. Applies safe flex/min-height fixes to ancestor containers
-     * and sets iframe height to 100% with responsive recalculation.
+     * and sets iframe height to 100%.
      */
     _enhanceEmbeddedGridIframes() {
         if (!this.form) return;
