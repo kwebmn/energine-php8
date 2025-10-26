@@ -98,7 +98,10 @@ class PageEditor {
             this.singlePath = dataset.eSingleTemplate
                 || area.getAttribute('data-e-single-template');
             this.ID = area.getAttribute('eID') || '';
-            this.num = dataset.num ?? area.getAttribute('num') ?? '';
+            this.num = dataset.eNum
+                ?? area.getAttribute('data-e-num')
+                ?? area.getAttribute('num')
+                ?? '';
             if (!area.id) {
                 area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
             }
@@ -205,7 +208,10 @@ class BlockEditor {
          * Text block ID.
          * @type {string}
          */
-        this.num = this.area.getAttribute('num') || '';
+        this.num = dataset.eNum
+            || this.area.getAttribute('data-e-num')
+            || this.area.getAttribute('num')
+            || '';
 
         /**
          * Editor.
@@ -288,9 +294,7 @@ class BlockEditor {
         if (this.ID) {
             params.append('ID', this.ID);
         }
-        if (this.num) {
-            params.append('num', this.num);
-        }
+        params.append('num', this.num ?? '');
 
         fetch(this.singlePath + 'save-text', {
             method: 'POST',
