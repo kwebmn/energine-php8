@@ -1241,6 +1241,7 @@ class Form {
             // And after load (when content exists)
             iframe.addEventListener('load', () => adjustIframe(iframe));
         });
+
     }
 
     configureValidatorStyling() {
