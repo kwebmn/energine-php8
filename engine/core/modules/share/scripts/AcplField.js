@@ -509,16 +509,20 @@ class AcplField {
         }
     }
 
-    getRequestUrl() {
+    getRequestUrls() {
         if (!this.url) {
-            return '';
+            return [];
         }
 
-        if (this.url.includes('?') || this.url.endsWith('/')) {
-            return this.url;
+        const normalized = (this.url.includes('?') || this.url.endsWith('/'))
+            ? this.url
+            : `${this.url}/`;
+
+        if (normalized === this.url) {
+            return [normalized];
         }
 
-        return `${this.url}/`;
+        return [normalized, this.url];
     }
 
     parseResponse(resp, requestUrl) {
@@ -544,18 +548,31 @@ class AcplField {
     }
 
     requestValues(str) {
-        const requestUrl = this.getRequestUrl();
+        const urls = this.getRequestUrls();
 
-        if (!requestUrl) {
+        if (!urls.length) {
             return;
         }
 
-        fetch(requestUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'value=' + encodeURIComponent(str)
-        })
-            .then((resp) => this.parseResponse(resp, requestUrl))
+        const attemptRequest = (index = 0) => {
+            const requestUrl = urls[index];
+
+            return fetch(requestUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'value=' + encodeURIComponent(str)
+            })
+                .then((resp) => this.parseResponse(resp, requestUrl))
+                .catch((error) => {
+                    const nextIndex = index + 1;
+                    if (nextIndex < urls.length) {
+                        return attemptRequest(nextIndex);
+                    }
+                    throw error;
+                });
+        };
+
+        attemptRequest()
             .then(data => this._prepareData(data))
             .catch((error) => {
                 if (typeof console !== 'undefined' && console.error) {
