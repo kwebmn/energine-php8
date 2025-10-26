@@ -1648,6 +1648,7 @@ class GridManager {
         }
 
         this.setupSelectionControls();
+        this.syncToolbarStateAfterAttach();
     }
 
     /**
@@ -1685,10 +1686,41 @@ class GridManager {
             if (control && control.element) {
                 control.element.dataset.requiresSelection = 'true';
             }
+            if (
+                control
+                && typeof control.enable === 'function'
+                && typeof control.initially_disabled === 'function'
+                && control.initially_disabled()
+            ) {
+                control.enable(true);
+            }
             control._disabledBySelection = false;
         });
 
         this.updateSelectionDependentControls(!!(this.grid && this.grid.getSelectedItem()));
+    }
+
+    /**
+     * Restore toolbar state when it attaches later than initial data load.
+     */
+    syncToolbarStateAfterAttach() {
+        if (!this.toolbar) {
+            return;
+        }
+
+        const addControl = (typeof this.toolbar.getControlById === 'function')
+            ? this.toolbar.getControlById('add')
+            : null;
+
+        if (addControl && typeof addControl.enable === 'function') {
+            addControl.enable(true);
+        }
+
+        if (this.grid && !this.grid.isEmpty() && typeof this.toolbar.enableControls === 'function') {
+            this.toolbar.enableControls();
+        }
+
+        this.updateSelectionDependentControls(this.hasSelection);
     }
 
     /**
@@ -1903,7 +1935,7 @@ class GridManager {
         }
 
         if (addControl && typeof addControl.enable === 'function') {
-            addControl.enable();
+            addControl.enable(true);
         }
 
         this.grid.build();
