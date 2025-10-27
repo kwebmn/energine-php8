@@ -235,11 +235,8 @@ final class UserEditor extends Grid
             $fdGroups->setType(FieldDescription::FIELD_TYPE_MULTI);
             $fdGroups->setProperty('tabName', $this->translate('TXT_USER_GROUPS'));
             $fdGroups->setProperty('customField', value: true);
-            $fdGroups->setProperty('key', [
-                'tableName' => 'user_user_groups',
-                'fieldName' => 'u_id',
-            ]);
-            $fdGroups->setProperty( 'editor', 'RoleEditor');
+            
+            $fdGroups->setProperty( 'editor', '');
 
             $data = $this->dbh->select(
                 'user_groups',
