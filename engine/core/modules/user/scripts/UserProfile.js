@@ -1,4 +1,4 @@
-import Energine from '../../share/scripts/Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 import ValidForm from '../../share/scripts/ValidForm.js';
 
 const globalScope = typeof window !== 'undefined'
@@ -61,3 +61,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('UserProfile', UserProfile);
+}

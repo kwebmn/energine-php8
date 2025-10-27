@@ -958,15 +958,6 @@ const scheduleRetry = (task, options = {}) => {
     return execute();
 };
 
-const getGlobalConstructor = (name) => {
-    if (!name || typeof name !== 'string' || !globalScope) {
-        return null;
-    }
-
-    const ctor = globalScope[name];
-    return typeof ctor === 'function' ? ctor : null;
-};
-
 const behaviorRegistry = new Map();
 const pendingBehaviors = new Map();
 const PENDING_BEHAVIOR = Symbol('Energine.pendingBehavior');
@@ -1003,11 +994,7 @@ const resolveRegisteredBehavior = (name) => {
         return null;
     }
 
-    if (behaviorRegistry.has(name)) {
-        return behaviorRegistry.get(name);
-    }
-
-    return getGlobalConstructor(name);
+    return behaviorRegistry.get(name) || null;
 };
 
 const normalizeDatasetBoolean = (value) => {
@@ -1086,12 +1073,26 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null, opt
     const Constructor = resolveRegisteredBehavior(behaviorName);
     if (!Constructor) {
         recordPendingBehavior(behaviorName);
-        if (!silentOnMissing) {
-            const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
-            if (Energine && typeof Energine.debug === 'boolean' && Energine.debug && typeof console !== 'undefined' && console.info) {
-                console.info(message);
-            }
+        const pendingInfo = pendingBehaviors.get(behaviorName);
+        const shouldThrow = Boolean(
+            Energine
+            && typeof Energine.debug === 'boolean'
+            && Energine.debug
+            && pendingInfo
+            && pendingInfo.count === 1,
+        );
+
+        const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
+        if (!silentOnMissing && typeof console !== 'undefined' && console.info) {
+            console.info(message);
         }
+
+        if (shouldThrow) {
+            const error = new Error(`${message} Enable and import the module that registers this behavior via registerBehavior.`);
+            error.element = element;
+            throw error;
+        }
+
         return PENDING_BEHAVIOR;
     }
 
@@ -1114,7 +1115,10 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null, opt
         clearPendingBehavior(behaviorName);
 
         if (globalScope && element.id && typeof globalScope[element.id] === 'undefined') {
-            globalScope[element.id] = instance;
+            const diagnostic = `[Energine.autoBootstrap] Behavior "${behaviorName}" attached to #${element.id}. Global exposure via window["${element.id}"] is no longer supported.`;
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn(diagnostic);
+            }
         }
 
         return instance;

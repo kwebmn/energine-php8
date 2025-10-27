@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import Form from './Form.js';
 
 const globalScope = typeof window !== 'undefined'
@@ -196,3 +196,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('DivForm', DivForm);
+}

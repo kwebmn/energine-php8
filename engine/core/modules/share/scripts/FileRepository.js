@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import GridManager, { Grid } from './GridManager.js';
 import Cookie from './Cookie.js';
 import ModalBox from './ModalBox.js';
@@ -666,3 +666,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('FileRepository', FileRepository);
+}
