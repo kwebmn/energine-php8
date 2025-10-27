@@ -4,19 +4,6 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const bridgeMethodNames = [
-    'request',
-    'cancelEvent',
-    'resize',
-    'confirmBox',
-    'alertBox',
-    'noticeBox',
-    'loadCSS',
-    'run',
-    'createDatePicker',
-    'createDateTimePicker',
-];
-
 const allowedConfigKeys = [
     'debug',
     'base',
@@ -72,7 +59,6 @@ class EnergineCore {
         this.singleMode = false;
         this.forceJSON = false;
         this.supportContentEdit = true;
-        this.tasks = [];
 
         this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
             ? import.meta.url
@@ -81,9 +67,6 @@ class EnergineCore {
 
         this.translationStore = {};
         this.translations = this.createTranslationsFacade();
-
-        this.bridge = this.initBridge();
-        this.applyDatasetConfigToBridge();
     }
 
     createTranslationsFacade() {
@@ -104,157 +87,6 @@ class EnergineCore {
                 Object.assign(store, values);
             },
         };
-    }
-
-    initBridge() {
-        if (!this.globalScope) {
-            return null;
-        }
-        if (this.globalScope.__energineBridge) {
-            return this.globalScope.__energineBridge;
-        }
-
-        const pending = {
-            config: {},
-            tasks: [],
-            translations: {},
-        };
-        let runtime = null;
-
-        const translationFacade = {
-            get: (constant) => {
-                if (runtime && runtime.translations) {
-                    return runtime.translations.get(constant);
-                }
-                return Object.prototype.hasOwnProperty.call(pending.translations, constant)
-                    ? pending.translations[constant]
-                    : null;
-            },
-            set: (constant, value) => {
-                if (runtime && runtime.translations) {
-                    runtime.translations.set(constant, value);
-                } else {
-                    pending.translations[constant] = value;
-                }
-            },
-            extend: (values) => {
-                if (runtime && runtime.translations) {
-                    runtime.translations.extend(values);
-                } else if (values && typeof values === 'object') {
-                    Object.assign(pending.translations, values);
-                }
-            },
-        };
-
-        const queueTask = (task, priority = 5) => {
-            if (typeof task !== 'function') {
-                return;
-            }
-
-            if (runtime) {
-                runtime.addTask(task, priority);
-            } else {
-                pending.tasks.push({ task, priority });
-            }
-        };
-
-        const extendTranslations = (values) => {
-            if (!values || typeof values !== 'object') {
-                return;
-            }
-            translationFacade.extend(values);
-        };
-
-        const setRuntime = (instance) => {
-            runtime = instance;
-
-            if (runtime && typeof runtime.mergeConfigValues === 'function') {
-                runtime.mergeConfigValues(pending.config);
-            } else if (runtime && pending.config) {
-                Object.assign(runtime, pending.config);
-            }
-
-            if (runtime
-                && runtime.translations
-                && typeof runtime.translations.extend === 'function'
-                && Object.keys(pending.translations).length) {
-                runtime.translations.extend(pending.translations);
-                pending.translations = {};
-            }
-
-            if (runtime && pending.tasks.length) {
-                pending.tasks.forEach(({ task, priority }) => runtime.addTask(task, priority));
-                pending.tasks = [];
-            }
-        };
-
-        const api = new Proxy(
-            {},
-            {
-                get: (_, prop) => {
-                    if (prop === '__setRuntime') {
-                        return setRuntime;
-                    }
-                    if (prop === 'translations') {
-                        return translationFacade;
-                    }
-                    if (prop === 'addTask') {
-                        return queueTask;
-                    }
-                    if (prop === 'tasks') {
-                        return runtime ? runtime.tasks : pending.tasks;
-                    }
-                    if (runtime) {
-                        const value = runtime[prop];
-                        return typeof value === 'function' ? value.bind(runtime) : value;
-                    }
-                    if (bridgeMethodNames.includes(prop)) {
-                        return (...args) => {
-                            if (!runtime || typeof runtime[prop] !== 'function') {
-                                throw new Error('Energine runtime is not ready yet');
-                            }
-                            return runtime[prop](...args);
-                        };
-                    }
-                    if (Object.prototype.hasOwnProperty.call(pending.config, prop)) {
-                        return pending.config[prop];
-                    }
-                    return undefined;
-                },
-                set: (_, prop, value) => {
-                    if (prop === 'translations') {
-                        translationFacade.extend(value);
-                        return true;
-                    }
-                    if (runtime) {
-                        runtime[prop] = value;
-                    } else {
-                        pending.config[prop] = value;
-                    }
-                    return true;
-                },
-            },
-        );
-
-        this.globalScope.Energine = api;
-        this.globalScope.__energineBridge = {
-            setRuntime,
-            pendingConfig: pending.config,
-            queueTask,
-            extendTranslations,
-        };
-
-        return this.globalScope.__energineBridge;
-    }
-
-    applyDatasetConfigToBridge() {
-        if (!this.bridge || !this.bridge.pendingConfig) {
-            return;
-        }
-        const datasetConfig = this.readConfigFromScriptDataset();
-        if (Object.keys(datasetConfig).length) {
-            Object.assign(this.bridge.pendingConfig, datasetConfig);
-        }
     }
 
     resolveModuleScriptElement() {
@@ -680,41 +512,13 @@ class EnergineCore {
         }
     }
 
-    addTask(task, priority = 5) {
-        if (!this.tasks[priority]) {
-            this.tasks[priority] = [];
-        }
-        this.tasks[priority].push(task);
-    }
-
-    run() {
-        if (!this.tasks) {
-            return;
-        }
-
-        for (const priority of this.tasks) {
-            if (!priority) continue;
-            for (const func of priority) {
-                try {
-                    func();
-                } catch (e) {
-                    this.safeConsoleError(e);
-                }
-            }
-        }
-    }
-
     boot(config = {}) {
-        const { translations: translationsConfig, tasks, ...rest } = config;
+        const { translations: translationsConfig, ...rest } = config;
 
         this.mergeConfigValues(rest);
 
         if (translationsConfig) {
             this.translations.extend(translationsConfig);
-        }
-
-        if (Array.isArray(tasks)) {
-            this.tasks = tasks;
         }
 
         return this;
@@ -725,25 +529,7 @@ class EnergineCore {
             return;
         }
 
-        if (this.bridge && typeof this.bridge.extendTranslations === 'function') {
-            this.bridge.extendTranslations(values);
-            return;
-        }
-
         this.translations.extend(values);
-    }
-
-    queueTask(task, priority = 5) {
-        if (typeof task !== 'function') {
-            return;
-        }
-
-        if (this.bridge && typeof this.bridge.queueTask === 'function') {
-            this.bridge.queueTask(task, priority);
-            return;
-        }
-
-        this.addTask(task, priority);
     }
 
     createConfigFromProps(props = {}) {
@@ -777,13 +563,6 @@ class EnergineCore {
     createConfigFromScriptDataset(overrides = {}) {
         const baseConfig = this.readConfigFromScriptDataset();
         return this.createConfigFromProps({ ...baseConfig, ...overrides });
-    }
-
-    createConfigFromBridgePending(overrides = {}) {
-        const bridgeConfig = (this.bridge && this.bridge.pendingConfig)
-            ? { ...this.bridge.pendingConfig }
-            : {};
-        return this.createConfigFromProps({ ...bridgeConfig, ...overrides });
     }
 
     safeConsoleError(e, context = '') {
@@ -858,21 +637,17 @@ const Energine = new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
 
-const existingConfig = (() => {
-    if (!globalScope) {
-        return undefined;
+const initialDatasetConfig = (() => {
+    try {
+        return Energine.createConfigFromScriptDataset();
+    } catch (error) {
+        Energine.safeConsoleError(error, '[Energine] Failed to read initial dataset config');
+        return {};
     }
-    if (globalScope.__energineBridge && globalScope.__energineBridge.pendingConfig) {
-        return { ...globalScope.__energineBridge.pendingConfig };
-    }
-    if (typeof globalScope.Energine === 'object') {
-        return { ...globalScope.Energine };
-    }
-    return undefined;
 })();
 
-if (existingConfig && Object.keys(existingConfig).length) {
-    exposeRuntimeToGlobal(Energine.boot(existingConfig), globalScope);
+if (initialDatasetConfig && Object.keys(initialDatasetConfig).length) {
+    Energine.mergeConfigValues(initialDatasetConfig);
 }
 
 const datasetFalseValues = new Set(['0', 'false', 'no', 'off']);
@@ -1223,33 +998,46 @@ const autoBootstrapRuntime = () => {
 
     const config = Energine.createConfigFromScriptDataset();
     const runtime = Energine.boot(config);
-
-    if (globalScope && globalScope.__energineBridge && typeof globalScope.__energineBridge.setRuntime === 'function') {
-        try {
-            globalScope.__energineBridge.setRuntime(runtime);
-        } catch (error) {
-            runtime.safeConsoleError(error, '[Energine.autoBootstrap] Failed to sync bridge runtime');
-        }
-    }
-
     const exposedRuntime = exposeRuntimeToGlobal(runtime, globalScope);
 
     const bootstrapDom = () => {
         applyTranslationsFromScripts(exposedRuntime);
 
-        exposedRuntime.addTask(() => scheduleRetry(
+        let toolbarsInitialized = false;
+
+        scheduleRetry(
             () => {
                 const initialized = scanForComponents(document);
                 const pending = initialized && typeof initialized.pending === 'number'
                     ? initialized.pending
                     : 0;
-                return Array.isArray(initialized) && pending === 0;
+                const ready = Array.isArray(initialized) && pending === 0;
+
+                if (ready && typeof initializeToolbars === 'function' && !toolbarsInitialized) {
+                    try {
+                        initializeToolbars(document);
+                        toolbarsInitialized = true;
+                    } catch (error) {
+                        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+                    }
+                }
+
+                return ready;
             },
             {
                 attempts: 20,
                 delay: 150,
                 onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
                 onGiveUp: () => {
+                    if (typeof initializeToolbars === 'function' && !toolbarsInitialized) {
+                        try {
+                            initializeToolbars(document);
+                            toolbarsInitialized = true;
+                        } catch (error) {
+                            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+                        }
+                    }
+
                     const unresolved = getPendingBehaviorNames();
                     if (Array.isArray(unresolved) && unresolved.length) {
                         const details = unresolved.join(', ');
@@ -1257,35 +1045,15 @@ const autoBootstrapRuntime = () => {
                     }
                 },
             },
-        ));
-
-        exposedRuntime.addTask(() => {
-            if (typeof initializeToolbars === 'function') {
-                try {
-                    initializeToolbars(document);
-                } catch (error) {
-                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
-                }
-            }
-        });
-    };
-
-    const runTasks = () => {
-        try {
-            exposedRuntime.run();
-        } catch (error) {
-            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to run queued tasks');
-        }
+        );
     };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             bootstrapDom();
-            runTasks();
         }, { once: true });
     } else {
         bootstrapDom();
-        runTasks();
     }
 };
 
@@ -1297,13 +1065,9 @@ export const bootEnergine = (config = {}) => Energine.boot(config);
 
 export const stageTranslations = (values) => Energine.stageTranslations(values);
 
-export const queueTask = (task, priority = 5) => Energine.queueTask(task, priority);
-
 export const createConfigFromProps = (props = {}) => Energine.createConfigFromProps(props);
 
 export const createConfigFromScriptDataset = (overrides = {}) => Energine.createConfigFromScriptDataset(overrides);
-
-export const createConfigFromBridgePending = (overrides = {}) => Energine.createConfigFromBridgePending(overrides);
 
 export const safeConsoleError = (error, context = '') => Energine.safeConsoleError(error, context);
 
