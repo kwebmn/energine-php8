@@ -1664,6 +1664,53 @@ class GridManager {
             : [];
     }
 
+    _invokeFilter(methodName, defaultValue = undefined, ...args) {
+        const target = this.filter;
+        const method = target?.[methodName];
+
+        if (typeof method !== 'function') {
+            return defaultValue;
+        }
+
+        const result = method.apply(target, args);
+        return result === undefined ? defaultValue : result;
+    }
+
+    _getFilterValue(defaultValue = '') {
+        const value = this._invokeFilter('getValue', defaultValue);
+        return value == null ? defaultValue : value;
+    }
+
+    _getCurrentPage() {
+        return (this.pageList && this.pageList.currentPage) || null;
+    }
+
+    _requestWithLoader(url, { body = null, onSuccess = noop, onError = null } = {}) {
+        showLoader();
+
+        const handleSuccess = (...args) => {
+            try {
+                onSuccess?.(...args);
+            } finally {
+                hideLoader();
+            }
+        };
+
+        const handleError = (responseText) => {
+            try {
+                if (onError) {
+                    onError(responseText);
+                } else if (responseText) {
+                    alert(responseText);
+                }
+            } finally {
+                hideLoader();
+            }
+        };
+
+        Energine.request(url, body ?? null, handleSuccess, null, handleError);
+    }
+
     /**
      * Prepare baseline state holders used across the manager lifecycle.
      *
@@ -1959,9 +2006,7 @@ class GridManager {
             this.langId = normalized.lang;
         }
 
-        if (this.filter && typeof this.filter.remove === 'function') {
-            this.filter.remove();
-        }
+        this._invokeFilter('remove');
 
         this.reload();
     }
@@ -2010,8 +2055,9 @@ class GridManager {
         showLoader();
         this.grid.clear();
 
-        if (this.pageList && this.pageList.currentPage) {
-            pageNum = this.pageList.currentPage;
+        const currentPage = this._getCurrentPage();
+        if (currentPage) {
+            pageNum = currentPage;
         }
 
         setTimeout(() => {
@@ -2050,11 +2096,9 @@ class GridManager {
             parts.push(`languageID=${encodeURIComponent(this.langId)}`);
         }
 
-        if (this.filter && typeof this.filter.getValue === 'function') {
-            const filterQuery = this.filter.getValue();
-            if (filterQuery) {
-                parts.push(filterQuery);
-            }
+        const filterQuery = this._getFilterValue('');
+        if (filterQuery) {
+            parts.push(filterQuery);
         }
 
         return parts.join('&');
@@ -2123,7 +2167,7 @@ class GridManager {
         if (returnValue.afterClose && typeof this[returnValue.afterClose] === 'function') {
             this[returnValue.afterClose](null);
         } else {
-            this.loadPage(this.pageList ? this.pageList.currentPage : 1);
+            this.loadPage(this._getCurrentPage() || 1);
         }
         this.grid.fireEvent('dirty');
     }
@@ -2163,58 +2207,48 @@ class GridManager {
         if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         this.moveTo('below', this.getMvElementId(), id);
     }
+    _editSibling(direction) {
+        if (!this.grid || typeof this.grid.getSelectedItem !== 'function') {
+            return;
+        }
+
+        const current = this.grid.getSelectedItem();
+        if (!current) {
+            return;
+        }
+
+        const sibling = current?.[direction];
+        if (sibling) {
+            this.grid.selectItem(sibling);
+            this.edit();
+        }
+    }
     moveTo(dir, fromId, toId) {
         toId = toId || '';
-        showLoader();
-        Energine.request(
+        this._requestWithLoader(
             `${this.singlePath}move/${fromId}/${dir}/${toId}/`,
-            null,
-            () => {
-                hideLoader();
-                const modalBox = getModalBox();
-                modalBox?.setReturnValue(true);
-                this.close();
-            },
-            () => hideLoader(),
-            (responseText) => {
-                alert(responseText);
-                hideLoader();
+            {
+                onSuccess: () => {
+                    const modalBox = getModalBox();
+                    modalBox?.setReturnValue(true);
+                    this.close();
+                }
             }
         );
     }
-    editPrev() {
-        let prevRow;
-        const curr = this.grid.getSelectedItem();
-        if (curr && (prevRow = curr.previousElementSibling)) {
-            this.grid.selectItem(prevRow);
-            this.edit();
-        }
-    }
-    editNext() {
-        let nextRow;
-        const curr = this.grid.getSelectedItem();
-        if (curr && (nextRow = curr.nextElementSibling)) {
-            this.grid.selectItem(nextRow);
-            this.edit();
-        }
-    }
+    editPrev() { this._editSibling('previousElementSibling'); }
+    editNext() { this._editSibling('nextElementSibling'); }
     del() {
         const MSG_CONFIRM_DELETE = (Energine.translations && Energine.translations.get('MSG_CONFIRM_DELETE')) ||
             'Do you really want to delete the chosen record?';
         if (confirm(MSG_CONFIRM_DELETE)) {
-            showLoader();
-            Energine.request(
+            this._requestWithLoader(
                 `${this.singlePath}${this.grid.getSelectedRecordKey()}/delete/`,
-                null,
-                () => {
-                    hideLoader();
-                    this.grid.fireEvent('dirty');
-                    this.loadPage(this.pageList ? this.pageList.currentPage : 1);
-                },
-                () => hideLoader(),
-                (responseText) => {
-                    alert(responseText);
-                    hideLoader();
+                {
+                    onSuccess: () => {
+                        this.grid.fireEvent('dirty');
+                        this.loadPage(this._getCurrentPage() || 1);
+                    }
                 }
             );
         }
@@ -2228,19 +2262,19 @@ class GridManager {
         getModalBox()?.close();
     }
     up() {
-        const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
+        const payload = this._getFilterValue(null);
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/up/`,
             payload || undefined,
-            this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)
+            this.loadPage.bind(this, this._getCurrentPage() || 1)
         );
     }
     down() {
-        const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
+        const payload = this._getFilterValue(null);
         Energine.request(
             `${this.singlePath}${this.grid.getSelectedRecordKey()}/down/`,
             payload || undefined,
-            this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)
+            this.loadPage.bind(this, this._getCurrentPage() || 1)
         );
     }
     print() {
