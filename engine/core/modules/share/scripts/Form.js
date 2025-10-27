@@ -197,18 +197,28 @@ class Form {
         }
     }
 
+    static togglePreviewElement(element, shouldShow) {
+        if (!element) {
+            return;
+        }
+
+        element.classList?.toggle('d-none', !shouldShow);
+        if (shouldShow) {
+            element.classList?.remove('hidden');
+            element.removeAttribute?.('hidden');
+            element.setAttribute?.('aria-hidden', 'false');
+        } else {
+            element.setAttribute?.('hidden', 'hidden');
+            element.setAttribute?.('aria-hidden', 'true');
+        }
+    }
+
     static showPreviewElement(element) {
-        if (!element) return;
-        element.classList?.remove('d-none', 'hidden');
-        element.removeAttribute?.('hidden');
-        element.setAttribute?.('aria-hidden', 'false');
+        Form.togglePreviewElement(element, true);
     }
 
     static hidePreviewElement(element) {
-        if (!element) return;
-        element.classList?.add('d-none');
-        element.setAttribute?.('hidden', 'hidden');
-        element.setAttribute?.('aria-hidden', 'true');
+        Form.togglePreviewElement(element, false);
     }
 
     static showIconPreview(previewEl, iconKey = 'file') {
@@ -227,12 +237,12 @@ class Form {
         const image = Form.getPreviewImage(previewEl);
         if (image) {
             image.removeAttribute('src');
-            Form.hidePreviewElement(image);
+            Form.togglePreviewElement(image, false);
         }
 
-        Form.showPreviewElement(wrapper);
+        Form.togglePreviewElement(wrapper, true);
         if (previewEl !== wrapper) {
-            Form.showPreviewElement(previewEl);
+            Form.togglePreviewElement(previewEl, true);
         }
     }
 
@@ -250,17 +260,15 @@ class Form {
             if (alt) {
                 image.alt = alt;
             }
-            image.classList?.remove('d-none', 'hidden');
-            image.removeAttribute?.('hidden');
-            image.setAttribute?.('aria-hidden', 'false');
+            Form.togglePreviewElement(image, true);
         }
 
         const icon = wrapper.querySelector?.('.file-preview-icon');
         icon?.remove();
 
-        Form.showPreviewElement(wrapper);
+        Form.togglePreviewElement(wrapper, true);
         if (previewEl !== wrapper) {
-            Form.showPreviewElement(previewEl);
+            Form.togglePreviewElement(previewEl, true);
         }
     }
 
@@ -273,12 +281,12 @@ class Form {
         const image = Form.getPreviewImage(previewEl);
         if (image) {
             image.removeAttribute('src');
-            Form.hidePreviewElement(image);
+            Form.togglePreviewElement(image, false);
         }
 
-        Form.hidePreviewElement(wrapper);
+        Form.togglePreviewElement(wrapper, false);
         if (previewEl !== wrapper) {
-            Form.hidePreviewElement(previewEl);
+            Form.togglePreviewElement(previewEl, false);
         }
     }
 
@@ -394,6 +402,20 @@ class Form {
         Form.applyRequiredHighlights(this.form || this.componentElement);
     }
 
+    _forEachElement(selector, callback, root = null) {
+        const scope = root || this.form || this.componentElement;
+        if (!scope || typeof scope.querySelectorAll !== 'function') {
+            return [];
+        }
+
+        const elements = Array.from(scope.querySelectorAll(selector));
+        if (typeof callback === 'function') {
+            elements.forEach((element, index) => callback(element, index));
+        }
+
+        return elements;
+    }
+
     _initializeComponentElement(element) {
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
@@ -428,7 +450,7 @@ class Form {
 
     _initRichEditors() {
         this.richEditors = [];
-        this.form.querySelectorAll('[data-role="rich-editor"]').forEach((textarea) => {
+        this._forEachElement('[data-role="rich-editor"]', (textarea) => {
             this.richEditors.push(new Form.RichEditor(textarea, this));
         });
     }
@@ -440,7 +462,7 @@ class Form {
             return;
         }
 
-        this.form.querySelectorAll('[data-role="code-editor"]').forEach((textarea) => {
+        this._forEachElement('[data-role="code-editor"]', (textarea) => {
             this.codeEditors.push(
                 codeMirror.fromTextArea(textarea, {
                     mode: 'text/html',
@@ -453,17 +475,17 @@ class Form {
     }
 
     _initAutocompleteFields() {
-        this.form.querySelectorAll('[data-role="acpl"]').forEach((element) => {
+        this._forEachElement('[data-role="acpl"]', (element) => {
             new AcplField(element);
         });
     }
 
     _initCustomSelectors() {
-        this.form.querySelectorAll('[data-action="open-smap"]').forEach((element) => {
+        this._forEachElement('[data-action="open-smap"]', (element) => {
             new Form.SmapSelector(element, this);
         });
 
-        this.form.querySelectorAll('[data-action="open-attachment"]').forEach((element) => {
+        this._forEachElement('[data-action="open-attachment"]', (element) => {
             new Form.AttachmentSelector(element, this);
         });
     }
@@ -476,7 +498,7 @@ class Form {
         };
 
         Object.entries(actionMap).forEach(([action, handler]) => {
-            this.form.querySelectorAll(`[data-action="${action}"]`).forEach((element) => {
+            this._forEachElement(`[data-action="${action}"]`, (element) => {
                 element.addEventListener('click', (event) => {
                     event.preventDefault?.();
                     handler(event.currentTarget || element, event);
@@ -489,7 +511,7 @@ class Form {
         this.fileUploaders = [];
         this.fileUploaderMap = new Map();
 
-        this.componentElement.querySelectorAll('[data-role="file-uploader"]').forEach((uploader) => {
+        this._forEachElement('[data-role="file-uploader"]', (uploader) => {
             const instance = new Form.Uploader(uploader, this, 'upload/');
             if (instance) {
                 this.fileUploaders.push(instance);
@@ -497,12 +519,12 @@ class Form {
                     this.fileUploaderMap.set(instance.targetId, instance);
                 }
             }
-        });
+        }, this.componentElement);
     }
 
     _initDateControls() {
         this.dateControls = [];
-        this.componentElement.querySelectorAll('[data-role="date"], [data-role="datetime"]').forEach((dateControl) => {
+        this._forEachElement('[data-role="date"], [data-role="datetime"]', (dateControl) => {
             const wrapper = dateControl.closest('[data-role="form-field"]');
             const isNullable = wrapper ? wrapper.getAttribute('data-required') !== 'true' : true;
             if (dateControl.getAttribute('data-role') === 'datetime') {
@@ -510,17 +532,17 @@ class Form {
             } else {
                 this.dateControls.push(Energine.createDatePicker(dateControl, isNullable));
             }
-        });
+        }, this.componentElement);
     }
 
     _initCrudActions() {
-        this.componentElement.querySelectorAll('[data-action="crud"]').forEach((crudEl) => {
+        this._forEachElement('[data-action="crud"]', (crudEl) => {
             crudEl.addEventListener('click', (event) => {
                 event.preventDefault?.();
                 const trigger = event.currentTarget || crudEl;
                 this._handleCrudAction(trigger);
             });
-        });
+        }, this.componentElement);
     }
 
     _handleCrudAction(trigger) {
@@ -716,7 +738,7 @@ class Form {
     }
 
     _registerTranslateShortcut() {
-        window.addEventListener('keypress', (evt) => {
+        window.addEventListener('keypress', async (evt) => {
             if (!(evt.target instanceof Element)) {
                 return;
             }
@@ -766,32 +788,31 @@ class Form {
                 q: srcText
             });
 
-            fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`)
-                .then((response) => response.text())
-                .then((resultText) => {
-                    if (!resultText) {
-                        return;
-                    }
+            try {
+                const response = await fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`);
+                const resultText = await response.text();
+                if (!resultText) {
+                    return;
+                }
 
-                    let translated = resultText.substring(4);
-                    const endIndex = translated.indexOf('","');
-                    if (endIndex !== -1) {
-                        translated = translated.substring(0, endIndex);
-                    }
+                let translated = resultText.substring(4);
+                const endIndex = translated.indexOf('","');
+                if (endIndex !== -1) {
+                    translated = translated.substring(0, endIndex);
+                }
 
-                    if (!translated) {
-                        return;
-                    }
+                if (!translated) {
+                    return;
+                }
 
-                    translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+                translated = translated.charAt(0).toUpperCase() + translated.slice(1);
 
-                    if ('value' in evt.target) {
-                        evt.target.value = translated;
-                    }
-                })
-                .catch((error) => {
-                    console.error('Google Translate request failed', error);
-                });
+                if ('value' in evt.target) {
+                    evt.target.value = translated;
+                }
+            } catch (error) {
+                console.error('Google Translate request failed', error);
+            }
         });
     }
 
@@ -1003,30 +1024,31 @@ class Form {
         ModalBox.open({
             url: this.singlePath + 'file-library/' + quickUploadPid + '/add',
             extraData: path,
-            onClose: (result) => {
-                if (result && result.data) {
-                    let upl_id = result.data;
-                    if (upl_id) {
-                        // overlay.show();
-                        showLoader();
-                        fetch(this.singlePath + `file-library/${quickUploadPid}/get-data/`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                            body: `json=1&filter=${encodeURIComponent(JSON.stringify({
-                                condition: '=',
-                                share_uploads: {'upl_id': [upl_id]}
-                            }))}`
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data && data.data && data.data.length === 2) {
-                                    // overlay.hide();
-                                    hideLoader();
-                                    processResult(data.data[1], button);
-                                }
-                            })
-                            .catch(() => hideLoader());
+            onClose: async (result) => {
+                const uploadId = result?.data;
+                if (!uploadId) {
+                    return;
+                }
+
+                try {
+                    showLoader();
+                    const response = await fetch(this.singlePath + `file-library/${quickUploadPid}/get-data/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `json=1&filter=${encodeURIComponent(JSON.stringify({
+                            condition: '=',
+                            share_uploads: { upl_id: [uploadId] }
+                        }))}`
+                    });
+
+                    const data = await response.json();
+                    if (data?.data?.length === 2) {
+                        processResult(data.data[1], button);
                     }
+                } catch (error) {
+                    console.error('Quick upload fetch failed', error);
+                } finally {
+                    hideLoader();
                 }
             }
         });
