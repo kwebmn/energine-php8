@@ -1,4 +1,5 @@
 import Form from '../../share/scripts/Form.js';
+import { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -87,3 +88,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('GroupForm', GroupForm);
+}

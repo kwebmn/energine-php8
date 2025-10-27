@@ -1,4 +1,5 @@
 import GridManager from '../../share/scripts/GridManager.js';
+import { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -51,3 +52,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('UserManager', UserManager);
+}

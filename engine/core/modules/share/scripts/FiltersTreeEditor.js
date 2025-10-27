@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import ModalBox from './ModalBox.js';
 
 const globalScope = typeof window !== 'undefined'
@@ -265,3 +265,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('FiltersTreeEditor', FiltersTreeEditor);
+}

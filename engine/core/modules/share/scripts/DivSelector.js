@@ -1,4 +1,5 @@
 import DivManager from './DivManager.js';
+import { registerBehavior as registerEnergineBehavior } from './Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -138,3 +139,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('DivSelector', DivSelector);
+}

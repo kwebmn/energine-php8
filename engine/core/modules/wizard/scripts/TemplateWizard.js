@@ -1,4 +1,4 @@
-import Energine from '../../share/scripts/Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 import GridManager from '../../share/scripts/GridManager.js';
 import ModalBox from '../../share/scripts/ModalBox.js';
 
@@ -64,3 +64,7 @@ export function attachToWindow(target = globalScope) {
 }
 
 attachToWindow();
+
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('TemplateWizard', TemplateWizard);
+}
