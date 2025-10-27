@@ -12,7 +12,7 @@
     <xsl:template match="component[@type='form']">
         <xsl:variable name="FORM_ID" select="concat('form-', generate-id())"/>
         <section class="card h-100 d-flex flex-column" data-role="pane">
-            <div class="card-header flex-shrink-0" data-pane-part="header" data-pane-toolbar="top">
+            <div class="card-header flex-shrink-0" data-pane-part="header">
                 <xsl:apply-templates select="toolbar[@position='top']"/>
             </div>
             <div class="card-body d-flex flex-column flex-grow-1 overflow-auto" data-pane-part="body">
@@ -32,7 +32,7 @@
                     <xsl:apply-templates select="node()[not(self::toolbar)]"/>
                 </form>
             </div>
-            <div class="card-footer flex-shrink-0" data-pane-part="footer" data-pane-toolbar="bottom">
+            <div class="card-footer flex-shrink-0" data-pane-part="footer">
                 <xsl:apply-templates select="toolbar[not(@position='top')]"/>
             </div>
         </section>
@@ -155,7 +155,7 @@
         <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
         <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
         <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
-        <div class="card-header bg-body-tertiary border-bottom flex-shrink-0 pb-0" data-pane-part="header" data-pane-toolbar="top">
+        <div class="card-header bg-body-tertiary border-bottom flex-shrink-0 pb-0" data-pane-part="header">
             <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                     <xsl:variable name="TAB_NAME" select="."/>
@@ -220,7 +220,7 @@
         </div>
 
         <xsl:if test="../toolbar">
-            <div class="card-footer bg-body-tertiary border-top flex-shrink-0" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body-tertiary border-top flex-shrink-0" data-pane-part="footer"></div>
         </xsl:if>
     </div>
 </xsl:template>

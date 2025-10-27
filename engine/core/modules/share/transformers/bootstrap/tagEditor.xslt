@@ -23,10 +23,9 @@
             </xsl:if>
             <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
             <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
-            <xsl:attribute name="data-e-tag-id"><xsl:value-of select="../@tag_id"/></xsl:attribute>
             <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
             <xsl:call-template name="BUILD_GRID"/>
-            <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer" data-pane-part="footer"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
                 <script type="application/json" data-energine-translations="1">
                     <xsl:value-of select="/document/translations/@json" disable-output-escaping="yes" />

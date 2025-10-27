@@ -70,7 +70,7 @@
                 </xsl:attribute>
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
-            <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
                 <script type="application/json" data-energine-translations="1">
                     <xsl:value-of select="/document/translations/@json" disable-output-escaping="yes" />
@@ -94,7 +94,7 @@
         <xsl:variable name="FIELDS" select="record/field"/>
         <xsl:variable name="TAB_ID" select="generate-id(record)"/>
 
-        <div class="card-header bg-body border-bottom px-3 pt-3 pb-0" data-pane-part="header" data-pane-toolbar="top">
+        <div class="card-header bg-body border-bottom px-3 pt-3 pb-0" data-pane-part="header">
             <ul class="nav nav-tabs card-header-tabs mb-0 gap-2" data-role="tabs" role="tablist">
                 <xsl:choose>
                     <xsl:when test="$FIELDS[@language]">
