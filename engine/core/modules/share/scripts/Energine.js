@@ -960,11 +960,12 @@ const scheduleRetry = (task, options = {}) => {
 
 const behaviorRegistry = new Map();
 const pendingBehaviors = new Map();
+const PENDING_BEHAVIOR_DEBUG_THRESHOLD = 5;
 const PENDING_BEHAVIOR = Symbol('Energine.pendingBehavior');
 
 const recordPendingBehavior = (name) => {
     if (!name) {
-        return;
+        return null;
     }
 
     if (!pendingBehaviors.has(name)) {
@@ -977,6 +978,7 @@ const recordPendingBehavior = (name) => {
     const entry = pendingBehaviors.get(name);
     entry.count += 1;
     entry.lastSeen = Date.now();
+    return entry;
 };
 
 const clearPendingBehavior = (name) => {
@@ -1072,20 +1074,25 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null, opt
 
     const Constructor = resolveRegisteredBehavior(behaviorName);
     if (!Constructor) {
-        recordPendingBehavior(behaviorName);
-        const pendingInfo = pendingBehaviors.get(behaviorName);
+        const pendingInfo = recordPendingBehavior(behaviorName) || pendingBehaviors.get(behaviorName);
+        const pendingCount = pendingInfo ? pendingInfo.count : 0;
+        const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
+
+        if (
+            pendingCount <= 1
+            && !silentOnMissing
+            && typeof console !== 'undefined'
+            && console.info
+        ) {
+            console.info(message);
+        }
+
         const shouldThrow = Boolean(
             Energine
             && typeof Energine.debug === 'boolean'
             && Energine.debug
-            && pendingInfo
-            && pendingInfo.count === 1,
+            && pendingCount >= PENDING_BEHAVIOR_DEBUG_THRESHOLD,
         );
-
-        const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
-        if (!silentOnMissing && typeof console !== 'undefined' && console.info) {
-            console.info(message);
-        }
 
         if (shouldThrow) {
             const error = new Error(`${message} Enable and import the module that registers this behavior via registerBehavior.`);
