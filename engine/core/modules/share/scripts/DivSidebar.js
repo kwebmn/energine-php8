@@ -1,5 +1,6 @@
 import Energine, { showLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import DivManager from './DivManager.js';
+import TabPane from './TabPane.js';
 import './ModalBox.js';
 
 const globalScope = typeof window !== 'undefined'
