@@ -99,6 +99,42 @@ class DivForm extends Form {
         if (uriTextField) {
             uriTextField.addEventListener('change', segmentUriFunc);
         }
+
+        this._bindActionHandlers();
+    }
+
+    _bindActionHandlers() {
+        if (!(this.componentElement instanceof HTMLElement)) {
+            return;
+        }
+
+        const actionElements = this.componentElement.querySelectorAll('[data-e-action]');
+        actionElements.forEach((element) => {
+            const actionName = element.dataset?.eAction
+                || element.getAttribute('data-e-action');
+
+            if (!actionName || typeof this[actionName] !== 'function') {
+                return;
+            }
+
+            const invokeAction = (event) => {
+                if (event) {
+                    event.preventDefault();
+                }
+
+                try {
+                    this[actionName](event);
+                } catch (error) {
+                    if (typeof Energine?.safeConsoleError === 'function') {
+                        Energine.safeConsoleError(error, `[DivForm] Failed to execute action "${actionName}"`);
+                    } else if (typeof console !== 'undefined' && console.error) {
+                        console.error(`[DivForm] Failed to execute action "${actionName}"`, error);
+                    }
+                }
+            };
+
+            element.addEventListener('click', invokeAction);
+        });
     }
 
     /**
