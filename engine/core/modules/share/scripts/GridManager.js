@@ -18,6 +18,17 @@ const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || global
 
 const noop = () => {};
 
+const runLifecycleSteps = (context, steps = []) => {
+    if (!context || !Array.isArray(steps)) {
+        return;
+    }
+
+    steps
+        .map(step => (typeof step === 'string' ? context?.[step] : step))
+        .filter(step => typeof step === 'function')
+        .forEach(step => step.call(context));
+};
+
 const createToolbarFacade = (resolveToolbar) => {
     const getToolbar = () => (typeof resolveToolbar === 'function' ? resolveToolbar() : null) || null;
 
@@ -83,60 +94,58 @@ const MODAL_ACTIONS = Object.freeze({
     },
 });
 
-const applyClasses = (element, classes = []) => {
-    if (element && classes.length) {
-        element.classList.add(...classes);
-    }
-};
-
-const removeClasses = (element, classes = []) => {
-    if (element && classes.length) {
-        element.classList.remove(...classes);
-    }
-};
-
-const ensureMinHeightZero = element => {
-    if (
-        element
-        && (!element.style.minHeight
-            || element.style.minHeight === ''
-            || element.style.minHeight === 'auto')
-    ) {
-        element.style.minHeight = '0';
-    }
-};
-
-const ensureFlexOverflowHidden = element => {
-    if (!element) {
-        return;
-    }
-
-    try {
-        const computed = window.getComputedStyle(element);
-        if (computed.display.includes('flex') && computed.overflow === 'visible') {
-            element.style.overflow = 'hidden';
+const DOM = Object.freeze({
+    addClasses(element, classes = []) {
+        if (element && classes.length) {
+            element.classList.add(...classes);
         }
-    } catch (e) {
-        // Ignore layout read errors in environments without layout engine
-    }
-};
-
-const decorateElement = (element, { add = [], remove = [], attributes = {} } = {}) => {
-    if (!element) {
-        return;
-    }
-
-    applyClasses(element, add);
-    removeClasses(element, remove);
-
-    Object.entries(attributes).forEach(([name, value]) => {
-        if (value === null || value === undefined) {
-            element.removeAttribute(name);
-        } else {
-            element.setAttribute(name, value);
+    },
+    removeClasses(element, classes = []) {
+        if (element && classes.length) {
+            element.classList.remove(...classes);
         }
-    });
-};
+    },
+    ensureMinHeightZero(element) {
+        if (
+            element
+            && (!element.style.minHeight
+                || element.style.minHeight === ''
+                || element.style.minHeight === 'auto')
+        ) {
+            element.style.minHeight = '0';
+        }
+    },
+    ensureFlexOverflowHidden(element) {
+        if (!element) {
+            return;
+        }
+
+        try {
+            const computed = window.getComputedStyle(element);
+            if (computed.display.includes('flex') && computed.overflow === 'visible') {
+                element.style.overflow = 'hidden';
+            }
+        } catch (e) {
+            // Ignore layout read errors in environments without layout engine
+        }
+    },
+    decorate(element, { add = [], remove = [], attributes = {} } = {}) {
+        if (!element) {
+            return;
+        }
+
+        this.addClasses(element, add);
+        this.removeClasses(element, remove);
+
+        Object.entries(attributes).forEach(([name, value]) => {
+            if (value === null || value === undefined) {
+                element.removeAttribute(name);
+            } else {
+                element.setAttribute(name, value);
+            }
+        });
+    },
+});
 
 const parsePixels = value => {
     const numeric = Number.parseFloat(value);
@@ -171,6 +180,94 @@ const TABLE_BODY_CLASSES = Object.freeze(['table', 'table-hover', 'table-bordere
 const HEADER_CLASSES = Object.freeze(['text-center', 'align-middle', 'fw-semibold', 'position-relative']);
 const GRID_HEAD_CONTAINER_CLASSES = Object.freeze(['table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0']);
 const GRID_BODY_CONTAINER_CLASSES = Object.freeze(['table-responsive', 'bg-body', 'border', 'border-top-0']);
+
+const SELECTION_CONTROL_PREDICATES = Object.freeze([
+    control => isSelectionKeywordMatch(control?.properties?.action),
+    control => isSelectionKeywordMatch(control?.properties?.id),
+]);
+
+const CONTROL_PREPARATION_STEPS = Object.freeze([
+    control => {
+        if (control?.element) {
+            control.element.dataset.requiresSelection = 'true';
+        }
+    },
+    control => {
+        if (
+            control
+            && typeof control.enable === 'function'
+            && typeof control.initially_disabled === 'function'
+            && control.initially_disabled()
+        ) {
+            control.enable(true);
+        }
+    },
+    control => {
+        if (control) {
+            control._disabledBySelection = false;
+        }
+    },
+]);
+
+const CONTROL_STATE_HANDLERS = Object.freeze({
+    disable: {
+        shouldApply(control) {
+            if (!control) {
+                return false;
+            }
+
+            const initiallyDisabled = typeof control.initially_disabled === 'function'
+                ? control.initially_disabled()
+                : false;
+
+            if (initiallyDisabled) {
+                return false;
+            }
+
+            const alreadyDisabled = typeof control.disabled === 'function'
+                ? control.disabled()
+                : false;
+
+            return !alreadyDisabled && typeof control.disable === 'function';
+        },
+        apply(control) {
+            control.disable();
+            control._disabledBySelection = true;
+        },
+    },
+    enable: {
+        shouldApply(control) {
+            return Boolean(
+                control
+                && control._disabledBySelection
+                && typeof control.enable === 'function',
+            );
+        },
+        apply(control) {
+            control.enable();
+            control._disabledBySelection = false;
+        },
+    },
+});
+
+const GRID_INITIALIZATION_SEQUENCE = Object.freeze([
+    '_initializeState',
+    '_captureDomStructure',
+    '_prepareHeaders',
+    '_bindGlobalHandlers',
+    '_initializeLayoutPlaceholders',
+]);
+
+const GRID_MANAGER_INITIALIZATION_SEQUENCE = Object.freeze([
+    '_initializeState',
+    '_initializeFilter',
+    '_initializePageList',
+    '_initializeGrid',
+    '_initializeTabPane',
+    '_placePaginationControls',
+    '_setupModalCloseHandler',
+    '_initializeMoveState',
+]);
 
 const isSelectionKeywordMatch = (value = '') => {
     const normalized = value.toLowerCase();
@@ -213,60 +310,23 @@ class ToolbarSelectionController {
     }
 
     _isSelectionDependentControl(control) {
-        const action = control?.properties?.action;
-        const id = control?.properties?.id;
-
-        return isSelectionKeywordMatch(action) || isSelectionKeywordMatch(id);
+        return SELECTION_CONTROL_PREDICATES.some(predicate => predicate(control));
     }
 
     _prepareControl(control) {
-        if (!control) {
-            return;
-        }
-
-        if (control.element) {
-            control.element.dataset.requiresSelection = 'true';
-        }
-
-        if (
-            typeof control.enable === 'function'
-            && typeof control.initially_disabled === 'function'
-            && control.initially_disabled()
-        ) {
-            control.enable(true);
-        }
-
-        control._disabledBySelection = false;
+        CONTROL_PREPARATION_STEPS.forEach(step => step(control));
     }
 
     _toggleControl(control, hasSelection) {
-        if (!control) {
+        const state = hasSelection ? 'enable' : 'disable';
+        const handler = CONTROL_STATE_HANDLERS[state];
+
+        if (!control || !handler) {
             return;
         }
 
-        const initiallyDisabled = typeof control.initially_disabled === 'function'
-            ? control.initially_disabled()
-            : false;
-
-        if (!hasSelection) {
-            if (initiallyDisabled) {
-                return;
-            }
-
-            const alreadyDisabled = typeof control.disabled === 'function'
-                ? control.disabled()
-                : false;
-
-            if (!alreadyDisabled && typeof control.disable === 'function') {
-                control.disable();
-                control._disabledBySelection = true;
-            }
-            return;
-        }
-
-        if (control._disabledBySelection && typeof control.enable === 'function') {
-            control.enable();
-            control._disabledBySelection = false;
+        if (handler.shouldApply(control, { hasSelection })) {
+            handler.apply(control, { hasSelection });
         }
     }
 }
@@ -282,11 +342,7 @@ class Grid {
         this.element = this._resolveElement(element);
         this.options = this._normalizeOptions(options);
 
-        this._initializeState();
-        this._captureDomStructure();
-        this._prepareHeaders();
-        this._bindGlobalHandlers();
-        this._initializeLayoutPlaceholders();
+        runLifecycleSteps(this, GRID_INITIALIZATION_SEQUENCE);
 
         this.on('select', this.options.onSelect);
         this.on('doubleClick', this.options.onDoubleClick);
@@ -372,7 +428,7 @@ class Grid {
             this.tbody = this._ensureSection(combinedTable, 'tbody');
             this.headers = Array.from(combinedTable.querySelectorAll('thead th'));
             this.headOff = combinedTable.tHead || null;
-            applyClasses(combinedTable, TABLE_BODY_CLASSES);
+            DOM.addClasses(combinedTable, TABLE_BODY_CLASSES);
         } else {
             this.table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
             if (this.table) {
@@ -381,12 +437,12 @@ class Grid {
                     this.headOff.style.display = 'none';
                 }
                 this.tbody = this._ensureSection(this.table, 'tbody');
-                applyClasses(this.table, TABLE_BODY_CLASSES);
+                DOM.addClasses(this.table, TABLE_BODY_CLASSES);
             }
 
             const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
             if (headTable) {
-                applyClasses(headTable, ['table', 'table-sm', 'align-middle', 'mb-0']);
+                DOM.addClasses(headTable, ['table', 'table-sm', 'align-middle', 'mb-0']);
             }
 
             this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
@@ -417,7 +473,7 @@ class Grid {
     _prepareHeaders() {
         this.headers.forEach(header => {
             header.addEventListener('click', this.handleHeaderClick);
-            applyClasses(header, HEADER_CLASSES);
+            DOM.addClasses(header, HEADER_CLASSES);
             header.style.cursor = 'pointer';
 
             if (!header.dataset.originalLabel) {
@@ -586,7 +642,7 @@ class Grid {
         }
         if (this.gridHeadContainer && this.gridHeadContainer !== this.table) {
             if (!this.gridHeadContainer.classList.contains('grid-head')) {
-                applyClasses(this.gridHeadContainer, GRID_HEAD_CONTAINER_CLASSES);
+                DOM.addClasses(this.gridHeadContainer, GRID_HEAD_CONTAINER_CLASSES);
             }
         }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
@@ -595,9 +651,9 @@ class Grid {
         }
         if (this.gridContainer && this.gridContainer !== this.gridHeadContainer) {
             if (!this.gridContainer.classList.contains('grid-table-wrapper')) {
-                applyClasses(this.gridContainer, GRID_BODY_CONTAINER_CLASSES);
+                DOM.addClasses(this.gridContainer, GRID_BODY_CONTAINER_CLASSES);
             }
-            ensureMinHeightZero(this.gridContainer);
+            DOM.ensureMinHeightZero(this.gridContainer);
         }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
@@ -734,7 +790,7 @@ class Grid {
     }
 
     prepareGridLayoutContainers() {
-        ensureMinHeightZero(this.element);
+        DOM.ensureMinHeightZero(this.element);
 
         if (!this.paneContent) {
             return;
@@ -766,8 +822,8 @@ class Grid {
         const nodesToNormalize = [this.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
 
         nodesToNormalize.forEach(node => {
-            ensureMinHeightZero(node);
-            ensureFlexOverflowHidden(node);
+            DOM.ensureMinHeightZero(node);
+            DOM.ensureFlexOverflowHidden(node);
         });
     }
 
@@ -1723,17 +1779,7 @@ class GridManager {
      */
     constructor(element) {
         this.element = this._resolveElement(element);
-        this._initializeState();
-
-        this._runInitializers(
-            '_initializeFilter',
-            '_initializePageList',
-            '_initializeGrid',
-            '_initializeTabPane',
-            '_placePaginationControls',
-            '_setupModalCloseHandler',
-            '_initializeMoveState',
-        );
+        runLifecycleSteps(this, GRID_MANAGER_INITIALIZATION_SEQUENCE);
 
         this.reload();
     }
@@ -1757,13 +1803,6 @@ class GridManager {
             return target;
         }
         throw new Error('GridManager: unexpected element reference.');
-    }
-
-    _runInitializers(...methodNames) {
-        methodNames
-            .map(name => this[name])
-            .filter(method => typeof method === 'function')
-            .forEach(method => method.call(this));
     }
 
     _resolveActionRecordId(candidate) {
@@ -2514,7 +2553,7 @@ class Filter {
                 return acc;
             }
 
-            decorateElement(target, descriptor.config);
+            DOM.decorate(target, descriptor.config);
             if (descriptor.key) {
                 acc[descriptor.key] = target;
             }
@@ -2783,7 +2822,7 @@ class QueryControls {
         this.wrapperGroups = new Map();
 
         this.containers.forEach((container, index) => {
-            decorateElement(container, {
+            DOM.decorate(container, {
                 add: ['d-flex', 'flex-nowrap', 'align-items-center', 'gap-2'],
                 remove: ['mb-2'],
             });
@@ -2802,7 +2841,7 @@ class QueryControls {
         this.inputs = this.containers.map(container => {
             const input = container.querySelector('input');
             if (input) {
-                applyClasses(input, ['form-control', 'form-control-sm']);
+                DOM.addClasses(input, ['form-control', 'form-control-sm']);
             }
             return input;
         });
@@ -2812,7 +2851,7 @@ class QueryControls {
             if (!input) return null;
             const clone = input.cloneNode(true);
             clone.type = 'date';
-            applyClasses(clone, [this.hiddenClass, 'form-control', 'form-control-sm']);
+            DOM.addClasses(clone, [this.hiddenClass, 'form-control', 'form-control-sm']);
             if (input.parentNode) {
                 input.parentNode.appendChild(clone);
             }
