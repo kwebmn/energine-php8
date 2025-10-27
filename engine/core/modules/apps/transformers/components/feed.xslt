@@ -56,7 +56,6 @@
         <xsl:variable name="VIEW_ID" select="generate-id(..)"/>
         <div class="feed_view">
             <xsl:attribute name="id"><xsl:value-of select="$VIEW_ID"/></xsl:attribute>
-            <xsl:attribute name="data-e-feed-view-id"><xsl:value-of select="$VIEW_ID"/></xsl:attribute>
             <xsl:if test="$COMPONENTS[@editable]">
                 <xsl:attribute name="current">
                     <xsl:value-of select="field[@index='PRI']"/>

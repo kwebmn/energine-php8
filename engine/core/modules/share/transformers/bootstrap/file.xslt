@@ -39,7 +39,7 @@
             <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
             <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
             <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
-            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+            <div class="card-header" data-pane-part="header">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
                         <a href="#{$IDD}" data-role="tab-link">
@@ -67,7 +67,7 @@
                 </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+                <div class="card-footer" data-pane-part="footer"></div>
             </xsl:if>
         </div>
     </xsl:template>

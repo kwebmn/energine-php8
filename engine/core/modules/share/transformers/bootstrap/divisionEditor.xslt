@@ -34,7 +34,7 @@
             <xsl:attribute name="data-e-lang-id"><xsl:value-of select="$LANG_ID"/></xsl:attribute>
             <xsl:attribute name="data-e-site"><xsl:value-of select="../@site"/></xsl:attribute>
             <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
-            <div class="card-header pb-0" data-pane-part="header" data-pane-toolbar="top">
+            <div class="card-header pb-0" data-pane-part="header">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
                         <a href="#{$TAB_ID}" data-role="tab-link">
@@ -56,7 +56,7 @@
                 </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+                <div class="card-footer" data-pane-part="footer"></div>
             </xsl:if>
         </div>
     </xsl:template>
