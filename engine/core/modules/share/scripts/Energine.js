@@ -4,23 +4,244 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const allowedConfigKeys = [
-    'debug',
-    'base',
-    'static',
-    'resizer',
-    'media',
-    'root',
-    'lang',
-    'singleMode',
-];
+const Config = {
+    allowedKeys: [
+        'debug',
+        'base',
+        'static',
+        'resizer',
+        'media',
+        'root',
+        'lang',
+        'singleMode',
+    ],
+    mergeInto(target, values = {}) {
+        if (!target || !values || typeof values !== 'object') {
+            return;
+        }
 
-const noticeIconMap = {
-    success: { variant: 'success', icon: 'fa-circle-check' },
-    error: { variant: 'danger', icon: 'fa-circle-xmark' },
-    warning: { variant: 'warning', icon: 'fa-triangle-exclamation' },
-    info: { variant: 'info', icon: 'fa-circle-info' },
-    question: { variant: 'primary', icon: 'fa-circle-question' },
+        this.allowedKeys.forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(values, key)) {
+                target[key] = values[key];
+            }
+        });
+    },
+};
+
+const Notifications = {
+    iconMap: {
+        success: { variant: 'success', icon: 'fa-circle-check' },
+        error: { variant: 'danger', icon: 'fa-circle-xmark' },
+        warning: { variant: 'warning', icon: 'fa-triangle-exclamation' },
+        info: { variant: 'info', icon: 'fa-circle-info' },
+        question: { variant: 'primary', icon: 'fa-circle-question' },
+    },
+    resolveIconConfig(icon) {
+        return this.iconMap[icon] || this.iconMap.info;
+    },
+};
+
+const BooleanUtils = {
+    truthyValues: new Set(['1', 'true', 'yes', 'on']),
+    normalize(value, { truthyValues = null, falseValues = null, defaultValue = false } = {}) {
+        if (typeof value === 'boolean') {
+            return value;
+        }
+
+        if (typeof value === 'number') {
+            return value !== 0;
+        }
+
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+
+            if (falseValues && falseValues.has(normalized)) {
+                return false;
+            }
+
+            if (truthyValues) {
+                return truthyValues.has(normalized);
+            }
+
+            if (falseValues) {
+                return normalized.length > 0;
+            }
+
+            return this.truthyValues.has(normalized);
+        }
+
+        if (value === null || typeof value === 'undefined') {
+            return defaultValue;
+        }
+
+        return Boolean(value);
+    },
+};
+
+const Dataset = {
+    falseValues: new Set(['0', 'false', 'no', 'off']),
+    normalizeBoolean(value) {
+        return BooleanUtils.normalize(value, { falseValues: this.falseValues });
+    },
+};
+
+const BootstrapHelpers = {
+    resolve(scope) {
+        if (scope && scope.bootstrap) {
+            return scope.bootstrap;
+        }
+
+        if (typeof bootstrap !== 'undefined') {
+            return bootstrap;
+        }
+
+        return null;
+    },
+
+    ensureModalElement(id, template) {
+        if (typeof document === 'undefined') {
+            return null;
+        }
+
+        let element = document.getElementById(id);
+        if (element) {
+            return element;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = template.trim();
+        element = wrapper.firstElementChild;
+        if (element) {
+            document.body.appendChild(element);
+        }
+
+        return element;
+    },
+
+    getToastContainer() {
+        if (typeof document === 'undefined') {
+            return null;
+        }
+
+        let container = document.getElementById('energine-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'energine-toast-container';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '11000';
+            document.body.appendChild(container);
+        }
+
+        return container;
+    },
+
+    renderModal({ scope, id, template, onShow, fallback }) {
+        const bootstrapLib = this.resolve(scope);
+        if (!bootstrapLib || typeof document === 'undefined') {
+            return typeof fallback === 'function' ? fallback() : null;
+        }
+
+        const modal = this.ensureModalElement(id, template);
+        if (!modal) {
+            return typeof fallback === 'function' ? fallback() : null;
+        }
+
+        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
+        if (typeof onShow === 'function') {
+            onShow({ modal, instance, bootstrap: bootstrapLib });
+        }
+
+        instance.show();
+        return modal;
+    },
+};
+
+const RequestHelpers = {
+    buildFetchOptions({ runtime, uri, data, method = 'post' }) {
+        const normalizedMethod = (method || 'post').toUpperCase();
+        const isGet = normalizedMethod === 'GET';
+
+        const headers = {
+            'X-Request': 'json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, text/plain, */*',
+        };
+
+        const fetchOpts = { method: normalizedMethod, headers };
+        let url = uri;
+
+        if (runtime.forceJSON) {
+            headers['Content-Type'] = 'application/json';
+
+            if (!isGet) {
+                fetchOpts.body = JSON.stringify(data);
+            } else if (data) {
+                const params = new URLSearchParams(data).toString();
+                url += (url.includes('?') ? '&' : '?') + params;
+            }
+
+            return { url, fetchOpts };
+        }
+
+        if (typeof data === 'string') {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            fetchOpts.body = data;
+            return { url, fetchOpts };
+        }
+
+        const formEncoded = runtime.serializeToFormEncoded(data || {});
+        if (isGet) {
+            url += (url.includes('?') ? '&' : '?') + formEncoded;
+        } else {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            fetchOpts.body = formEncoded;
+        }
+
+        return { url, fetchOpts };
+    },
+
+    handleJsonResponse({ text, onSuccess, onUserError, onServerError }) {
+        let response;
+
+        try {
+            response = JSON.parse(text);
+        } catch {
+            response = null;
+        }
+
+        if (!response) {
+            if (typeof onServerError === 'function') {
+                onServerError(text);
+            }
+            return;
+        }
+
+        if (response.result) {
+            if (typeof onSuccess === 'function') {
+                onSuccess(response);
+            }
+            return;
+        }
+
+        let msg = response.title || 'Произошла ошибка:\n';
+        if (Array.isArray(response.errors)) {
+            response.errors.forEach((error) => {
+                if (typeof error.field !== 'undefined') {
+                    msg += `${error.field} :\t`;
+                }
+                if (typeof error.message !== 'undefined') {
+                    msg += `${error.message}\n`;
+                } else {
+                    msg += `${error}\n`;
+                }
+            });
+        }
+
+        alert(msg);
+        if (typeof onUserError === 'function') {
+            onUserError(response);
+        }
+    },
 };
 
 const exposeRuntimeToGlobal = (runtime, target = globalScope) => {
@@ -132,14 +353,16 @@ class EnergineCore {
         }
 
         const config = {};
-        allowedConfigKeys.forEach((key) => {
+        Config.allowedKeys.forEach((key) => {
             if (typeof scriptEl.dataset[key] === 'undefined') {
                 return;
             }
+
+            const value = scriptEl.dataset[key];
             if (key === 'debug' || key === 'singleMode') {
-                config[key] = scriptEl.dataset[key] === 'true';
+                config[key] = BooleanUtils.normalize(value, { truthyValues: BooleanUtils.truthyValues });
             } else {
-                config[key] = scriptEl.dataset[key];
+                config[key] = value;
             }
         });
 
@@ -147,15 +370,7 @@ class EnergineCore {
     }
 
     mergeConfigValues(values = {}) {
-        if (!values || typeof values !== 'object') {
-            return;
-        }
-
-        allowedConfigKeys.forEach((key) => {
-            if (Object.prototype.hasOwnProperty.call(values, key)) {
-                this[key] = values[key];
-            }
-        });
+        Config.mergeInto(this, values);
     }
 
     serializeToFormEncoded(obj, prefix) {
@@ -180,75 +395,26 @@ class EnergineCore {
     }
 
     async request(uri, data, onSuccess, onUserError, onServerError = () => {}, method = 'post') {
-        let url = uri;
-        const isGet = method.toLowerCase() === 'get';
-        const headers = {
-            'X-Request': 'json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json, text/plain, */*',
-        };
-        const fetchOpts = { method: method.toUpperCase(), headers };
-
-        if (this.forceJSON) {
-            headers['Content-Type'] = 'application/json';
-            if (!isGet) {
-                fetchOpts.body = JSON.stringify(data);
-            } else if (data) {
-                const params = new URLSearchParams(data).toString();
-                url += (url.includes('?') ? '&' : '?') + params;
-            }
-        } else if (typeof data === 'string') {
-            headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            fetchOpts.body = data;
-        } else {
-            const formEncoded = this.serializeToFormEncoded(data || {});
-            if (isGet) {
-                url += (url.includes('?') ? '&' : '?') + formEncoded;
-            } else {
-                headers['Content-Type'] = 'application/x-www-form-urlencoded';
-                fetchOpts.body = formEncoded;
-            }
-        }
+        const { url, fetchOpts } = RequestHelpers.buildFetchOptions({
+            runtime: this,
+            uri,
+            data,
+            method,
+        });
 
         try {
             const res = await fetch(url, fetchOpts);
             const text = await res.text();
-            let response;
 
-            try {
-                response = JSON.parse(text);
-            } catch {
-                response = null;
-            }
-
-            if (!response) {
-                onServerError(text);
-                return;
-            }
-
-            if (response.result) {
-                onSuccess(response);
-                return;
-            }
-
-            let msg = response.title || 'Произошла ошибка:\n';
-            if (Array.isArray(response.errors)) {
-                response.errors.forEach((error) => {
-                    if (typeof error.field !== 'undefined') {
-                        msg += `${error.field} :\t`;
-                    }
-                    if (typeof error.message !== 'undefined') {
-                        msg += `${error.message}\n`;
-                    } else {
-                        msg += `${error}\n`;
-                    }
-                });
-            }
-            alert(msg);
-            if (onUserError) onUserError(response);
-        } catch (e) {
-            console.error(e);
-            onServerError(e.toString());
+            RequestHelpers.handleJsonResponse({
+                text,
+                onSuccess,
+                onUserError,
+                onServerError,
+            });
+        } catch (error) {
+            console.error(error);
+            onServerError(error.toString());
         }
     }
 
@@ -272,63 +438,19 @@ class EnergineCore {
         img.setAttribute('src', `${this.resizer}${r}w${w}-h${h}/${src}`);
     }
 
-    resolveBootstrap() {
-        if (this.globalScope && this.globalScope.bootstrap) {
-            return this.globalScope.bootstrap;
-        }
-        if (typeof bootstrap !== 'undefined') {
-            return bootstrap;
-        }
-        return null;
-    }
-
-    ensureModalElement(id, template) {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-
-        let element = document.getElementById(id);
-        if (element) {
-            return element;
-        }
-
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = template.trim();
-        element = wrapper.firstElementChild;
-        if (element) {
-            document.body.appendChild(element);
-        }
-
-        return element;
-    }
-
-    getToastContainer() {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-        let container = document.getElementById('energine-toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'energine-toast-container';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '11000';
-            document.body.appendChild(container);
-        }
-        return container;
-    }
-
     confirmBox(message, yes, no) {
-        const bootstrapLib = this.resolveBootstrap();
-        if (!bootstrapLib || typeof document === 'undefined') {
+        const fallback = () => {
             if (confirm(message)) {
                 if (yes) yes();
             } else if (no) {
                 no();
             }
-            return;
-        }
+        };
 
-        const modal = this.ensureModalElement('energine-confirm-modal', `
+        const modal = BootstrapHelpers.renderModal({
+            scope: this.globalScope,
+            id: 'energine-confirm-modal',
+            template: `
             <div class="modal fade" id="energine-confirm-modal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -353,60 +475,56 @@ class EnergineCore {
                     </div>
                 </div>
             </div>
-        `);
+        `,
+            fallback,
+            onShow: ({ modal }) => {
+                const messageContainer = modal.querySelector('[data-role="message"]');
+                if (messageContainer) {
+                    messageContainer.textContent = message;
+                }
+
+                const confirmBtn = modal.querySelector('[data-role="confirm"]');
+                const cancelBtn = modal.querySelector('[data-role="cancel"]');
+                let resolved = false;
+
+                const handleConfirm = () => {
+                    resolved = true;
+                    if (yes) yes();
+                };
+                const handleCancel = () => {
+                    resolved = true;
+                    if (no) no();
+                };
+
+                if (confirmBtn) {
+                    confirmBtn.addEventListener('click', handleConfirm, { once: true });
+                }
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', handleCancel, { once: true });
+                }
+
+                modal.addEventListener('hidden.bs.modal', () => {
+                    if (!resolved && no) {
+                        no();
+                    }
+                }, { once: true });
+            },
+        });
 
         if (!modal) {
-            if (confirm(message)) {
-                if (yes) yes();
-            } else if (no) {
-                no();
-            }
             return;
         }
-
-        const messageContainer = modal.querySelector('[data-role="message"]');
-        if (messageContainer) {
-            messageContainer.textContent = message;
-        }
-
-        const confirmBtn = modal.querySelector('[data-role="confirm"]');
-        const cancelBtn = modal.querySelector('[data-role="cancel"]');
-        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
-
-        let resolved = false;
-        const handleConfirm = () => {
-            resolved = true;
-            if (yes) yes();
-        };
-        const handleCancel = () => {
-            resolved = true;
-            if (no) no();
-        };
-
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', handleConfirm, { once: true });
-        }
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', handleCancel, { once: true });
-        }
-
-        modal.addEventListener('hidden.bs.modal', () => {
-            if (!resolved && no) {
-                no();
-            }
-        }, { once: true });
-
-        instance.show();
     }
 
     alertBox(message) {
-        const bootstrapLib = this.resolveBootstrap();
-        if (!bootstrapLib || typeof document === 'undefined') {
+        const fallback = () => {
             alert(message);
-            return;
-        }
+        };
 
-        const modal = this.ensureModalElement('energine-alert-modal', `
+        const modal = BootstrapHelpers.renderModal({
+            scope: this.globalScope,
+            id: 'energine-alert-modal',
+            template: `
             <div class="modal fade" id="energine-alert-modal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -428,38 +546,37 @@ class EnergineCore {
                     </div>
                 </div>
             </div>
-        `);
+        `,
+            fallback,
+            onShow: ({ modal }) => {
+                const messageContainer = modal.querySelector('[data-role="message"]');
+                if (messageContainer) {
+                    messageContainer.textContent = message;
+                }
+            },
+        });
 
         if (!modal) {
-            alert(message);
             return;
         }
-
-        const messageContainer = modal.querySelector('[data-role="message"]');
-        if (messageContainer) {
-            messageContainer.textContent = message;
-        }
-
-        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
-        instance.show();
     }
 
     noticeBox(message, icon, callback) {
-        const bootstrapLib = this.resolveBootstrap();
+        const bootstrapLib = BootstrapHelpers.resolve(this.globalScope);
         if (!bootstrapLib || typeof document === 'undefined') {
             alert(message);
             if (callback) callback();
             return;
         }
 
-        const container = this.getToastContainer();
+        const container = BootstrapHelpers.getToastContainer();
         if (!container) {
             alert(message);
             if (callback) callback();
             return;
         }
 
-        const { variant, icon: iconClass } = noticeIconMap[icon] || noticeIconMap.info;
+        const { variant, icon: iconClass } = Notifications.resolveIconConfig(icon);
 
         const toast = document.createElement('div');
         toast.className = `toast align-items-center text-bg-${variant} border-0`;
@@ -535,27 +652,11 @@ class EnergineCore {
     createConfigFromProps(props = {}) {
         const config = { ...props };
 
-        const normalizeBoolean = (value) => {
-            if (typeof value === 'boolean') return value;
-            if (typeof value === 'number') return value !== 0;
-            if (typeof value === 'string') {
-                return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+        ['debug', 'forceJSON', 'supportContentEdit', 'singleMode'].forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(config, key)) {
+                config[key] = BooleanUtils.normalize(config[key], { truthyValues: BooleanUtils.truthyValues });
             }
-            return Boolean(value);
-        };
-
-        if (Object.prototype.hasOwnProperty.call(config, 'debug')) {
-            config.debug = normalizeBoolean(config.debug);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'forceJSON')) {
-            config.forceJSON = normalizeBoolean(config.forceJSON);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'supportContentEdit')) {
-            config.supportContentEdit = normalizeBoolean(config.supportContentEdit);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'singleMode')) {
-            config.singleMode = normalizeBoolean(config.singleMode);
-        }
+        });
 
         return config;
     }
@@ -636,8 +737,6 @@ class EnergineCore {
 const Energine = new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
-
-const datasetFalseValues = new Set(['0', 'false', 'no', 'off']);
 
 const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
 
@@ -732,59 +831,60 @@ const scheduleRetry = (task, options = {}) => {
     return execute();
 };
 
-const behaviorRegistry = new Map();
-const pendingBehaviors = new Map();
-const PENDING_BEHAVIOR_DEBUG_THRESHOLD = 5;
+const BehaviorRegistry = {
+    storage: new Map(),
+    pending: new Map(),
+    debugThreshold: 5,
+    recordPending(name) {
+        if (!name) {
+            return null;
+        }
+
+        if (!this.pending.has(name)) {
+            this.pending.set(name, {
+                count: 0,
+                lastSeen: Date.now(),
+            });
+        }
+
+        const entry = this.pending.get(name);
+        entry.count += 1;
+        entry.lastSeen = Date.now();
+        return entry;
+    },
+    clearPending(name) {
+        if (!name || !this.pending.has(name)) {
+            return;
+        }
+
+        this.pending.delete(name);
+    },
+    getPendingNames() {
+        return Array.from(this.pending.keys()).sort();
+    },
+    getPendingInfo(name) {
+        if (!name) {
+            return null;
+        }
+
+        return this.pending.get(name) || null;
+    },
+    resolve(name) {
+        if (!name || typeof name !== 'string') {
+            return null;
+        }
+
+        return this.storage.get(name) || null;
+    },
+    has(name) {
+        return this.storage.has(name);
+    },
+    set(name, ClassRef) {
+        this.storage.set(name, ClassRef);
+    },
+};
+
 const PENDING_BEHAVIOR = Symbol('Energine.pendingBehavior');
-
-const recordPendingBehavior = (name) => {
-    if (!name) {
-        return null;
-    }
-
-    if (!pendingBehaviors.has(name)) {
-        pendingBehaviors.set(name, {
-            count: 0,
-            lastSeen: Date.now(),
-        });
-    }
-
-    const entry = pendingBehaviors.get(name);
-    entry.count += 1;
-    entry.lastSeen = Date.now();
-    return entry;
-};
-
-const clearPendingBehavior = (name) => {
-    if (!name || !pendingBehaviors.has(name)) {
-        return;
-    }
-
-    pendingBehaviors.delete(name);
-};
-
-const getPendingBehaviorNames = () => Array.from(pendingBehaviors.keys()).sort();
-
-const resolveRegisteredBehavior = (name) => {
-    if (!name || typeof name !== 'string') {
-        return null;
-    }
-
-    return behaviorRegistry.get(name) || null;
-};
-
-const normalizeDatasetBoolean = (value) => {
-    if (typeof value === 'boolean') {
-        return value;
-    }
-    if (typeof value === 'string') {
-        return !datasetFalseValues.has(value.trim().toLowerCase());
-    }
-    if (typeof value === 'number') {
-        return value !== 0;
-    }
-    return Boolean(value);
-};
 
 const disposeExistingBehaviorInstance = (element) => {
     if (!element) {
@@ -832,8 +932,8 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null, opt
     }
 
     const dataset = element.dataset || {};
-    const shouldRefresh = normalizeDatasetBoolean(dataset.eRefresh);
-    const isReady = normalizeDatasetBoolean(dataset.eReady);
+    const shouldRefresh = Dataset.normalizeBoolean(dataset.eRefresh);
+    const isReady = Dataset.normalizeBoolean(dataset.eReady);
 
     const { silentOnMissing = false } = options || {};
 
@@ -846,9 +946,9 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null, opt
         return null;
     }
 
-    const Constructor = resolveRegisteredBehavior(behaviorName);
+    const Constructor = BehaviorRegistry.resolve(behaviorName);
     if (!Constructor) {
-        const pendingInfo = recordPendingBehavior(behaviorName) || pendingBehaviors.get(behaviorName);
+        const pendingInfo = BehaviorRegistry.recordPending(behaviorName) || BehaviorRegistry.getPendingInfo(behaviorName);
         const pendingCount = pendingInfo ? pendingInfo.count : 0;
         const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
 
@@ -865,7 +965,7 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null, opt
             Energine
             && typeof Energine.debug === 'boolean'
             && Energine.debug
-            && pendingCount >= PENDING_BEHAVIOR_DEBUG_THRESHOLD,
+            && pendingCount >= BehaviorRegistry.debugThreshold,
         );
 
         if (shouldThrow) {
@@ -893,7 +993,7 @@ const instantiateBehaviorForElement = (element, explicitBehaviorName = null, opt
 
         attachToolbarBinding(element, instance);
 
-        clearPendingBehavior(behaviorName);
+        BehaviorRegistry.clearPending(behaviorName);
 
         if (globalScope && element.id && typeof globalScope[element.id] === 'undefined') {
             const diagnostic = `[Energine.autoBootstrap] Behavior "${behaviorName}" attached to #${element.id}. Global exposure via window["${element.id}"] is no longer supported.`;
@@ -935,8 +1035,8 @@ const scanForComponents = (root = (typeof document !== 'undefined' ? document : 
         }
 
         const dataset = element.dataset || {};
-        const shouldRefresh = normalizeDatasetBoolean(dataset.eRefresh);
-        const alreadyReady = normalizeDatasetBoolean(dataset.eReady);
+        const shouldRefresh = Dataset.normalizeBoolean(dataset.eRefresh);
+        const alreadyReady = Dataset.normalizeBoolean(dataset.eReady);
 
         if (alreadyReady && !shouldRefresh && element.__energineBehavior) {
             instantiated.metrics.skipped += 1;
@@ -977,7 +1077,7 @@ const autoBootstrapRuntime = () => {
     }
 
     const { dataset } = scriptEl;
-    if (dataset.run && datasetFalseValues.has(dataset.run.toLowerCase())) {
+    if (typeof dataset.run !== 'undefined' && !Dataset.normalizeBoolean(dataset.run)) {
         return;
     }
 
@@ -1025,7 +1125,7 @@ const autoBootstrapRuntime = () => {
                         }
                     }
 
-                    const unresolved = getPendingBehaviorNames();
+                    const unresolved = BehaviorRegistry.getPendingNames();
                     if (Array.isArray(unresolved) && unresolved.length) {
                         const details = unresolved.join(', ');
                         Energine.safeConsoleError(new Error(`Unresolved behaviors after bootstrap: ${details}`), '[Energine.autoBootstrap] Behavior registry');
@@ -1065,16 +1165,16 @@ export const registerBehavior = (name, ClassRef, options = {}) => {
     }
 
     const { force = false } = options || {};
-    if (behaviorRegistry.has(normalizedName) && !force) {
+    if (BehaviorRegistry.has(normalizedName) && !force) {
         console.warn(`[Energine.autoBootstrap] Behavior "${normalizedName}" is already registered. Pass { force: true } to overwrite.`);
         return false;
     }
 
-    clearPendingBehavior(normalizedName);
-    behaviorRegistry.set(normalizedName, ClassRef);
+    BehaviorRegistry.clearPending(normalizedName);
+    BehaviorRegistry.set(normalizedName, ClassRef);
     return true;
 };
 
-export const getRegisteredBehavior = (name) => resolveRegisteredBehavior(name);
+export const getRegisteredBehavior = (name) => BehaviorRegistry.resolve(name);
 
 export default Energine;
