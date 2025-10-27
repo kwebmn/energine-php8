@@ -172,6 +172,8 @@
 - Текущая реализация `initBridge`/`__energineBridge` удерживает отложенные задания и конфигурацию, усложняя загрузку и увеличивая
   объем кода, который можно заменить детерминированным порядком инициализации.【F:engine/core/modules/share/scripts/Energine.js†L37-L200】
 
+> **Статус (2025-10-27).** Поддержка устаревших `data-component-*`/`data-document-*` селекторов в `PageToolbar` удалена; тулбар читает контекст только из `data-e-*` атрибутов.
+
 ## 10. Перезапуск рантайма без мостов и отложенных задач
 
 1. **Единая точка доступа `window.Energine`**
@@ -187,7 +189,7 @@
    - Сам модуль закрепляет инстанс `Energine` и вспомогательные хелперы на `window` во время загрузки, поэтому сторонним модулям не требуется вызывать дополнительные адаптеры или мосты совместимости.
 
 4. **Изменения в XSLT**
-- Блок `<script type="module">` внутри `document.xslt`, который импортирует `bootEnergine`, создаёт `componentToolbars` и вручную откладывает запуск через `Energine.addTask`, должен быть удалён. Вместо этого XSLT расставляет `data-*` атрибуты (`data-energine-run`, `data-component`, `data-e-toolbar`, `data-behavior`) и доверяет модулю, что тот автоматически найдёт и проинициализирует элементы сразу после загрузки.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L212-L304】
+   - Блок `<script type="module">` внутри `document.xslt`, который импортирует `bootEnergine`, создаёт `componentToolbars` и вручную откладывает запуск через `Energine.addTask`, должен быть удалён. Вместо этого XSLT расставляет `data-*` атрибуты (`data-e-js`, `data-e-toolbar`, `data-e-toolbar-*`) и доверяет модулю, что тот автоматически найдёт и проинициализирует элементы сразу после загрузки.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L212-L304】
 
 5. **Актуализация сопутствующих модулей**
    - Модули, которые сейчас обращаются к глобальным переменным (например, `GridManager` ожидает `window.Energine` с методом `loadCSS`), должны получать доступ к API из того же контейнера `window.Energine`. После упразднения моста нет необходимости в проверках `if (window.Energine || {}).loadCSS` — объект гарантированно существует к моменту вызова, потому что рантайм инициализирован до подключения зависимостей.【F:engine/core/modules/share/scripts/GridManager.js†L29-L551】
@@ -233,6 +235,8 @@
 2. Перенести запуск `bootEnergine`, регистрацию тулбаров и работу с `componentToolbars` в модуль `Energine.js`/отдельные
    контроллеры, оставив XSLT только генерацию `data-*` атрибутов.【F:engine/core/modules/share/transformers/bootstrap/document.xslt†L205-L260】
 3. Удалить устаревшие комментарии и подготовить чистую разметку для отслеживания внедрения unobtrusive JS.
+
+> **Статус (2025-10-27).** В `divisionEditor.xslt` кнопка сброса шаблона переведена на `data-e-action="resetPageContentTemplate"`; поведение вызывается через экземпляр `DivForm`, без глобальных идентификаторов и `generate-id(...)`.
 
 ### 9.3. `toolbar.xslt`
 

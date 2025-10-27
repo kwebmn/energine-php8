@@ -285,7 +285,8 @@
                 <xsl:apply-templates mode="field_input"/>
             </select>
             <xsl:if test="@reset">
-                <button type="button" class="btn btn-outline-secondary" onclick="{generate-id(../..)}.resetPageContentTemplate();">
+                <button type="button" class="btn btn-outline-secondary">
+                    <xsl:attribute name="data-e-action">resetPageContentTemplate</xsl:attribute>
                     <xsl:value-of select="@reset"/>
                 </button>
             </xsl:if>

@@ -1382,7 +1382,7 @@ class PageToolbar extends Toolbar {
                 push(element.dataset);
             }
             if (element?.closest) {
-                const carrier = element.closest('[data-e-component-path],[data-e-component],[data-component-path],[data-component-url],[data-e-document-id],[data-document-id]');
+                const carrier = element.closest('[data-e-component-path],[data-e-component],[data-e-document-id]');
                 if (carrier && carrier.dataset) {
                     push(carrier.dataset);
                 }
