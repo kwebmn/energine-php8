@@ -137,6 +137,66 @@ class Form {
         return previewEl.querySelector ? previewEl.querySelector('img') : null;
     }
 
+    static resolveElementById(id) {
+        if (!id) {
+            return null;
+        }
+        return document.getElementById(id) || null;
+    }
+
+    static resolveLinkedElements(source, mapping = {}) {
+        if (!source) {
+            return {};
+        }
+
+        const dataset = source.dataset || {};
+        return Object.entries(mapping).reduce((result, [prop, datasetKey]) => {
+            result[prop] = Form.resolveElementById(dataset[datasetKey]);
+            return result;
+        }, {});
+    }
+
+    static findPreviewAnchor(previewEl) {
+        if (!previewEl) {
+            return null;
+        }
+        const tagName = previewEl.tagName?.toLowerCase() || '';
+        if (tagName === 'a') {
+            return previewEl;
+        }
+        return previewEl.querySelector?.('a') || null;
+    }
+
+    static updatePreview(previewEl, { type, href, previewSrc, title } = {}) {
+        if (!previewEl) {
+            return;
+        }
+
+        const anchor = Form.findPreviewAnchor(previewEl);
+        if (anchor) {
+            if (href) {
+                anchor.setAttribute('href', href);
+            } else {
+                anchor.removeAttribute('href');
+            }
+        }
+
+        if (!type) {
+            Form.resetPreview(previewEl);
+            return;
+        }
+
+        switch (type) {
+            case 'image':
+            case 'video':
+                Form.showImagePreview(previewEl, previewSrc || href || '', title || '');
+                break;
+            default:
+                Form.showIconPreview(previewEl, Form.getPreviewIconKey(type));
+                break;
+        }
+    }
+
     static showPreviewElement(element) {
         if (!element) return;
         element.classList?.remove('d-none', 'hidden');
@@ -315,14 +375,26 @@ class Form {
     }
 
     constructor(element) {
-        // this.overlay = new Overlay();
+        this._initializeComponentElement(element);
+        this._initTabPane();
+        Form.loadCSS('stylesheets/form.css');
+        this._initValidator();
+        this._initRichEditors();
+        this._initCodeEditors();
+        this._initAutocompleteFields();
+        this._initCustomSelectors();
+        this._bindActionHandlers();
+        this._initUploaders();
+        this._initDateControls();
+        this._initCrudActions();
+        this._enhanceEmbeddedGridIframes();
+        this._registerGlobalListeners();
 
-        // Получаем элемент формы
-        this.componentElement = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+        Form.initializeInputs(this.form || this.componentElement);
+        Form.applyRequiredHighlights(this.form || this.componentElement);
+    }
 
-        // singlePath
+    _initializeComponentElement(element) {
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
@@ -335,76 +407,89 @@ class Form {
         this.singlePath = dataset.eSingleTemplate
             || this.componentElement.getAttribute('data-e-single-template');
 
-        // Внешний элемент формы
         this.form = this.componentElement.closest('form');
+        if (!this.form) {
+            throw new Error('Form: не найдена родительская форма для компонента.');
+        }
 
-        // Состояние формы
         this.state = this.form.querySelector('#componentAction')?.value;
+    }
 
-        // Панели с табами
+    _initTabPane() {
         this.tabPane = new TabPane(this.componentElement, {
             onTabChange: this.onTabChange.bind(this)
         });
+    }
 
-        // Подключаем CSS для подсветки обязательных полей (один раз на страницу)
-        Form.loadCSS('stylesheets/form.css');
-
-        // Валидатор
+    _initValidator() {
         this.validator = new Validator(this.form, this.tabPane);
         this.configureValidatorStyling();
+    }
 
-        // Рич-редакторы
+    _initRichEditors() {
         this.richEditors = [];
-        this.form.querySelectorAll('[data-role="rich-editor"]').forEach(textarea => {
+        this.form.querySelectorAll('[data-role="rich-editor"]').forEach((textarea) => {
             this.richEditors.push(new Form.RichEditor(textarea, this));
         });
+    }
 
-        // CodeMirror
+    _initCodeEditors() {
         this.codeEditors = [];
         const codeMirror = getCodeMirror();
-        if (codeMirror) {
-            this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
-                this.codeEditors.push(
-                    codeMirror.fromTextArea(textarea, {
-                        mode: "text/html",
-                        tabMode: "indent",
-                        lineNumbers: true,
-                        theme: 'elegant'
-                    })
-                );
-            });
+        if (!codeMirror) {
+            return;
         }
 
-        // Acpl поля
-        this.form.querySelectorAll('[data-role="acpl"]').forEach(el => {
-            new AcplField(el);
+        this.form.querySelectorAll('[data-role="code-editor"]').forEach((textarea) => {
+            this.codeEditors.push(
+                codeMirror.fromTextArea(textarea, {
+                    mode: 'text/html',
+                    tabMode: 'indent',
+                    lineNumbers: true,
+                    theme: 'elegant'
+                })
+            );
+        });
+    }
+
+    _initAutocompleteFields() {
+        this.form.querySelectorAll('[data-role="acpl"]').forEach((element) => {
+            new AcplField(element);
+        });
+    }
+
+    _initCustomSelectors() {
+        this.form.querySelectorAll('[data-action="open-smap"]').forEach((element) => {
+            new Form.SmapSelector(element, this);
         });
 
-        // SmapSelector
-        this.form.querySelectorAll('[data-action="open-smap"]').forEach(el => {
-            new Form.SmapSelector(el, this);
+        this.form.querySelectorAll('[data-action="open-attachment"]').forEach((element) => {
+            new Form.AttachmentSelector(element, this);
         });
+    }
 
-        // AttachmentSelector
-        this.form.querySelectorAll('[data-action="open-attachment"]').forEach(el => {
-            new Form.AttachmentSelector(el, this);
-        });
+    _bindActionHandlers() {
+        const actionMap = {
+            'open-filelib': (element) => this.openFileLib(element),
+            'quick-upload': (element) => this.openQuickUpload(element),
+            'clear-file': (element) => this.clearFileField(element)
+        };
 
-        // File field actions
-        this.form.querySelectorAll('[data-action="open-filelib"]').forEach(button => {
-            button.addEventListener('click', () => this.openFileLib(button));
+        Object.entries(actionMap).forEach(([action, handler]) => {
+            this.form.querySelectorAll(`[data-action="${action}"]`).forEach((element) => {
+                element.addEventListener('click', (event) => {
+                    event.preventDefault?.();
+                    handler(event.currentTarget || element, event);
+                });
+            });
         });
-        this.form.querySelectorAll('[data-action="quick-upload"]').forEach(button => {
-            button.addEventListener('click', () => this.openQuickUpload(button));
-        });
-        this.form.querySelectorAll('[data-action="clear-file"]').forEach(button => {
-            button.addEventListener('click', () => this.clearFileField(button));
-        });
+    }
 
-        // Uploaders
+    _initUploaders() {
         this.fileUploaders = [];
         this.fileUploaderMap = new Map();
-        this.componentElement.querySelectorAll('[data-role="file-uploader"]').forEach(uploader => {
+
+        this.componentElement.querySelectorAll('[data-role="file-uploader"]').forEach((uploader) => {
             const instance = new Form.Uploader(uploader, this, 'upload/');
             if (instance) {
                 this.fileUploaders.push(instance);
@@ -413,10 +498,11 @@ class Form {
                 }
             }
         });
+    }
 
-        // Date controls
+    _initDateControls() {
         this.dateControls = [];
-        this.componentElement.querySelectorAll('[data-role="date"], [data-role="datetime"]').forEach(dateControl => {
+        this.componentElement.querySelectorAll('[data-role="date"], [data-role="datetime"]').forEach((dateControl) => {
             const wrapper = dateControl.closest('[data-role="form-field"]');
             const isNullable = wrapper ? wrapper.getAttribute('data-required') !== 'true' : true;
             if (dateControl.getAttribute('data-role') === 'datetime') {
@@ -425,192 +511,288 @@ class Form {
                 this.dateControls.push(Energine.createDatePicker(dateControl, isNullable));
             }
         });
+    }
 
-        // Ensure iframes that host grids expand to available height inside forms
-        this._enhanceEmbeddedGridIframes();
+    _initCrudActions() {
+        this.componentElement.querySelectorAll('[data-action="crud"]').forEach((crudEl) => {
+            crudEl.addEventListener('click', (event) => {
+                event.preventDefault?.();
+                const trigger = event.currentTarget || crudEl;
+                this._handleCrudAction(trigger);
+            });
+        });
+    }
 
-        // Если открыто в ModalBox
+    _handleCrudAction(trigger) {
+        if (!trigger) {
+            return;
+        }
+
+        const dataset = trigger.dataset || {};
+        const field = dataset.field;
+        const editor = dataset.editor;
+        if (!field || !editor) {
+            return;
+        }
+
+        const control = this.form.querySelector(`[name="${field}"], [id="${field}"]`);
+        if (!control) {
+            return;
+        }
+
+        const isSelectElement = control instanceof HTMLSelectElement;
+        const isMultiSelect = isSelectElement && control.multiple;
+
+        ModalBox.open({
+            url: `${this.singlePath}${field}-${editor}/crud/`,
+            onClose: (result) => this._processCrudResult({
+                control,
+                field,
+                isSelectElement,
+                isMultiSelect
+            }, result)
+        });
+    }
+
+    _processCrudResult(context, result) {
+        const { control, field, isSelectElement, isMultiSelect } = context;
+        if (!control) {
+            return;
+        }
+
+        const selectedValue = result?.key;
+        const wasDirty = Boolean(result?.dirty);
+
+        const shouldReload = this._shouldReloadCrudControl({
+            control,
+            isSelectElement,
+            selectedValue,
+            wasDirty
+        });
+
+        if (shouldReload && isSelectElement) {
+            const previousSelection = this._capturePreviousSelection(control, isSelectElement, isMultiSelect);
+            this._reloadForeignKeyControl({
+                field,
+                control,
+                previousSelection,
+                selectedValue,
+                isSelectElement,
+                isMultiSelect
+            });
+        } else if (selectedValue) {
+            this._applySelectedValue({
+                control,
+                selectedValue,
+                isSelectElement,
+                isMultiSelect
+            });
+        }
+    }
+
+    _shouldReloadCrudControl({ control, isSelectElement, selectedValue, wasDirty }) {
+        if (!isSelectElement) {
+            return wasDirty;
+        }
+
+        if (wasDirty) {
+            return true;
+        }
+
+        if (!selectedValue) {
+            return false;
+        }
+
+        return !Array.from(control.options || []).some((option) => option.value == selectedValue);
+    }
+
+    _capturePreviousSelection(control, isSelectElement, isMultiSelect) {
+        if (!isSelectElement) {
+            return null;
+        }
+
+        if (isMultiSelect) {
+            return Array.from(control.selectedOptions || []).map((option) => option.value);
+        }
+
+        return control.value;
+    }
+
+    _reloadForeignKeyControl({
+        field,
+        control,
+        previousSelection,
+        selectedValue,
+        isSelectElement,
+        isMultiSelect
+    }) {
+        if (!isSelectElement) {
+            return;
+        }
+
+        Energine.request(
+            `${this.singlePath}${field}/fk-values/`,
+            null,
+            (data) => {
+                if (!data?.result) {
+                    return;
+                }
+
+                const [rows, idField, titleField] = data.result;
+                control.innerHTML = '';
+
+                rows.forEach((row) => {
+                    const option = document.createElement('option');
+                    Object.entries(row).forEach(([key, value]) => {
+                        if (key === idField) {
+                            option.value = value;
+                        } else if (key === titleField) {
+                            option.textContent = value;
+                        } else {
+                            option.setAttribute(key, value);
+                        }
+                    });
+
+                    if (isMultiSelect) {
+                        if (previousSelection?.includes(option.value)) {
+                            option.selected = true;
+                        }
+                    } else if (previousSelection && option.value === previousSelection) {
+                        option.selected = true;
+                    }
+
+                    control.appendChild(option);
+                });
+
+                if (selectedValue && isSelectElement) {
+                    this._applySelectedValue({
+                        control,
+                        selectedValue,
+                        isSelectElement,
+                        isMultiSelect
+                    });
+                } else {
+                    control.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            },
+            this.processServerError.bind(this),
+            this.processServerError.bind(this)
+        );
+    }
+
+    _applySelectedValue({ control, selectedValue, isSelectElement, isMultiSelect }) {
+        if (!control || !selectedValue) {
+            return;
+        }
+
+        if (isMultiSelect) {
+            const optionToSelect = Array.from(control.options || [])
+                .find((option) => option.value == selectedValue);
+            if (optionToSelect) {
+                optionToSelect.selected = true;
+            }
+        } else if (isSelectElement) {
+            control.value = selectedValue;
+        } else if ('value' in control) {
+            control.value = selectedValue;
+        }
+
+        control.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    _registerGlobalListeners() {
+        this._registerModalEscapeHandler();
+        this._registerTranslateShortcut();
+    }
+
+    _registerModalEscapeHandler() {
         if (window.parent.ModalBox?.initialized && window.parent.ModalBox.getCurrent()) {
-            document.body.addEventListener('keypress', evt => {
+            document.body.addEventListener('keypress', (evt) => {
                 if (evt.key === 'Escape' || evt.key === 'esc') {
                     window.parent.ModalBox.close();
                 }
             });
         }
+    }
 
-        // GOOGLE TRANSLATE Ctrl + *
+    _registerTranslateShortcut() {
         window.addEventListener('keypress', (evt) => {
             if (!(evt.target instanceof Element)) {
                 return;
             }
 
-            if (evt.code === 'Digit8' && evt.shiftKey) { // shift + *
-                const fieldId = evt.target.id;
-                if (!fieldId || fieldId.length < 2) {
-                    return;
-                }
-
-                const fieldBase = fieldId.substring(0, fieldId.length - 2);
-                const parent = evt.target.closest('[data-role="pane-item"]');
-                if (!parent || !parent.id) {
-                    return;
-                }
-
-                const anchors = document.querySelectorAll('a[lang_abbr]');
-                const parentHref = `#${parent.id}`;
-                const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
-                let toLangAbbr = anchor?.getAttribute('lang_abbr');
-                if (!toLangAbbr) {
-                    return;
-                }
-
-                if (toLangAbbr === 'ua') {
-                    toLangAbbr = 'uk';
-                }
-
-                const srcTextElement = document.getElementById(`${fieldBase}_1`);
-                if (!srcTextElement || !('value' in srcTextElement)) {
-                    return;
-                }
-
-                const srcText = srcTextElement.value;
-                if (!srcText) {
-                    return;
-                }
-
-                const params = new URLSearchParams({
-                    client: 'gtx',
-                    sl: 'ru',
-                    tl: toLangAbbr,
-                    dt: 't',
-                    q: srcText
-                });
-
-                fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`)
-                    .then((response) => response.text())
-                    .then((resultText) => {
-                        if (!resultText) {
-                            return;
-                        }
-
-                        let translated = resultText.substring(4);
-                        const endIndex = translated.indexOf('","');
-                        if (endIndex !== -1) {
-                            translated = translated.substring(0, endIndex);
-                        }
-
-                        if (!translated) {
-                            return;
-                        }
-
-                        translated = translated.charAt(0).toUpperCase() + translated.slice(1);
-
-                        if ('value' in evt.target) {
-                            evt.target.value = translated;
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Google Translate request failed', error);
-                    });
+            if (evt.code !== 'Digit8' || !evt.shiftKey) {
+                return;
             }
-        });
 
-        // CRUD
-        this.componentElement.querySelectorAll('[data-action="crud"]').forEach(crudEl => {
-            crudEl.addEventListener('click', (event) => {
-                const target = event.currentTarget || event.target;
-                const dataField = target?.getAttribute('data-field');
-                const dataEditor = target?.getAttribute('data-editor');
-                if (!dataField || !dataEditor) {
-                    return;
-                }
+            const fieldId = evt.target.id;
+            if (!fieldId || fieldId.length < 2) {
+                return;
+            }
 
-                const control = this.form.querySelector(`[name="${dataField}"], [id="${dataField}"]`);
-                if (!control) {
-                    return;
-                }
+            const fieldBase = fieldId.substring(0, fieldId.length - 2);
+            const parent = evt.target.closest('[data-role="pane-item"]');
+            if (!parent || !parent.id) {
+                return;
+            }
 
-                const isSelectElement = control instanceof HTMLSelectElement;
-                const isMultiSelect = isSelectElement && control.multiple;
+            const anchors = document.querySelectorAll('a[lang_abbr]');
+            const parentHref = `#${parent.id}`;
+            const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
+            let toLangAbbr = anchor?.getAttribute('lang_abbr');
+            if (!toLangAbbr) {
+                return;
+            }
 
-                ModalBox.open({
-                    url: `${this.singlePath}${dataField}-${dataEditor}/crud/`,
-                    onClose: (result) => {
-                        const selectedValue = result?.key;
-                        const wasDirty = Boolean(result?.dirty);
-                        let shouldReload = isSelectElement ? true : wasDirty;
+            if (toLangAbbr === 'ua') {
+                toLangAbbr = 'uk';
+            }
 
-                        if (!shouldReload && selectedValue && isSelectElement) {
-                            const hasSelectedOption = Array.from(control.options || [])
-                                .some((option) => option.value == selectedValue);
-                            shouldReload = !hasSelectedOption;
-                        }
+            const srcTextElement = document.getElementById(`${fieldBase}_1`);
+            if (!srcTextElement || !('value' in srcTextElement)) {
+                return;
+            }
 
-                        if (shouldReload) {
-                            const previousSelection = isMultiSelect
-                                ? Array.from(control.selectedOptions || []).map((option) => option.value)
-                                : (isSelectElement ? control.value : null);
-                            Energine.request(
-                                `${this.singlePath}${dataField}/fk-values/`,
-                                null,
-                                (data) => {
-                                    if (data.result) {
-                                        control.innerHTML = '';
-                                        const id = data.result[1];
-                                        const title = data.result[2];
-                                        data.result[0].forEach(row => {
-                                            const option = document.createElement('option');
-                                            Object.entries(row).forEach(([key, value]) => {
-                                                if (key === id) {
-                                                    option.value = value;
-                                                } else if (key === title) {
-                                                    option.textContent = value;
-                                                } else {
-                                                    option.setAttribute(key, value);
-                                                }
-                                            });
-                                            control.appendChild(option);
-                                            if (isMultiSelect) {
-                                                if (previousSelection?.includes(option.value)) {
-                                                    option.selected = true;
-                                                }
-                                            } else if (previousSelection && option.value === previousSelection) {
-                                                option.selected = true;
-                                            }
-                                        });
-                                        if (selectedValue && isSelectElement) {
-                                            const optionToSelect = Array.from(control.options || [])
-                                                .find((option) => option.value == selectedValue);
-                                            if (optionToSelect) {
-                                                optionToSelect.selected = true;
-                                            }
-                                        }
-                                        control.dispatchEvent(new Event('change', { bubbles: true }));
-                                    }
-                                },
-                                this.processServerError.bind(this),
-                                this.processServerError.bind(this)
-                            );
-                        } else if (selectedValue) {
-                            if (isMultiSelect) {
-                                const optionToSelect = Array.from(control.options || [])
-                                    .find((option) => option.value == selectedValue);
-                                if (optionToSelect) {
-                                    optionToSelect.selected = true;
-                                }
-                            } else if (isSelectElement) {
-                                control.value = selectedValue;
-                            }
-                            control.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                });
+            const srcText = srcTextElement.value;
+            if (!srcText) {
+                return;
+            }
+
+            const params = new URLSearchParams({
+                client: 'gtx',
+                sl: 'ru',
+                tl: toLangAbbr,
+                dt: 't',
+                q: srcText
             });
+
+            fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`)
+                .then((response) => response.text())
+                .then((resultText) => {
+                    if (!resultText) {
+                        return;
+                    }
+
+                    let translated = resultText.substring(4);
+                    const endIndex = translated.indexOf('","');
+                    if (endIndex !== -1) {
+                        translated = translated.substring(0, endIndex);
+                    }
+
+                    if (!translated) {
+                        return;
+                    }
+
+                    translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+
+                    if ('value' in evt.target) {
+                        evt.target.value = translated;
+                    }
+                })
+                .catch((error) => {
+                    console.error('Google Translate request failed', error);
+                });
         });
-
-        Form.initializeInputs(this.form || this.componentElement);
-        Form.applyRequiredHighlights(this.form || this.componentElement);
-
     }
 
     // onTabChange
@@ -701,31 +883,31 @@ class Form {
 
     // clearFileField
     clearFileField(button) {
-        const targetId = button?.dataset?.target;
-        const previewId = button?.dataset?.preview;
-        const linkInput = targetId ? document.getElementById(targetId) : null;
-        if (linkInput) {
-            linkInput.value = '';
-        }
-        const preview = previewId ? document.getElementById(previewId) : null;
-        if (preview) {
-            const anchor = preview.tagName.toLowerCase() === 'a' ? preview : preview.querySelector('a');
-            if (anchor) {
-                anchor.removeAttribute('href');
+        const dataset = button?.dataset || {};
+        const targetInput = Form.resolveElementById(dataset.target);
+        const { linkInput, previewEl, fileInput } = Form.resolveLinkedElements(button, {
+            linkInput: 'link',
+            previewEl: 'preview',
+            fileInput: 'input'
+        });
+
+        [targetInput, linkInput].filter(Boolean).forEach((input) => {
+            if ('value' in input) {
+                input.value = '';
             }
-            Form.resetPreview(preview);
-        }
+        });
+
+        Form.updatePreview(previewEl);
+
         if (button) {
             button.classList.add('d-none');
         }
 
-        const inputId = button?.dataset?.input;
-        const fileInput = inputId ? document.getElementById(inputId) : null;
         if (fileInput) {
             fileInput.value = '';
         }
 
-        const uploader = targetId ? this.fileUploaderMap?.get(targetId) : null;
+        const uploader = dataset.target ? this.fileUploaderMap?.get(dataset.target) : null;
         uploader?.reset();
     }
 
@@ -733,47 +915,34 @@ class Form {
     processFileResult(result, button) {
         if (!result) return;
 
-        // получаем элемент по id, если передано id
-        const linkId = button?.dataset?.link;
-        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const dataset = button?.dataset || {};
+        const { linkInput, previewEl } = Form.resolveLinkedElements(button, {
+            linkInput: 'link',
+            previewEl: 'preview'
+        });
+
         if (linkInput) {
             linkInput.value = result['upl_path'];
-        } else {
-            console.warn('processFileResult: Не найден элемент для id:', linkId, button, result);
+        } else if (dataset.link) {
+            console.warn('processFileResult: Не найден элемент для id:', dataset.link, button, result);
         }
 
-        const previewId = button?.dataset?.preview;
-        const previewEl = previewId ? document.getElementById(previewId) : null;
-        const anchor = previewEl && previewEl.tagName.toLowerCase() === 'a'
-            ? previewEl
-            : previewEl?.querySelector('a');
-        if (previewEl) {
-            const type = result['upl_internal_type'];
-            const href = result['upl_path'] ? Energine.media + result['upl_path'] : '';
+        const path = result['upl_path'] || '';
+        const type = result['upl_internal_type'];
+        const href = path ? Energine.media + path : '';
+        const previewSrc = path
+            ? (type === 'video' ? `${Energine.resizer}w0-h0/${path}` : href)
+            : '';
 
-            if (anchor) {
-                if (href) {
-                    anchor.setAttribute('href', href);
-                } else {
-                    anchor.removeAttribute('href');
-                }
-            }
+        Form.updatePreview(previewEl, {
+            type,
+            href,
+            previewSrc,
+            title: result['upl_title'] || ''
+        });
 
-            switch (type) {
-                case 'image':
-                    Form.showImagePreview(previewEl, Energine.media + result['upl_path'], result['upl_title'] || '');
-                    break;
-                case 'video':
-                    Form.showImagePreview(previewEl, Energine.resizer + 'w0-h0/' + result['upl_path'], result['upl_title'] || '');
-                    break;
-                default:
-                    Form.showIconPreview(previewEl, Form.getPreviewIconKey(type));
-                    break;
-            }
-        }
-
-        const clearButton = linkId
-            ? this.form.querySelector(`[data-action="clear-file"][data-target="${linkId}"]`)
+        const clearButton = dataset.link
+            ? this.form.querySelector(`[data-action="clear-file"][data-target="${dataset.link}"]`)
             : null;
         clearButton?.classList.remove('d-none', 'hidden');
         clearButton?.removeAttribute('hidden');
@@ -781,8 +950,8 @@ class Form {
 
     // openFileLib
     openFileLib(button) {
-        const linkId = button?.dataset?.link;
-        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const dataset = button?.dataset || {};
+        const linkInput = Form.resolveElementById(dataset.link);
         const path = linkInput ? (linkInput.value || null) : null;
 
         ModalBox.open({
@@ -815,18 +984,17 @@ class Form {
 
     // openQuickUpload
     openQuickUpload(button) {
-        const inputId = button?.dataset?.input;
-        const fileInput = inputId ? document.getElementById(inputId) : null;
+        const dataset = button?.dataset || {};
+        const fileInput = Form.resolveElementById(dataset.input);
         if (fileInput) {
             fileInput.click();
             return;
         }
 
-        const linkId = button?.dataset?.link;
-        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const linkInput = Form.resolveElementById(dataset.link);
         const path = linkInput ? (linkInput.value || null) : null;
-        const quickUploadPid = button?.dataset?.quickUploadPid;
-        const quickUploadEnabled = button?.dataset?.quickUploadEnabled === '1';
+        const quickUploadPid = dataset.quickUploadPid;
+        const quickUploadEnabled = dataset.quickUploadEnabled === '1';
         // let overlay = this.overlay;
         let processResult = this.processFileResult.bind(this);
 
