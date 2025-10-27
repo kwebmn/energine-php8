@@ -408,12 +408,51 @@ class Form {
             return [];
         }
 
-        const elements = Array.from(scope.querySelectorAll(selector));
+        const elements = typeof selector === 'string'
+            ? Array.from(scope.querySelectorAll(selector))
+            : Array.from(selector || []);
+
         if (typeof callback === 'function') {
             elements.forEach((element, index) => callback(element, index));
         }
 
         return elements;
+    }
+
+    _initializeCollection(property, selector, factory, options = {}) {
+        const { root = this.componentElement } = options;
+        const collection = [];
+
+        this._forEachElement(selector, (element) => {
+            const instance = factory(element);
+            if (instance !== undefined) {
+                collection.push(instance);
+            }
+        }, root);
+
+        if (property) {
+            this[property] = collection;
+        }
+
+        return collection;
+    }
+
+    _registerHandlers(configs, defaultRoot = this.componentElement) {
+        configs.forEach(({ selector, event = 'click', handler, preventDefault = true, root = defaultRoot }) => {
+            if (!selector || typeof handler !== 'function') {
+                return;
+            }
+
+            this._forEachElement(selector, (element) => {
+                element.addEventListener(event, (evt) => {
+                    if (preventDefault) {
+                        evt.preventDefault?.();
+                    }
+
+                    handler(evt.currentTarget || element, evt);
+                });
+            }, root);
+        });
     }
 
     _initializeComponentElement(element) {
@@ -449,171 +488,130 @@ class Form {
     }
 
     _initRichEditors() {
-        this.richEditors = [];
-        this._forEachElement('[data-role="rich-editor"]', (textarea) => {
-            this.richEditors.push(new Form.RichEditor(textarea, this));
-        });
+        this._initializeCollection('richEditors', '[data-role="rich-editor"]', (textarea) => new Form.RichEditor(textarea, this));
     }
 
     _initCodeEditors() {
-        this.codeEditors = [];
         const codeMirror = getCodeMirror();
         if (!codeMirror) {
+            this.codeEditors = [];
             return;
         }
 
-        this._forEachElement('[data-role="code-editor"]', (textarea) => {
-            this.codeEditors.push(
-                codeMirror.fromTextArea(textarea, {
-                    mode: 'text/html',
-                    tabMode: 'indent',
-                    lineNumbers: true,
-                    theme: 'elegant'
-                })
-            );
-        });
+        this._initializeCollection('codeEditors', '[data-role="code-editor"]', (textarea) => (
+            codeMirror.fromTextArea(textarea, {
+                mode: 'text/html',
+                tabMode: 'indent',
+                lineNumbers: true,
+                theme: 'elegant'
+            })
+        ));
     }
 
     _initAutocompleteFields() {
-        this._forEachElement('[data-role="acpl"]', (element) => {
-            new AcplField(element);
-        });
+        this._initializeCollection('autocompleteFields', '[data-role="acpl"]', (element) => new AcplField(element));
     }
 
     _initCustomSelectors() {
-        this._forEachElement('[data-action="open-smap"]', (element) => {
-            new Form.SmapSelector(element, this);
-        });
-
-        this._forEachElement('[data-action="open-attachment"]', (element) => {
-            new Form.AttachmentSelector(element, this);
-        });
+        this._initializeCollection(null, '[data-action="open-smap"]', (element) => new Form.SmapSelector(element, this));
+        this._initializeCollection(null, '[data-action="open-attachment"]', (element) => new Form.AttachmentSelector(element, this));
     }
 
     _bindActionHandlers() {
-        const actionMap = {
-            'open-filelib': (element) => this.openFileLib(element),
-            'quick-upload': (element) => this.openQuickUpload(element),
-            'clear-file': (element) => this.clearFileField(element)
-        };
-
-        Object.entries(actionMap).forEach(([action, handler]) => {
-            this._forEachElement(`[data-action="${action}"]`, (element) => {
-                element.addEventListener('click', (event) => {
-                    event.preventDefault?.();
-                    handler(event.currentTarget || element, event);
-                });
-            });
-        });
+        this._registerHandlers([
+            { selector: '[data-action="open-filelib"]', handler: (element) => this.openFileLib(element) },
+            { selector: '[data-action="quick-upload"]', handler: (element) => this.openQuickUpload(element) },
+            { selector: '[data-action="clear-file"]', handler: (element) => this.clearFileField(element) }
+        ]);
     }
 
     _initUploaders() {
-        this.fileUploaders = [];
         this.fileUploaderMap = new Map();
-
-        this._forEachElement('[data-role="file-uploader"]', (uploader) => {
+        this._initializeCollection('fileUploaders', '[data-role="file-uploader"]', (uploader) => {
             const instance = new Form.Uploader(uploader, this, 'upload/');
-            if (instance) {
-                this.fileUploaders.push(instance);
-                if (instance.targetId) {
-                    this.fileUploaderMap.set(instance.targetId, instance);
-                }
+            if (instance?.targetId) {
+                this.fileUploaderMap.set(instance.targetId, instance);
             }
-        }, this.componentElement);
+            return instance;
+        }, { root: this.componentElement });
     }
 
     _initDateControls() {
-        this.dateControls = [];
-        this._forEachElement('[data-role="date"], [data-role="datetime"]', (dateControl) => {
+        this._initializeCollection('dateControls', '[data-role="date"], [data-role="datetime"]', (dateControl) => {
             const wrapper = dateControl.closest('[data-role="form-field"]');
             const isNullable = wrapper ? wrapper.getAttribute('data-required') !== 'true' : true;
-            if (dateControl.getAttribute('data-role') === 'datetime') {
-                this.dateControls.push(Energine.createDateTimePicker(dateControl, isNullable));
-            } else {
-                this.dateControls.push(Energine.createDatePicker(dateControl, isNullable));
-            }
-        }, this.componentElement);
+            return dateControl.getAttribute('data-role') === 'datetime'
+                ? Energine.createDateTimePicker(dateControl, isNullable)
+                : Energine.createDatePicker(dateControl, isNullable);
+        }, { root: this.componentElement });
     }
 
     _initCrudActions() {
-        this._forEachElement('[data-action="crud"]', (crudEl) => {
-            crudEl.addEventListener('click', (event) => {
-                event.preventDefault?.();
-                const trigger = event.currentTarget || crudEl;
-                this._handleCrudAction(trigger);
-            });
-        }, this.componentElement);
+        this._registerHandlers([
+            { selector: '[data-action="crud"]', handler: (trigger) => this._handleCrudAction(trigger) }
+        ], this.componentElement);
     }
 
     _handleCrudAction(trigger) {
-        if (!trigger) {
+        const context = this._createCrudContext(trigger);
+        if (!context) {
             return;
+        }
+
+        ModalBox.open({
+            url: `${this.singlePath}${context.field}-${context.editor}/crud/`,
+            onClose: (result) => this._processCrudResult(context, result)
+        });
+    }
+
+    _createCrudContext(trigger) {
+        if (!trigger) {
+            return null;
         }
 
         const dataset = trigger.dataset || {};
         const field = dataset.field;
         const editor = dataset.editor;
         if (!field || !editor) {
-            return;
+            return null;
         }
 
         const control = this.form.querySelector(`[name="${field}"], [id="${field}"]`);
         if (!control) {
-            return;
+            return null;
         }
 
         const isSelectElement = control instanceof HTMLSelectElement;
-        const isMultiSelect = isSelectElement && control.multiple;
-
-        ModalBox.open({
-            url: `${this.singlePath}${field}-${editor}/crud/`,
-            onClose: (result) => this._processCrudResult({
-                control,
-                field,
-                isSelectElement,
-                isMultiSelect
-            }, result)
-        });
+        return {
+            trigger,
+            field,
+            editor,
+            control,
+            isSelectElement,
+            isMultiSelect: isSelectElement && control.multiple
+        };
     }
 
     _processCrudResult(context, result) {
-        const { control, field, isSelectElement, isMultiSelect } = context;
-        if (!control) {
+        if (!context?.control) {
             return;
         }
 
         const selectedValue = result?.key;
         const wasDirty = Boolean(result?.dirty);
 
-        const shouldReload = this._shouldReloadCrudControl({
-            control,
-            isSelectElement,
-            selectedValue,
-            wasDirty
-        });
+        const shouldReload = this._shouldReloadCrudControl(context, { selectedValue, wasDirty });
 
-        if (shouldReload && isSelectElement) {
-            const previousSelection = this._capturePreviousSelection(control, isSelectElement, isMultiSelect);
-            this._reloadForeignKeyControl({
-                field,
-                control,
-                previousSelection,
-                selectedValue,
-                isSelectElement,
-                isMultiSelect
-            });
+        if (shouldReload && context.isSelectElement) {
+            const previousSelection = this._capturePreviousSelection(context);
+            this._reloadForeignKeyControl(context, { previousSelection, selectedValue });
         } else if (selectedValue) {
-            this._applySelectedValue({
-                control,
-                selectedValue,
-                isSelectElement,
-                isMultiSelect
-            });
+            this._applySelectedValue(context, selectedValue);
         }
     }
 
-    _shouldReloadCrudControl({ control, isSelectElement, selectedValue, wasDirty }) {
-        if (!isSelectElement) {
+    _shouldReloadCrudControl(context, { selectedValue, wasDirty }) {
+        if (!context.isSelectElement) {
             return wasDirty;
         }
 
@@ -625,10 +623,10 @@ class Form {
             return false;
         }
 
-        return !Array.from(control.options || []).some((option) => option.value == selectedValue);
+        return !Array.from(context.control.options || []).some((option) => option.value == selectedValue);
     }
 
-    _capturePreviousSelection(control, isSelectElement, isMultiSelect) {
+    _capturePreviousSelection({ control, isSelectElement, isMultiSelect }) {
         if (!isSelectElement) {
             return null;
         }
@@ -640,14 +638,8 @@ class Form {
         return control.value;
     }
 
-    _reloadForeignKeyControl({
-        field,
-        control,
-        previousSelection,
-        selectedValue,
-        isSelectElement,
-        isMultiSelect
-    }) {
+    _reloadForeignKeyControl(context, { previousSelection, selectedValue }) {
+        const { field, control, isSelectElement, isMultiSelect } = context;
         if (!isSelectElement) {
             return;
         }
@@ -687,12 +679,7 @@ class Form {
                 });
 
                 if (selectedValue && isSelectElement) {
-                    this._applySelectedValue({
-                        control,
-                        selectedValue,
-                        isSelectElement,
-                        isMultiSelect
-                    });
+                    this._applySelectedValue(context, selectedValue);
                 } else {
                     control.dispatchEvent(new Event('change', { bubbles: true }));
                 }
@@ -702,7 +689,7 @@ class Form {
         );
     }
 
-    _applySelectedValue({ control, selectedValue, isSelectElement, isMultiSelect }) {
+    _applySelectedValue({ control, isSelectElement, isMultiSelect }, selectedValue) {
         if (!control || !selectedValue) {
             return;
         }
@@ -739,81 +726,115 @@ class Form {
 
     _registerTranslateShortcut() {
         window.addEventListener('keypress', async (evt) => {
-            if (!(evt.target instanceof Element)) {
+            const context = this._extractTranslateContext(evt);
+            if (!context) {
                 return;
             }
-
-            if (evt.code !== 'Digit8' || !evt.shiftKey) {
-                return;
-            }
-
-            const fieldId = evt.target.id;
-            if (!fieldId || fieldId.length < 2) {
-                return;
-            }
-
-            const fieldBase = fieldId.substring(0, fieldId.length - 2);
-            const parent = evt.target.closest('[data-role="pane-item"]');
-            if (!parent || !parent.id) {
-                return;
-            }
-
-            const anchors = document.querySelectorAll('a[lang_abbr]');
-            const parentHref = `#${parent.id}`;
-            const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
-            let toLangAbbr = anchor?.getAttribute('lang_abbr');
-            if (!toLangAbbr) {
-                return;
-            }
-
-            if (toLangAbbr === 'ua') {
-                toLangAbbr = 'uk';
-            }
-
-            const srcTextElement = document.getElementById(`${fieldBase}_1`);
-            if (!srcTextElement || !('value' in srcTextElement)) {
-                return;
-            }
-
-            const srcText = srcTextElement.value;
-            if (!srcText) {
-                return;
-            }
-
-            const params = new URLSearchParams({
-                client: 'gtx',
-                sl: 'ru',
-                tl: toLangAbbr,
-                dt: 't',
-                q: srcText
-            });
 
             try {
-                const response = await fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`);
-                const resultText = await response.text();
-                if (!resultText) {
-                    return;
-                }
-
-                let translated = resultText.substring(4);
-                const endIndex = translated.indexOf('","');
-                if (endIndex !== -1) {
-                    translated = translated.substring(0, endIndex);
-                }
-
-                if (!translated) {
-                    return;
-                }
-
-                translated = translated.charAt(0).toUpperCase() + translated.slice(1);
-
-                if ('value' in evt.target) {
-                    evt.target.value = translated;
+                const translated = await this._fetchTranslation(context);
+                if (translated && 'value' in context.targetField) {
+                    context.targetField.value = translated;
                 }
             } catch (error) {
                 console.error('Google Translate request failed', error);
             }
         });
+    }
+
+    _extractTranslateContext(evt) {
+        if (!(evt?.target instanceof Element)) {
+            return null;
+        }
+
+        if (evt.code !== 'Digit8' || !evt.shiftKey) {
+            return null;
+        }
+
+        const targetField = evt.target;
+        const fieldId = targetField.id;
+        if (!fieldId || fieldId.length < 2) {
+            return null;
+        }
+
+        const fieldBase = fieldId.substring(0, fieldId.length - 2);
+        const parent = targetField.closest('[data-role="pane-item"]');
+        if (!parent?.id) {
+            return null;
+        }
+
+        const toLangAbbr = this._resolveTargetLanguage(parent.id);
+        if (!toLangAbbr) {
+            return null;
+        }
+
+        const srcTextElement = document.getElementById(`${fieldBase}_1`);
+        if (!srcTextElement || !('value' in srcTextElement)) {
+            return null;
+        }
+
+        const srcText = srcTextElement.value;
+        if (!srcText) {
+            return null;
+        }
+
+        return {
+            targetField,
+            toLangAbbr,
+            srcText
+        };
+    }
+
+    _resolveTargetLanguage(paneId) {
+        const anchors = document.querySelectorAll('a[lang_abbr]');
+        const parentHref = `#${paneId}`;
+        const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
+        const lang = anchor?.getAttribute('lang_abbr');
+        return this._normalizeLanguageAbbr(lang);
+    }
+
+    _normalizeLanguageAbbr(lang) {
+        if (!lang) {
+            return null;
+        }
+
+        return lang === 'ua' ? 'uk' : lang;
+    }
+
+    async _fetchTranslation({ srcText, toLangAbbr }) {
+        const params = new URLSearchParams({
+            client: 'gtx',
+            sl: 'ru',
+            tl: toLangAbbr,
+            dt: 't',
+            q: srcText
+        });
+
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`);
+        const resultText = await response.text();
+        return this._parseTranslationResponse(resultText);
+    }
+
+    _parseTranslationResponse(resultText) {
+        if (!resultText) {
+            return '';
+        }
+
+        const prefixLength = 4;
+        let translated = resultText.length > prefixLength
+            ? resultText.substring(prefixLength)
+            : resultText;
+
+        const endIndex = translated.indexOf('","');
+        if (endIndex !== -1) {
+            translated = translated.substring(0, endIndex);
+        }
+
+        if (!translated) {
+            return '';
+        }
+
+        return translated.charAt(0).toUpperCase() + translated.slice(1);
     }
 
     // onTabChange
