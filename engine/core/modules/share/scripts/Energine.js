@@ -1,29 +1,29 @@
-import { initializeToolbars, registerToolbarComponent } from './Toolbar.js';
-import { createRequestClient, serializeToFormEncoded } from './Energine/request.js';
-import createUIHelpers from './Energine/ui.js';
+import { registerToolbarComponent } from './Toolbar.js';
 import createBehaviorRuntime from './Energine/behaviorRegistry.js';
-import { createConfigFactory } from './Energine/config.js';
-import { resolveGlobalScope, resolveDocument, exposeRuntimeToScope } from './Energine/globalScopeAdapter.js';
-import { createLogger } from './Energine/logger.js';
-import { createRuntimeConfig, createConfigPropertyDescriptors } from './Energine/runtimeConfig.js';
-import { createTranslationsStore } from './Energine/translationsStore.js';
-import { createAutoBootstrap } from './Energine/autoBootstrap.js';
+import { resolveGlobalScope, resolveDocument } from './Energine/globalScopeAdapter.js';
 import { createRetryExecutor } from './Energine/retry.js';
-import { applyTranslationsFromScripts } from './Energine/translationScripts.js';
+import {
+    setupLogger,
+    setupConfigState,
+    setupTranslationsStore,
+    setupConfigFactory,
+    setupRequestClient,
+    setupUIHelpers,
+    serializeToFormEncoded,
+} from './Energine/factories.js';
+import { resolveFetchImplementation } from './Energine/fetchImplementation.js';
+import { createConfigRuntime } from './Energine/configRuntime.js';
+import {
+    createModuleScriptResolver,
+    createEventCanceler,
+    createCSSLoader,
+    createImageResizer,
+} from './Energine/domUtils.js';
+import { createUIDelegates } from './Energine/uiDelegates.js';
+import { buildBootstrapRuntime } from './Energine/bootstrapRuntime.js';
 
 const globalScope = resolveGlobalScope();
 const documentRef = resolveDocument(globalScope);
-
-const resolveFetchImplementation = (scope) => {
-    if (scope && typeof scope.fetch === 'function') {
-        return scope.fetch.bind(scope);
-    }
-    if (typeof fetch === 'function') {
-        const owner = typeof globalThis !== 'undefined' ? globalThis : undefined;
-        return owner ? fetch.bind(owner) : fetch;
-    }
-    throw new Error('Global fetch implementation is not available for Energine requests');
-};
 
 /**
  * Core runtime responsible for coordinating Energine helpers.
@@ -31,115 +31,57 @@ const resolveFetchImplementation = (scope) => {
 class EnergineCore {
     /**
      * @param {ReturnType<typeof resolveGlobalScope>} scope
-     * @param {{ logger?: ReturnType<typeof createLogger> }} [options]
+     * @param {{ logger?: ReturnType<typeof setupLogger> }} [options]
      */
     constructor(scope, options = {}) {
         this.globalScope = scope;
 
-        /** @type {ReturnType<typeof createLogger>} */
-        this.logger = options.logger || createLogger({ console: scope?.console || (typeof console !== 'undefined' ? console : undefined) });
+        this.logger = setupLogger(scope, options.logger);
 
         this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
             ? import.meta.url
             : '';
         this.moduleScriptElement = null;
 
-        /** @type {ReturnType<typeof createRuntimeConfig>} */
-        this.configState = createRuntimeConfig();
-        Object.defineProperties(this, createConfigPropertyDescriptors(this.configState));
+        const { configState, descriptors } = setupConfigState();
+        this.configState = configState;
+        Object.defineProperties(this, descriptors);
 
-        const { facade, store } = createTranslationsStore();
-        /** @type {Record<string, any>} */
+        const { facade, store } = setupTranslationsStore();
         this.translationStore = store;
-        /** @type {ReturnType<typeof createTranslationsStore>['facade']} */
         this.translations = facade;
 
-        this.configFactory = createConfigFactory(() => this.resolveModuleScriptElement());
-        this.requestClient = createRequestClient({
-            fetchImpl: resolveFetchImplementation(scope || globalScope),
-            getForceJSON: () => Boolean(this.forceJSON),
-            serialize: serializeToFormEncoded,
+        this.resolveModuleScriptElement = createModuleScriptResolver({
+            documentRef,
+            getModuleUrl: () => this.moduleUrl,
+            getCachedElement: () => this.moduleScriptElement,
+            setCachedElement: (element) => {
+                this.moduleScriptElement = element;
+            },
         });
-        this.uiHelpers = createUIHelpers({ globalScope: scope });
-    }
 
-    /**
-     * Locate script element corresponding to Energine module.
-     *
-     * @returns {HTMLScriptElement|null}
-     */
-    resolveModuleScriptElement() {
-        if (!documentRef) {
-            return null;
-        }
-        if (this.moduleScriptElement && documentRef.contains(this.moduleScriptElement)) {
-            return this.moduleScriptElement;
-        }
-        if (!this.moduleUrl) {
-            return null;
-        }
+        this.configFactory = setupConfigFactory(() => this.resolveModuleScriptElement());
 
-        const scripts = documentRef.getElementsByTagName('script');
-        for (let i = scripts.length - 1; i >= 0; i -= 1) {
-            const script = scripts[i];
-            if (script.type !== 'module' || !script.src) {
-                continue;
-            }
+        Object.assign(this, createConfigRuntime({
+            configState: this.configState,
+            translations: this.translations,
+            configFactory: this.configFactory,
+        }));
 
-            try {
-                const normalizedSrc = new URL(script.src, documentRef.baseURI).href;
-                if (normalizedSrc === this.moduleUrl) {
-                    this.moduleScriptElement = script;
-                    return script;
-                }
-            } catch {
-                // ignore malformed URLs
-            }
-        }
+        this.requestClient = setupRequestClient({
+            scope,
+            getForceJSON: () => Boolean(this.forceJSON),
+            resolveFetch: (candidateScope) => resolveFetchImplementation(candidateScope, globalScope),
+        });
 
-        return null;
-    }
+        this.uiHelpers = setupUIHelpers(scope);
+        Object.assign(this, createUIDelegates(this.uiHelpers));
 
-    /**
-     * Merge configuration values into runtime instance.
-     *
-     * @param {Record<string, any>} values
-     */
-    mergeConfigValues(values = {}) {
-        if (!values || typeof values !== 'object') {
-            return;
-        }
+        this.cancelEvent = createEventCanceler(scope);
+        this.loadCSS = createCSSLoader(documentRef);
+        this.resize = createImageResizer({ getResizerBase: () => this.resizer });
 
-        this.configState.merge(values);
-    }
-
-    /**
-     * Create configuration object from raw props.
-     *
-     * @param {Record<string, any>} props
-     * @returns {Record<string, any>}
-     */
-    createConfigFromProps(props = {}) {
-        return this.configFactory.createConfigFromProps(props);
-    }
-
-    /**
-     * Read configuration from script dataset with optional overrides.
-     *
-     * @param {Record<string, any>} [overrides]
-     * @returns {Record<string, any>}
-     */
-    createConfigFromScriptDataset(overrides = {}) {
-        return this.configFactory.createConfigFromScriptDataset(overrides);
-    }
-
-    /**
-     * Read configuration from embedded script dataset.
-     *
-     * @returns {Record<string, any>}
-     */
-    readConfigFromScriptDataset() {
-        return this.configFactory.readConfigFromScriptDataset();
+        this.serializeToFormEncoded = serializeToFormEncoded;
     }
 
     /**
@@ -150,17 +92,6 @@ class EnergineCore {
      */
     safeConsoleError(error, context = '') {
         this.logger.error(error, context);
-    }
-
-    /**
-     * Serialize data structures to form-encoded payloads.
-     *
-     * @param {Record<string, any>} obj
-     * @param {string} [prefix]
-     * @returns {string}
-     */
-    serializeToFormEncoded(obj, prefix) {
-        return serializeToFormEncoded(obj, prefix);
     }
 
     /**
@@ -179,42 +110,6 @@ class EnergineCore {
     }
 
     /**
-     * Cancel DOM event in a cross-browser manner.
-     *
-     * @param {Event} [event]
-     */
-    cancelEvent(event) {
-        const evt = event || (this.globalScope ? this.globalScope.event : undefined);
-        try {
-            if (evt && typeof evt.preventDefault === 'function') {
-                evt.stopPropagation();
-                evt.preventDefault();
-            } else if (evt) {
-                evt.returnValue = false;
-                evt.cancelBubble = true;
-            }
-        } catch (error) {
-            if (typeof console !== 'undefined' && console.warn) {
-                console.warn(error);
-            }
-        }
-    }
-
-    /**
-     * Resize image via configured resizer endpoint.
-     *
-     * @param {HTMLImageElement} img
-     * @param {string} src
-     * @param {number} w
-     * @param {number} h
-     * @param {string} [r]
-     */
-    resize(img, src, w, h, r = '') {
-        if (!img) return;
-        img.setAttribute('src', `${this.resizer}${r}w${w}-h${h}/${src}`);
-    }
-
-    /**
      * Resolve Bootstrap runtime from global scope.
      *
      * @returns {any}
@@ -222,145 +117,56 @@ class EnergineCore {
     resolveBootstrap() {
         return this.uiHelpers.resolveBootstrap();
     }
-
-    /**
-     * Display confirmation dialog.
-     *
-     * @param {string} message
-     * @param {Function} [yes]
-     * @param {Function} [no]
-     */
-    confirmBox(message, yes, no) {
-        this.uiHelpers.confirmBox(message, yes, no);
-    }
-
-    /**
-     * Display alert dialog.
-     *
-     * @param {string} message
-     */
-    alertBox(message) {
-        this.uiHelpers.alertBox(message);
-    }
-
-    /**
-     * Display toast notification.
-     *
-     * @param {string} message
-     * @param {string} [icon]
-     * @param {Function} [callback]
-     */
-    noticeBox(message, icon, callback) {
-        this.uiHelpers.noticeBox(message, icon, callback);
-    }
-
-    /**
-     * Show loader overlay for container.
-     *
-     * @param {HTMLElement} [container]
-     */
-    showLoader(container) {
-        this.uiHelpers.showLoader(container);
-    }
-
-    /**
-     * Hide loader overlay for container.
-     *
-     * @param {HTMLElement} [container]
-     */
-    hideLoader(container) {
-        this.uiHelpers.hideLoader(container);
-    }
-
-    /**
-     * Attach external CSS file.
-     *
-     * @param {string} file
-     */
-    loadCSS(file) {
-        if (!documentRef) return;
-        if (!documentRef.querySelector(`link[href$="${file}"]`)) {
-            const link = documentRef.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = file;
-            documentRef.head.appendChild(link);
-        }
-    }
-
-    /**
-     * Boot runtime with provided configuration.
-     *
-     * @param {Record<string, any>} config
-     * @returns {this}
-     */
-    boot(config = {}) {
-        const { translations: translationsConfig, ...rest } = config;
-
-        this.mergeConfigValues(rest);
-
-        if (translationsConfig) {
-            this.translations.extend(translationsConfig);
-        }
-
-        return this;
-    }
-
-    /**
-     * Stage translation dictionary for later usage.
-     *
-     * @param {Record<string, any>} values
-     */
-    stageTranslations(values) {
-        if (!values || typeof values !== 'object') {
-            return;
-        }
-
-        this.translations.extend(values);
-    }
 }
 
-const fallbackConsole = globalScope?.console || (typeof console !== 'undefined' ? console : undefined);
-
-const Energine = new EnergineCore(globalScope, { logger: createLogger({ console: fallbackConsole }) });
+const EnergineRuntime = new EnergineCore(globalScope);
 
 const behaviorRuntime = createBehaviorRuntime({
     globalScope,
-    getDebugFlag: () => Boolean(Energine.debug),
-    safeConsoleError: (error, context) => Energine.safeConsoleError(error, context),
+    getDebugFlag: () => Boolean(EnergineRuntime.debug),
+    safeConsoleError: (error, context) => EnergineRuntime.safeConsoleError(error, context),
     registerToolbarComponent,
 });
 
-Energine.scanForComponents = (root) => behaviorRuntime.scanForComponents(root);
+EnergineRuntime.scanForComponents = (root) => behaviorRuntime.scanForComponents(root);
 
 const retryExecutor = createRetryExecutor((task, options) => behaviorRuntime.scheduleRetry(task, options));
 
-const autoBootstrapRuntime = createAutoBootstrap(
+const createBootstrapRuntimeFactory = () => buildBootstrapRuntime({
     documentRef,
-    {
-        runtime: Energine,
-        exposeRuntime: (runtimeInstance) => exposeRuntimeToScope(runtimeInstance, globalScope),
-        scanForComponents: (root) => behaviorRuntime.scanForComponents(root),
-        scheduleRetry: (task, options) => retryExecutor.execute(task, options),
-        getPendingBehaviorNames: () => behaviorRuntime.getPendingBehaviorNames(),
-        initializeToolbars,
-        applyTranslations: applyTranslationsFromScripts,
-        datasetFalseValues: behaviorRuntime.datasetFalseValues,
-        logger: Energine.logger,
-    },
-);
+    runtime: EnergineRuntime,
+    behaviorRuntime,
+    retryExecutor,
+    globalScope,
+});
 
-autoBootstrapRuntime();
+const EnergineAPI = {
+    runtime: EnergineRuntime,
+    serializeToFormEncoded,
+    safeConsoleError: (error, context = '') => EnergineRuntime.safeConsoleError(error, context),
+    showLoader: (container) => EnergineRuntime.showLoader(container),
+    hideLoader: (container) => EnergineRuntime.hideLoader(container),
+    registerBehavior: (name, ClassRef, options = {}) => behaviorRuntime.registerBehavior(name, ClassRef, options),
+    getRegisteredBehavior: (name) => behaviorRuntime.getRegisteredBehavior(name),
+    scanForComponents: (root) => behaviorRuntime.scanForComponents(root),
+    createBootstrapRuntime: createBootstrapRuntimeFactory,
+};
 
-export { serializeToFormEncoded } from './Energine/request.js';
+export const {
+    runtime: Energine,
+    serializeToFormEncoded: serializeToFormEncodedRequest,
+    safeConsoleError,
+    showLoader,
+    hideLoader,
+    registerBehavior,
+    getRegisteredBehavior,
+    scanForComponents,
+    createBootstrapRuntime: createBootstrapRuntimeFactoryExport,
+} = EnergineAPI;
 
-export const safeConsoleError = (error, context = '') => Energine.safeConsoleError(error, context);
+export {
+    serializeToFormEncodedRequest as serializeToFormEncoded,
+    createBootstrapRuntimeFactoryExport as createBootstrapRuntime,
+};
 
-export const showLoader = (container) => Energine.showLoader(container);
-
-export const hideLoader = (container) => Energine.hideLoader(container);
-
-export const registerBehavior = (name, ClassRef, options = {}) => behaviorRuntime.registerBehavior(name, ClassRef, options);
-
-export const getRegisteredBehavior = (name) => behaviorRuntime.getRegisteredBehavior(name);
-
-export default Energine;
+export default EnergineAPI;
