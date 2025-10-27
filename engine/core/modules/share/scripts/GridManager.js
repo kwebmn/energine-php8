@@ -15,6 +15,17 @@ const Toolbar = ToolbarModule || globalScope?.Toolbar;
 const showLoader = showLoaderFn || globalScope?.showLoader || (() => {});
 const hideLoader = hideLoaderFn || globalScope?.hideLoader || (() => {});
 const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
+
+const SELECTION_KEYWORDS_EXACT = new Set([
+    'view', 'edit', 'del', 'delete', 'use', 'up', 'down', 'open', 'preview',
+]);
+
+const SELECTION_KEYWORDS_PREFIX = Object.freeze([
+    'move', 'activate', 'deactivate', 'approve', 'decline', 'restore', 'publish', 'unpublish',
+    'archive', 'unarchive', 'assign', 'unassign', 'lock', 'unlock', 'block', 'unblock', 'ban',
+    'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject',
+    'disable', 'enable', 'suspend', 'resume',
+]);
 class Grid {
     /**
      * @param {HTMLElement|string} element
@@ -1416,6 +1427,59 @@ class GridManager {
         throw new Error('GridManager: unexpected element reference.');
     }
 
+    _getDatasetValue(datasetKey, ...attributeNames) {
+        const dataset = this.element?.dataset || {};
+        const datasetValue = datasetKey ? dataset[datasetKey] : undefined;
+
+        if (datasetValue) {
+            return datasetValue;
+        }
+
+        for (const name of attributeNames) {
+            const value = this.element?.getAttribute ? this.element.getAttribute(name) : null;
+            if (value) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    _withToolbar(callback) {
+        if (!this.toolbar || typeof callback !== 'function') {
+            return;
+        }
+
+        callback(this.toolbar);
+    }
+
+    _invokeToolbarMethod(methodName, ...args) {
+        this._withToolbar(toolbar => {
+            const method = toolbar?.[methodName];
+            if (typeof method === 'function') {
+                method.apply(toolbar, args);
+            }
+        });
+    }
+
+    _withToolbarControl(controlId, callback) {
+        this._withToolbar(toolbar => {
+            if (typeof toolbar.getControlById !== 'function') {
+                return;
+            }
+            const control = toolbar.getControlById(controlId);
+            if (control && typeof callback === 'function') {
+                callback(control);
+            }
+        });
+    }
+
+    _getToolbarControls() {
+        return (this.toolbar && Array.isArray(this.toolbar.controls))
+            ? this.toolbar.controls
+            : [];
+    }
+
     /**
      * Prepare baseline state holders used across the manager lifecycle.
      *
@@ -1429,10 +1493,7 @@ class GridManager {
         this.gridPendingSelection = null;
         this.selectionControls = [];
         this.hasSelection = false;
-        const dataset = this.element?.dataset || {};
-        this.singlePath = dataset.eSingleTemplate
-            || this.element.getAttribute('data-e-single-template')
-            || '';
+        this.singlePath = this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || '';
     }
 
     /**
@@ -1543,10 +1604,7 @@ class GridManager {
      * @private
      */
     _initializeMoveState() {
-        const dataset = this.element?.dataset || {};
-        const moveFromId = dataset.eMoveFromId
-            || this.element.getAttribute('data-e-move-from-id')
-            || this.element.getAttribute('move_from_id');
+        const moveFromId = this._getDatasetValue('eMoveFromId', 'data-e-move-from-id', 'move_from_id');
         if (moveFromId) {
             this.setMvElementId(moveFromId);
         }
@@ -1640,12 +1698,8 @@ class GridManager {
             hostElement.appendChild(toolbarElement);
         }
 
-        if (typeof this.toolbar.disableControls === 'function') {
-            this.toolbar.disableControls();
-        }
-        if (typeof this.toolbar.bindTo === 'function') {
-            this.toolbar.bindTo(this);
-        }
+        this._invokeToolbarMethod('disableControls');
+        this._invokeToolbarMethod('bindTo', this);
 
         this.setupSelectionControls();
         this.syncToolbarStateAfterAttach();
@@ -1665,39 +1719,17 @@ class GridManager {
      * Scan toolbar controls and store ones that depend on row selection.
      */
     setupSelectionControls() {
-        if (!this.toolbar || !Array.isArray(this.toolbar.controls)) {
+        const controls = this._getToolbarControls();
+        if (!controls.length) {
             this.selectionControls = [];
             return;
         }
 
-        const keywordsExact = ['view', 'edit', 'del', 'delete', 'use', 'up', 'down', 'open', 'preview'];
-        const keywordsPrefix = [
-            'move', 'activate', 'deactivate', 'approve', 'decline', 'restore', 'publish', 'unpublish',
-            'archive', 'unarchive', 'assign', 'unassign', 'lock', 'unlock', 'block', 'unblock', 'ban',
-            'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject',
-            'disable', 'enable', 'suspend', 'resume'
-        ];
+        this.selectionControls = controls.filter(control => this._isSelectionDependentControl(control));
+        this.selectionControls.forEach(control => this._prepareSelectionControl(control));
 
-        this.selectionControls = this.toolbar.controls.filter(control =>
-            this.isSelectionDependentControl(control, keywordsExact, keywordsPrefix)
-        );
-
-        this.selectionControls.forEach(control => {
-            if (control && control.element) {
-                control.element.dataset.requiresSelection = 'true';
-            }
-            if (
-                control
-                && typeof control.enable === 'function'
-                && typeof control.initially_disabled === 'function'
-                && control.initially_disabled()
-            ) {
-                control.enable(true);
-            }
-            control._disabledBySelection = false;
-        });
-
-        this.updateSelectionDependentControls(!!(this.grid && this.grid.getSelectedItem()));
+        const hasSelection = !!(this.grid && this.grid.getSelectedItem());
+        this.updateSelectionDependentControls(hasSelection);
     }
 
     /**
@@ -1708,16 +1740,14 @@ class GridManager {
             return;
         }
 
-        const addControl = (typeof this.toolbar.getControlById === 'function')
-            ? this.toolbar.getControlById('add')
-            : null;
+        this._withToolbarControl('add', control => {
+            if (typeof control.enable === 'function') {
+                control.enable(true);
+            }
+        });
 
-        if (addControl && typeof addControl.enable === 'function') {
-            addControl.enable(true);
-        }
-
-        if (this.grid && !this.grid.isEmpty() && typeof this.toolbar.enableControls === 'function') {
-            this.toolbar.enableControls();
+        if (this.grid && !this.grid.isEmpty()) {
+            this._invokeToolbarMethod('enableControls');
         }
 
         this.updateSelectionDependentControls(this.hasSelection);
@@ -1727,12 +1757,10 @@ class GridManager {
      * Determine whether control should be enabled only when row is selected.
      *
      * @param {Object} control
-     * @param {string[]} keywordsExact
-     * @param {string[]} keywordsPrefix
      * @returns {boolean}
      */
-    isSelectionDependentControl(control, keywordsExact, keywordsPrefix) {
-        if (!control || !control.properties) {
+    _isSelectionDependentControl(control) {
+        if (!control?.properties) {
             return false;
         }
 
@@ -1743,11 +1771,31 @@ class GridManager {
             return false;
         }
 
-        if (keywordsExact.includes(action) || keywordsExact.includes(id)) {
+        if (SELECTION_KEYWORDS_EXACT.has(action) || SELECTION_KEYWORDS_EXACT.has(id)) {
             return true;
         }
 
-        return keywordsPrefix.some(prefix => action.startsWith(prefix) || id.startsWith(prefix));
+        return SELECTION_KEYWORDS_PREFIX.some(prefix => action.startsWith(prefix) || id.startsWith(prefix));
+    }
+
+    _prepareSelectionControl(control) {
+        if (!control) {
+            return;
+        }
+
+        if (control.element) {
+            control.element.dataset.requiresSelection = 'true';
+        }
+
+        if (
+            typeof control.enable === 'function'
+            && typeof control.initially_disabled === 'function'
+            && control.initially_disabled()
+        ) {
+            control.enable(true);
+        }
+
+        control._disabledBySelection = false;
     }
 
     /**
@@ -1760,33 +1808,38 @@ class GridManager {
             return;
         }
 
-        this.selectionControls.forEach(control => {
-            if (!control) {
+        this.selectionControls.forEach(control => this._toggleControlForSelection(control, hasSelection));
+    }
+
+    _toggleControlForSelection(control, hasSelection) {
+        if (!control) {
+            return;
+        }
+
+        const initiallyDisabled = typeof control.initially_disabled === 'function'
+            ? control.initially_disabled()
+            : false;
+
+        if (!hasSelection) {
+            if (initiallyDisabled) {
                 return;
             }
 
-            const initiallyDisabled = typeof control.initially_disabled === 'function'
-                ? control.initially_disabled()
+            const alreadyDisabled = typeof control.disabled === 'function'
+                ? control.disabled()
                 : false;
 
-            if (!hasSelection) {
-                if (initiallyDisabled) {
-                    return;
-                }
-
-                const alreadyDisabled = typeof control.disabled === 'function'
-                    ? control.disabled()
-                    : false;
-
-                if (!alreadyDisabled && typeof control.disable === 'function') {
-                    control.disable();
-                    control._disabledBySelection = true;
-                }
-            } else if (control._disabledBySelection && typeof control.enable === 'function') {
-                control.enable();
-                control._disabledBySelection = false;
+            if (!alreadyDisabled && typeof control.disable === 'function') {
+                control.disable();
+                control._disabledBySelection = true;
             }
-        });
+            return;
+        }
+
+        if (control._disabledBySelection && typeof control.enable === 'function') {
+            control.enable();
+            control._disabledBySelection = false;
+        }
     }
 
     // --- Tabs ---
@@ -1812,12 +1865,18 @@ class GridManager {
     onSelect() { /* no-op, override as needed */ }
 
     onDoubleClick() {
-        if (this.toolbar && typeof this.toolbar.getControlById === 'function' && this.toolbar.getControlById('edit')) {
-            this.edit();
-        } else if (this.toolbar && Array.isArray(this.toolbar.controls) && this.toolbar.controls.length) {
-            const action = this.toolbar.controls[0].properties.action;
-            if (typeof this[action] === 'function') this[action]();
-        }
+        this._withToolbar(toolbar => {
+            if (typeof toolbar.getControlById === 'function' && toolbar.getControlById('edit')) {
+                this.edit();
+                return;
+            }
+
+            const [firstControl] = this._getToolbarControls();
+            const action = firstControl?.properties?.action;
+            if (action && typeof this[action] === 'function') {
+                this[action]();
+            }
+        });
     }
 
     onSortChange() { this.loadPage(1); }
@@ -1841,9 +1900,7 @@ class GridManager {
         if (this.pageList && typeof this.pageList.disable === 'function') {
             this.pageList.disable();
         }
-        if (this.toolbar && typeof this.toolbar.disableControls === 'function') {
-            this.toolbar.disableControls();
-        }
+        this._invokeToolbarMethod('disableControls');
 
         showLoader();
         this.grid.clear();
@@ -1904,10 +1961,6 @@ class GridManager {
      * @param {Object} result
      */
     processServerResponse(result) {
-        const addControl = (this.toolbar && typeof this.toolbar.getControlById === 'function')
-            ? this.toolbar.getControlById('add')
-            : null;
-
         const pendingSelection = this.gridPendingSelection;
         this.gridPendingSelection = null;
 
@@ -1926,17 +1979,17 @@ class GridManager {
         }
 
         if (!this.grid.isEmpty()) {
-            if (this.toolbar && typeof this.toolbar.enableControls === 'function') {
-                this.toolbar.enableControls();
-            }
+            this._invokeToolbarMethod('enableControls');
             if (this.pageList && typeof this.pageList.enable === 'function') {
                 this.pageList.enable();
             }
         }
 
-        if (addControl && typeof addControl.enable === 'function') {
-            addControl.enable(true);
-        }
+        this._withToolbarControl('add', control => {
+            if (typeof control.enable === 'function') {
+                control.enable(true);
+            }
+        });
 
         this.grid.build();
         hideLoader();
@@ -2086,17 +2139,11 @@ class GridManager {
         );
     }
     print() {
-        const dataset = this.element?.dataset || {};
-        const base = dataset.eSingleTemplate
-            || this.element.getAttribute('data-e-single-template')
-            || this.singlePath;
+        const base = this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || this.singlePath;
         window.open(`${base}print/`);
     }
     csv() {
-        const dataset = this.element?.dataset || {};
-        const base = dataset.eSingleTemplate
-            || this.element.getAttribute('data-e-single-template')
-            || this.singlePath;
+        const base = this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || this.singlePath;
         window.location.href = `${base}csv/`;
     }
 
