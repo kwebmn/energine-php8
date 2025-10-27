@@ -381,7 +381,6 @@ class AcplField {
         }
         this.element.classList.add('form-control');
 
-        this.componentId = this.element.getAttribute('component_id');
         this.componentElement = this.element.closest('[data-e-js]');
         const componentDataset = this.componentElement?.dataset || {};
         this.singlePath = componentDataset.eSingleTemplate
@@ -467,7 +466,7 @@ class AcplField {
             return false;
         }
 
-        const component = this.componentId ? window[this.componentId] : null;
+        const component = this.componentElement?.__energineBehavior || null;
         if (component && typeof component.openTagEditor === 'function') {
             component.openTagEditor(this.button);
             return true;
