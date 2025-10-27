@@ -15,18 +15,6 @@ class Test {
 
 export { Test };
 export default Test;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Test;
-    }
-
-    target.Test = Test;
-    return Test;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('Test', Test);
 }

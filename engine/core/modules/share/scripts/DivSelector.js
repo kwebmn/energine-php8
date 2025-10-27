@@ -128,18 +128,6 @@ class DivSelector extends DivManager {
 
 export { DivSelector };
 export default DivSelector;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivSelector;
-    }
-
-    target.DivSelector = DivSelector;
-    return DivSelector;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('DivSelector', DivSelector);
 }

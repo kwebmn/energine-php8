@@ -2171,18 +2171,6 @@ Form.RichEditor = FormRichEditor;
 
 export { Form };
 export default Form;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Form;
-    }
-
-    target.Form = Form;
-    return Form;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('Form', Form);

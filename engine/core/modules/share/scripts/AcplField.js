@@ -669,18 +669,3 @@ class AcplField {
 
 export { Words, ActiveList, DropBoxList, AcplField };
 export default AcplField;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return AcplField;
-    }
-
-    target.Words = Words;
-    target.ActiveList = ActiveList;
-    target.DropBoxList = DropBoxList;
-    target.AcplField = AcplField;
-
-    return AcplField;
-}
-
-attachToWindow();

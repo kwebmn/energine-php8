@@ -1,5 +1,6 @@
 import Energine, { showLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import DivManager from './DivManager.js';
+import TabPane from './TabPane.js';
 import './ModalBox.js';
 
 const globalScope = typeof window !== 'undefined'
@@ -217,18 +218,6 @@ class DivSidebar extends DivManager {
 
 export { DivSidebar };
 export default DivSidebar;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivSidebar;
-    }
-
-    target.DivSidebar = DivSidebar;
-    return DivSidebar;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('DivSidebar', DivSidebar);

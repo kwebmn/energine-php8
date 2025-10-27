@@ -147,14 +147,3 @@ class Validator {
 
 export { Validator };
 export default Validator;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Validator;
-    }
-
-    target.Validator = Validator;
-    return Validator;
-}
-
-attachToWindow();

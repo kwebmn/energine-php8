@@ -196,18 +196,6 @@ class SignIn {
 
 export { SignIn };
 export default SignIn;
-
-export function attachToWindow(target = globalScope) {
-  if (!target) {
-    return SignIn;
-  }
-
-  target.SignIn = SignIn;
-  return SignIn;
-}
-
-attachToWindow();
-
 try {
   if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('SignIn', SignIn);

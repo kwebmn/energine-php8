@@ -193,14 +193,3 @@ class PageList extends EventTarget {
 
 export { PageList };
 export default PageList;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return PageList;
-    }
-
-    target.PageList = PageList;
-    return PageList;
-}
-
-attachToWindow();

@@ -254,18 +254,6 @@ class FiltersTreeEditor {
 
 export { FiltersTreeEditor };
 export default FiltersTreeEditor;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FiltersTreeEditor;
-    }
-
-    target.FiltersTreeEditor = FiltersTreeEditor;
-    return FiltersTreeEditor;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('FiltersTreeEditor', FiltersTreeEditor);
 }

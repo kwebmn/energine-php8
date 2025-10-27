@@ -257,18 +257,6 @@ class AttachmentEditor extends GridManager {
 
 export { AttachmentEditor };
 export default AttachmentEditor;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return AttachmentEditor;
-    }
-
-    target.AttachmentEditor = AttachmentEditor;
-    return AttachmentEditor;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('AttachmentEditor', AttachmentEditor);

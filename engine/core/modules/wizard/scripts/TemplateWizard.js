@@ -53,18 +53,6 @@ class TemplateWizard extends GridManager {
 
 export { TemplateWizard };
 export default TemplateWizard;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TemplateWizard;
-    }
-
-    target.TemplateWizard = TemplateWizard;
-    return TemplateWizard;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('TemplateWizard', TemplateWizard);
 }

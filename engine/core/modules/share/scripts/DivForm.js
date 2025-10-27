@@ -185,18 +185,6 @@ Object.assign(DivForm.prototype, {
 
 export { DivForm };
 export default DivForm;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivForm;
-    }
-
-    target.DivForm = DivForm;
-    return DivForm;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('DivForm', DivForm);
 }

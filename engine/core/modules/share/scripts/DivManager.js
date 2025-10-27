@@ -358,18 +358,6 @@ class DivManager {
 
 export { DivManager };
 export default DivManager;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivManager;
-    }
-
-    target.DivManager = DivManager;
-    return DivManager;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('DivManager', DivManager);

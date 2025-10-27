@@ -140,18 +140,6 @@ class ImageManager extends Form {
 
 export { ImageManager };
 export default ImageManager;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return ImageManager;
-    }
-
-    target.ImageManager = ImageManager;
-    return ImageManager;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('ImageManager', ImageManager);
 }

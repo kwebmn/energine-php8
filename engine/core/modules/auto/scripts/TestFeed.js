@@ -15,18 +15,6 @@ class TestFeed {
 
 export { TestFeed };
 export default TestFeed;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TestFeed;
-    }
-
-    target.TestFeed = TestFeed;
-    return TestFeed;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('TestFeed', TestFeed);
 }

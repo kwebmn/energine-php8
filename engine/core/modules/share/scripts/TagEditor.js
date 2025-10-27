@@ -112,18 +112,6 @@ class TagEditor extends GridManager {
 
 export { TagEditor };
 export default TagEditor;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TagEditor;
-    }
-
-    target.TagEditor = TagEditor;
-    return TagEditor;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('TagEditor', TagEditor);
 }

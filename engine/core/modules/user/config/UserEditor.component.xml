@@ -47,6 +47,7 @@
 				<library path="ckeditor/ckeditor" loader="classic"/>
 				<behavior name="Form"/>
 			</javascript>
+			
 			<toolbar>
 				<control id="save" title="BTN_SAVE" icon="fa fa-save" type="button" onclick="save"/>
 				<control id="list" title="BTN_CLOSE" icon="fa fa-arrow-left" type="button" onclick="close"/>

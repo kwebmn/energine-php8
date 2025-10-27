@@ -59,14 +59,3 @@ class Cookie {
 
 export { Cookie };
 export default Cookie;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Cookie;
-    }
-
-    target.Cookie = Cookie;
-    return Cookie;
-}
-
-attachToWindow();
