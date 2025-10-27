@@ -18,6 +18,71 @@ const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || global
 
 const noop = () => {};
 
+const createToolbarFacade = (resolveToolbar) => {
+    const getToolbar = () => (typeof resolveToolbar === 'function' ? resolveToolbar() : null) || null;
+
+    const useToolbar = (callback, fallback) => {
+        const toolbar = getToolbar();
+        if (!toolbar || typeof callback !== 'function') {
+            return fallback;
+        }
+        return callback(toolbar);
+    };
+
+    return {
+        with(callback) {
+            useToolbar(callback);
+        },
+        invoke(methodName, ...args) {
+            return useToolbar(toolbar => {
+                const method = toolbar?.[methodName];
+                if (typeof method === 'function') {
+                    return method.apply(toolbar, args);
+                }
+                return undefined;
+            });
+        },
+        withControl(controlId, callback) {
+            return useToolbar(toolbar => {
+                if (typeof toolbar.getControlById !== 'function') {
+                    return undefined;
+                }
+                const control = toolbar.getControlById(controlId);
+                if (control) {
+                    return callback?.(control);
+                }
+                return undefined;
+            });
+        },
+        controls() {
+            const toolbar = getToolbar();
+            return (toolbar && Array.isArray(toolbar.controls)) ? toolbar.controls : [];
+        },
+    };
+};
+
+const MODAL_ACTIONS = Object.freeze({
+    view: {
+        requiresId: true,
+        url: (manager, id) => `${manager.singlePath}${id}`,
+    },
+    add: {
+        url: manager => `${manager.singlePath}add/`,
+        onClose: manager => manager.processAfterCloseAction.bind(manager),
+    },
+    edit: {
+        requiresId: true,
+        url: (manager, id) => `${manager.singlePath}${id}/edit`,
+        onClose: manager => manager.processAfterCloseAction.bind(manager),
+    },
+    move: {
+        requiresId: true,
+        beforeOpen: (manager, id) => manager.setMvElementId(id),
+        url: (manager, id) => `${manager.singlePath}move/${id}`,
+        onClose: manager => manager.processAfterCloseAction.bind(manager),
+    },
+});
+
 const applyClasses = (element, classes = []) => {
     if (element && classes.length) {
         element.classList.add(...classes);
@@ -1660,13 +1725,15 @@ class GridManager {
         this.element = this._resolveElement(element);
         this._initializeState();
 
-        this._initializeFilter();
-        this._initializePageList();
-        this._initializeGrid();
-        this._initializeTabPane();
-        this._placePaginationControls();
-        this._setupModalCloseHandler();
-        this._initializeMoveState();
+        this._runInitializers(
+            '_initializeFilter',
+            '_initializePageList',
+            '_initializeGrid',
+            '_initializeTabPane',
+            '_placePaginationControls',
+            '_setupModalCloseHandler',
+            '_initializeMoveState',
+        );
 
         this.reload();
     }
@@ -1692,6 +1759,63 @@ class GridManager {
         throw new Error('GridManager: unexpected element reference.');
     }
 
+    _runInitializers(...methodNames) {
+        methodNames
+            .map(name => this[name])
+            .filter(method => typeof method === 'function')
+            .forEach(method => method.call(this));
+    }
+
+    _resolveActionRecordId(candidate) {
+        if (parseInt(candidate, 10)) {
+            return candidate;
+        }
+        return this.grid?.getSelectedRecordKey();
+    }
+
+    _openModalAction(actionName, candidateId) {
+        const config = MODAL_ACTIONS[actionName];
+        if (!config) {
+            return;
+        }
+
+        const modalBox = getModalBox();
+        if (!modalBox || typeof modalBox.open !== 'function') {
+            return;
+        }
+
+        const recordId = config.requiresId ? this._resolveActionRecordId(candidateId) : null;
+        if (config.requiresId && (recordId === undefined || recordId === null || recordId === '')) {
+            return;
+        }
+
+        config.beforeOpen?.(this, recordId);
+
+        const modalOptions = { url: config.url(this, recordId) };
+        if (config.onClose) {
+            modalOptions.onClose = config.onClose(this);
+        }
+
+        modalBox.open(modalOptions);
+    }
+
+    _invokeReorder(direction) {
+        if (!this.grid) {
+            return;
+        }
+
+        const payload = this._getFilterValue(null) || undefined;
+        Energine.request(
+            `${this.singlePath}${this.grid.getSelectedRecordKey()}/${direction}/`,
+            payload,
+            this.loadPage.bind(this, this._getCurrentPage() || 1)
+        );
+    }
+
+    _getExportBasePath() {
+        return this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || this.singlePath;
+    }
+
     _getDatasetValue(datasetKey, ...attributeNames) {
         const dataset = this.element?.dataset || {};
         const datasetValue = datasetKey ? dataset[datasetKey] : undefined;
@@ -1708,41 +1832,6 @@ class GridManager {
         }
 
         return null;
-    }
-
-    _withToolbar(callback) {
-        if (!this.toolbar || typeof callback !== 'function') {
-            return;
-        }
-
-        callback(this.toolbar);
-    }
-
-    _invokeToolbarMethod(methodName, ...args) {
-        this._withToolbar(toolbar => {
-            const method = toolbar?.[methodName];
-            if (typeof method === 'function') {
-                method.apply(toolbar, args);
-            }
-        });
-    }
-
-    _withToolbarControl(controlId, callback) {
-        this._withToolbar(toolbar => {
-            if (typeof toolbar.getControlById !== 'function') {
-                return;
-            }
-            const control = toolbar.getControlById(controlId);
-            if (control && typeof callback === 'function') {
-                callback(control);
-            }
-        });
-    }
-
-    _getToolbarControls() {
-        return (this.toolbar && Array.isArray(this.toolbar.controls))
-            ? this.toolbar.controls
-            : [];
     }
 
     _invokeFilter(methodName, defaultValue = undefined, ...args) {
@@ -1779,9 +1868,8 @@ class GridManager {
 
         const handleError = (responseText) => {
             try {
-                if (onError) {
-                    onError(responseText);
-                } else if (responseText) {
+                const handled = typeof onError === 'function' ? onError(responseText) : false;
+                if (!handled && responseText) {
                     alert(responseText);
                 }
             } finally {
@@ -1807,6 +1895,8 @@ class GridManager {
             selectionController: new ToolbarSelectionController(),
             singlePath: this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || '',
         });
+
+        this.toolbarFacade = createToolbarFacade(() => this.toolbar);
     }
 
     /**
@@ -2011,8 +2101,8 @@ class GridManager {
             hostElement.appendChild(toolbarElement);
         }
 
-        this._invokeToolbarMethod('disableControls');
-        this._invokeToolbarMethod('bindTo', this);
+        this.toolbarFacade.invoke('disableControls');
+        this.toolbarFacade.invoke('bindTo', this);
 
         this.setupSelectionControls();
         this.syncToolbarStateAfterAttach();
@@ -2052,14 +2142,14 @@ class GridManager {
             return;
         }
 
-        this._withToolbarControl('add', control => {
+        this.toolbarFacade.withControl('add', control => {
             if (typeof control.enable === 'function') {
                 control.enable(true);
             }
         });
 
         if (this.grid && !this.grid.isEmpty()) {
-            this._invokeToolbarMethod('enableControls');
+            this.toolbarFacade.invoke('enableControls');
         }
 
         const hasSelection = Boolean(this.grid && this.grid.getSelectedItem());
@@ -2098,13 +2188,13 @@ class GridManager {
     onSelect() { /* no-op, override as needed */ }
 
     onDoubleClick() {
-        this._withToolbar(toolbar => {
+        this.toolbarFacade.with(toolbar => {
             if (typeof toolbar.getControlById === 'function' && toolbar.getControlById('edit')) {
                 this.edit();
                 return;
             }
 
-            const [firstControl] = this._getToolbarControls();
+            const [firstControl] = this.toolbarFacade.controls();
             const action = firstControl?.properties?.action;
             if (action && typeof this[action] === 'function') {
                 this[action]();
@@ -2133,25 +2223,21 @@ class GridManager {
         if (this.pageList && typeof this.pageList.disable === 'function') {
             this.pageList.disable();
         }
-        this._invokeToolbarMethod('disableControls');
+        this.toolbarFacade.invoke('disableControls');
 
-        showLoader();
         this.grid.clear();
 
         const currentPage = this._getCurrentPage();
-        if (currentPage) {
-            pageNum = currentPage;
-        }
+        const targetPage = currentPage || pageNum;
 
-        setTimeout(() => {
-            Energine.request(
-                this.buildRequestURL(pageNum),
-                this.buildRequestPostBody(),
-                this.processServerResponse.bind(this),
-                null,
-                this.processServerError.bind(this)
-            );
-        }, 0);
+        this._requestWithLoader(
+            this.buildRequestURL(targetPage),
+            {
+                body: this.buildRequestPostBody(),
+                onSuccess: this.processServerResponse.bind(this),
+                onError: this.processServerError.bind(this),
+            }
+        );
     }
 
     /**
@@ -2211,20 +2297,19 @@ class GridManager {
         }
 
         if (!this.grid.isEmpty()) {
-            this._invokeToolbarMethod('enableControls');
+            this.toolbarFacade.invoke('enableControls');
             if (this.pageList && typeof this.pageList.enable === 'function') {
                 this.pageList.enable();
             }
         }
 
-        this._withToolbarControl('add', control => {
+        this.toolbarFacade.withControl('add', control => {
             if (typeof control.enable === 'function') {
                 control.enable(true);
             }
         });
 
         this.grid.build();
-        hideLoader();
     }
 
     /**
@@ -2234,7 +2319,7 @@ class GridManager {
      */
     processServerError(responseText) {
         alert(responseText);
-        hideLoader();
+        return true;
     }
 
     /**
@@ -2256,30 +2341,10 @@ class GridManager {
     }
 
     // --- Actions ---
-    view() {
-        getModalBox()?.open({ url: `${this.singlePath}${this.grid.getSelectedRecordKey()}` });
-    }
-    add() {
-        getModalBox()?.open({
-            url: `${this.singlePath}add/`,
-            onClose: this.processAfterCloseAction.bind(this)
-        });
-    }
-    edit(id) {
-        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
-        getModalBox()?.open({
-            url: `${this.singlePath}${id}/edit`,
-            onClose: this.processAfterCloseAction.bind(this)
-        });
-    }
-    move(id) {
-        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
-        this.setMvElementId(id);
-        getModalBox()?.open({
-            url: `${this.singlePath}move/${id}`,
-            onClose: this.processAfterCloseAction.bind(this)
-        });
-    }
+    view(id) { this._openModalAction('view', id); }
+    add() { this._openModalAction('add'); }
+    edit(id) { this._openModalAction('edit', id); }
+    move(id) { this._openModalAction('move', id); }
     moveFirst() { this.moveTo('first', this.getMvElementId()); }
     moveLast() { this.moveTo('last', this.getMvElementId()); }
     moveAbove(id) {
@@ -2344,30 +2409,10 @@ class GridManager {
     close() {
         getModalBox()?.close();
     }
-    up() {
-        const payload = this._getFilterValue(null);
-        Energine.request(
-            `${this.singlePath}${this.grid.getSelectedRecordKey()}/up/`,
-            payload || undefined,
-            this.loadPage.bind(this, this._getCurrentPage() || 1)
-        );
-    }
-    down() {
-        const payload = this._getFilterValue(null);
-        Energine.request(
-            `${this.singlePath}${this.grid.getSelectedRecordKey()}/down/`,
-            payload || undefined,
-            this.loadPage.bind(this, this._getCurrentPage() || 1)
-        );
-    }
-    print() {
-        const base = this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || this.singlePath;
-        window.open(`${base}print/`);
-    }
-    csv() {
-        const base = this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || this.singlePath;
-        window.location.href = `${base}csv/`;
-    }
+    up() { this._invokeReorder('up'); }
+    down() { this._invokeReorder('down'); }
+    print() { window.open(`${this._getExportBasePath()}print/`); }
+    csv() { window.location.href = `${this._getExportBasePath()}csv/`; }
 
     // --- Static stub for Filter (should be redefined elsewhere) ---
     static Filter = class {
@@ -2401,35 +2446,11 @@ class Filter {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
-        decorateElement(this.element, {
-            add: ['row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'bg-body'],
-            remove: ['mb-3'],
-        });
-
-        // Привязки к основным элементам управления
-        const applyButton = this.element.querySelector('[data-action="apply-filter"]');
-        const resetLink = this.element.querySelector('[data-action="reset-filter"]');
+        const controls = this._decorateControls();
+        const { applyButton, resetLink, fields, condition } = controls;
+        this.fields = fields;
+        this.condition = condition;
         this.active = false;
-
-        decorateElement(applyButton, {
-            add: ['btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
-        });
-
-        decorateElement(resetLink, {
-            remove: ['btn-link', 'p-0', 'text-decoration-none'],
-            add: ['btn', 'btn-outline-secondary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
-            attributes: { role: 'button' },
-        });
-
-        // Поля фильтра
-        this.fields = this.element.querySelector('[data-role="filter-field"]');
-        this.condition = this.element.querySelector('[data-role="filter-condition"]');
-
-        if (!this.fields) throw new Error('Filter: data-role="filter-field" not found!');
-        if (!this.condition) throw new Error('Filter: data-role="filter-condition" not found!');
-
-        decorateElement(this.fields, { add: ['form-select', 'form-select-sm'] });
-        decorateElement(this.condition, { add: ['form-select', 'form-select-sm'] });
 
         // Инициализация QueryControls
         this.inputs = new GridManager.Filter.QueryControls(
@@ -2437,32 +2458,102 @@ class Filter {
             applyButton
         );
 
-        // Перенос типов из data-types в dataset (store/retrieve)
-        Array.from(this.condition.children).forEach(el => {
-            const types = el.getAttribute('data-types');
+        this._normalizeConditionTypes();
+        this._bindEvents({ applyButton, resetLink, gridManager });
+
+        this.checkCondition();
+    }
+
+    _decorateControls() {
+        const plan = [
+            {
+                element: this.element,
+                config: {
+                    add: ['row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'bg-body'],
+                    remove: ['mb-3'],
+                },
+            },
+            {
+                key: 'applyButton',
+                selector: '[data-action="apply-filter"]',
+                config: {
+                    add: ['btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
+                },
+            },
+            {
+                key: 'resetLink',
+                selector: '[data-action="reset-filter"]',
+                config: {
+                    remove: ['btn-link', 'p-0', 'text-decoration-none'],
+                    add: ['btn', 'btn-outline-secondary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
+                    attributes: { role: 'button' },
+                },
+            },
+            {
+                key: 'fields',
+                selector: '[data-role="filter-field"]',
+                config: { add: ['form-select', 'form-select-sm'] },
+                required: true,
+                errorMessage: 'Filter: data-role="filter-field" not found!',
+            },
+            {
+                key: 'condition',
+                selector: '[data-role="filter-condition"]',
+                config: { add: ['form-select', 'form-select-sm'] },
+                required: true,
+                errorMessage: 'Filter: data-role="filter-condition" not found!',
+            },
+        ];
+
+        return plan.reduce((acc, descriptor) => {
+            const target = descriptor.element || this.element.querySelector(descriptor.selector);
+            if (!target) {
+                if (descriptor.required) {
+                    throw new Error(descriptor.errorMessage || `Filter: ${descriptor.selector} not found!`);
+                }
+                return acc;
+            }
+
+            decorateElement(target, descriptor.config);
+            if (descriptor.key) {
+                acc[descriptor.key] = target;
+            }
+
+            return acc;
+        }, {});
+    }
+
+    _normalizeConditionTypes() {
+        Array.from(this.condition?.children || []).forEach(option => {
+            const types = option?.getAttribute?.('data-types');
             if (types) {
-                el.dataset.type = types;
-                el.removeAttribute('data-types');
+                option.dataset.type = types;
+                option.removeAttribute('data-types');
             }
         });
+    }
 
-        // События
-        applyButton.addEventListener('click', () => {
-            this.use();
-            gridManager.reload();
-        });
-        resetLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.remove();
-            gridManager.reload();
-        });
-        this.fields.addEventListener('change', this.checkCondition.bind(this));
-        this.condition.addEventListener('change', (event) => {
+    _bindEvents({ applyButton, resetLink, gridManager }) {
+        if (applyButton) {
+            applyButton.addEventListener('click', () => {
+                this.use();
+                gridManager.reload();
+            });
+        }
+
+        if (resetLink) {
+            resetLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.remove();
+                gridManager.reload();
+            });
+        }
+
+        this.fields?.addEventListener('change', this.checkCondition.bind(this));
+        this.condition?.addEventListener('change', (event) => {
             const fieldType = this._getSelectedFieldType();
             this.switchInputs(event.target.value, fieldType);
         });
-
-        this.checkCondition();
     }
 
     // Проверка условий фильтрации
