@@ -637,19 +637,6 @@ const Energine = new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
 
-const initialDatasetConfig = (() => {
-    try {
-        return Energine.createConfigFromScriptDataset();
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine] Failed to read initial dataset config');
-        return {};
-    }
-})();
-
-if (initialDatasetConfig && Object.keys(initialDatasetConfig).length) {
-    Energine.mergeConfigValues(initialDatasetConfig);
-}
-
 const datasetFalseValues = new Set(['0', 'false', 'no', 'off']);
 
 const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
@@ -1061,14 +1048,6 @@ autoBootstrapRuntime();
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 
-export const bootEnergine = (config = {}) => Energine.boot(config);
-
-export const stageTranslations = (values) => Energine.stageTranslations(values);
-
-export const createConfigFromProps = (props = {}) => Energine.createConfigFromProps(props);
-
-export const createConfigFromScriptDataset = (overrides = {}) => Energine.createConfigFromScriptDataset(overrides);
-
 export const safeConsoleError = (error, context = '') => Energine.safeConsoleError(error, context);
 
 export const showLoader = (container) => Energine.showLoader(container);
@@ -1097,7 +1076,5 @@ export const registerBehavior = (name, ClassRef, options = {}) => {
 };
 
 export const getRegisteredBehavior = (name) => resolveRegisteredBehavior(name);
-
-export const autoScanComponents = (root) => scanForComponents(root);
 
 export default Energine;
