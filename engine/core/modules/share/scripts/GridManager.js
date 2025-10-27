@@ -8,15 +8,79 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const Energine = EnergineModule || globalScope?.Energine || {};
-const TabPane = TabPaneModule || globalScope?.TabPane;
-const PageList = PageListModule || globalScope?.PageList;
-const Toolbar = ToolbarModule || globalScope?.Toolbar;
-const showLoader = showLoaderFn || globalScope?.showLoader || (() => {});
-const hideLoader = hideLoaderFn || globalScope?.hideLoader || (() => {});
-const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
-
 const noop = () => {};
+
+const resolveDependency = (moduleValue, fallbackPaths = [], defaultValue = undefined) => {
+    if (moduleValue) {
+        return moduleValue;
+    }
+
+    if (!globalScope) {
+        return defaultValue;
+    }
+
+    const pathVariants = Array.isArray(fallbackPaths?.[0])
+        ? fallbackPaths
+        : (fallbackPaths ? [fallbackPaths] : []);
+
+    for (const path of pathVariants) {
+        const segments = Array.isArray(path) ? path : String(path).split('.');
+        let current = globalScope;
+        let resolved = null;
+
+        for (const segment of segments) {
+            if (current == null) {
+                resolved = null;
+                break;
+            }
+            current = current[segment];
+            resolved = current;
+        }
+
+        if (resolved != null) {
+            return resolved;
+        }
+    }
+
+    return defaultValue;
+};
+
+const Energine = resolveDependency(EnergineModule, 'Energine', {});
+const TabPane = resolveDependency(TabPaneModule, 'TabPane');
+const PageList = resolveDependency(PageListModule, 'PageList');
+const Toolbar = resolveDependency(ToolbarModule, 'Toolbar');
+const showLoader = resolveDependency(showLoaderFn, 'showLoader', noop);
+const hideLoader = resolveDependency(hideLoaderFn, 'hideLoader', noop);
+const getModalBox = () => resolveDependency(ModalBoxModule, [['top', 'ModalBox'], 'ModalBox'], null);
+
+const normalizeLifecycleStep = (context, step) => {
+    if (typeof step === 'function') {
+        return { fn: step, args: [] };
+    }
+
+    if (typeof step === 'string') {
+        const fn = context?.[step];
+        return typeof fn === 'function' ? { fn, args: [] } : null;
+    }
+
+    if (step && typeof step === 'object') {
+        const candidate = typeof step.step === 'function'
+            ? step.step
+            : (typeof step.step === 'string' ? context?.[step.step] : null);
+
+        if (typeof candidate !== 'function') {
+            return null;
+        }
+
+        return {
+            fn: candidate,
+            args: Array.isArray(step.args) ? step.args : [],
+            condition: typeof step.condition === 'function' ? step.condition : null,
+        };
+    }
+
+    return null;
+};
 
 const runLifecycleSteps = (context, steps = []) => {
     if (!context || !Array.isArray(steps)) {
@@ -24,9 +88,14 @@ const runLifecycleSteps = (context, steps = []) => {
     }
 
     steps
-        .map(step => (typeof step === 'string' ? context?.[step] : step))
-        .filter(step => typeof step === 'function')
-        .forEach(step => step.call(context));
+        .map(step => normalizeLifecycleStep(context, step))
+        .filter(Boolean)
+        .forEach(({ fn, args, condition }) => {
+            if (condition && !condition(context)) {
+                return;
+            }
+            fn.apply(context, args);
+        });
 };
 
 const createToolbarFacade = (resolveToolbar) => {
@@ -95,54 +164,58 @@ const MODAL_ACTIONS = Object.freeze({
 });
 
 const DOM = Object.freeze({
-    addClasses(element, classes = []) {
-        if (element && classes.length) {
-            element.classList.add(...classes);
+    withElement(element, callback, fallback = undefined) {
+        if (!element || typeof callback !== 'function') {
+            return fallback;
         }
+
+        return callback(element);
+    },
+    addClasses(element, classes = []) {
+        return this.withElement(element, el => {
+            if (classes.length) {
+                el.classList.add(...classes);
+            }
+        });
     },
     removeClasses(element, classes = []) {
-        if (element && classes.length) {
-            element.classList.remove(...classes);
-        }
+        return this.withElement(element, el => {
+            if (classes.length) {
+                el.classList.remove(...classes);
+            }
+        });
     },
     ensureMinHeightZero(element) {
-        if (
-            element
-            && (!element.style.minHeight
-                || element.style.minHeight === ''
-                || element.style.minHeight === 'auto')
-        ) {
-            element.style.minHeight = '0';
-        }
+        return this.withElement(element, el => {
+            if (!el.style.minHeight || el.style.minHeight === '' || el.style.minHeight === 'auto') {
+                el.style.minHeight = '0';
+            }
+        });
     },
     ensureFlexOverflowHidden(element) {
-        if (!element) {
-            return;
-        }
-
-        try {
-            const computed = window.getComputedStyle(element);
-            if (computed.display.includes('flex') && computed.overflow === 'visible') {
-                element.style.overflow = 'hidden';
+        return this.withElement(element, el => {
+            try {
+                const computed = window.getComputedStyle(el);
+                if (computed.display.includes('flex') && computed.overflow === 'visible') {
+                    el.style.overflow = 'hidden';
+                }
+            } catch (e) {
+                // Ignore layout read errors in environments without layout engine
             }
-        } catch (e) {
-            // Ignore layout read errors in environments without layout engine
-        }
+        });
     },
     decorate(element, { add = [], remove = [], attributes = {} } = {}) {
-        if (!element) {
-            return;
-        }
+        this.withElement(element, el => {
+            this.addClasses(el, add);
+            this.removeClasses(el, remove);
 
-        this.addClasses(element, add);
-        this.removeClasses(element, remove);
-
-        Object.entries(attributes).forEach(([name, value]) => {
-            if (value === null || value === undefined) {
-                element.removeAttribute(name);
-            } else {
-                element.setAttribute(name, value);
-            }
+            Object.entries(attributes).forEach(([name, value]) => {
+                if (value === null || value === undefined) {
+                    el.removeAttribute(name);
+                } else {
+                    el.setAttribute(name, value);
+                }
+            });
         });
     },
 });
@@ -250,6 +323,465 @@ const CONTROL_STATE_HANDLERS = Object.freeze({
     },
 });
 
+class GridLayoutHelper {
+    constructor(grid) {
+        this.grid = grid;
+    }
+
+    prepareContainers() {
+        const grid = this.grid;
+        DOM.ensureMinHeightZero(grid.element);
+
+        if (!grid.paneContent) {
+            return;
+        }
+
+        const tabContent = (grid.paneContent.parentElement && grid.paneContent.parentElement.classList
+            && grid.paneContent.parentElement.classList.contains('tab-content'))
+            ? grid.paneContent.parentElement
+            : null;
+        const paneBody = grid.paneContent.closest('[data-pane-part="body"]');
+        const paneRoot = grid.paneContent.closest('[data-role="pane"]');
+
+        if (paneBody) {
+            paneBody.classList.add('d-flex', 'flex-column');
+        }
+
+        if (tabContent) {
+            tabContent.classList.add('flex-grow-1');
+            if (!tabContent.classList.contains('d-flex')) {
+                tabContent.classList.add('d-flex', 'flex-column');
+            }
+        }
+
+        grid.paneContent.classList.add('flex-grow-1');
+        if (!grid.paneContent.style.flexBasis) {
+            grid.paneContent.style.flexBasis = 'auto';
+        }
+
+        const nodesToNormalize = [grid.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
+
+        nodesToNormalize.forEach(node => {
+            DOM.ensureMinHeightZero(node);
+            DOM.ensureFlexOverflowHidden(node);
+        });
+    }
+
+    fitGridSize() {
+        const grid = this.grid;
+
+        if (!grid.gridContainer) {
+            return;
+        }
+
+        if (grid.paneContent && !grid.paneContent.offsetParent) {
+            return;
+        }
+
+        const headElement = (grid.gridHeadContainer && grid.gridHeadContainer === grid.gridContainer && grid.table && grid.table.tHead)
+            ? grid.table.tHead
+            : grid.gridHeadContainer;
+
+        let gridHeight = null;
+
+        if (grid.paneContent) {
+            const margin = parseInt(grid.element.style.marginTop, 10) || 0;
+            const externalToolbar = grid.pane
+                ? grid.pane.querySelector('[data-pane-part="footer"]')
+                : null;
+            const toolbarHeight = grid.gridToolbar ? grid.gridToolbar.offsetHeight : 0;
+            const headHeight = headElement ? headElement.offsetHeight : 0;
+            const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
+
+            gridHeight = grid.paneContent.offsetHeight
+                - headHeight
+                - toolbarHeight
+                - margin
+                - externalToolbarHeight;
+
+            if (gridHeight < 0) {
+                gridHeight = 0;
+            }
+
+            if (grid.gridContainer === grid.gridHeadContainer && headElement) {
+                gridHeight += headHeight;
+            }
+        }
+
+        const viewportLimit = this.getGridViewportLimit();
+        const paneHeight = grid.paneContent ? grid.paneContent.offsetHeight : null;
+        const minHeightBaseline = grid.minGridHeight || 300;
+
+        let effectiveMinHeight = minHeightBaseline;
+        if (paneHeight) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, paneHeight);
+        }
+        if (viewportLimit !== null) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, viewportLimit);
+        }
+
+        if (gridHeight === null) {
+            gridHeight = effectiveMinHeight;
+        } else {
+            gridHeight = Math.max(gridHeight, effectiveMinHeight);
+        }
+
+        if (viewportLimit !== null) {
+            gridHeight = Math.min(gridHeight, viewportLimit);
+        }
+
+        const paneLimit = this.getPaneContentLimit();
+        if (paneLimit !== null) {
+            gridHeight = Math.min(gridHeight, paneLimit);
+        }
+
+        if (gridHeight > 0) {
+            grid.gridContainer.style.height = gridHeight + 'px';
+            grid.gridContainer.style.minHeight = '0px';
+            grid.gridContainer.style.overflowY = 'auto';
+            grid.gridContainer.style.overflowX = 'hidden';
+        } else {
+            grid.gridContainer.style.removeProperty('height');
+            grid.gridContainer.style.removeProperty('min-height');
+            grid.gridContainer.style.removeProperty('overflow-y');
+            grid.gridContainer.style.removeProperty('overflow-x');
+        }
+
+        grid.syncGridHeadScroll();
+    }
+
+    fitGridFormSize() {
+        const grid = this.grid;
+        if (!grid.gridContainer) {
+            return;
+        }
+
+        if (!grid.pane) {
+            this.fitGridSize();
+            return;
+        }
+
+        if (!grid.paneContent) {
+            grid.fitGridSize();
+            return;
+        }
+
+        const toolbarHeight = grid.gridToolbar ? grid.gridToolbar.offsetHeight : 0;
+        const headElement = (grid.gridHeadContainer && grid.gridHeadContainer === grid.gridContainer && grid.table && grid.table.tHead)
+            ? grid.table.tHead
+            : grid.gridHeadContainer;
+        const gridHeadHeight = headElement ? headElement.offsetHeight : 0;
+        const paneToolbarTop = grid.pane.querySelector('[data-pane-part="header"]');
+        const paneToolbarBottom = grid.pane.querySelector('[data-pane-part="footer"]');
+        const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
+        const paneToolbarBottomHeight = paneToolbarBottom ? paneToolbarBottom.offsetHeight : 0;
+        const paneHeight = grid.pane.offsetHeight;
+        const margin = parseInt(grid.element.style.marginTop, 10) || 0;
+        const gridBodyContainer = grid.gridBodyContainer
+            || grid.element.querySelector('[data-grid-section="body-inner"]');
+        let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
+            + parseInt(window.getComputedStyle(grid.gridContainer).borderTopWidth || 0, 10)
+            + parseInt(window.getComputedStyle(grid.gridContainer).borderBottomWidth || 0, 10);
+
+        if (grid.minGridHeight && gridBodyHeight < grid.minGridHeight) {
+            gridBodyHeight = grid.minGridHeight;
+        }
+
+        const totalHeight = toolbarHeight
+            + gridHeadHeight
+            + gridBodyHeight
+            + paneToolbarTopHeight
+            + paneToolbarBottomHeight
+            + margin
+            + 3;
+
+        const { height: viewportHeight, offsetTop } = this.getViewportBox();
+
+        if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
+            const paneRect = grid.pane.getBoundingClientRect();
+            const marginBottom = getNumericStyle(grid.pane, 'marginBottom');
+            const paddingBottom = getNumericStyle(grid.pane, 'paddingBottom');
+            const borderBottom = getNumericStyle(grid.pane, 'borderBottomWidth');
+
+            const paneTop = paneRect && Number.isFinite(paneRect.top)
+                ? paneRect.top - offsetTop
+                : 0;
+
+            let availablePaneHeight = viewportHeight - paneTop - marginBottom - paddingBottom - borderBottom;
+            if (!Number.isFinite(availablePaneHeight)) {
+                availablePaneHeight = viewportHeight;
+            }
+
+            if (availablePaneHeight < 0) {
+                availablePaneHeight = 0;
+            }
+
+            if (availablePaneHeight > 0) {
+                grid.pane.style.maxHeight = availablePaneHeight + 'px';
+
+                const targetPaneHeightCandidate = Math.max(totalHeight, availablePaneHeight);
+                const targetPaneHeight = Number.isFinite(targetPaneHeightCandidate)
+                    ? Math.min(targetPaneHeightCandidate, availablePaneHeight)
+                    : availablePaneHeight;
+
+                if (targetPaneHeight > 0) {
+                    grid.pane.style.height = targetPaneHeight + 'px';
+                } else {
+                    grid.pane.style.removeProperty('height');
+                }
+            } else {
+                grid.pane.style.removeProperty('height');
+                grid.pane.style.removeProperty('max-height');
+            }
+        } else {
+            grid.pane.style.removeProperty('height');
+            grid.pane.style.removeProperty('max-height');
+        }
+
+        if (grid.gridContainer) {
+            const candidateHeight = Math.max(grid.gridContainer.offsetHeight, grid.minGridHeight || 0);
+            if (candidateHeight > paneHeight) {
+                grid.gridContainer.style.maxHeight = paneHeight + 'px';
+                if (grid.gridBodyContainer && grid.gridBodyContainer !== grid.gridContainer) {
+                    grid.gridBodyContainer.style.maxHeight = paneHeight + 'px';
+                }
+            }
+        }
+
+        this.fitGridSize();
+    }
+
+    getGridViewportLimit() {
+        const grid = this.grid;
+        const viewport = this.getViewportBox();
+        if (!viewport || !Number.isFinite(viewport.height) || viewport.height <= 0) {
+            return null;
+        }
+
+        const paneRect = grid.paneContent ? grid.paneContent.getBoundingClientRect() : null;
+        if (!paneRect) {
+            return null;
+        }
+
+        const marginBottom = getNumericStyle(grid.paneContent, 'marginBottom');
+        const paddingBottom = getNumericStyle(grid.paneContent, 'paddingBottom');
+        const borderBottom = getNumericStyle(grid.paneContent, 'borderBottomWidth');
+
+        let paneTop = paneRect.top - viewport.offsetTop;
+        if (!Number.isFinite(paneTop)) {
+            paneTop = 0;
+        }
+
+        const limit = viewport.height - paneTop - marginBottom - paddingBottom - borderBottom;
+        return Number.isFinite(limit) ? Math.max(limit, 0) : null;
+    }
+
+    getPaneContentLimit() {
+        const grid = this.grid;
+        if (!grid.paneContent || !grid.pane) {
+            return null;
+        }
+
+        const paneRect = grid.pane.getBoundingClientRect();
+        if (!paneRect) {
+            return null;
+        }
+
+        const paneContentRect = grid.paneContent.getBoundingClientRect();
+        if (!paneContentRect) {
+            return null;
+        }
+
+        const marginBottom = getNumericStyle(grid.paneContent, 'marginBottom');
+        const paddingBottom = getNumericStyle(grid.paneContent, 'paddingBottom');
+        const borderBottom = getNumericStyle(grid.paneContent, 'borderBottomWidth');
+
+        let limit = paneRect.bottom - paneContentRect.top - marginBottom - paddingBottom - borderBottom;
+        if (!Number.isFinite(limit)) {
+            return null;
+        }
+
+        if (limit < 0) {
+            limit = 0;
+        }
+
+        return limit;
+    }
+
+    getViewportBox() {
+        try {
+            if (window.visualViewport) {
+                const viewport = window.visualViewport;
+                if (viewport) {
+                    return {
+                        height: viewport.height,
+                        width: typeof viewport.width === 'number'
+                            ? viewport.width
+                            : (window.innerWidth || document.documentElement.clientWidth || 0),
+                        offsetTop: viewport.offsetTop || 0,
+                        offsetLeft: viewport.offsetLeft || 0,
+                    };
+                }
+            }
+        } catch (error) {
+            // visualViewport might not be accessible (e.g., cross-origin iframes)
+        }
+
+        return {
+            height: window.innerHeight || document.documentElement.clientHeight || 0,
+            width: window.innerWidth || document.documentElement.clientWidth || 0,
+            offsetTop: 0,
+            offsetLeft: 0,
+        };
+    }
+}
+
+class GridSelectionHelper {
+    constructor(grid) {
+        this.grid = grid;
+    }
+
+    selectItem(item) {
+        const grid = this.grid;
+        const current = grid.selectedItem;
+
+        if (!item) {
+            this.deselectItem();
+            return;
+        }
+
+        if (item === current) {
+            this.deselectItem();
+            return;
+        }
+
+        if (current) {
+            this.deselectItem({ silent: true });
+        }
+
+        item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
+        item.classList.add('grid-row-selected');
+        grid.selectedItem = item;
+        grid.fireEvent('select', item);
+        grid.fireEvent('selectionChange', item);
+        grid.updateSortHighlight();
+    }
+
+    deselectItem(options = {}) {
+        const grid = this.grid;
+        if (grid.selectedItem) {
+            grid.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
+        }
+        grid.selectedItem = null;
+        if (!options.silent) {
+            grid.fireEvent('selectionChange', null);
+        }
+        grid.updateSortHighlight();
+    }
+
+    getSelectedItem() {
+        return this.grid.selectedItem;
+    }
+
+    getSelectedRecord() {
+        const selected = this.getSelectedItem();
+        return selected ? selected.record : false;
+    }
+
+    getSelectedRecordKey() {
+        const grid = this.grid;
+        if (!grid.keyFieldName) {
+            return false;
+        }
+        const record = this.getSelectedRecord();
+        return record ? record[grid.keyFieldName] : false;
+    }
+
+    dataKeyExists(key) {
+        const grid = this.grid;
+        if (!grid.data || !grid.keyFieldName) {
+            return false;
+        }
+        return grid.data.some(item => item[grid.keyFieldName] == key);
+    }
+
+    clear() {
+        const grid = this.grid;
+        this.deselectItem();
+        while (grid.tbody?.firstChild) {
+            grid.tbody.removeChild(grid.tbody.firstChild);
+        }
+        grid.clearSortHighlight();
+    }
+}
+
+class GridEventHelper {
+    constructor(grid) {
+        this.grid = grid;
+    }
+
+    bindGlobalHandlers() {
+        const grid = this.grid;
+        grid.handleWindowResize = () => {
+            grid.fitGridFormSize();
+        };
+
+        window.addEventListener('resize', grid.handleWindowResize);
+
+        grid.on('dirty', () => {
+            grid.isDirty = true;
+        });
+    }
+}
+
+const createRequestService = ({ request = null, show = noop, hide = noop } = {}) => {
+    const perform = typeof request === 'function'
+        ? request
+        : ((url, body, onSuccess, onError) => {
+            if (typeof Energine?.request === 'function') {
+                Energine.request(url, body ?? null, onSuccess, null, onError);
+            } else {
+                hide();
+                throw new Error('GridManager: request function is not available.');
+            }
+        });
+
+    return {
+        run(url, { body = null, onSuccess = noop, onError = null } = {}) {
+            show();
+
+            const handleSuccess = (...args) => {
+                try {
+                    onSuccess?.(...args);
+                } finally {
+                    hide();
+                }
+            };
+
+            const handleError = (responseText) => {
+                try {
+                    const handled = typeof onError === 'function' ? onError(responseText) : false;
+                    if (!handled && responseText) {
+                        alert(responseText);
+                    }
+                } finally {
+                    hide();
+                }
+            };
+
+            return perform(url, body ?? null, handleSuccess, handleError);
+        },
+    };
+};
+
+const defaultRequestService = createRequestService({
+    request: (url, body, onSuccess, onError) => {
+        Energine.request(url, body ?? null, onSuccess, null, onError);
+    },
+    show: showLoader,
+    hide: hideLoader,
+});
+
 const GRID_INITIALIZATION_SEQUENCE = Object.freeze([
     '_initializeState',
     '_captureDomStructure',
@@ -341,6 +873,9 @@ class Grid {
         this._loadLegacyStyles();
         this.element = this._resolveElement(element);
         this.options = this._normalizeOptions(options);
+        this.layoutHelper = new GridLayoutHelper(this);
+        this.selectionHelper = new GridSelectionHelper(this);
+        this.eventHelper = new GridEventHelper(this);
 
         runLifecycleSteps(this, GRID_INITIALIZATION_SEQUENCE);
 
@@ -486,15 +1021,7 @@ class Grid {
     }
 
     _bindGlobalHandlers() {
-        this.handleWindowResize = () => {
-            this.fitGridFormSize();
-        };
-
-        window.addEventListener('resize', this.handleWindowResize);
-
-        this.on('dirty', () => {
-            this.isDirty = true;
-        });
+        this.eventHelper.bindGlobalHandlers();
     }
 
     _initializeLayoutPlaceholders() {
@@ -545,63 +1072,26 @@ class Grid {
     }
 
     selectItem(item) {
-        const current = this.selectedItem;
-
-        if (!item) {
-            this.deselectItem();
-            return;
-        }
-
-        if (item === current) {
-            this.deselectItem();
-            return;
-        }
-
-        if (current) {
-            this.deselectItem({ silent: true });
-        }
-
-        item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
-        item.classList.add('grid-row-selected');
-        this.selectedItem = item;
-        this.fireEvent('select', item);
-        this.fireEvent('selectionChange', item);
-        this.updateSortHighlight();
+        this.selectionHelper.selectItem(item);
     }
     deselectItem(options = {}) {
-        if (this.selectedItem) {
-            this.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
-        }
-        this.selectedItem = null;
-        if (!options.silent) {
-            this.fireEvent('selectionChange', null);
-        }
-        this.updateSortHighlight();
+        this.selectionHelper.deselectItem(options);
     }
-    getSelectedItem() { return this.selectedItem; }
+    getSelectedItem() { return this.selectionHelper.getSelectedItem(); }
     isEmpty() { return !this.data || !this.data.length; }
 
     getSelectedRecord() {
-        if (!this.getSelectedItem()) return false;
-        return this.getSelectedItem().record;
+        return this.selectionHelper.getSelectedRecord();
     }
     getSelectedRecordKey() {
-        if (!this.keyFieldName) return false;
-        let rec = this.getSelectedRecord();
-        return rec ? rec[this.keyFieldName] : false;
+        return this.selectionHelper.getSelectedRecordKey();
     }
     dataKeyExists(key) {
-        if (!this.data) return false;
-        if (!this.keyFieldName) return false;
-        return this.data.some(item => item[this.keyFieldName] == key);
+        return this.selectionHelper.dataKeyExists(key);
     }
 
     clear() {
-        this.deselectItem();
-        while (this.tbody.firstChild) {
-            this.tbody.removeChild(this.tbody.firstChild);
-        }
-        this.clearSortHighlight();
+        this.selectionHelper.clear();
     }
 
     build() {
@@ -790,41 +1280,7 @@ class Grid {
     }
 
     prepareGridLayoutContainers() {
-        DOM.ensureMinHeightZero(this.element);
-
-        if (!this.paneContent) {
-            return;
-        }
-
-        const tabContent = (this.paneContent.parentElement && this.paneContent.parentElement.classList
-            && this.paneContent.parentElement.classList.contains('tab-content'))
-            ? this.paneContent.parentElement
-            : null;
-        const paneBody = this.paneContent.closest('[data-pane-part="body"]');
-        const paneRoot = this.paneContent.closest('[data-role="pane"]');
-
-        if (paneBody) {
-            paneBody.classList.add('d-flex', 'flex-column');
-        }
-
-        if (tabContent) {
-            tabContent.classList.add('flex-grow-1');
-            if (!tabContent.classList.contains('d-flex')) {
-                tabContent.classList.add('d-flex', 'flex-column');
-            }
-        }
-
-        this.paneContent.classList.add('flex-grow-1');
-        if (!this.paneContent.style.flexBasis) {
-            this.paneContent.style.flexBasis = 'auto';
-        }
-
-        const nodesToNormalize = [this.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
-
-        nodesToNormalize.forEach(node => {
-            DOM.ensureMinHeightZero(node);
-            DOM.ensureFlexOverflowHidden(node);
-        });
+        this.layoutHelper.prepareContainers();
     }
 
     bindTabActivationHandler() {
@@ -1376,271 +1832,23 @@ class Grid {
     }
 
     fitGridSize() {
-        if (!this.gridContainer) {
-            return;
-        }
-
-        if (this.paneContent && !this.paneContent.offsetParent) {
-            return;
-        }
-
-        const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
-            ? this.table.tHead
-            : this.gridHeadContainer;
-
-        let gridHeight = null;
-
-        if (this.paneContent) {
-            const margin = parseInt(this.element.style.marginTop, 10) || 0;
-            const externalToolbar = this.pane
-                ? this.pane.querySelector('[data-pane-part="footer"]')
-                : null;
-            const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
-            const headHeight = headElement ? headElement.offsetHeight : 0;
-            const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
-
-            gridHeight = this.paneContent.offsetHeight
-                - headHeight
-                - toolbarHeight
-                - margin
-                - externalToolbarHeight;
-
-            if (gridHeight < 0) {
-                gridHeight = 0;
-            }
-
-            if (this.gridContainer === this.gridHeadContainer && headElement) {
-                gridHeight += headHeight;
-            }
-        }
-
-        const viewportLimit = this.getGridViewportLimit();
-        const paneHeight = this.paneContent ? this.paneContent.offsetHeight : null;
-        const minHeightBaseline = this.minGridHeight || 300;
-
-        let effectiveMinHeight = minHeightBaseline;
-        if (paneHeight) {
-            effectiveMinHeight = Math.min(effectiveMinHeight, paneHeight);
-        }
-        if (viewportLimit !== null) {
-            effectiveMinHeight = Math.min(effectiveMinHeight, viewportLimit);
-        }
-
-        if (gridHeight === null) {
-            gridHeight = effectiveMinHeight;
-        } else {
-            gridHeight = Math.max(gridHeight, effectiveMinHeight);
-        }
-
-        if (viewportLimit !== null) {
-            gridHeight = Math.min(gridHeight, viewportLimit);
-        }
-
-        const paneLimit = this.getPaneContentLimit();
-        if (paneLimit !== null) {
-            gridHeight = Math.min(gridHeight, paneLimit);
-        }
-
-        if (gridHeight > 0) {
-            this.gridContainer.style.height = gridHeight + 'px';
-            this.gridContainer.style.minHeight = '0px';
-            this.gridContainer.style.overflowY = 'auto';
-            this.gridContainer.style.overflowX = 'hidden';
-        } else {
-            this.gridContainer.style.removeProperty('height');
-            this.gridContainer.style.removeProperty('min-height');
-            this.gridContainer.style.removeProperty('overflow-y');
-            this.gridContainer.style.removeProperty('overflow-x');
-        }
-
-        this.syncGridHeadScroll();
+        this.layoutHelper.fitGridSize();
     }
 
     getGridViewportLimit() {
-        if (!this.gridContainer) {
-            return null;
-        }
-
-        try {
-            const rect = this.gridContainer.getBoundingClientRect();
-            const { height: viewportHeight, offsetTop } = this.getViewportBox();
-
-            if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
-                return null;
-            }
-
-            if (!rect || !Number.isFinite(rect.top)) {
-                return null;
-            }
-
-            const styles = window.getComputedStyle(this.gridContainer);
-            const marginBottom = parsePixels(styles.marginBottom);
-            const paddingBottom = parsePixels(styles.paddingBottom);
-            const borderBottom = parsePixels(styles.borderBottomWidth);
-
-            const distanceFromViewportTop = rect.top - offsetTop;
-            let available = viewportHeight - distanceFromViewportTop - marginBottom - paddingBottom - borderBottom;
-
-            if (this.pane) {
-                const subtractPaneSpace = element => {
-                    if (!element || !element.offsetParent) {
-                        return 0;
-                    }
-
-                    const elementMarginTop = getNumericStyle(element, 'marginTop');
-                    const elementMarginBottom = getNumericStyle(element, 'marginBottom');
-
-                    return element.offsetHeight + elementMarginTop + elementMarginBottom;
-                };
-
-                const paneFooter = this.pane.querySelector('[data-pane-part="footer"]');
-                if (paneFooter && paneFooter.compareDocumentPosition(this.gridContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
-                    available -= subtractPaneSpace(paneFooter);
-                }
-            }
-
-            return Number.isFinite(available) ? Math.max(available, 0) : null;
-        } catch (error) {
-            return null;
-        }
+        return this.layoutHelper.getGridViewportLimit();
     }
 
     getPaneContentLimit() {
-        if (!this.paneContent || !this.gridContainer) {
-            return null;
-        }
-
-        try {
-            const paneRect = this.paneContent.getBoundingClientRect();
-            const containerRect = this.gridContainer.getBoundingClientRect();
-
-            if (!paneRect || !containerRect) {
-                return null;
-            }
-
-            if (!Number.isFinite(paneRect.bottom) || !Number.isFinite(containerRect.top)) {
-                return null;
-            }
-
-            const paddingBottom = getNumericStyle(this.paneContent, 'paddingBottom');
-            const borderBottom = getNumericStyle(this.paneContent, 'borderBottomWidth');
-
-            const available = paneRect.bottom - paddingBottom - borderBottom - containerRect.top;
-
-            return Number.isFinite(available) ? Math.max(available, 0) : null;
-        } catch (error) {
-            return null;
-        }
+        return this.layoutHelper.getPaneContentLimit();
     }
 
     getViewportBox() {
-        try {
-            const viewport = window.visualViewport;
-            if (viewport && typeof viewport.height === 'number') {
-                return {
-                    height: viewport.height,
-                    width: typeof viewport.width === 'number'
-                        ? viewport.width
-                        : (window.innerWidth || document.documentElement.clientWidth || 0),
-                    offsetTop: viewport.offsetTop || 0,
-                    offsetLeft: viewport.offsetLeft || 0,
-                };
-            }
-        } catch (error) {
-            // visualViewport might not be accessible (e.g., cross-origin iframes)
-        }
-
-        return {
-            height: window.innerHeight || document.documentElement.clientHeight || 0,
-            width: window.innerWidth || document.documentElement.clientWidth || 0,
-            offsetTop: 0,
-            offsetLeft: 0,
-        };
+        return this.layoutHelper.getViewportBox();
     }
 
     fitGridFormSize() {
-        if (!this.gridContainer) {
-            return;
-        }
-
-        if (!this.pane) {
-            this.fitGridSize();
-            return;
-        }
-
-        const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
-        const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
-            ? this.table.tHead
-            : this.gridHeadContainer;
-        const gridHeadHeight = headElement ? headElement.offsetHeight : 0;
-        const paneToolbarTop = this.pane.querySelector('[data-pane-part="header"]');
-        const paneToolbarBottom = this.pane.querySelector('[data-pane-part="footer"]');
-        const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
-        const paneToolbarBottomHeight = paneToolbarBottom ? paneToolbarBottom.offsetHeight : 0;
-        const paneHeight = this.pane.offsetHeight;
-        const margin = parseInt(this.element.style.marginTop, 10) || 0;
-        const gridBodyContainer = this.gridBodyContainer
-            || this.element.querySelector('[data-grid-section="body-inner"]');
-        let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderTopWidth || 0, 10)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderBottomWidth || 0, 10);
-
-        if (this.minGridHeight && gridBodyHeight < this.minGridHeight) {
-            gridBodyHeight = this.minGridHeight;
-        }
-
-        const totalHeight = toolbarHeight
-            + gridHeadHeight
-            + gridBodyHeight
-            + paneToolbarTopHeight
-            + paneToolbarBottomHeight
-            + margin
-            + 3;
-
-        const { height: viewportHeight, offsetTop } = this.getViewportBox();
-
-        if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
-            const paneRect = this.pane.getBoundingClientRect();
-            const marginBottom = getNumericStyle(this.pane, 'marginBottom');
-            const paddingBottom = getNumericStyle(this.pane, 'paddingBottom');
-            const borderBottom = getNumericStyle(this.pane, 'borderBottomWidth');
-
-            const paneTop = paneRect && Number.isFinite(paneRect.top)
-                ? paneRect.top - offsetTop
-                : 0;
-
-            let availablePaneHeight = viewportHeight - paneTop - marginBottom - paddingBottom - borderBottom;
-            if (!Number.isFinite(availablePaneHeight)) {
-                availablePaneHeight = viewportHeight;
-            }
-
-            if (availablePaneHeight < 0) {
-                availablePaneHeight = 0;
-            }
-
-            if (availablePaneHeight > 0) {
-                this.pane.style.maxHeight = availablePaneHeight + 'px';
-
-                const targetPaneHeightCandidate = Math.max(totalHeight, availablePaneHeight);
-                const targetPaneHeight = Number.isFinite(targetPaneHeightCandidate)
-                    ? Math.min(targetPaneHeightCandidate, availablePaneHeight)
-                    : availablePaneHeight;
-
-                if (targetPaneHeight > 0) {
-                    this.pane.style.height = targetPaneHeight + 'px';
-                } else {
-                    this.pane.style.removeProperty('height');
-                }
-            } else {
-                this.pane.style.removeProperty('height');
-                this.pane.style.removeProperty('max-height');
-            }
-        } else {
-            this.pane.style.removeProperty('height');
-            this.pane.style.removeProperty('max-height');
-        }
-
-        this.fitGridSize();
+        this.layoutHelper.fitGridFormSize();
     }
 
     // --- Sorting
@@ -1894,29 +2102,8 @@ class GridManager {
         return (this.pageList && this.pageList.currentPage) || null;
     }
 
-    _requestWithLoader(url, { body = null, onSuccess = noop, onError = null } = {}) {
-        showLoader();
-
-        const handleSuccess = (...args) => {
-            try {
-                onSuccess?.(...args);
-            } finally {
-                hideLoader();
-            }
-        };
-
-        const handleError = (responseText) => {
-            try {
-                const handled = typeof onError === 'function' ? onError(responseText) : false;
-                if (!handled && responseText) {
-                    alert(responseText);
-                }
-            } finally {
-                hideLoader();
-            }
-        };
-
-        Energine.request(url, body ?? null, handleSuccess, null, handleError);
+    _requestWithLoader(url, options = {}) {
+        this.requestService.run(url, options);
     }
 
     /**
@@ -1936,6 +2123,7 @@ class GridManager {
         });
 
         this.toolbarFacade = createToolbarFacade(() => this.toolbar);
+        this.requestService = defaultRequestService;
     }
 
     /**
