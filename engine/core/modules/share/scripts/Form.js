@@ -538,7 +538,7 @@ class Form {
                     onClose: (result) => {
                         const selectedValue = result?.key;
                         const wasDirty = Boolean(result?.dirty);
-                        let shouldReload = wasDirty;
+                        let shouldReload = isSelectElement ? true : wasDirty;
 
                         if (!shouldReload && selectedValue && isSelectElement) {
                             const hasSelectedOption = Array.from(control.options || [])
