@@ -16,6 +16,55 @@ const showLoader = showLoaderFn || globalScope?.showLoader || (() => {});
 const hideLoader = hideLoaderFn || globalScope?.hideLoader || (() => {});
 const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 
+const noop = () => {};
+
+const applyClasses = (element, classes = []) => {
+    if (element && classes.length) {
+        element.classList.add(...classes);
+    }
+};
+
+const removeClasses = (element, classes = []) => {
+    if (element && classes.length) {
+        element.classList.remove(...classes);
+    }
+};
+
+const decorateElement = (element, { add = [], remove = [], attributes = {} } = {}) => {
+    if (!element) {
+        return;
+    }
+
+    applyClasses(element, add);
+    removeClasses(element, remove);
+
+    Object.entries(attributes).forEach(([name, value]) => {
+        if (value === null || value === undefined) {
+            element.removeAttribute(name);
+        } else {
+            element.setAttribute(name, value);
+        }
+    });
+};
+
+const parsePixels = value => {
+    const numeric = Number.parseFloat(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const getNumericStyle = (element, property) => {
+    if (!element) {
+        return 0;
+    }
+
+    try {
+        const styles = window.getComputedStyle(element);
+        return parsePixels(styles?.[property]);
+    } catch (error) {
+        return 0;
+    }
+};
+
 const SELECTION_KEYWORDS_EXACT = new Set([
     'view', 'edit', 'del', 'delete', 'use', 'up', 'down', 'open', 'preview',
 ]);
@@ -26,24 +75,163 @@ const SELECTION_KEYWORDS_PREFIX = Object.freeze([
     'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject',
     'disable', 'enable', 'suspend', 'resume',
 ]);
+
+const TABLE_BODY_CLASSES = Object.freeze(['table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0']);
+const HEADER_CLASSES = Object.freeze(['text-center', 'align-middle', 'fw-semibold', 'position-relative']);
+const GRID_HEAD_CONTAINER_CLASSES = Object.freeze(['table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0']);
+const GRID_BODY_CONTAINER_CLASSES = Object.freeze(['table-responsive', 'bg-body', 'border', 'border-top-0']);
+
+const isSelectionKeywordMatch = (value = '') => {
+    const normalized = value.toLowerCase();
+    if (!normalized) {
+        return false;
+    }
+
+    if (SELECTION_KEYWORDS_EXACT.has(normalized)) {
+        return true;
+    }
+
+    return SELECTION_KEYWORDS_PREFIX.some(prefix => normalized.startsWith(prefix));
+};
+
+class ToolbarSelectionController {
+    constructor(predicate = isSelectionKeywordMatch) {
+        this.predicate = predicate;
+        this.toolbar = null;
+        this.controls = [];
+        this.lastKnownSelection = false;
+    }
+
+    setToolbar(toolbar) {
+        this.toolbar = toolbar || null;
+        this.collectControls();
+    }
+
+    collectControls() {
+        const controls = Array.isArray(this.toolbar?.controls)
+            ? this.toolbar.controls
+            : [];
+
+        this.controls = controls.filter(control => this._isSelectionDependentControl(control));
+        this.controls.forEach(control => this._prepareControl(control));
+    }
+
+    update(hasSelection = this.lastKnownSelection) {
+        this.lastKnownSelection = Boolean(hasSelection);
+        this.controls.forEach(control => this._toggleControl(control, this.lastKnownSelection));
+    }
+
+    _isSelectionDependentControl(control) {
+        const action = control?.properties?.action;
+        const id = control?.properties?.id;
+
+        return isSelectionKeywordMatch(action) || isSelectionKeywordMatch(id);
+    }
+
+    _prepareControl(control) {
+        if (!control) {
+            return;
+        }
+
+        if (control.element) {
+            control.element.dataset.requiresSelection = 'true';
+        }
+
+        if (
+            typeof control.enable === 'function'
+            && typeof control.initially_disabled === 'function'
+            && control.initially_disabled()
+        ) {
+            control.enable(true);
+        }
+
+        control._disabledBySelection = false;
+    }
+
+    _toggleControl(control, hasSelection) {
+        if (!control) {
+            return;
+        }
+
+        const initiallyDisabled = typeof control.initially_disabled === 'function'
+            ? control.initially_disabled()
+            : false;
+
+        if (!hasSelection) {
+            if (initiallyDisabled) {
+                return;
+            }
+
+            const alreadyDisabled = typeof control.disabled === 'function'
+                ? control.disabled()
+                : false;
+
+            if (!alreadyDisabled && typeof control.disable === 'function') {
+                control.disable();
+                control._disabledBySelection = true;
+            }
+            return;
+        }
+
+        if (control._disabledBySelection && typeof control.enable === 'function') {
+            control.enable();
+            control._disabledBySelection = false;
+        }
+    }
+}
 class Grid {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
      */
     constructor(element, options = {}) {
-        // Ensure document has robust flex-based layout rules when a grid exists.
-        // This helps grids inside iframes stretch to full available height.
         Grid.ensureEnhancedLayoutStyles(document);
 
-        // Load grid-specific CSS (selection color etc.)
-        try { (window.Energine || {}).loadCSS ? Energine.loadCSS('stylesheets/grid.css') : null; } catch (e) {}
+        this._loadLegacyStyles();
+        this.element = this._resolveElement(element);
+        this.options = this._normalizeOptions(options);
 
-        // Универсальная обертка для работы с элементами по селектору или объекту
-        this.element = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+        this._initializeState();
+        this._captureDomStructure();
+        this._prepareHeaders();
+        this._bindGlobalHandlers();
+        this._initializeLayoutPlaceholders();
 
+        this.on('select', this.options.onSelect);
+        this.on('doubleClick', this.options.onDoubleClick);
+    }
+
+    _loadLegacyStyles() {
+        try {
+            (window.Energine || {}).loadCSS ? Energine.loadCSS('stylesheets/grid.css') : null;
+        } catch (error) {
+            // Loading CSS is optional for modern builds, ignore failures silently.
+        }
+    }
+
+    _resolveElement(element) {
+        if (element instanceof HTMLElement) {
+            return element;
+        }
+
+        if (typeof element === 'string') {
+            return document.querySelector(element);
+        }
+
+        return element || null;
+    }
+
+    _normalizeOptions(options) {
+        const defaults = {
+            onSelect: noop,
+            onSortChange: noop,
+            onDoubleClick: noop,
+        };
+
+        return { ...defaults, ...options };
+    }
+
+    _initializeState() {
         this.data = [];
         this.metadata = {};
         this.selectedItem = null;
@@ -51,7 +239,6 @@ class Grid {
         this.isDirty = false;
         this.keyFieldName = null;
         this.prevDataLength = 0;
-        this.options = options;
         this.events = {};
         this.pendingSelectionKey = null;
         this.activeSortColumnIndex = null;
@@ -61,75 +248,94 @@ class Grid {
         this.handleColumnResizeMove = this.handleColumnResizeMove.bind(this);
         this.stopColumnResize = this.stopColumnResize.bind(this);
         this.handleGridBodyScroll = this.handleGridBodyScroll.bind(this);
+    }
 
-        // --- DOM привязка ---
+    _captureDomStructure() {
         this.useCombinedTable = false;
         this.table = null;
         this.tbody = null;
-
         this.headOff = null;
+
+        if (!this.element) {
+            this.headers = [];
+            return;
+        }
 
         const combinedTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="table"]');
         if (combinedTable) {
             this.useCombinedTable = true;
             this.table = combinedTable;
-            this.tbody = combinedTable.querySelector('tbody');
-            if (!this.tbody) {
-                this.tbody = document.createElement('tbody');
-                combinedTable.appendChild(this.tbody);
-            }
+            this.tbody = this._ensureSection(combinedTable, 'tbody');
             this.headers = Array.from(combinedTable.querySelectorAll('thead th'));
             this.headOff = combinedTable.tHead || null;
-            combinedTable.classList.add('table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0');
+            applyClasses(combinedTable, TABLE_BODY_CLASSES);
         } else {
             this.table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
             if (this.table) {
                 this.headOff = this.table.querySelector('thead');
-                if (this.headOff) this.headOff.style.display = 'none';
-                this.tbody = this.table.querySelector('tbody');
-                this.table.classList.add('table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0');
+                if (this.headOff) {
+                    this.headOff.style.display = 'none';
+                }
+                this.tbody = this._ensureSection(this.table, 'tbody');
+                applyClasses(this.table, TABLE_BODY_CLASSES);
             }
+
             const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
             if (headTable) {
-                headTable.classList.add('table', 'table-sm', 'align-middle', 'mb-0');
+                applyClasses(headTable, ['table', 'table-sm', 'align-middle', 'mb-0']);
             }
+
             this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
         }
 
         if (!this.tbody && this.table) {
-            this.tbody = this.table.querySelector('tbody');
-            if (!this.tbody) {
-                this.tbody = document.createElement('tbody');
-                this.table.appendChild(this.tbody);
-            }
+            this.tbody = this._ensureSection(this.table, 'tbody');
         }
 
         this.headers = this.headers || [];
+    }
+
+    _ensureSection(table, tagName) {
+        if (!table) {
+            return null;
+        }
+
+        let section = table.querySelector(tagName);
+        if (!section) {
+            section = document.createElement(tagName);
+            table.appendChild(section);
+        }
+        return section;
+    }
+
+    _prepareHeaders() {
         this.headers.forEach(header => {
             header.addEventListener('click', this.onChangeSort.bind(this));
-            header.classList.add('text-center', 'align-middle', 'fw-semibold', 'position-relative');
+            applyClasses(header, HEADER_CLASSES);
             header.style.cursor = 'pointer';
-        });
 
-        this.headers.forEach(header => {
             if (!header.dataset.originalLabel) {
                 header.dataset.originalLabel = header.textContent.trim();
             }
         });
+
         this.enableColumnResize();
         this.refreshSortIndicators();
+    }
 
+    _bindGlobalHandlers() {
         this.handleWindowResize = () => {
             this.fitGridFormSize();
         };
+
         window.addEventListener('resize', this.handleWindowResize);
 
-        // Поддержка событий
         this.on('dirty', () => {
             this.isDirty = true;
         });
+    }
 
-        // Структура для дальнейших ссылок
+    _initializeLayoutPlaceholders() {
         this.paneContent = null;
         this.gridToolbar = null;
         this.gridHeadContainer = null;
@@ -141,9 +347,6 @@ class Grid {
         this.gridBodyScrollElement = null;
         this.boundGridBodyScrollElement = null;
         this.tabShownHandler = null;
-
-        this.on('doubleClick', this.options.onDoubleClick);
-
     }
 
 
@@ -277,7 +480,7 @@ class Grid {
         }
         if (this.gridHeadContainer && this.gridHeadContainer !== this.table) {
             if (!this.gridHeadContainer.classList.contains('grid-head')) {
-                this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0');
+                applyClasses(this.gridHeadContainer, GRID_HEAD_CONTAINER_CLASSES);
             }
         }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
@@ -286,8 +489,7 @@ class Grid {
         }
         if (this.gridContainer && this.gridContainer !== this.gridHeadContainer) {
             if (!this.gridContainer.classList.contains('grid-table-wrapper')) {
-                const bodyClasses = ['table-responsive', 'bg-body', 'border', 'border-top-0'];
-                this.gridContainer.classList.add(...bodyClasses);
+                applyClasses(this.gridContainer, GRID_BODY_CONTAINER_CLASSES);
             }
             if (!this.gridContainer.style.minHeight || this.gridContainer.style.minHeight === '' || this.gridContainer.style.minHeight === 'auto') {
                 this.gridContainer.style.minHeight = '0';
@@ -1058,11 +1260,6 @@ class Grid {
         }
 
         try {
-            const parsePixels = value => {
-                const numeric = Number.parseFloat(value);
-                return Number.isFinite(numeric) ? numeric : 0;
-            };
-
             const rect = this.gridContainer.getBoundingClientRect();
             const { height: viewportHeight, offsetTop } = this.getViewportBox();
 
@@ -1088,9 +1285,8 @@ class Grid {
                         return 0;
                     }
 
-                    const elementStyles = window.getComputedStyle(element);
-                    const elementMarginTop = parsePixels(elementStyles.marginTop);
-                    const elementMarginBottom = parsePixels(elementStyles.marginBottom);
+                    const elementMarginTop = getNumericStyle(element, 'marginTop');
+                    const elementMarginBottom = getNumericStyle(element, 'marginBottom');
 
                     return element.offsetHeight + elementMarginTop + elementMarginBottom;
                 };
@@ -1113,11 +1309,6 @@ class Grid {
         }
 
         try {
-            const parsePixels = value => {
-                const numeric = Number.parseFloat(value);
-                return Number.isFinite(numeric) ? numeric : 0;
-            };
-
             const paneRect = this.paneContent.getBoundingClientRect();
             const containerRect = this.gridContainer.getBoundingClientRect();
 
@@ -1129,9 +1320,8 @@ class Grid {
                 return null;
             }
 
-            const paneStyles = window.getComputedStyle(this.paneContent);
-            const paddingBottom = parsePixels(paneStyles.paddingBottom);
-            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
+            const paddingBottom = getNumericStyle(this.paneContent, 'paddingBottom');
+            const borderBottom = getNumericStyle(this.paneContent, 'borderBottomWidth');
 
             const available = paneRect.bottom - paddingBottom - borderBottom - containerRect.top;
 
@@ -1205,19 +1395,13 @@ class Grid {
             + margin
             + 3;
 
-        const parsePixels = value => {
-            const numeric = Number.parseFloat(value);
-            return Number.isFinite(numeric) ? numeric : 0;
-        };
-
         const { height: viewportHeight, offsetTop } = this.getViewportBox();
 
         if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
             const paneRect = this.pane.getBoundingClientRect();
-            const paneStyles = window.getComputedStyle(this.pane);
-            const marginBottom = parsePixels(paneStyles.marginBottom);
-            const paddingBottom = parsePixels(paneStyles.paddingBottom);
-            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
+            const marginBottom = getNumericStyle(this.pane, 'marginBottom');
+            const paddingBottom = getNumericStyle(this.pane, 'paddingBottom');
+            const borderBottom = getNumericStyle(this.pane, 'borderBottomWidth');
 
             const paneTop = paneRect && Number.isFinite(paneRect.top)
                 ? paneRect.top - offsetTop
@@ -1491,8 +1675,7 @@ class GridManager {
         this.initialized = false;
         this.toolbar = null;
         this.gridPendingSelection = null;
-        this.selectionControls = [];
-        this.hasSelection = false;
+        this.selectionController = new ToolbarSelectionController();
         this.singlePath = this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || '';
     }
 
@@ -1711,25 +1894,24 @@ class GridManager {
      * @param {HTMLElement|null} item
      */
     handleSelectionChange(item) {
-        this.hasSelection = !!item;
-        this.updateSelectionDependentControls(this.hasSelection);
+        if (!this.selectionController) {
+            return;
+        }
+
+        this.selectionController.update(!!item);
     }
 
     /**
      * Scan toolbar controls and store ones that depend on row selection.
      */
     setupSelectionControls() {
-        const controls = this._getToolbarControls();
-        if (!controls.length) {
-            this.selectionControls = [];
-            return;
+        if (!this.selectionController) {
+            this.selectionController = new ToolbarSelectionController();
         }
 
-        this.selectionControls = controls.filter(control => this._isSelectionDependentControl(control));
-        this.selectionControls.forEach(control => this._prepareSelectionControl(control));
-
-        const hasSelection = !!(this.grid && this.grid.getSelectedItem());
-        this.updateSelectionDependentControls(hasSelection);
+        this.selectionController.setToolbar(this.toolbar);
+        const hasSelection = Boolean(this.grid && this.grid.getSelectedItem());
+        this.selectionController.update(hasSelection);
     }
 
     /**
@@ -1750,52 +1932,8 @@ class GridManager {
             this._invokeToolbarMethod('enableControls');
         }
 
-        this.updateSelectionDependentControls(this.hasSelection);
-    }
-
-    /**
-     * Determine whether control should be enabled only when row is selected.
-     *
-     * @param {Object} control
-     * @returns {boolean}
-     */
-    _isSelectionDependentControl(control) {
-        if (!control?.properties) {
-            return false;
-        }
-
-        const action = (control.properties.action || '').toLowerCase();
-        const id = (control.properties.id || '').toLowerCase();
-
-        if (!action && !id) {
-            return false;
-        }
-
-        if (SELECTION_KEYWORDS_EXACT.has(action) || SELECTION_KEYWORDS_EXACT.has(id)) {
-            return true;
-        }
-
-        return SELECTION_KEYWORDS_PREFIX.some(prefix => action.startsWith(prefix) || id.startsWith(prefix));
-    }
-
-    _prepareSelectionControl(control) {
-        if (!control) {
-            return;
-        }
-
-        if (control.element) {
-            control.element.dataset.requiresSelection = 'true';
-        }
-
-        if (
-            typeof control.enable === 'function'
-            && typeof control.initially_disabled === 'function'
-            && control.initially_disabled()
-        ) {
-            control.enable(true);
-        }
-
-        control._disabledBySelection = false;
+        const hasSelection = Boolean(this.grid && this.grid.getSelectedItem());
+        this.updateSelectionDependentControls(hasSelection);
     }
 
     /**
@@ -1804,41 +1942,8 @@ class GridManager {
      * @param {boolean} hasSelection
      */
     updateSelectionDependentControls(hasSelection) {
-        if (!Array.isArray(this.selectionControls) || !this.selectionControls.length) {
-            return;
-        }
-
-        this.selectionControls.forEach(control => this._toggleControlForSelection(control, hasSelection));
-    }
-
-    _toggleControlForSelection(control, hasSelection) {
-        if (!control) {
-            return;
-        }
-
-        const initiallyDisabled = typeof control.initially_disabled === 'function'
-            ? control.initially_disabled()
-            : false;
-
-        if (!hasSelection) {
-            if (initiallyDisabled) {
-                return;
-            }
-
-            const alreadyDisabled = typeof control.disabled === 'function'
-                ? control.disabled()
-                : false;
-
-            if (!alreadyDisabled && typeof control.disable === 'function') {
-                control.disable();
-                control._disabledBySelection = true;
-            }
-            return;
-        }
-
-        if (control._disabledBySelection && typeof control.enable === 'function') {
-            control.enable();
-            control._disabledBySelection = false;
+        if (this.selectionController) {
+            this.selectionController.update(hasSelection);
         }
     }
 
@@ -2179,22 +2284,25 @@ class Filter {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
-        this.element.classList.add('row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'bg-body');
-        this.element.classList.remove('mb-3');
+        decorateElement(this.element, {
+            add: ['row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'bg-body'],
+            remove: ['mb-3'],
+        });
 
         // Привязки к основным элементам управления
         const applyButton = this.element.querySelector('[data-action="apply-filter"]');
         const resetLink = this.element.querySelector('[data-action="reset-filter"]');
         this.active = false;
 
-        if (applyButton) {
-            applyButton.classList.add('btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
-        }
-        if (resetLink) {
-            resetLink.classList.remove('btn-link', 'p-0', 'text-decoration-none');
-            resetLink.classList.add('btn', 'btn-outline-secondary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
-            resetLink.setAttribute('role', 'button');
-        }
+        decorateElement(applyButton, {
+            add: ['btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
+        });
+
+        decorateElement(resetLink, {
+            remove: ['btn-link', 'p-0', 'text-decoration-none'],
+            add: ['btn', 'btn-outline-secondary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
+            attributes: { role: 'button' },
+        });
 
         // Поля фильтра
         this.fields = this.element.querySelector('[data-role="filter-field"]');
@@ -2203,8 +2311,8 @@ class Filter {
         if (!this.fields) throw new Error('Filter: data-role="filter-field" not found!');
         if (!this.condition) throw new Error('Filter: data-role="filter-condition" not found!');
 
-        this.fields.classList.add('form-select', 'form-select-sm');
-        this.condition.classList.add('form-select', 'form-select-sm');
+        decorateElement(this.fields, { add: ['form-select', 'form-select-sm'] });
+        decorateElement(this.condition, { add: ['form-select', 'form-select-sm'] });
 
         // Инициализация QueryControls
         this.inputs = new GridManager.Filter.QueryControls(
@@ -2214,7 +2322,7 @@ class Filter {
 
         // Перенос типов из data-types в dataset (store/retrieve)
         Array.from(this.condition.children).forEach(el => {
-            let types = el.getAttribute('data-types');
+            const types = el.getAttribute('data-types');
             if (types) {
                 el.dataset.type = types;
                 el.removeAttribute('data-types');
@@ -2233,7 +2341,7 @@ class Filter {
         });
         this.fields.addEventListener('change', this.checkCondition.bind(this));
         this.condition.addEventListener('change', (event) => {
-            const fieldType = this.fields.options[this.fields.selectedIndex].getAttribute('type');
+            const fieldType = this._getSelectedFieldType();
             this.switchInputs(event.target.value, fieldType);
         });
 
@@ -2255,67 +2363,116 @@ class Filter {
             return;
         }
 
-        const fieldType = this.fields.options[this.fields.selectedIndex].getAttribute('type');
-        const isDate = (fieldType === 'datetime' || fieldType === 'date');
+        const fieldType = this._getSelectedFieldType();
 
-        Array.from(this.condition.options).forEach(option => {
-            if (!option) return;
-            const types = option.dataset.type ? option.dataset.type.split('|') : [];
-            option.style.display = types.includes(fieldType) ? '' : 'none';
-        });
-
-        // Убедиться, что выбранная опция видима
-        const options = Array.from(this.condition.options);
-        if (getComputedStyle(this.condition.options[this.condition.selectedIndex]).display === 'none') {
-            for (let n = 0; n < options.length; n++) {
-                if (getComputedStyle(options[n]).display !== 'none') {
-                    this.condition.selectedIndex = n;
-                    break;
-                }
-            }
-        }
-
-        // Переключить поля ввода
+        this._filterConditionOptions(fieldType);
+        this._ensureVisibleCondition();
         this.switchInputs(this.condition.value, fieldType);
-        this.disableInputField(isDate);
+
+        const isDate = this._isDateField(fieldType);
+        this._setInputsDisabled(isDate);
         if (this.inputs.showDatePickers) {
             this.inputs.showDatePickers(isDate);
         }
 
-        if (this.inputs.inputs && this.inputs.inputs[0] && this.inputs.inputs[0].style.display !== 'none') {
-            this.inputs.inputs[0].focus();
-        }
+        this._focusFirstVisibleInput();
     }
 
     // Переключение режима ввода (скаляр/период) в зависимости от типа и условия
     switchInputs(condition, type) {
-        if (type === 'boolean') {
-            if (this.inputs.hide) this.inputs.hide();
-        } else {
-            if (condition === 'between') {
-                if (this.inputs.asPeriod) this.inputs.asPeriod();
-            } else {
-                if (this.inputs.asScalar) this.inputs.asScalar();
-            }
-        }
+        this._applyInputMode(condition, type);
     }
 
     // Отключить/включить поля ввода
     disableInputField(disable) {
-        const arr = this.inputs.inputs ? this.inputs.inputs : [];
+        this._setInputsDisabled(disable);
+    }
+
+    _getSelectedFieldType() {
+        const option = this.fields?.options?.[this.fields.selectedIndex];
+        return option ? option.getAttribute('type') : '';
+    }
+
+    _isDateField(fieldType) {
+        return fieldType === 'datetime' || fieldType === 'date';
+    }
+
+    _filterConditionOptions(fieldType) {
+        Array.from(this.condition.options || []).forEach(option => {
+            if (!option) return;
+            const types = option.dataset.type ? option.dataset.type.split('|') : [];
+            option.style.display = types.includes(fieldType) ? '' : 'none';
+        });
+    }
+
+    _ensureVisibleCondition() {
+        const options = Array.from(this.condition.options || []);
+        const selected = this.condition.options?.[this.condition.selectedIndex];
+        if (selected && getComputedStyle(selected).display !== 'none') {
+            return;
+        }
+
+        for (const option of options) {
+            if (option && getComputedStyle(option).display !== 'none') {
+                this.condition.selectedIndex = options.indexOf(option);
+                break;
+            }
+        }
+    }
+
+    _applyInputMode(condition, type) {
+        if (!this.inputs) {
+            return;
+        }
+
+        if (type === 'boolean') {
+            this.inputs.hide?.();
+            return;
+        }
+
+        if (condition === 'between') {
+            this.inputs.asPeriod?.();
+        } else {
+            this.inputs.asScalar?.();
+        }
+    }
+
+    _setInputsDisabled(disable) {
+        const inputs = Array.isArray(this.inputs?.inputs) ? this.inputs.inputs : [];
+        if (!inputs.length) {
+            return;
+        }
+
         if (disable) {
-            arr.forEach(input => {
-                if (input && input.disabled !== undefined) {
-                    input.disabled = true;
-                    input.value = '';
+            inputs.forEach(input => {
+                if (!input || input.disabled === undefined) {
+                    return;
                 }
+                input.disabled = true;
+                input.value = '';
             });
-        } else if (arr[0] && arr[0].disabled) {
-            arr.forEach(input => {
-                if (input && input.disabled !== undefined) {
-                    input.disabled = false;
-                }
-            });
+            return;
+        }
+
+        if (!inputs[0]?.disabled) {
+            return;
+        }
+
+        inputs.forEach(input => {
+            if (input && input.disabled !== undefined) {
+                input.disabled = false;
+            }
+        });
+    }
+
+    _focusFirstVisibleInput() {
+        const candidates = typeof this.inputs?.getActiveInputs === 'function'
+            ? this.inputs.getActiveInputs()
+            : (this.inputs?.inputs || []);
+
+        const target = candidates.find(input => input && input.offsetParent !== null);
+        if (target) {
+            target.focus();
         }
     }
 
@@ -2418,8 +2575,10 @@ class QueryControls {
         this.wrapperGroups = new Map();
 
         this.containers.forEach((container, index) => {
-            container.classList.add('d-flex', 'flex-nowrap', 'align-items-center', 'gap-2');
-            container.classList.remove('mb-2');
+            decorateElement(container, {
+                add: ['d-flex', 'flex-nowrap', 'align-items-center', 'gap-2'],
+                remove: ['mb-2'],
+            });
             const wrapper = container.closest('.col');
             if (wrapper) {
                 this.wrapperMap.set(container, wrapper);
@@ -2435,7 +2594,7 @@ class QueryControls {
         this.inputs = this.containers.map(container => {
             const input = container.querySelector('input');
             if (input) {
-                input.classList.add('form-control', 'form-control-sm');
+                applyClasses(input, ['form-control', 'form-control-sm']);
             }
             return input;
         });
@@ -2445,7 +2604,7 @@ class QueryControls {
             if (!input) return null;
             const clone = input.cloneNode(true);
             clone.type = 'date';
-            clone.classList.add(this.hiddenClass, 'form-control', 'form-control-sm');
+            applyClasses(clone, [this.hiddenClass, 'form-control', 'form-control-sm']);
             if (input.parentNode) {
                 input.parentNode.appendChild(clone);
             }
