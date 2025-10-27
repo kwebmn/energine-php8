@@ -30,6 +30,32 @@ const removeClasses = (element, classes = []) => {
     }
 };
 
+const ensureMinHeightZero = element => {
+    if (
+        element
+        && (!element.style.minHeight
+            || element.style.minHeight === ''
+            || element.style.minHeight === 'auto')
+    ) {
+        element.style.minHeight = '0';
+    }
+};
+
+const ensureFlexOverflowHidden = element => {
+    if (!element) {
+        return;
+    }
+
+    try {
+        const computed = window.getComputedStyle(element);
+        if (computed.display.includes('flex') && computed.overflow === 'visible') {
+            element.style.overflow = 'hidden';
+        }
+    } catch (e) {
+        // Ignore layout read errors in environments without layout engine
+    }
+};
+
 const decorateElement = (element, { add = [], remove = [], attributes = {} } = {}) => {
     if (!element) {
         return;
@@ -232,22 +258,35 @@ class Grid {
     }
 
     _initializeState() {
-        this.data = [];
-        this.metadata = {};
-        this.selectedItem = null;
-        this.sort = { field: null, order: null };
-        this.isDirty = false;
-        this.keyFieldName = null;
-        this.prevDataLength = 0;
-        this.events = {};
-        this.pendingSelectionKey = null;
-        this.activeSortColumnIndex = null;
-        this.columnResizeState = null;
-        this.isColumnResizing = false;
-        this.columnResizeSuppressSort = false;
+        Object.assign(this, {
+            data: [],
+            metadata: {},
+            selectedItem: null,
+            sort: { field: null, order: null },
+            isDirty: false,
+            keyFieldName: null,
+            prevDataLength: 0,
+            events: {},
+            pendingSelectionKey: null,
+            activeSortColumnIndex: null,
+            columnResizeState: null,
+            isColumnResizing: false,
+            columnResizeSuppressSort: false,
+            _rowHandlersBound: false,
+        });
+
+        this._bindInstanceHandlers();
+    }
+
+    _bindInstanceHandlers() {
         this.handleColumnResizeMove = this.handleColumnResizeMove.bind(this);
         this.stopColumnResize = this.stopColumnResize.bind(this);
         this.handleGridBodyScroll = this.handleGridBodyScroll.bind(this);
+        this.handleHeaderClick = this.onChangeSort.bind(this);
+        this._handleRowMouseOver = this._handleRowMouseOver.bind(this);
+        this._handleRowMouseOut = this._handleRowMouseOut.bind(this);
+        this._handleRowClick = this._handleRowClick.bind(this);
+        this._handleRowDoubleClick = this._handleRowDoubleClick.bind(this);
     }
 
     _captureDomStructure() {
@@ -293,6 +332,8 @@ class Grid {
         }
 
         this.headers = this.headers || [];
+
+        this._setupRowEventDelegation();
     }
 
     _ensureSection(table, tagName) {
@@ -310,7 +351,7 @@ class Grid {
 
     _prepareHeaders() {
         this.headers.forEach(header => {
-            header.addEventListener('click', this.onChangeSort.bind(this));
+            header.addEventListener('click', this.handleHeaderClick);
             applyClasses(header, HEADER_CLASSES);
             header.style.cursor = 'pointer';
 
@@ -491,9 +532,7 @@ class Grid {
             if (!this.gridContainer.classList.contains('grid-table-wrapper')) {
                 applyClasses(this.gridContainer, GRID_BODY_CONTAINER_CLASSES);
             }
-            if (!this.gridContainer.style.minHeight || this.gridContainer.style.minHeight === '' || this.gridContainer.style.minHeight === 'auto') {
-                this.gridContainer.style.minHeight = '0';
-            }
+            ensureMinHeightZero(this.gridContainer);
         }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
@@ -545,40 +584,92 @@ class Grid {
             this.selectItem(row);
             // row.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+    }
 
-        // Навешиваем события
-        row.addEventListener('mouseover', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.add('highlighted', 'table-active');
-            }
-        });
-        row.addEventListener('mouseout', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.remove('highlighted', 'table-active');
-            } else {
-                row.classList.remove('highlighted');
-            }
-        });
-        row.addEventListener('click', event => {
-            if (event.detail > 1) {
-                return;
-            }
+    _setupRowEventDelegation() {
+        if (!this.tbody || this._rowHandlersBound) {
+            return;
+        }
+
+        this.tbody.addEventListener('mouseover', this._handleRowMouseOver);
+        this.tbody.addEventListener('mouseout', this._handleRowMouseOut);
+        this.tbody.addEventListener('click', this._handleRowClick);
+        this.tbody.addEventListener('dblclick', this._handleRowDoubleClick);
+
+        this._rowHandlersBound = true;
+    }
+
+    _resolveRowFromEvent(event) {
+        if (!event || !this.tbody) {
+            return null;
+        }
+
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : null;
+        const rawTarget = path && path.length ? path[0] : event.target;
+        let target = rawTarget instanceof Element ? rawTarget : null;
+        if (!target && rawTarget && rawTarget.parentElement) {
+            target = rawTarget.parentElement;
+        }
+        if (!target) {
+            return null;
+        }
+
+        const row = target.closest('tr');
+        return row && this.tbody.contains(row) ? row : null;
+    }
+
+    _handleRowMouseOver(event) {
+        const row = this._resolveRowFromEvent(event);
+        if (!row || row === this.getSelectedItem()) {
+            return;
+        }
+
+        row.classList.add('highlighted', 'table-active');
+    }
+
+    _handleRowMouseOut(event) {
+        const row = this._resolveRowFromEvent(event);
+        if (!row) {
+            return;
+        }
+
+        if (row !== this.getSelectedItem()) {
+            row.classList.remove('highlighted', 'table-active');
+        } else {
+            row.classList.remove('highlighted');
+        }
+    }
+
+    _handleRowClick(event) {
+        if (event?.detail > 1) {
+            return;
+        }
+
+        const row = this._resolveRowFromEvent(event);
+        if (!row) {
+            return;
+        }
+
+        this.selectItem(row);
+    }
+
+    _handleRowDoubleClick(event) {
+        const row = this._resolveRowFromEvent(event);
+        if (!row) {
+            return;
+        }
+
+        if (this.getSelectedItem() !== row) {
             this.selectItem(row);
-        });
-        row.addEventListener('dblclick', () => {
-            if (this.getSelectedItem() !== row) {
-                this.selectItem(row);
-            }
-            if (this.getSelectedItem() === row) {
-                this.fireEvent('doubleClick');
-            }
-        });
+        }
+
+        if (this.getSelectedItem() === row) {
+            this.fireEvent('doubleClick');
+        }
     }
 
     prepareGridLayoutContainers() {
-        if (this.element && (!this.element.style.minHeight || this.element.style.minHeight === '' || this.element.style.minHeight === 'auto')) {
-            this.element.style.minHeight = '0';
-        }
+        ensureMinHeightZero(this.element);
 
         if (!this.paneContent) {
             return;
@@ -610,18 +701,8 @@ class Grid {
         const nodesToNormalize = [this.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
 
         nodesToNormalize.forEach(node => {
-            if (!node) return;
-            if (!node.style.minHeight || node.style.minHeight === '' || node.style.minHeight === 'auto') {
-                node.style.minHeight = '0';
-            }
-            try {
-                const computed = window.getComputedStyle(node);
-                if (computed.display.includes('flex') && computed.overflow === 'visible') {
-                    node.style.overflow = 'hidden';
-                }
-            } catch (e) {
-                // Ignore layout read errors in environments without layout engine
-            }
+            ensureMinHeightZero(node);
+            ensureFlexOverflowHidden(node);
         });
     }
 
@@ -1717,13 +1798,15 @@ class GridManager {
      * @private
      */
     _initializeState() {
-        this.mvElementId = null;
-        this.langId = 0;
-        this.initialized = false;
-        this.toolbar = null;
-        this.gridPendingSelection = null;
-        this.selectionController = new ToolbarSelectionController();
-        this.singlePath = this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || '';
+        Object.assign(this, {
+            mvElementId: null,
+            langId: 0,
+            initialized: false,
+            toolbar: null,
+            gridPendingSelection: null,
+            selectionController: new ToolbarSelectionController(),
+            singlePath: this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || '',
+        });
     }
 
     /**
