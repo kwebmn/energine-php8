@@ -555,14 +555,3 @@ if (ModalBox.document && !ModalBox.initialized) {
 
 export { ModalBoxClass, ModalBox };
 export default ModalBox;
-
-export function attachToWindow(target = topWindow) {
-    if (!target) {
-        return ModalBox;
-    }
-
-    target.ModalBox = ModalBox;
-    return ModalBox;
-}
-
-attachToWindow();

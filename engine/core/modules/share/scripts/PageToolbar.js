@@ -1650,18 +1650,6 @@ class PageToolbar extends Toolbar {
 
 export { PageToolbar };
 export default PageToolbar;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return PageToolbar;
-    }
-
-    target.PageToolbar = PageToolbar;
-    return PageToolbar;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('PageToolbar', PageToolbar);

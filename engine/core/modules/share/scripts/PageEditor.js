@@ -327,19 +327,6 @@ PageEditor.BlockEditor = BlockEditor;
 
 export { PageEditor, BlockEditor };
 export default PageEditor;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return PageEditor;
-    }
-
-    target.PageEditor = PageEditor;
-    target.PageEditor.BlockEditor = BlockEditor;
-    return PageEditor;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('PageEditor', PageEditor);

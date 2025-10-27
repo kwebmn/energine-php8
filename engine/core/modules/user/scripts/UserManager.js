@@ -41,18 +41,6 @@ class UserManager extends GridManager {
 
 export { UserManager };
 export default UserManager;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return UserManager;
-    }
-
-    target.UserManager = UserManager;
-    return UserManager;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('UserManager', UserManager);
 }

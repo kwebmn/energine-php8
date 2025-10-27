@@ -60,18 +60,6 @@ class SiteManager extends GridManager {
 
 export { SiteManager };
 export default SiteManager;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return SiteManager;
-    }
-
-    target.SiteManager = SiteManager;
-    return SiteManager;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('SiteManager', SiteManager);
 }

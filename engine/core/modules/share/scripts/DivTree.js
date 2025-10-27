@@ -86,18 +86,6 @@ class DivTree extends DivManager {
 
 export { DivTree };
 export default DivTree;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivTree;
-    }
-
-    target.DivTree = DivTree;
-    return DivTree;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('DivTree', DivTree);

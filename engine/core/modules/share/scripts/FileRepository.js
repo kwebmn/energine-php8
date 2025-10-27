@@ -652,21 +652,6 @@ class PathList {
 
 export { GridWithPopImage, FileRepository, PathList };
 export default FileRepository;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FileRepository;
-    }
-
-    target.GridWithPopImage = GridWithPopImage;
-    target.FileRepository = FileRepository;
-    target.PathList = PathList;
-
-    return FileRepository;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('FileRepository', FileRepository);
 }

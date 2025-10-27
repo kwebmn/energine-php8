@@ -36,6 +36,28 @@ const noticeIconMap = {
     question: { variant: 'primary', icon: 'fa-circle-question' },
 };
 
+const exposeRuntimeToGlobal = (runtime, target = globalScope) => {
+    if (!runtime || !target) {
+        return runtime;
+    }
+
+    if (typeof runtime.safeConsoleError === 'function') {
+        target.safeConsoleError = runtime.safeConsoleError.bind(runtime);
+    }
+
+    if (typeof runtime.showLoader === 'function') {
+        target.showLoader = runtime.showLoader.bind(runtime);
+    }
+
+    if (typeof runtime.hideLoader === 'function') {
+        target.hideLoader = runtime.hideLoader.bind(runtime);
+    }
+
+    target.Energine = runtime;
+
+    return runtime;
+};
+
 class EnergineCore {
     constructor(scope) {
         this.globalScope = scope;
@@ -830,21 +852,11 @@ class EnergineCore {
         }
     }
 
-    attachToWindow(target = this.globalScope, runtime = this) {
-        if (!target) {
-            return runtime;
-        }
-
-        target.safeConsoleError = this.safeConsoleError.bind(this);
-        target.showLoader = this.showLoader.bind(this);
-        target.hideLoader = this.hideLoader.bind(this);
-        target.Energine = runtime;
-
-        return runtime;
-    }
 }
 
 const Energine = new EnergineCore(globalScope);
+
+exposeRuntimeToGlobal(Energine, globalScope);
 
 const existingConfig = (() => {
     if (!globalScope) {
@@ -860,7 +872,7 @@ const existingConfig = (() => {
 })();
 
 if (existingConfig && Object.keys(existingConfig).length) {
-    Energine.boot(existingConfig);
+    exposeRuntimeToGlobal(Energine.boot(existingConfig), globalScope);
 }
 
 const datasetFalseValues = new Set(['0', 'false', 'no', 'off']);
@@ -1220,12 +1232,12 @@ const autoBootstrapRuntime = () => {
         }
     }
 
-    const attachedRuntime = Energine.attachToWindow(globalScope, runtime);
+    const exposedRuntime = exposeRuntimeToGlobal(runtime, globalScope);
 
     const bootstrapDom = () => {
-        applyTranslationsFromScripts(attachedRuntime);
+        applyTranslationsFromScripts(exposedRuntime);
 
-        attachedRuntime.addTask(() => scheduleRetry(
+        exposedRuntime.addTask(() => scheduleRetry(
             () => {
                 const initialized = scanForComponents(document);
                 const pending = initialized && typeof initialized.pending === 'number'
@@ -1247,7 +1259,7 @@ const autoBootstrapRuntime = () => {
             },
         ));
 
-        attachedRuntime.addTask(() => {
+        exposedRuntime.addTask(() => {
             if (typeof initializeToolbars === 'function') {
                 try {
                     initializeToolbars(document);
@@ -1260,7 +1272,7 @@ const autoBootstrapRuntime = () => {
 
     const runTasks = () => {
         try {
-            attachedRuntime.run();
+            exposedRuntime.run();
         } catch (error) {
             Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to run queued tasks');
         }
@@ -1298,8 +1310,6 @@ export const safeConsoleError = (error, context = '') => Energine.safeConsoleErr
 export const showLoader = (container) => Energine.showLoader(container);
 
 export const hideLoader = (container) => Energine.hideLoader(container);
-
-export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
 
 export const registerBehavior = (name, ClassRef, options = {}) => {
     if (!name || typeof name !== 'string' || typeof ClassRef !== 'function') {

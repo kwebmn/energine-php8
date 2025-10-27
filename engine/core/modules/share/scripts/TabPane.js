@@ -293,14 +293,3 @@ class TabPane {
 
 export { TabPane };
 export default TabPane;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TabPane;
-    }
-
-    target.TabPane = TabPane;
-    return TabPane;
-}
-
-attachToWindow();

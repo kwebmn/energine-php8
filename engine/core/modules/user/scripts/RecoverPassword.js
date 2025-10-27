@@ -103,18 +103,6 @@ class RecoverPassword {
 
 export { RecoverPassword };
 export default RecoverPassword;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return RecoverPassword;
-    }
-
-    target.RecoverPassword = RecoverPassword;
-    return RecoverPassword;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('RecoverPassword', RecoverPassword);

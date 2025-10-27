@@ -1252,14 +1252,3 @@ export function initializeToolbars(root) {
 export function registerToolbarComponent(componentRef, instance) {
     return Toolbar.registerComponentInstance(componentRef, instance);
 }
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Toolbar;
-    }
-
-    target.Toolbar = Toolbar;
-    return Toolbar;
-}
-
-attachToWindow();

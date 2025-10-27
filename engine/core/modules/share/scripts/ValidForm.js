@@ -51,14 +51,3 @@ class ValidForm {
 
 export { ValidForm };
 export default ValidForm;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return ValidForm;
-    }
-
-    target.ValidForm = ValidForm;
-    return ValidForm;
-}
-
-attachToWindow();

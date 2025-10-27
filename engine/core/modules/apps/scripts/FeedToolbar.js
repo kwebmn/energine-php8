@@ -234,18 +234,6 @@ class FeedToolbar extends Toolbar {
 
 export { FeedToolbar };
 export default FeedToolbar;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FeedToolbar;
-    }
-
-    target.FeedToolbar = FeedToolbar;
-    return FeedToolbar;
-}
-
-attachToWindow();
-
 try {
     if (typeof registerEnergineBehavior === 'function') {
         registerEnergineBehavior('FeedToolbar', FeedToolbar);

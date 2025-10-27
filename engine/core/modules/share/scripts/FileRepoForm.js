@@ -178,18 +178,6 @@ class FileRepoForm extends Form {
 
 export { FileRepoForm };
 export default FileRepoForm;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FileRepoForm;
-    }
-
-    target.FileRepoForm = FileRepoForm;
-    return FileRepoForm;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('FileRepoForm', FileRepoForm);
 }

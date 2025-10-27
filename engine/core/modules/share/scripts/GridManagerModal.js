@@ -56,18 +56,6 @@ class GridManagerModal extends GridManager {
 
 export { GridManagerModal };
 export default GridManagerModal;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return GridManagerModal;
-    }
-
-    target.GridManagerModal = GridManagerModal;
-    return GridManagerModal;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('GridManagerModal', GridManagerModal);
 }

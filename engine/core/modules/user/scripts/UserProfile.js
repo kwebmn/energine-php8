@@ -50,18 +50,6 @@ class UserProfile extends ValidForm {
 
 export { UserProfile };
 export default UserProfile;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return UserProfile;
-    }
-
-    target.UserProfile = UserProfile;
-    return UserProfile;
-}
-
-attachToWindow();
-
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('UserProfile', UserProfile);
 }
