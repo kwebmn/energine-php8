@@ -368,7 +368,86 @@ class GridLayoutHelper {
     }
 
     fitGridSize() {
-        this.layoutHelper.fitGridSize();
+        const grid = this.grid;
+
+        if (!grid.gridContainer) {
+            return;
+        }
+
+        if (grid.paneContent && !grid.paneContent.offsetParent) {
+            return;
+        }
+
+        const headElement = (grid.gridHeadContainer && grid.gridHeadContainer === grid.gridContainer && grid.table && grid.table.tHead)
+            ? grid.table.tHead
+            : grid.gridHeadContainer;
+
+        let gridHeight = null;
+
+        if (grid.paneContent) {
+            const margin = parseInt(grid.element.style.marginTop, 10) || 0;
+            const externalToolbar = grid.pane
+                ? grid.pane.querySelector('[data-pane-part="footer"]')
+                : null;
+            const toolbarHeight = grid.gridToolbar ? grid.gridToolbar.offsetHeight : 0;
+            const headHeight = headElement ? headElement.offsetHeight : 0;
+            const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
+
+            gridHeight = grid.paneContent.offsetHeight
+                - headHeight
+                - toolbarHeight
+                - margin
+                - externalToolbarHeight;
+
+            if (gridHeight < 0) {
+                gridHeight = 0;
+            }
+
+            if (grid.gridContainer === grid.gridHeadContainer && headElement) {
+                gridHeight += headHeight;
+            }
+        }
+
+        const viewportLimit = this.getGridViewportLimit();
+        const paneHeight = grid.paneContent ? grid.paneContent.offsetHeight : null;
+        const minHeightBaseline = grid.minGridHeight || 300;
+
+        let effectiveMinHeight = minHeightBaseline;
+        if (paneHeight) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, paneHeight);
+        }
+        if (viewportLimit !== null) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, viewportLimit);
+        }
+
+        if (gridHeight === null) {
+            gridHeight = effectiveMinHeight;
+        } else {
+            gridHeight = Math.max(gridHeight, effectiveMinHeight);
+        }
+
+        if (viewportLimit !== null) {
+            gridHeight = Math.min(gridHeight, viewportLimit);
+        }
+
+        const paneLimit = this.getPaneContentLimit();
+        if (paneLimit !== null) {
+            gridHeight = Math.min(gridHeight, paneLimit);
+        }
+
+        if (gridHeight > 0) {
+            grid.gridContainer.style.height = gridHeight + 'px';
+            grid.gridContainer.style.minHeight = '0px';
+            grid.gridContainer.style.overflowY = 'auto';
+            grid.gridContainer.style.overflowX = 'hidden';
+        } else {
+            grid.gridContainer.style.removeProperty('height');
+            grid.gridContainer.style.removeProperty('min-height');
+            grid.gridContainer.style.removeProperty('overflow-y');
+            grid.gridContainer.style.removeProperty('overflow-x');
+        }
+
+        grid.syncGridHeadScroll();
     }
 
     fitGridFormSize() {
