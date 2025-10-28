@@ -1,5 +1,3 @@
-import './styles/admin.css';
-
 import 'engine/core/modules/share/scripts/AcplField.js';
 import 'engine/core/modules/share/scripts/AttachmentEditor.js';
 import 'engine/core/modules/share/scripts/Cookie.js';

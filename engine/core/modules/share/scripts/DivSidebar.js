@@ -39,6 +39,7 @@ class DivSidebar extends DivManager {
         const divTree = this._ensureTreeElement();
 
         this.jstree = $(divTree);
+        this.jstree.css('font-size', '14px');
         this.jstree.jstree({
             plugins: ['contextmenu'],
             core: { data: [], multiple: false },
