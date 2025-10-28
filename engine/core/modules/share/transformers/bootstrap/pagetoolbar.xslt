@@ -130,14 +130,15 @@
                     <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                 </xsl:if>
                 <div class="offcanvas-body d-flex flex-column gap-3 p-0 bg-body-tertiary e-sideframe-content" data-role="sidebar-content">
-                    <header class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
-                        <div class="d-flex align-items-center gap-2 flex-wrap" data-role="sidebar-environment"></div>
-                        <div class="d-flex align-items-center gap-2 ms-auto" data-role="sidebar-actions">
-                            <button type="button" class="btn btn-sm btn-light" data-role="sidebar-close" data-bs-dismiss="offcanvas">
+                    <header class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
+                        <div class="d-flex align-items-center gap-2" data-role="sidebar-actions">
+                            <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center" data-role="sidebar-close" data-bs-dismiss="offcanvas">
                                 <xsl:if test="string-length(normalize-space($CLOSE_LABEL)) &gt; 0">
                                     <xsl:attribute name="aria-label"><xsl:value-of select="$CLOSE_LABEL"/></xsl:attribute>
-                                    <xsl:value-of select="$CLOSE_LABEL"/>
                                 </xsl:if>
+                                <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
+                                    <i class="fa fa-chevron-left" aria-hidden="true"></i>
+                                </span>
                             </button>
                         </div>
                     </header>

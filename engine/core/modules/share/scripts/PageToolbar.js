@@ -7,6 +7,9 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const SIDEBAR_OFFCANVAS_Z_INDEX = 1050;
+const TOOLBAR_Z_INDEX = SIDEBAR_OFFCANVAS_Z_INDEX + 10;
+
 const CONTROL_FALLBACK_ACTIONS = Object.freeze({
     editMode: 'editMode',
     transEditor: 'showTransEditor',
@@ -302,26 +305,6 @@ class PageToolbar extends Toolbar {
             }
         }
 
-        const sidebarEnvironmentTarget = root.querySelector('[data-role="sidebar-environment"]');
-        if (sidebarEnvironmentTarget && !sidebarEnvironmentTarget.childElementCount) {
-            const environmentOverride = PageToolbar._resolveDatasetValue(
-                ['eEnvironmentLabel', 'eEnvironment', 'environmentLabel', 'environment', 'environmentName'],
-                this._layoutConfig,
-                dataset,
-                rootDataset,
-                sidebarEnvironmentTarget.dataset || {}
-            );
-            const environmentLabel = (typeof environmentOverride === 'string' && environmentOverride.trim())
-                ? environmentOverride.trim()
-                : PageToolbar._extractEnvironmentLabel();
-            if (environmentLabel) {
-                const badge = document.createElement('span');
-                badge.classList.add('badge', 'text-bg-secondary', 'fw-semibold');
-                badge.textContent = environmentLabel;
-                sidebarEnvironmentTarget.appendChild(badge);
-            }
-        }
-
         const offcanvasSelectorValue = PageToolbar._resolveDatasetValue(
             ['eOffcanvasTarget', 'eSidebarTarget', 'offcanvasTarget', 'sidebarTarget', 'sidebarSelector'],
             this._layoutConfig,
@@ -350,6 +333,27 @@ class PageToolbar extends Toolbar {
         }
         if (sidebarFrame) {
             this.sidebarFrameElement = sidebarFrame;
+        }
+
+        const topFrame = root.querySelector('[data-role="page-toolbar-topframe"]') || null;
+        const syncSidebarOffset = () => {
+            PageToolbar._syncSidebarGeometry(this.sidebarFrameElement, topFrame);
+        };
+
+        if (sidebarFrame) {
+            syncSidebarOffset();
+
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+                const handleResize = () => syncSidebarOffset();
+                window.addEventListener('resize', handleResize);
+                this._sidebarEventHandlers.push({ element: window, type: 'resize', handler: handleResize });
+            }
+
+            if (typeof ResizeObserver !== 'undefined' && topFrame instanceof HTMLElement) {
+                const resizeObserver = new ResizeObserver(() => syncSidebarOffset());
+                resizeObserver.observe(topFrame);
+                this._registerLayoutCleanup(() => resizeObserver.disconnect());
+            }
         }
 
         const toggleButtons = PageToolbar._collectSidebarToggleButtons(
@@ -399,8 +403,14 @@ class PageToolbar extends Toolbar {
         this._handleSidebarStateChange(initialState, { persist: false });
 
         if (sidebarFrame) {
-            const handleShown = () => this._handleSidebarStateChange(true);
-            const handleHidden = () => this._handleSidebarStateChange(false);
+            const handleShown = () => {
+                syncSidebarOffset();
+                this._handleSidebarStateChange(true);
+            };
+            const handleHidden = () => {
+                syncSidebarOffset();
+                this._handleSidebarStateChange(false);
+            };
             sidebarFrame.addEventListener('shown.bs.offcanvas', handleShown);
             sidebarFrame.addEventListener('hidden.bs.offcanvas', handleHidden);
             this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'shown.bs.offcanvas', handler: handleShown });
@@ -532,7 +542,7 @@ class PageToolbar extends Toolbar {
                 topFrame.style.top = '0px';
             }
             if (!topFrame.style.zIndex) {
-                topFrame.style.zIndex = '1040';
+                topFrame.style.zIndex = `${TOOLBAR_Z_INDEX}`;
             }
             if (!topFrame.style.left) {
                 topFrame.style.left = '0px';
@@ -556,7 +566,7 @@ class PageToolbar extends Toolbar {
                     root.style.right = '0px';
                 }
                 if (!root.style.zIndex) {
-                    root.style.zIndex = '1040';
+                    root.style.zIndex = `${TOOLBAR_Z_INDEX}`;
                 }
             }
         };
@@ -575,7 +585,7 @@ class PageToolbar extends Toolbar {
                 topFrame.style.right = '0px';
             }
             if (!topFrame.style.zIndex) {
-                topFrame.style.zIndex = '1040';
+                topFrame.style.zIndex = `${TOOLBAR_Z_INDEX}`;
             }
             if (root) {
                 if (!root.style.position || root.style.position === 'static') {
@@ -591,7 +601,7 @@ class PageToolbar extends Toolbar {
                     root.style.right = '0px';
                 }
                 if (!root.style.zIndex) {
-                    root.style.zIndex = '1040';
+                    root.style.zIndex = `${TOOLBAR_Z_INDEX}`;
                 }
             }
         };
@@ -881,18 +891,18 @@ class PageToolbar extends Toolbar {
             this.sidebarFrameElement = sidebarFrame;
 
             const syncSidebarOffset = () => {
-                if (!this.sidebarFrameElement) {
-                    return;
-                }
-                const navHeight = Math.max(0, Math.round(topFrame.getBoundingClientRect().height || 0));
-                this.sidebarFrameElement.style.top = navHeight ? `${navHeight}px` : '0';
-                this.sidebarFrameElement.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
+                PageToolbar._syncSidebarGeometry(this.sidebarFrameElement, topFrame);
             };
             syncSidebarOffset();
-            window.addEventListener('resize', syncSidebarOffset);
-            if (window.ResizeObserver) {
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+                const handleResize = () => syncSidebarOffset();
+                window.addEventListener('resize', handleResize);
+                this._registerLayoutCleanup(() => window.removeEventListener('resize', handleResize));
+            }
+            if (typeof ResizeObserver !== 'undefined' && topFrame instanceof HTMLElement) {
                 const resizeObserver = new ResizeObserver(() => syncSidebarOffset());
                 resizeObserver.observe(topFrame);
+                this._registerLayoutCleanup(() => resizeObserver.disconnect());
             }
 
             const sidebarHeader = document.createElement('div');
@@ -916,12 +926,30 @@ class PageToolbar extends Toolbar {
             const closeLabel = getTranslation('TXT_CLOSE', 'BTN_CLOSE', 'TXT_CANCEL', 'BTN_CANCEL') || 'Close';
             const sidebarCloseButton = document.createElement('button');
             sidebarCloseButton.type = 'button';
-            sidebarCloseButton.classList.add('btn', 'btn-sm', 'btn-outline-secondary');
+            sidebarCloseButton.classList.add(
+                'btn',
+                'btn-sm',
+                'btn-light',
+                'd-inline-flex',
+                'align-items-center',
+                'justify-content-center',
+            );
             sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
+            sidebarCloseButton.setAttribute('data-role', 'sidebar-close');
             if (closeLabel) {
                 sidebarCloseButton.setAttribute('aria-label', closeLabel);
-                sidebarCloseButton.textContent = closeLabel;
             }
+
+            const closeIconWrapper = document.createElement('span');
+            closeIconWrapper.classList.add('toolbar-icon', 'd-inline-flex', 'align-items-center', 'justify-content-center');
+            closeIconWrapper.setAttribute('aria-hidden', 'true');
+
+            const closeIcon = document.createElement('i');
+            closeIcon.classList.add('fa', 'fa-chevron-left');
+            closeIcon.setAttribute('aria-hidden', 'true');
+
+            closeIconWrapper.appendChild(closeIcon);
+            sidebarCloseButton.appendChild(closeIconWrapper);
             headerActions.appendChild(sidebarCloseButton);
 
             sidebarFrameContent.appendChild(sidebarHeader);
@@ -1627,6 +1655,30 @@ class PageToolbar extends Toolbar {
 
     // Вложенный контрол логотипа (если нужно)
     static Logo = class extends Toolbar.Control {};
+
+    static _syncSidebarGeometry(sidebarFrame, anchorElement = null, zIndex = SIDEBAR_OFFCANVAS_Z_INDEX) {
+        if (!(sidebarFrame instanceof HTMLElement)) {
+            return;
+        }
+
+        if (typeof zIndex === 'number' || (typeof zIndex === 'string' && zIndex.trim().length)) {
+            const normalizedZIndex = `${zIndex}`;
+            try {
+                sidebarFrame.style.setProperty('--bs-offcanvas-zindex', normalizedZIndex);
+            } catch (error) {
+                // ignore CSS variable assignment failures
+            }
+            sidebarFrame.style.zIndex = normalizedZIndex;
+        }
+
+        const anchor = anchorElement instanceof HTMLElement ? anchorElement : null;
+        const navHeight = anchor ? Math.max(0, Math.round(anchor.getBoundingClientRect().height || 0)) : 0;
+        sidebarFrame.style.top = navHeight ? `${navHeight}px` : '0';
+        sidebarFrame.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
+        if (sidebarFrame.style.bottom) {
+            sidebarFrame.style.bottom = 'auto';
+        }
+    }
 
     _registerLayoutCleanup(callback) {
         if (typeof callback === 'function') {
