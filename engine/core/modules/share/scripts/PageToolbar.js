@@ -7,7 +7,7 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const SIDEBAR_OFFCANVAS_Z_INDEX = 1000;
+const SIDEBAR_OFFCANVAS_Z_INDEX = 1050;
 
 const CONTROL_FALLBACK_ACTIONS = Object.freeze({
     editMode: 'editMode',
