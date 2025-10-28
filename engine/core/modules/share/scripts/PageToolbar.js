@@ -51,6 +51,7 @@ class PageToolbar extends Toolbar {
         this._updateSidebarToggleState = null;
         this.sidebarOffcanvas = null;
         this.sidebarControllerType = null;
+        this._preferredSidebarController = null;
         this.sidebarFrameElement = null;
         this._ensureSidebarOffcanvas = null;
         this._sidebarEventHandlers = [];
@@ -262,6 +263,8 @@ class PageToolbar extends Toolbar {
             combinedDataset,
         });
 
+        this._preferredSidebarController = this._resolvePreferredSidebarController();
+
         const html = document.documentElement;
         if (html) {
             html.classList.add('h-100');
@@ -321,6 +324,7 @@ class PageToolbar extends Toolbar {
         const normalizedOffcanvasSelector = PageToolbar._normalizeSelector(offcanvasSelectorValue, offcanvasIdValue);
 
         let sidebarFrame = null;
+        let preferMdb = this._shouldPreferMdb();
         let resolvedSidebarLabel = '';
         if (normalizedOffcanvasSelector) {
             sidebarFrame = root.querySelector(normalizedOffcanvasSelector)
@@ -335,6 +339,7 @@ class PageToolbar extends Toolbar {
         }
         if (sidebarFrame) {
             this.sidebarFrameElement = sidebarFrame;
+            preferMdb = this._shouldPreferMdb();
 
             if (sidebarFrame instanceof HTMLElement) {
                 if (!sidebarFrame.id && offcanvasIdValue) {
@@ -363,7 +368,11 @@ class PageToolbar extends Toolbar {
                     sidebarFrame.setAttribute('data-mdb-target', `#${sidebarFrame.id}`);
                 }
 
-                if (sidebarFrame.id && !sidebarFrame.getAttribute('data-bs-target')) {
+                if (preferMdb) {
+                    sidebarFrame.removeAttribute('data-bs-target');
+                    PageToolbar._removeClass(sidebarFrame, 'offcanvas');
+                    PageToolbar._removeClass(sidebarFrame, 'offcanvas-start');
+                } else if (sidebarFrame.id && !sidebarFrame.getAttribute('data-bs-target')) {
                     sidebarFrame.setAttribute('data-bs-target', `#${sidebarFrame.id}`);
                 }
 
@@ -405,8 +414,10 @@ class PageToolbar extends Toolbar {
 
                 const sidebarCloseButton = sidebarFrame.querySelector('[data-role="sidebar-close"]');
                 if (sidebarCloseButton instanceof HTMLElement) {
-                    if (!sidebarCloseButton.getAttribute('data-bs-dismiss')) {
+                    if (!preferMdb && !sidebarCloseButton.getAttribute('data-bs-dismiss')) {
                         sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
+                    } else if (preferMdb) {
+                        sidebarCloseButton.removeAttribute('data-bs-dismiss');
                     }
                     if (!sidebarCloseButton.getAttribute('data-mdb-dismiss')) {
                         sidebarCloseButton.setAttribute('data-mdb-dismiss', 'sidenav');
@@ -451,7 +462,10 @@ class PageToolbar extends Toolbar {
             if (!(button instanceof HTMLElement)) {
                 return;
             }
-            if (!button.getAttribute('data-bs-toggle')) {
+            if (preferMdb) {
+                button.removeAttribute('data-bs-toggle');
+                button.removeAttribute('data-bs-target');
+            } else if (!button.getAttribute('data-bs-toggle')) {
                 button.setAttribute('data-bs-toggle', 'offcanvas');
             }
             if (!button.getAttribute('data-mdb-toggle')) {
@@ -483,8 +497,10 @@ class PageToolbar extends Toolbar {
                     if (!button.getAttribute('aria-controls')) {
                         button.setAttribute('aria-controls', sidebarFrame.id);
                     }
-                    if (!button.getAttribute('data-bs-target')) {
+                    if (!preferMdb && !button.getAttribute('data-bs-target')) {
                         button.setAttribute('data-bs-target', `#${sidebarFrame.id}`);
+                    } else if (preferMdb) {
+                        button.removeAttribute('data-bs-target');
                     }
                     if (!button.getAttribute('data-mdb-target')) {
                         button.setAttribute('data-mdb-target', `#${sidebarFrame.id}`);
@@ -544,18 +560,13 @@ class PageToolbar extends Toolbar {
                 }
 
                 const bootstrapGlobal = window?.bootstrap;
-                if (bootstrapGlobal?.Offcanvas) {
-                    this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
-                        backdrop: false,
-                        scroll: false,
-                    });
-                    this.sidebarControllerType = this.sidebarOffcanvas ? 'bootstrap' : null;
-                    return this.sidebarOffcanvas;
-                }
-
                 const mdbGlobal = window?.mdb;
                 const SidenavConstructor = mdbGlobal?.Sidenav;
-                if (SidenavConstructor) {
+
+                const tryInitializeMdb = () => {
+                    if (!SidenavConstructor) {
+                        return false;
+                    }
                     try {
                         if (typeof SidenavConstructor.getOrCreateInstance === 'function') {
                             this.sidebarOffcanvas = SidenavConstructor.getOrCreateInstance(sidebarFrame);
@@ -570,7 +581,41 @@ class PageToolbar extends Toolbar {
                         console.warn('[PageToolbar] Failed to initialize MDB Sidenav instance', error);
                         this.sidebarOffcanvas = null;
                         this.sidebarControllerType = null;
+                        return false;
                     }
+                    return !!this.sidebarOffcanvas;
+                };
+
+                const tryInitializeBootstrap = () => {
+                    if (!bootstrapGlobal?.Offcanvas) {
+                        return false;
+                    }
+                    this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                        backdrop: false,
+                        scroll: false,
+                    });
+                    this.sidebarControllerType = this.sidebarOffcanvas ? 'bootstrap' : null;
+                    return !!this.sidebarOffcanvas;
+                };
+
+                const preferMdbController = this._shouldPreferMdb();
+
+                if (preferMdbController) {
+                    if (!tryInitializeMdb()) {
+                        tryInitializeBootstrap();
+                    }
+                } else {
+                    if (!tryInitializeBootstrap()) {
+                        tryInitializeMdb();
+                    }
+                }
+
+                if (this.sidebarControllerType) {
+                    this._applySidebarControllerPreferences(this.sidebarControllerType);
+                    preferMdb = this._shouldPreferMdb();
+                }
+
+                if (this.sidebarOffcanvas) {
                     return this.sidebarOffcanvas;
                 }
 
@@ -618,6 +663,9 @@ class PageToolbar extends Toolbar {
                 this._sidebarEventHandlers.push({ element: button, type: 'click', handler: handleToggleClick });
             });
         }
+
+        this._applySidebarControllerPreferences();
+        preferMdb = this._shouldPreferMdb();
 
         return true;
     }
@@ -1311,6 +1359,97 @@ class PageToolbar extends Toolbar {
         const isSidebarVisible = html ? !PageToolbar._hasClass(html, 'e-has-sideframe') : false;
         this._handleSidebarStateChange(isSidebarVisible);
         return isSidebarVisible;
+    }
+
+    _resolvePreferredSidebarController() {
+        try {
+            if (globalScope?.mdb?.Sidenav) {
+                return 'mdb';
+            }
+        } catch (error) {
+            // ignore resolution errors
+        }
+        try {
+            if (globalScope?.bootstrap?.Offcanvas) {
+                return 'bootstrap';
+            }
+        } catch (error) {
+            // ignore resolution errors
+        }
+        return null;
+    }
+
+    _shouldPreferMdb() {
+        return this.sidebarControllerType === 'mdb'
+            || this._preferredSidebarController === 'mdb';
+    }
+
+    _applySidebarControllerPreferences(controllerType = null) {
+        const type = controllerType
+            || this.sidebarControllerType
+            || this._preferredSidebarController
+            || null;
+
+        if (!type) {
+            return;
+        }
+
+        this._preferredSidebarController = type;
+
+        const sidebarFrame = this.sidebarFrameElement instanceof HTMLElement
+            ? this.sidebarFrameElement
+            : null;
+        const toggleButtons = Array.isArray(this.sidebarToggleButtons)
+            ? this.sidebarToggleButtons.filter(button => button instanceof HTMLElement)
+            : [];
+        const sidebarCloseButton = sidebarFrame
+            ? sidebarFrame.querySelector('[data-role="sidebar-close"]')
+            : null;
+
+        if (type === 'mdb') {
+            toggleButtons.forEach(button => {
+                button.removeAttribute('data-bs-toggle');
+                button.removeAttribute('data-bs-target');
+                if (!button.getAttribute('data-mdb-toggle')) {
+                    button.setAttribute('data-mdb-toggle', 'sidenav');
+                }
+            });
+            if (sidebarCloseButton instanceof HTMLElement) {
+                sidebarCloseButton.removeAttribute('data-bs-dismiss');
+                if (!sidebarCloseButton.getAttribute('data-mdb-dismiss')) {
+                    sidebarCloseButton.setAttribute('data-mdb-dismiss', 'sidenav');
+                }
+            }
+            if (sidebarFrame) {
+                PageToolbar._removeClass(sidebarFrame, 'offcanvas');
+                PageToolbar._removeClass(sidebarFrame, 'offcanvas-start');
+                if (!sidebarFrame.classList.contains('sidenav')) {
+                    sidebarFrame.classList.add('sidenav');
+                }
+                if (!sidebarFrame.hasAttribute('data-mdb-sidenav-init')) {
+                    sidebarFrame.setAttribute('data-mdb-sidenav-init', '');
+                }
+                sidebarFrame.removeAttribute('data-bs-target');
+            }
+        } else if (type === 'bootstrap') {
+            toggleButtons.forEach(button => {
+                if (!button.getAttribute('data-bs-toggle')) {
+                    button.setAttribute('data-bs-toggle', 'offcanvas');
+                }
+                if (sidebarFrame?.id && !button.getAttribute('data-bs-target')) {
+                    button.setAttribute('data-bs-target', `#${sidebarFrame.id}`);
+                }
+            });
+            if (sidebarCloseButton instanceof HTMLElement && !sidebarCloseButton.getAttribute('data-bs-dismiss')) {
+                sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
+            }
+            if (sidebarFrame) {
+                sidebarFrame.classList.add('offcanvas', 'offcanvas-start');
+                if (sidebarFrame.id && !sidebarFrame.getAttribute('data-bs-target')) {
+                    sidebarFrame.setAttribute('data-bs-target', `#${sidebarFrame.id}`);
+                }
+            }
+        }
     }
 
     showTmplEditor() { ModalBox.open({ url: this.componentPath + 'template' }); }
