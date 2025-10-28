@@ -2099,14 +2099,27 @@ class PageToolbar extends Toolbar {
                     || computedStyles.width
                     || '').trim();
                 const normalizedWidth = bootstrapWidth || sidebarFrame.style.width || '';
+                let expandedWidth = normalizedWidth;
 
                 if (normalizedWidth) {
-                    sidebarFrame.style.setProperty('--mdb-sidenav-width', normalizedWidth);
+                    const pxMatch = normalizedWidth.match(/^-?\s*([\d.]+)px$/i);
+                    if (pxMatch) {
+                        const baseWidth = Number.parseFloat(pxMatch[1]);
+                        if (!Number.isNaN(baseWidth)) {
+                            expandedWidth = `${baseWidth + 100}px`;
+                        }
+                    } else if (!/calc\(/i.test(normalizedWidth)) {
+                        expandedWidth = `calc(${normalizedWidth} + 100px)`;
+                    }
+                }
+
+                if (expandedWidth) {
+                    sidebarFrame.style.setProperty('--mdb-sidenav-width', expandedWidth);
                     if (!sidebarFrame.style.width || sidebarFrame.style.width === 'auto') {
-                        sidebarFrame.style.width = normalizedWidth;
+                        sidebarFrame.style.width = expandedWidth;
                     }
                     if (!sidebarFrame.style.maxWidth || sidebarFrame.style.maxWidth === 'none') {
-                        sidebarFrame.style.maxWidth = normalizedWidth;
+                        sidebarFrame.style.maxWidth = expandedWidth;
                     }
                 }
             } catch (error) {

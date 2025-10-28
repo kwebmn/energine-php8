@@ -129,7 +129,7 @@
                 <xsl:attribute name="id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                 <xsl:attribute name="tabindex">-1</xsl:attribute>
                 <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
-                <xsl:attribute name="style">--mdb-sidenav-width: var(--bs-offcanvas-width, 400px);</xsl:attribute>
+                <xsl:attribute name="style">--mdb-sidenav-width: calc(var(--bs-offcanvas-width, 400px) + 100px); width: calc(var(--bs-offcanvas-width, 400px) + 100px); max-width: calc(var(--bs-offcanvas-width, 400px) + 100px);</xsl:attribute>
                 <xsl:if test="string-length(normalize-space($SIDEBAR_LABEL)) &gt; 0">
                     <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                     <xsl:attribute name="data-mdb-sidenav-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
