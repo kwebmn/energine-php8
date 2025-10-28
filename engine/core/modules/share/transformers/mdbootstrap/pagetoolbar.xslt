@@ -129,11 +129,12 @@
                 <xsl:attribute name="id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                 <xsl:attribute name="tabindex">-1</xsl:attribute>
                 <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+                <xsl:attribute name="style">--mdb-sidenav-width: var(--bs-offcanvas-width, 400px);</xsl:attribute>
                 <xsl:if test="string-length(normalize-space($SIDEBAR_LABEL)) &gt; 0">
                     <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                     <xsl:attribute name="data-mdb-sidenav-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                 </xsl:if>
-                <div class="offcanvas-body d-flex flex-column gap-3 p-0 bg-body-tertiary e-sideframe-content sidenav-menu" data-role="sidebar-content">
+                <div class="offcanvas-body d-flex flex-column gap-3 p-0 bg-body-tertiary e-sideframe-content sidenav-menu h-100 flex-grow-1" data-role="sidebar-content" style="min-height: 0;">
                     <header class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom bg-white sidenav-item" data-role="sidebar-header">
                         <div class="d-flex align-items-center gap-2" data-role="sidebar-actions">
                             <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center" data-role="sidebar-close" data-bs-dismiss="offcanvas" data-mdb-dismiss="sidenav" data-mdb-ripple-init="">
@@ -146,9 +147,9 @@
                             </button>
                         </div>
                     </header>
-                    <div class="d-flex flex-column gap-3 flex-grow-1 e-sideframe-body sidenav-item" data-role="sidebar-body">
-                        <div class="d-flex flex-column flex-grow-1 rounded-3 border bg-white shadow-sm overflow-hidden" data-role="sidebar-frame-wrapper">
-                            <iframe class="flex-grow-1 w-100 border-0" frameborder="0" data-role="sidebar-frame">
+                    <div class="d-flex flex-column gap-3 flex-grow-1 e-sideframe-body sidenav-item h-100" data-role="sidebar-body" style="min-height: 0;">
+                        <div class="d-flex flex-column flex-grow-1 rounded-3 border bg-white shadow-sm overflow-hidden h-100" data-role="sidebar-frame-wrapper" style="min-height: 0;">
+                            <iframe class="flex-grow-1 w-100 border-0 h-100" frameborder="0" data-role="sidebar-frame" style="min-height: 0;">
                                 <xsl:attribute name="src"><xsl:value-of select="$SIDEBAR_URL"/></xsl:attribute>
                             </iframe>
                         </div>

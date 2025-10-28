@@ -326,6 +326,7 @@ class PageToolbar extends Toolbar {
         let sidebarFrame = null;
         let preferMdb = this._shouldPreferMdb();
         let resolvedSidebarLabel = '';
+        let sidebarCloseButton = null;
         if (normalizedOffcanvasSelector) {
             sidebarFrame = root.querySelector(normalizedOffcanvasSelector)
                 || document.querySelector(normalizedOffcanvasSelector);
@@ -400,6 +401,10 @@ class PageToolbar extends Toolbar {
                 const sidebarContent = sidebarFrame.querySelector('[data-role="sidebar-content"]');
                 if (sidebarContent instanceof HTMLElement) {
                     PageToolbar._addClass(sidebarContent, 'sidenav-menu');
+                    sidebarContent.classList.add('h-100', 'flex-grow-1');
+                    if (!sidebarContent.style.minHeight) {
+                        sidebarContent.style.minHeight = '0';
+                    }
                 }
 
                 const sidebarHeader = sidebarFrame.querySelector('[data-role="sidebar-header"]');
@@ -410,9 +415,35 @@ class PageToolbar extends Toolbar {
                 const sidebarBody = sidebarFrame.querySelector('[data-role="sidebar-body"]');
                 if (sidebarBody instanceof HTMLElement) {
                     PageToolbar._addClass(sidebarBody, 'sidenav-item');
+                    sidebarBody.classList.add('flex-grow-1');
+                    if (!sidebarBody.style.minHeight) {
+                        sidebarBody.style.minHeight = '0';
+                    }
                 }
 
-                const sidebarCloseButton = sidebarFrame.querySelector('[data-role="sidebar-close"]');
+                const sidebarFrameWrapper = sidebarFrame.querySelector('[data-role="sidebar-frame-wrapper"]');
+                if (sidebarFrameWrapper instanceof HTMLElement) {
+                    sidebarFrameWrapper.classList.add('flex-grow-1', 'h-100');
+                    if (!sidebarFrameWrapper.style.minHeight) {
+                        sidebarFrameWrapper.style.minHeight = '0';
+                    }
+                }
+
+                const sidebarIframe = sidebarFrame.querySelector('[data-role="sidebar-frame"]');
+                if (sidebarIframe instanceof HTMLElement) {
+                    sidebarIframe.classList.add('h-100', 'w-100');
+                    if (!sidebarIframe.style.width) {
+                        sidebarIframe.style.width = '100%';
+                    }
+                    if (!sidebarIframe.style.height) {
+                        sidebarIframe.style.height = '100%';
+                    }
+                    if (!sidebarIframe.style.minHeight) {
+                        sidebarIframe.style.minHeight = '0';
+                    }
+                }
+
+                sidebarCloseButton = sidebarFrame.querySelector('[data-role="sidebar-close"]');
                 if (sidebarCloseButton instanceof HTMLElement) {
                     if (!preferMdb && !sidebarCloseButton.getAttribute('data-bs-dismiss')) {
                         sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
@@ -425,6 +456,27 @@ class PageToolbar extends Toolbar {
                     if (!sidebarCloseButton.hasAttribute('data-mdb-ripple-init')) {
                         sidebarCloseButton.setAttribute('data-mdb-ripple-init', '');
                     }
+                    const handleCloseClick = event => {
+                        if (typeof this._ensureSidebarOffcanvas === 'function') {
+                            const controller = this._ensureSidebarOffcanvas();
+                            if (controller && typeof controller.hide === 'function') {
+                                controller.hide();
+                                return;
+                            }
+                        }
+
+                        if (window?.bootstrap?.Offcanvas || window?.mdb?.Sidenav) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        event.stopPropagation();
+                        sidebarFrame.classList.remove('show', 'sidenav-open');
+                        this._handleSidebarStateChange(false);
+                    };
+
+                    sidebarCloseButton.addEventListener('click', handleCloseClick);
+                    this._sidebarEventHandlers.push({ element: sidebarCloseButton, type: 'click', handler: handleCloseClick });
                 }
             }
         }
@@ -2018,6 +2070,10 @@ class PageToolbar extends Toolbar {
             return;
         }
 
+        if (!sidebarFrame.style.minHeight) {
+            sidebarFrame.style.minHeight = '0';
+        }
+
         if (typeof zIndex === 'number' || (typeof zIndex === 'string' && zIndex.trim().length)) {
             const normalizedZIndex = `${zIndex}`;
             try {
@@ -2034,6 +2090,28 @@ class PageToolbar extends Toolbar {
         sidebarFrame.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
         if (sidebarFrame.style.bottom) {
             sidebarFrame.style.bottom = 'auto';
+        }
+
+        if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+            try {
+                const computedStyles = window.getComputedStyle(sidebarFrame);
+                const bootstrapWidth = (computedStyles.getPropertyValue('--bs-offcanvas-width')
+                    || computedStyles.width
+                    || '').trim();
+                const normalizedWidth = bootstrapWidth || sidebarFrame.style.width || '';
+
+                if (normalizedWidth) {
+                    sidebarFrame.style.setProperty('--mdb-sidenav-width', normalizedWidth);
+                    if (!sidebarFrame.style.width || sidebarFrame.style.width === 'auto') {
+                        sidebarFrame.style.width = normalizedWidth;
+                    }
+                    if (!sidebarFrame.style.maxWidth || sidebarFrame.style.maxWidth === 'none') {
+                        sidebarFrame.style.maxWidth = normalizedWidth;
+                    }
+                }
+            } catch (error) {
+                // ignore width synchronization failures
+            }
         }
     }
 
