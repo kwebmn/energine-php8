@@ -124,6 +124,71 @@ class ModalBoxClass {
             });
     }
 
+    _getOverlayBaseZIndex() {
+        const defaultBase = 1050;
+
+        if (!this.document || !this.window || typeof this.window.getComputedStyle !== 'function') {
+            return defaultBase;
+        }
+
+        const parseZIndex = (value) => {
+            if (typeof value !== 'string') {
+                return null;
+            }
+
+            const trimmed = value.trim();
+            if (!trimmed || trimmed === 'auto') {
+                return null;
+            }
+
+            const parsed = Number.parseInt(trimmed, 10);
+            return Number.isNaN(parsed) ? null : parsed;
+        };
+
+        const extractFromElement = (element) => {
+            if (!element) {
+                return null;
+            }
+
+            try {
+                const computed = this.window.getComputedStyle(element);
+                return computed ? parseZIndex(computed.zIndex) : null;
+            } catch (error) {
+                return null;
+            }
+        };
+
+        const selectors = [
+            '[data-role="page-toolbar-root"]',
+            '[data-role="page-toolbar-topframe"]',
+            '[data-role="page-toolbar-sidebar"]',
+            '.e-page-toolbar',
+            '.e-sideframe',
+        ];
+
+        const values = [];
+
+        selectors.forEach((selector) => {
+            if (!this.document) {
+                return;
+            }
+
+            this.document.querySelectorAll(selector).forEach((node) => {
+                const value = extractFromElement(node);
+                if (typeof value === 'number') {
+                    values.push(value);
+                }
+            });
+        });
+
+        if (!values.length) {
+            return defaultBase;
+        }
+
+        const maxZIndex = Math.max(...values);
+        return Math.max(defaultBase, maxZIndex + 20);
+    }
+
     _closeInstance(instance, returnValue) {
         if (!instance || instance.isClosing || !this.document) {
             return;
@@ -202,11 +267,15 @@ class ModalBoxClass {
             ? this.document.activeElement
             : null;
 
+        const overlayBaseZIndex = this._getOverlayBaseZIndex();
+        const backdropZIndex = overlayBaseZIndex + this.boxes.length * 10;
+        const modalZIndex = backdropZIndex + 10;
+
         // Создаем backdrop (оверлей MDB)
         const backdrop = this.document.createElement('div');
         backdrop.className = 'modal-backdrop fade show';
-        // z-index выше для вложенных модалов
-        backdrop.style.zIndex = 1040 + this.boxes.length * 10;
+        // z-index выше для вложенных модалов и PageToolbar
+        backdrop.style.zIndex = `${backdropZIndex}`;
         if (!this.document.body) {
             throw new Error('ModalBox.open: document body is not available');
         }
@@ -223,7 +292,7 @@ class ModalBoxClass {
         if (this.document.body) {
             this.document.body.style.overflow = 'hidden';
         }
-        modal.style.zIndex = 1050 + this.boxes.length * 10;
+        modal.style.zIndex = `${modalZIndex}`;
         modal.innerHTML = `
           <div class="modal-dialog modal-fullscreen">
             <div class="modal-content h-100" style="position:relative;display:flex;flex-direction:column;">
