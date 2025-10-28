@@ -3,7 +3,7 @@ import { resolve, join } from 'node:path';
 import { cpSync, existsSync, mkdirSync, rmSync, mkdtempSync, readdirSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
-import { resolveBuildTargets } from './config.js';
+import { resolveBuildTargets } from './config.mjs';
 
 const rootDir = resolve(process.cwd(), 'engine/vite');
 const repoRoot = resolve(rootDir, '..', '..');

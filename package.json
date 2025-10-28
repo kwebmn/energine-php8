@@ -3,7 +3,7 @@
     "build": "node engine/vite/build.mjs",
     "build:ui:bootstrap": "cross-env UI_FRAMEWORK=bootstrap5 node engine/vite/build.mjs",
     "build:ui:md": "cross-env UI_FRAMEWORK=mdbootstrap node engine/vite/build.mjs",
-    "dev": "vite --config engine/vite/config.js",
+    "dev": "vite --config engine/vite/config.mjs",
     "lint:ui": "node engine/vite/check-ui-imports.mjs"
   },
   "devDependencies": {
