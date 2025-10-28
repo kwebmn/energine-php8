@@ -1,140 +1,122 @@
 .energine-swal-modal .modal-dialog {
-    max-width: 420px;
+    max-width: 430px;
 }
 
 .energine-swal-content {
-    position: relative;
     border: none;
-    border-radius: 1.25rem;
-    background-color: #ffffff;
-    padding-top: 2rem;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
-    overflow: hidden;
+    border-radius: var(--mdb-border-radius-xl, 1.25rem);
+    background-color: var(--mdb-surface-bg, #ffffff);
+    box-shadow: var(--mdb-box-shadow-lg, 0 1.5rem 4rem rgba(15, 23, 42, 0.18));
+}
+
+.energine-swal-header {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1rem 0;
+}
+
+.energine-swal-close.btn-close {
+    margin: 0;
+    padding: 0.25rem;
+    box-shadow: none;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.energine-swal-close.btn-close:hover,
+.energine-swal-close.btn-close:focus {
+    opacity: 1;
 }
 
 .energine-swal-body {
-    padding: 0 2.5rem 1.75rem;
+    padding: 0 2.25rem 2rem;
     text-align: center;
 }
 
 .energine-swal-icon {
-    width: 96px;
-    height: 96px;
+    width: 86px;
+    height: 86px;
     border-radius: 50%;
-    margin: 0 auto 1.5rem;
+    margin: 0 auto 1.25rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.5rem;
-    color: #ffffff;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+    font-size: 2.25rem;
+    border: 1px solid transparent;
+}
+
+.energine-swal-icon i {
+    line-height: 1;
 }
 
 .energine-swal-icon--warning {
-    background-image: linear-gradient(135deg, #f59e0b, #f97316);
-    box-shadow: 0 18px 45px rgba(245, 158, 11, 0.35);
+    color: var(--mdb-warning, #f59e0b);
+    background-color: rgba(var(--mdb-warning-rgb, 245, 158, 11), 0.12);
+    border-color: rgba(var(--mdb-warning-rgb, 245, 158, 11), 0.35);
 }
 
 .energine-swal-icon--danger {
-    background-image: linear-gradient(135deg, #ef4444, #dc2626);
-    box-shadow: 0 18px 45px rgba(239, 68, 68, 0.35);
+    color: var(--mdb-danger, #ef4444);
+    background-color: rgba(var(--mdb-danger-rgb, 239, 68, 68), 0.12);
+    border-color: rgba(var(--mdb-danger-rgb, 239, 68, 68), 0.35);
 }
 
 .energine-swal-icon--success {
-    background-image: linear-gradient(135deg, #22c55e, #16a34a);
-    box-shadow: 0 18px 45px rgba(34, 197, 94, 0.35);
+    color: var(--mdb-success, #22c55e);
+    background-color: rgba(var(--mdb-success-rgb, 34, 197, 94), 0.12);
+    border-color: rgba(var(--mdb-success-rgb, 34, 197, 94), 0.35);
 }
 
 .energine-swal-icon--info {
-    background-image: linear-gradient(135deg, #38bdf8, #0ea5e9);
-    box-shadow: 0 18px 45px rgba(14, 165, 233, 0.35);
+    color: var(--mdb-info, #38bdf8);
+    background-color: rgba(var(--mdb-info-rgb, 56, 189, 248), 0.12);
+    border-color: rgba(var(--mdb-info-rgb, 56, 189, 248), 0.35);
 }
 
 .energine-swal-icon--question {
-    background-image: linear-gradient(135deg, #6366f1, #4338ca);
-    box-shadow: 0 18px 45px rgba(67, 56, 202, 0.35);
+    color: var(--mdb-primary, #3b82f6);
+    background-color: rgba(var(--mdb-primary-rgb, 59, 130, 246), 0.12);
+    border-color: rgba(var(--mdb-primary-rgb, 59, 130, 246), 0.35);
 }
 
 .energine-swal-title {
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 0.75rem;
-    color: #111827;
+    color: var(--mdb-body-color, #1f2937);
 }
 
 .energine-swal-message {
     font-size: 1rem;
-    color: #4b5563;
+    color: var(--mdb-body-color, #4b5563);
     line-height: 1.6;
     word-break: break-word;
 }
 
 .energine-swal-actions {
+    width: 100%;
     display: flex;
     justify-content: center;
     gap: 0.75rem;
-    padding: 0 2rem 2rem;
+    padding: 0 1.75rem 1.75rem;
     flex-wrap: wrap;
 }
 
-.energine-swal-btn {
-    border: none;
-    border-radius: 999px;
-    font-weight: 600;
-    padding: 0.7rem 1.8rem;
+.energine-swal-actions .btn {
     min-width: 130px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    border-radius: var(--mdb-border-radius-pill, 999px);
+    font-weight: 600;
+    padding: 0.65rem 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.energine-swal-btn--confirm {
-    background-image: linear-gradient(135deg, #4f46e5, #2563eb);
-    color: #ffffff;
-    box-shadow: 0 18px 45px rgba(79, 70, 229, 0.35);
-}
-
-.energine-swal-btn--confirm:hover,
-.energine-swal-btn--confirm:focus {
-    filter: brightness(1.05);
+.energine-swal-actions .btn:hover,
+.energine-swal-actions .btn:focus {
     transform: translateY(-1px);
 }
 
-.energine-swal-btn--cancel {
-    background-color: #f3f4f6;
-    color: #374151;
-    box-shadow: inset 0 0 0 1px rgba(156, 163, 175, 0.5);
-}
-
-.energine-swal-btn--cancel:hover,
-.energine-swal-btn--cancel:focus {
-    background-color: #e5e7eb;
-    transform: translateY(-1px);
-}
-
-.energine-swal-close {
-    position: absolute;
-    top: 1.1rem;
-    right: 1.1rem;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    border: none;
-    background-color: rgba(148, 163, 184, 0.15);
-    color: #475569;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.energine-swal-close:hover,
-.energine-swal-close:focus {
-    background-color: rgba(148, 163, 184, 0.3);
-    transform: rotate(90deg);
-}
-
-.energine-swal-close i {
-    pointer-events: none;
+.energine-swal-actions .btn-outline-secondary {
+    border-width: 2px;
 }
 
 .energine-swal-toast-container {
@@ -146,79 +128,57 @@
 
 .energine-swal-toast {
     pointer-events: auto;
-    min-width: 280px;
-    border: none;
-    border-radius: 1rem;
-    background-image: var(--energine-swal-toast-bg, linear-gradient(135deg, #2563eb, #1d4ed8));
-    color: #ffffff;
-    box-shadow: 0 18px 45px rgba(30, 41, 59, 0.35);
+    border-radius: var(--mdb-border-radius-lg, 1rem);
     overflow: hidden;
 }
 
-.energine-swal-toast .toast-body,
 .energine-swal-toast-body {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    gap: 0.75rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.9rem 1.1rem;
 }
 
 .energine-swal-toast-icon {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.18);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 1.25rem;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.energine-swal-toast.text-dark .energine-swal-toast-icon {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: var(--mdb-warning, #f59e0b);
 }
 
 .energine-swal-toast-message {
-    flex: 1;
     font-weight: 500;
     line-height: 1.4;
 }
 
-.energine-swal-toast-close {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    background-color: transparent;
-    color: inherit;
+.energine-swal-toast .btn-close {
     opacity: 0.75;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: opacity 0.2s ease, background-color 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
-.energine-swal-toast-close:hover,
-.energine-swal-toast-close:focus {
+.energine-swal-toast .btn-close:hover,
+.energine-swal-toast .btn-close:focus {
     opacity: 1;
-    background-color: rgba(255, 255, 255, 0.2);
 }
 
-.energine-swal-toast[data-variant='success'] {
-    --energine-swal-toast-bg: linear-gradient(135deg, #22c55e, #16a34a);
+.energine-swal-toast .btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(150%);
+    opacity: 0.85;
 }
 
-.energine-swal-toast[data-variant='danger'] {
-    --energine-swal-toast-bg: linear-gradient(135deg, #ef4444, #dc2626);
-}
-
-.energine-swal-toast[data-variant='warning'] {
-    --energine-swal-toast-bg: linear-gradient(135deg, #f59e0b, #f97316);
-}
-
-.energine-swal-toast[data-variant='info'] {
-    --energine-swal-toast-bg: linear-gradient(135deg, #38bdf8, #0ea5e9);
-}
-
-.energine-swal-toast[data-variant='primary'] {
-    --energine-swal-toast-bg: linear-gradient(135deg, #6366f1, #4338ca);
+.energine-swal-toast .btn-close-white:hover,
+.energine-swal-toast .btn-close-white:focus {
+    opacity: 1;
 }
 
 @media (max-width: 575.98px) {
@@ -236,7 +196,7 @@
         padding-right: 1.5rem;
     }
 
-    .energine-swal-btn {
+    .energine-swal-actions .btn {
         width: 100%;
     }
 }
