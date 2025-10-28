@@ -10,6 +10,12 @@ if (typeof window !== 'undefined') {
     if (typeof window.bootstrap === 'undefined' && typeof window.mdb !== 'undefined') {
         window.bootstrap = window.mdb;
     }
+
+    const activeMdb = window.mdb;
+
+    if (activeMdb && typeof activeMdb.initMDB === 'function') {
+        activeMdb.initMDB(activeMdb);
+    }
 }
 
 export default mdb;
