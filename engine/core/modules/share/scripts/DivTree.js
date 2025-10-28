@@ -1,4 +1,5 @@
 import DivManager from './DivManager.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -11,9 +12,13 @@ class DivTree extends DivManager {
     constructor(el) {
         super(el); // Создаст дерево, this.tree, this.treeRoot и всё остальное
 
-        this.langId = this.element.getAttribute('lang_id');
-        this.singlePath = this.element.getAttribute('single_template');
-        this.site = this.element.getAttribute('site');
+        const dataset = this.element?.dataset || {};
+        this.langId = dataset.eLangId
+            || this.element.getAttribute('data-e-lang-id');
+        this.singlePath = dataset.eSingleTemplate
+            || this.element.getAttribute('data-e-single-template');
+        this.site = dataset.eSite
+            || this.element.getAttribute('data-e-site');
 
         this.currentID = 0;
 
@@ -81,14 +86,14 @@ class DivTree extends DivManager {
 
 export { DivTree };
 export default DivTree;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DivTree;
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('DivTree', DivTree);
     }
-
-    target.DivTree = DivTree;
-    return DivTree;
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[DivTree] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[DivTree] Failed to register behavior', error);
+    }
 }
-
-attachToWindow();

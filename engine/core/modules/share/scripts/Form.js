@@ -1,4 +1,4 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine, { showLoader, hideLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import TabPane from './TabPane.js';
 import Toolbar from './Toolbar.js';
 import Validator from './Validator.js';
@@ -6,11 +6,13 @@ import ModalBox from './ModalBox.js';
 import AcplField from './AcplField.js';
 import Cookie from './Cookie.js';
 import loadCKEditor from './ckeditor/loader.js';
+import ValidFormModule from './ValidForm.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const ValidForm = ValidFormModule || globalScope?.ValidForm;
 const getCodeMirror = () => globalScope?.CodeMirror;
 
 /**
@@ -135,18 +137,88 @@ class Form {
         return previewEl.querySelector ? previewEl.querySelector('img') : null;
     }
 
+    static resolveElementById(id) {
+        if (!id) {
+            return null;
+        }
+        return document.getElementById(id) || null;
+    }
+
+    static resolveLinkedElements(source, mapping = {}) {
+        if (!source) {
+            return {};
+        }
+
+        const dataset = source.dataset || {};
+        return Object.entries(mapping).reduce((result, [prop, datasetKey]) => {
+            result[prop] = Form.resolveElementById(dataset[datasetKey]);
+            return result;
+        }, {});
+    }
+
+    static findPreviewAnchor(previewEl) {
+        if (!previewEl) {
+            return null;
+        }
+        const tagName = previewEl.tagName?.toLowerCase() || '';
+        if (tagName === 'a') {
+            return previewEl;
+        }
+        return previewEl.querySelector?.('a') || null;
+    }
+
+    static updatePreview(previewEl, { type, href, previewSrc, title } = {}) {
+        if (!previewEl) {
+            return;
+        }
+
+        const anchor = Form.findPreviewAnchor(previewEl);
+        if (anchor) {
+            if (href) {
+                anchor.setAttribute('href', href);
+            } else {
+                anchor.removeAttribute('href');
+            }
+        }
+
+        if (!type) {
+            Form.resetPreview(previewEl);
+            return;
+        }
+
+        switch (type) {
+            case 'image':
+            case 'video':
+                Form.showImagePreview(previewEl, previewSrc || href || '', title || '');
+                break;
+            default:
+                Form.showIconPreview(previewEl, Form.getPreviewIconKey(type));
+                break;
+        }
+    }
+
+    static togglePreviewElement(element, shouldShow) {
+        if (!element) {
+            return;
+        }
+
+        element.classList?.toggle('d-none', !shouldShow);
+        if (shouldShow) {
+            element.classList?.remove('hidden');
+            element.removeAttribute?.('hidden');
+            element.setAttribute?.('aria-hidden', 'false');
+        } else {
+            element.setAttribute?.('hidden', 'hidden');
+            element.setAttribute?.('aria-hidden', 'true');
+        }
+    }
+
     static showPreviewElement(element) {
-        if (!element) return;
-        element.classList?.remove('d-none', 'hidden');
-        element.removeAttribute?.('hidden');
-        element.setAttribute?.('aria-hidden', 'false');
+        Form.togglePreviewElement(element, true);
     }
 
     static hidePreviewElement(element) {
-        if (!element) return;
-        element.classList?.add('d-none');
-        element.setAttribute?.('hidden', 'hidden');
-        element.setAttribute?.('aria-hidden', 'true');
+        Form.togglePreviewElement(element, false);
     }
 
     static showIconPreview(previewEl, iconKey = 'file') {
@@ -165,12 +237,12 @@ class Form {
         const image = Form.getPreviewImage(previewEl);
         if (image) {
             image.removeAttribute('src');
-            Form.hidePreviewElement(image);
+            Form.togglePreviewElement(image, false);
         }
 
-        Form.showPreviewElement(wrapper);
+        Form.togglePreviewElement(wrapper, true);
         if (previewEl !== wrapper) {
-            Form.showPreviewElement(previewEl);
+            Form.togglePreviewElement(previewEl, true);
         }
     }
 
@@ -188,17 +260,15 @@ class Form {
             if (alt) {
                 image.alt = alt;
             }
-            image.classList?.remove('d-none', 'hidden');
-            image.removeAttribute?.('hidden');
-            image.setAttribute?.('aria-hidden', 'false');
+            Form.togglePreviewElement(image, true);
         }
 
         const icon = wrapper.querySelector?.('.file-preview-icon');
         icon?.remove();
 
-        Form.showPreviewElement(wrapper);
+        Form.togglePreviewElement(wrapper, true);
         if (previewEl !== wrapper) {
-            Form.showPreviewElement(previewEl);
+            Form.togglePreviewElement(previewEl, true);
         }
     }
 
@@ -211,12 +281,12 @@ class Form {
         const image = Form.getPreviewImage(previewEl);
         if (image) {
             image.removeAttribute('src');
-            Form.hidePreviewElement(image);
+            Form.togglePreviewElement(image, false);
         }
 
-        Form.hidePreviewElement(wrapper);
+        Form.togglePreviewElement(wrapper, false);
         if (previewEl !== wrapper) {
-            Form.hidePreviewElement(previewEl);
+            Form.togglePreviewElement(previewEl, false);
         }
     }
 
@@ -313,14 +383,79 @@ class Form {
     }
 
     constructor(element) {
-        // this.overlay = new Overlay();
+        this._initializeComponentElement(element);
+        this._initTabPane();
+        Form.loadCSS('stylesheets/form.css');
+        this._initValidator();
+        this._initRichEditors();
+        this._initCodeEditors();
+        this._initAutocompleteFields();
+        this._initCustomSelectors();
+        this._bindActionHandlers();
+        this._initUploaders();
+        this._initDateControls();
+        this._initCrudActions();
+        this._enhanceEmbeddedGridIframes();
+        this._registerGlobalListeners();
 
-        // Получаем элемент формы
-        this.componentElement = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+        Form.initializeInputs(this.form || this.componentElement);
+        Form.applyRequiredHighlights(this.form || this.componentElement);
+    }
 
-        // singlePath
+    _forEachElement(selector, callback, root = null) {
+        const scope = root || this.form || this.componentElement;
+        if (!scope || typeof scope.querySelectorAll !== 'function') {
+            return [];
+        }
+
+        const elements = typeof selector === 'string'
+            ? Array.from(scope.querySelectorAll(selector))
+            : Array.from(selector || []);
+
+        if (typeof callback === 'function') {
+            elements.forEach((element, index) => callback(element, index));
+        }
+
+        return elements;
+    }
+
+    _initializeCollection(property, selector, factory, options = {}) {
+        const { root = this.componentElement } = options;
+        const collection = [];
+
+        this._forEachElement(selector, (element) => {
+            const instance = factory(element);
+            if (instance !== undefined) {
+                collection.push(instance);
+            }
+        }, root);
+
+        if (property) {
+            this[property] = collection;
+        }
+
+        return collection;
+    }
+
+    _registerHandlers(configs, defaultRoot = this.componentElement) {
+        configs.forEach(({ selector, event = 'click', handler, preventDefault = true, root = defaultRoot }) => {
+            if (!selector || typeof handler !== 'function') {
+                return;
+            }
+
+            this._forEachElement(selector, (element) => {
+                element.addEventListener(event, (evt) => {
+                    if (preventDefault) {
+                        evt.preventDefault?.();
+                    }
+
+                    handler(evt.currentTarget || element, evt);
+                });
+            }, root);
+        });
+    }
+
+    _initializeComponentElement(element) {
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
@@ -329,285 +464,377 @@ class Form {
             throw new Error('Form: не найден componentElement по селектору или элементу: ' + element);
         }
 
-        this.singlePath = this.componentElement.getAttribute('single_template');
+        const dataset = this.componentElement.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.componentElement.getAttribute('data-e-single-template');
 
-        // Внешний элемент формы
         this.form = this.componentElement.closest('form');
+        if (!this.form) {
+            throw new Error('Form: не найдена родительская форма для компонента.');
+        }
 
-        // Состояние формы
         this.state = this.form.querySelector('#componentAction')?.value;
+    }
 
-        // Панели с табами
+    _initTabPane() {
         this.tabPane = new TabPane(this.componentElement, {
             onTabChange: this.onTabChange.bind(this)
         });
+    }
 
-        // Подключаем CSS для подсветки обязательных полей (один раз на страницу)
-        Form.loadCSS('stylesheets/form.css');
-
-        // Валидатор
+    _initValidator() {
         this.validator = new Validator(this.form, this.tabPane);
         this.configureValidatorStyling();
+    }
 
-        // Рич-редакторы
-        this.richEditors = [];
-        this.form.querySelectorAll('[data-role="rich-editor"]').forEach(textarea => {
-            this.richEditors.push(new Form.RichEditor(textarea, this));
-        });
+    _initRichEditors() {
+        this._initializeCollection('richEditors', '[data-role="rich-editor"]', (textarea) => new Form.RichEditor(textarea, this));
+    }
 
-        // CodeMirror
-        this.codeEditors = [];
+    _initCodeEditors() {
         const codeMirror = getCodeMirror();
-        if (codeMirror) {
-            this.form.querySelectorAll('[data-role="code-editor"]').forEach(textarea => {
-                this.codeEditors.push(
-                    codeMirror.fromTextArea(textarea, {
-                        mode: "text/html",
-                        tabMode: "indent",
-                        lineNumbers: true,
-                        theme: 'elegant'
-                    })
-                );
-            });
+        if (!codeMirror) {
+            this.codeEditors = [];
+            return;
         }
 
-        // Acpl поля
-        this.form.querySelectorAll('[data-role="acpl"]').forEach(el => {
-            new AcplField(el);
-        });
+        this._initializeCollection('codeEditors', '[data-role="code-editor"]', (textarea) => (
+            codeMirror.fromTextArea(textarea, {
+                mode: 'text/html',
+                tabMode: 'indent',
+                lineNumbers: true,
+                theme: 'elegant'
+            })
+        ));
+    }
 
-        // SmapSelector
-        this.form.querySelectorAll('[data-action="open-smap"]').forEach(el => {
-            new Form.SmapSelector(el, this);
-        });
+    _initAutocompleteFields() {
+        this._initializeCollection('autocompleteFields', '[data-role="acpl"]', (element) => new AcplField(element));
+    }
 
-        // AttachmentSelector
-        this.form.querySelectorAll('[data-action="open-attachment"]').forEach(el => {
-            new Form.AttachmentSelector(el, this);
-        });
+    _initCustomSelectors() {
+        this._initializeCollection(null, '[data-action="open-smap"]', (element) => new Form.SmapSelector(element, this));
+        this._initializeCollection(null, '[data-action="open-attachment"]', (element) => new Form.AttachmentSelector(element, this));
+    }
 
-        // File field actions
-        this.form.querySelectorAll('[data-action="open-filelib"]').forEach(button => {
-            button.addEventListener('click', () => this.openFileLib(button));
-        });
-        this.form.querySelectorAll('[data-action="quick-upload"]').forEach(button => {
-            button.addEventListener('click', () => this.openQuickUpload(button));
-        });
-        this.form.querySelectorAll('[data-action="clear-file"]').forEach(button => {
-            button.addEventListener('click', () => this.clearFileField(button));
-        });
+    _bindActionHandlers() {
+        this._registerHandlers([
+            { selector: '[data-action="open-filelib"]', handler: (element) => this.openFileLib(element) },
+            { selector: '[data-action="quick-upload"]', handler: (element) => this.openQuickUpload(element) },
+            { selector: '[data-action="clear-file"]', handler: (element) => this.clearFileField(element) }
+        ]);
+    }
 
-        // Uploaders
-        this.fileUploaders = [];
+    _initUploaders() {
         this.fileUploaderMap = new Map();
-        this.componentElement.querySelectorAll('[data-role="file-uploader"]').forEach(uploader => {
+        this._initializeCollection('fileUploaders', '[data-role="file-uploader"]', (uploader) => {
             const instance = new Form.Uploader(uploader, this, 'upload/');
-            if (instance) {
-                this.fileUploaders.push(instance);
-                if (instance.targetId) {
-                    this.fileUploaderMap.set(instance.targetId, instance);
-                }
+            if (instance?.targetId) {
+                this.fileUploaderMap.set(instance.targetId, instance);
             }
-        });
+            return instance;
+        }, { root: this.componentElement });
+    }
 
-        // Date controls
-        this.dateControls = [];
-        this.componentElement.querySelectorAll('[data-role="date"], [data-role="datetime"]').forEach(dateControl => {
+    _initDateControls() {
+        this._initializeCollection('dateControls', '[data-role="date"], [data-role="datetime"]', (dateControl) => {
             const wrapper = dateControl.closest('[data-role="form-field"]');
             const isNullable = wrapper ? wrapper.getAttribute('data-required') !== 'true' : true;
-            if (dateControl.getAttribute('data-role') === 'datetime') {
-                this.dateControls.push(Energine.createDateTimePicker(dateControl, isNullable));
-            } else {
-                this.dateControls.push(Energine.createDatePicker(dateControl, isNullable));
-            }
+            return dateControl.getAttribute('data-role') === 'datetime'
+                ? Energine.createDateTimePicker(dateControl, isNullable)
+                : Energine.createDatePicker(dateControl, isNullable);
+        }, { root: this.componentElement });
+    }
+
+    _initCrudActions() {
+        this._registerHandlers([
+            { selector: '[data-action="crud"]', handler: (trigger) => this._handleCrudAction(trigger) }
+        ], this.componentElement);
+    }
+
+    _handleCrudAction(trigger) {
+        const context = this._createCrudContext(trigger);
+        if (!context) {
+            return;
+        }
+
+        ModalBox.open({
+            url: `${this.singlePath}${context.field}-${context.editor}/crud/`,
+            onClose: (result) => this._processCrudResult(context, result)
         });
+    }
 
-        // Ensure iframes that host grids expand to available height inside forms
-        this._enhanceEmbeddedGridIframes();
-        window.addEventListener('resize', () => this._enhanceEmbeddedGridIframes());
+    _createCrudContext(trigger) {
+        if (!trigger) {
+            return null;
+        }
 
-        // Если открыто в ModalBox
+        const dataset = trigger.dataset || {};
+        const field = dataset.field;
+        const editor = dataset.editor;
+        if (!field || !editor) {
+            return null;
+        }
+
+        const control = this.form.querySelector(`[name="${field}"], [id="${field}"]`);
+        if (!control) {
+            return null;
+        }
+
+        const isSelectElement = control instanceof HTMLSelectElement;
+        return {
+            trigger,
+            field,
+            editor,
+            control,
+            isSelectElement,
+            isMultiSelect: isSelectElement && control.multiple
+        };
+    }
+
+    _processCrudResult(context, result) {
+        if (!context?.control) {
+            return;
+        }
+
+        const selectedValue = result?.key;
+        const wasDirty = Boolean(result?.dirty);
+
+        const shouldReload = this._shouldReloadCrudControl(context, { selectedValue, wasDirty });
+
+        if (shouldReload && context.isSelectElement) {
+            const previousSelection = this._capturePreviousSelection(context);
+            this._reloadForeignKeyControl(context, { previousSelection, selectedValue });
+        } else if (selectedValue) {
+            this._applySelectedValue(context, selectedValue);
+        }
+    }
+
+    _shouldReloadCrudControl(context, { selectedValue, wasDirty }) {
+        if (!context.isSelectElement) {
+            return wasDirty;
+        }
+
+        if (wasDirty) {
+            return true;
+        }
+
+        if (!selectedValue) {
+            return false;
+        }
+
+        return !Array.from(context.control.options || []).some((option) => option.value == selectedValue);
+    }
+
+    _capturePreviousSelection({ control, isSelectElement, isMultiSelect }) {
+        if (!isSelectElement) {
+            return null;
+        }
+
+        if (isMultiSelect) {
+            return Array.from(control.selectedOptions || []).map((option) => option.value);
+        }
+
+        return control.value;
+    }
+
+    _reloadForeignKeyControl(context, { previousSelection, selectedValue }) {
+        const { field, control, isSelectElement, isMultiSelect } = context;
+        if (!isSelectElement) {
+            return;
+        }
+
+        Energine.request(
+            `${this.singlePath}${field}/fk-values/`,
+            null,
+            (data) => {
+                if (!data?.result) {
+                    return;
+                }
+
+                const [rows, idField, titleField] = data.result;
+                control.innerHTML = '';
+
+                rows.forEach((row) => {
+                    const option = document.createElement('option');
+                    Object.entries(row).forEach(([key, value]) => {
+                        if (key === idField) {
+                            option.value = value;
+                        } else if (key === titleField) {
+                            option.textContent = value;
+                        } else {
+                            option.setAttribute(key, value);
+                        }
+                    });
+
+                    if (isMultiSelect) {
+                        if (previousSelection?.includes(option.value)) {
+                            option.selected = true;
+                        }
+                    } else if (previousSelection && option.value === previousSelection) {
+                        option.selected = true;
+                    }
+
+                    control.appendChild(option);
+                });
+
+                if (selectedValue && isSelectElement) {
+                    this._applySelectedValue(context, selectedValue);
+                } else {
+                    control.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            },
+            this.processServerError.bind(this),
+            this.processServerError.bind(this)
+        );
+    }
+
+    _applySelectedValue({ control, isSelectElement, isMultiSelect }, selectedValue) {
+        if (!control || !selectedValue) {
+            return;
+        }
+
+        if (isMultiSelect) {
+            const optionToSelect = Array.from(control.options || [])
+                .find((option) => option.value == selectedValue);
+            if (optionToSelect) {
+                optionToSelect.selected = true;
+            }
+        } else if (isSelectElement) {
+            control.value = selectedValue;
+        } else if ('value' in control) {
+            control.value = selectedValue;
+        }
+
+        control.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    _registerGlobalListeners() {
+        this._registerModalEscapeHandler();
+        this._registerTranslateShortcut();
+    }
+
+    _registerModalEscapeHandler() {
         if (window.parent.ModalBox?.initialized && window.parent.ModalBox.getCurrent()) {
-            document.body.addEventListener('keypress', evt => {
+            document.body.addEventListener('keypress', (evt) => {
                 if (evt.key === 'Escape' || evt.key === 'esc') {
                     window.parent.ModalBox.close();
                 }
             });
         }
+    }
 
-        // GOOGLE TRANSLATE Ctrl + *
-        window.addEventListener('keypress', (evt) => {
-            if (!(evt.target instanceof Element)) {
+    _registerTranslateShortcut() {
+        window.addEventListener('keypress', async (evt) => {
+            const context = this._extractTranslateContext(evt);
+            if (!context) {
                 return;
             }
 
-            if (evt.code === 'Digit8' && evt.shiftKey) { // shift + *
-                const fieldId = evt.target.id;
-                if (!fieldId || fieldId.length < 2) {
-                    return;
+            try {
+                const translated = await this._fetchTranslation(context);
+                if (translated && 'value' in context.targetField) {
+                    context.targetField.value = translated;
                 }
-
-                const fieldBase = fieldId.substring(0, fieldId.length - 2);
-                const parent = evt.target.closest('[data-role="pane-item"]');
-                if (!parent || !parent.id) {
-                    return;
-                }
-
-                const anchors = document.querySelectorAll('a[lang_abbr]');
-                const parentHref = `#${parent.id}`;
-                const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
-                let toLangAbbr = anchor?.getAttribute('lang_abbr');
-                if (!toLangAbbr) {
-                    return;
-                }
-
-                if (toLangAbbr === 'ua') {
-                    toLangAbbr = 'uk';
-                }
-
-                const srcTextElement = document.getElementById(`${fieldBase}_1`);
-                if (!srcTextElement || !('value' in srcTextElement)) {
-                    return;
-                }
-
-                const srcText = srcTextElement.value;
-                if (!srcText) {
-                    return;
-                }
-
-                const params = new URLSearchParams({
-                    client: 'gtx',
-                    sl: 'ru',
-                    tl: toLangAbbr,
-                    dt: 't',
-                    q: srcText
-                });
-
-                fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`)
-                    .then((response) => response.text())
-                    .then((resultText) => {
-                        if (!resultText) {
-                            return;
-                        }
-
-                        let translated = resultText.substring(4);
-                        const endIndex = translated.indexOf('","');
-                        if (endIndex !== -1) {
-                            translated = translated.substring(0, endIndex);
-                        }
-
-                        if (!translated) {
-                            return;
-                        }
-
-                        translated = translated.charAt(0).toUpperCase() + translated.slice(1);
-
-                        if ('value' in evt.target) {
-                            evt.target.value = translated;
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Google Translate request failed', error);
-                    });
+            } catch (error) {
+                console.error('Google Translate request failed', error);
             }
         });
+    }
 
-        // CRUD
-        this.componentElement.querySelectorAll('[data-action="crud"]').forEach(crudEl => {
-            crudEl.addEventListener('click', (event) => {
-                const target = event.currentTarget || event.target;
-                const dataField = target?.getAttribute('data-field');
-                const dataEditor = target?.getAttribute('data-editor');
-                if (!dataField || !dataEditor) {
-                    return;
-                }
+    _extractTranslateContext(evt) {
+        if (!(evt?.target instanceof Element)) {
+            return null;
+        }
 
-                const control = this.form.querySelector(`[name="${dataField}"], [id="${dataField}"]`);
-                if (!control) {
-                    return;
-                }
+        if (evt.code !== 'Digit8' || !evt.shiftKey) {
+            return null;
+        }
 
-                const isSelectElement = control instanceof HTMLSelectElement;
-                const isMultiSelect = isSelectElement && control.multiple;
+        const targetField = evt.target;
+        const fieldId = targetField.id;
+        if (!fieldId || fieldId.length < 2) {
+            return null;
+        }
 
-                ModalBox.open({
-                    url: `${this.singlePath}${dataField}-${dataEditor}/crud/`,
-                    onClose: (result) => {
-                        const selectedValue = result?.key;
-                        const wasDirty = Boolean(result?.dirty);
-                        let shouldReload = wasDirty;
+        const fieldBase = fieldId.substring(0, fieldId.length - 2);
+        const parent = targetField.closest('[data-role="pane-item"]');
+        if (!parent?.id) {
+            return null;
+        }
 
-                        if (!shouldReload && selectedValue && isSelectElement) {
-                            const hasSelectedOption = Array.from(control.options || [])
-                                .some((option) => option.value == selectedValue);
-                            shouldReload = !hasSelectedOption;
-                        }
+        const toLangAbbr = this._resolveTargetLanguage(parent.id);
+        if (!toLangAbbr) {
+            return null;
+        }
 
-                        if (shouldReload) {
-                            const previousSelection = isMultiSelect
-                                ? Array.from(control.selectedOptions || []).map((option) => option.value)
-                                : (isSelectElement ? control.value : null);
-                            Energine.request(
-                                `${this.singlePath}${dataField}/fk-values/`,
-                                null,
-                                (data) => {
-                                    if (data.result) {
-                                        control.innerHTML = '';
-                                        const id = data.result[1];
-                                        const title = data.result[2];
-                                        data.result[0].forEach(row => {
-                                            const option = document.createElement('option');
-                                            Object.entries(row).forEach(([key, value]) => {
-                                                if (key === id) {
-                                                    option.value = value;
-                                                } else if (key === title) {
-                                                    option.textContent = value;
-                                                } else {
-                                                    option.setAttribute(key, value);
-                                                }
-                                            });
-                                            control.appendChild(option);
-                                            if (isMultiSelect) {
-                                                if (previousSelection?.includes(option.value)) {
-                                                    option.selected = true;
-                                                }
-                                            } else if (previousSelection && option.value === previousSelection) {
-                                                option.selected = true;
-                                            }
-                                        });
-                                        if (selectedValue && isSelectElement) {
-                                            const optionToSelect = Array.from(control.options || [])
-                                                .find((option) => option.value == selectedValue);
-                                            if (optionToSelect) {
-                                                optionToSelect.selected = true;
-                                            }
-                                        }
-                                        control.dispatchEvent(new Event('change', { bubbles: true }));
-                                    }
-                                },
-                                this.processServerError.bind(this),
-                                this.processServerError.bind(this)
-                            );
-                        } else if (selectedValue) {
-                            if (isMultiSelect) {
-                                const optionToSelect = Array.from(control.options || [])
-                                    .find((option) => option.value == selectedValue);
-                                if (optionToSelect) {
-                                    optionToSelect.selected = true;
-                                }
-                            } else if (isSelectElement) {
-                                control.value = selectedValue;
-                            }
-                            control.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                });
-            });
+        const srcTextElement = document.getElementById(`${fieldBase}_1`);
+        if (!srcTextElement || !('value' in srcTextElement)) {
+            return null;
+        }
+
+        const srcText = srcTextElement.value;
+        if (!srcText) {
+            return null;
+        }
+
+        return {
+            targetField,
+            toLangAbbr,
+            srcText
+        };
+    }
+
+    _resolveTargetLanguage(paneId) {
+        const anchors = document.querySelectorAll('a[lang_abbr]');
+        const parentHref = `#${paneId}`;
+        const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
+        const lang = anchor?.getAttribute('lang_abbr');
+        return this._normalizeLanguageAbbr(lang);
+    }
+
+    _normalizeLanguageAbbr(lang) {
+        if (!lang) {
+            return null;
+        }
+
+        return lang === 'ua' ? 'uk' : lang;
+    }
+
+    async _fetchTranslation({ srcText, toLangAbbr }) {
+        const params = new URLSearchParams({
+            client: 'gtx',
+            sl: 'ru',
+            tl: toLangAbbr,
+            dt: 't',
+            q: srcText
         });
 
-        Form.initializeInputs(this.form || this.componentElement);
-        Form.applyRequiredHighlights(this.form || this.componentElement);
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`);
+        const resultText = await response.text();
+        return this._parseTranslationResponse(resultText);
+    }
 
+    _parseTranslationResponse(resultText) {
+        if (!resultText) {
+            return '';
+        }
+
+        const prefixLength = 4;
+        let translated = resultText.length > prefixLength
+            ? resultText.substring(prefixLength)
+            : resultText;
+
+        const endIndex = translated.indexOf('","');
+        if (endIndex !== -1) {
+            translated = translated.substring(0, endIndex);
+        }
+
+        if (!translated) {
+            return '';
+        }
+
+        return translated.charAt(0).toUpperCase() + translated.slice(1);
     }
 
     // onTabChange
@@ -698,31 +925,31 @@ class Form {
 
     // clearFileField
     clearFileField(button) {
-        const targetId = button?.dataset?.target;
-        const previewId = button?.dataset?.preview;
-        const linkInput = targetId ? document.getElementById(targetId) : null;
-        if (linkInput) {
-            linkInput.value = '';
-        }
-        const preview = previewId ? document.getElementById(previewId) : null;
-        if (preview) {
-            const anchor = preview.tagName.toLowerCase() === 'a' ? preview : preview.querySelector('a');
-            if (anchor) {
-                anchor.removeAttribute('href');
+        const dataset = button?.dataset || {};
+        const targetInput = Form.resolveElementById(dataset.target);
+        const { linkInput, previewEl, fileInput } = Form.resolveLinkedElements(button, {
+            linkInput: 'link',
+            previewEl: 'preview',
+            fileInput: 'input'
+        });
+
+        [targetInput, linkInput].filter(Boolean).forEach((input) => {
+            if ('value' in input) {
+                input.value = '';
             }
-            Form.resetPreview(preview);
-        }
+        });
+
+        Form.updatePreview(previewEl);
+
         if (button) {
             button.classList.add('d-none');
         }
 
-        const inputId = button?.dataset?.input;
-        const fileInput = inputId ? document.getElementById(inputId) : null;
         if (fileInput) {
             fileInput.value = '';
         }
 
-        const uploader = targetId ? this.fileUploaderMap?.get(targetId) : null;
+        const uploader = dataset.target ? this.fileUploaderMap?.get(dataset.target) : null;
         uploader?.reset();
     }
 
@@ -730,47 +957,34 @@ class Form {
     processFileResult(result, button) {
         if (!result) return;
 
-        // получаем элемент по id, если передано id
-        const linkId = button?.dataset?.link;
-        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const dataset = button?.dataset || {};
+        const { linkInput, previewEl } = Form.resolveLinkedElements(button, {
+            linkInput: 'link',
+            previewEl: 'preview'
+        });
+
         if (linkInput) {
             linkInput.value = result['upl_path'];
-        } else {
-            console.warn('processFileResult: Не найден элемент для id:', linkId, button, result);
+        } else if (dataset.link) {
+            console.warn('processFileResult: Не найден элемент для id:', dataset.link, button, result);
         }
 
-        const previewId = button?.dataset?.preview;
-        const previewEl = previewId ? document.getElementById(previewId) : null;
-        const anchor = previewEl && previewEl.tagName.toLowerCase() === 'a'
-            ? previewEl
-            : previewEl?.querySelector('a');
-        if (previewEl) {
-            const type = result['upl_internal_type'];
-            const href = result['upl_path'] ? Energine.media + result['upl_path'] : '';
+        const path = result['upl_path'] || '';
+        const type = result['upl_internal_type'];
+        const href = path ? Energine.media + path : '';
+        const previewSrc = path
+            ? (type === 'video' ? `${Energine.resizer}w0-h0/${path}` : href)
+            : '';
 
-            if (anchor) {
-                if (href) {
-                    anchor.setAttribute('href', href);
-                } else {
-                    anchor.removeAttribute('href');
-                }
-            }
+        Form.updatePreview(previewEl, {
+            type,
+            href,
+            previewSrc,
+            title: result['upl_title'] || ''
+        });
 
-            switch (type) {
-                case 'image':
-                    Form.showImagePreview(previewEl, Energine.media + result['upl_path'], result['upl_title'] || '');
-                    break;
-                case 'video':
-                    Form.showImagePreview(previewEl, Energine.resizer + 'w0-h0/' + result['upl_path'], result['upl_title'] || '');
-                    break;
-                default:
-                    Form.showIconPreview(previewEl, Form.getPreviewIconKey(type));
-                    break;
-            }
-        }
-
-        const clearButton = linkId
-            ? this.form.querySelector(`[data-action="clear-file"][data-target="${linkId}"]`)
+        const clearButton = dataset.link
+            ? this.form.querySelector(`[data-action="clear-file"][data-target="${dataset.link}"]`)
             : null;
         clearButton?.classList.remove('d-none', 'hidden');
         clearButton?.removeAttribute('hidden');
@@ -778,8 +992,8 @@ class Form {
 
     // openFileLib
     openFileLib(button) {
-        const linkId = button?.dataset?.link;
-        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const dataset = button?.dataset || {};
+        const linkInput = Form.resolveElementById(dataset.link);
         const path = linkInput ? (linkInput.value || null) : null;
 
         ModalBox.open({
@@ -812,18 +1026,17 @@ class Form {
 
     // openQuickUpload
     openQuickUpload(button) {
-        const inputId = button?.dataset?.input;
-        const fileInput = inputId ? document.getElementById(inputId) : null;
+        const dataset = button?.dataset || {};
+        const fileInput = Form.resolveElementById(dataset.input);
         if (fileInput) {
             fileInput.click();
             return;
         }
 
-        const linkId = button?.dataset?.link;
-        const linkInput = linkId ? document.getElementById(linkId) : null;
+        const linkInput = Form.resolveElementById(dataset.link);
         const path = linkInput ? (linkInput.value || null) : null;
-        const quickUploadPid = button?.dataset?.quickUploadPid;
-        const quickUploadEnabled = button?.dataset?.quickUploadEnabled === '1';
+        const quickUploadPid = dataset.quickUploadPid;
+        const quickUploadEnabled = dataset.quickUploadEnabled === '1';
         // let overlay = this.overlay;
         let processResult = this.processFileResult.bind(this);
 
@@ -832,30 +1045,31 @@ class Form {
         ModalBox.open({
             url: this.singlePath + 'file-library/' + quickUploadPid + '/add',
             extraData: path,
-            onClose: (result) => {
-                if (result && result.data) {
-                    let upl_id = result.data;
-                    if (upl_id) {
-                        // overlay.show();
-                        showLoader();
-                        fetch(this.singlePath + `file-library/${quickUploadPid}/get-data/`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                            body: `json=1&filter=${encodeURIComponent(JSON.stringify({
-                                condition: '=',
-                                share_uploads: {'upl_id': [upl_id]}
-                            }))}`
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data && data.data && data.data.length === 2) {
-                                    // overlay.hide();
-                                    hideLoader();
-                                    processResult(data.data[1], button);
-                                }
-                            })
-                            .catch(() => hideLoader());
+            onClose: async (result) => {
+                const uploadId = result?.data;
+                if (!uploadId) {
+                    return;
+                }
+
+                try {
+                    showLoader();
+                    const response = await fetch(this.singlePath + `file-library/${quickUploadPid}/get-data/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `json=1&filter=${encodeURIComponent(JSON.stringify({
+                            condition: '=',
+                            share_uploads: { upl_id: [uploadId] }
+                        }))}`
+                    });
+
+                    const data = await response.json();
+                    if (data?.data?.length === 2) {
+                        processResult(data.data[1], button);
                     }
+                } catch (error) {
+                    console.error('Quick upload fetch failed', error);
+                } finally {
+                    hideLoader();
                 }
             }
         });
@@ -1160,7 +1374,7 @@ class Form {
     /**
      * Make embedded iframes that host grids stretch to the full available height
      * of their container. Applies safe flex/min-height fixes to ancestor containers
-     * and sets iframe height to 100% with responsive recalculation.
+     * and sets iframe height to 100%.
      */
     _enhanceEmbeddedGridIframes() {
         if (!this.form) return;
@@ -1194,6 +1408,8 @@ class Form {
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.style.border = 'none';
+            iframe.style.flex = '1 1 auto';
+            iframe.style.minHeight = '0';
 
             // Ensure parent chain can allocate height
             const paneBody = iframe.closest('[data-pane-part="body"]');
@@ -1203,12 +1419,21 @@ class Form {
             ensureFlexChain(tabContent);
             ensureFlexChain(tabPane);
 
-            // If explicit pixel sizing is needed (older browsers), set height to parent height
+            // Ensure iframe parent can stretch while preventing cumulative inline heights.
             try {
                 const host = iframe.parentElement;
-                const rect = host.getBoundingClientRect();
-                if (rect && rect.height > 0) {
-                    iframe.style.height = rect.height + 'px';
+                if (host) {
+                    const hostStyle = window.getComputedStyle(host);
+                    if (hostStyle.display.indexOf('flex') === -1) {
+                        host.style.display = 'flex';
+                        host.style.flexDirection = 'column';
+                    }
+                    if (!host.style.minHeight || host.style.minHeight === '' || host.style.minHeight === 'auto') {
+                        host.style.minHeight = '0';
+                    }
+                    if (!host.style.flex || host.style.flex === '') {
+                        host.style.flex = '1 1 auto';
+                    }
                 }
             } catch (e) { /* ignore */ }
 
@@ -1835,8 +2060,9 @@ class FormSmapSelector {
 
     showSelector() {
         // Предполагаем, что у componentElement есть атрибут 'template' (или data-template)
-        const template = this.form.componentElement.getAttribute('template') ||
-            this.form.componentElement.dataset.template;
+        const dataset = this.form.componentElement.dataset || {};
+        const template = dataset.eTemplate
+            || this.form.componentElement.getAttribute('data-e-template');
         ModalBox.open({
             url: template + 'selector/',
             onClose: this.setName.bind(this)
@@ -1900,8 +2126,9 @@ class FormAttachmentSelector {
 
     showSelector() {
         // Получаем шаблон из атрибута или data-атрибута
-        const template = this.form.componentElement.getAttribute('template') ||
-            this.form.componentElement.dataset.template;
+        const dataset = this.form.componentElement.dataset || {};
+        const template = dataset.eTemplate
+            || this.form.componentElement.getAttribute('data-e-template');
 
         ModalBox.open({
             url: template + 'file-library/',
@@ -2155,14 +2382,15 @@ Form.RichEditor = FormRichEditor;
 
 export { Form };
 export default Form;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Form;
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('Form', Form);
+        registerEnergineBehavior('ValidForm', ValidForm);
     }
-
-    target.Form = Form;
-    return Form;
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[Form] Failed to register behaviors');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[Form] Failed to register behaviors', error);
+    }
 }
-
-attachToWindow();

@@ -51,15 +51,40 @@ class DocumentController extends BaseObject
         {
             $result = self::TRANSFORM_STRUCTURE_XML;
         }
-        elseif (isset($_GET[self::TRANSFORM_JSON]) ||
-            (isset($_SERVER['HTTP_X_REQUEST']) &&
-                (strtolower($_SERVER['HTTP_X_REQUEST']) ==
-                    self::TRANSFORM_JSON))
-        ) {
+        elseif ($this->shouldRenderJson())
+        {
             $result = self::TRANSFORM_JSON;
         }
 
         return $result;
+    }
+
+    private function shouldRenderJson(): bool
+    {
+        if (isset($_GET[self::TRANSFORM_JSON]))
+        {
+            return true;
+        }
+
+        if (isset($_SERVER['HTTP_X_REQUEST']) &&
+            strtolower($_SERVER['HTTP_X_REQUEST']) === self::TRANSFORM_JSON)
+        {
+            return true;
+        }
+
+        if (isset($_SERVER['HTTP_ACCEPT']) &&
+            str_contains(strtolower($_SERVER['HTTP_ACCEPT']), 'application/json'))
+        {
+            return true;
+        }
+
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+        {
+            return true;
+        }
+
+        return false;
     }
     /**
      * Точка входа:

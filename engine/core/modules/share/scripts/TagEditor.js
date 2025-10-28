@@ -1,4 +1,4 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine, { showLoader, hideLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
 
@@ -112,14 +112,6 @@ class TagEditor extends GridManager {
 
 export { TagEditor };
 export default TagEditor;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TagEditor;
-    }
-
-    target.TagEditor = TagEditor;
-    return TagEditor;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('TagEditor', TagEditor);
 }
-
-attachToWindow();

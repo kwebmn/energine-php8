@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import GridManager, { Grid } from './GridManager.js';
 import Cookie from './Cookie.js';
 import ModalBox from './ModalBox.js';
@@ -652,17 +652,6 @@ class PathList {
 
 export { GridWithPopImage, FileRepository, PathList };
 export default FileRepository;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FileRepository;
-    }
-
-    target.GridWithPopImage = GridWithPopImage;
-    target.FileRepository = FileRepository;
-    target.PathList = PathList;
-
-    return FileRepository;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('FileRepository', FileRepository);
 }
-
-attachToWindow();

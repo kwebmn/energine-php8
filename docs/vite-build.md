@@ -79,7 +79,7 @@
 | --- | --- | --- |
 | `energine.vendor.js` / `energine.vendor.css` | Базовые вендорные зависимости (Bootstrap). Нужны всем пользователям. | `engine/core/modules/share/transformers/bootstrap/document.xslt` — подключаются без условий в продакшене. |
 | `energine.extended.vendor.js` / `energine.extended.vendor.css` | Административные сторонние библиотеки: редактор, файловый API, дерево, CodeMirror. Загружаются только для пользователей с `is_user = 1`. | Там же, в `document.xslt`, внутри условия по авторизации. |
-| `energine.js` / `energine.css` | Публичный модуль Energine и базовая тема. JS-файл грузится как модуль и содержит `bootEnergine`, CSS — общие стили сайта. | `document.xslt` (JS — в `<script type="module">`, CSS — линк всегда). |
+| `energine.js` / `energine.css` | Публичный модуль Energine и базовая тема. JS-файл грузится как модуль, сам вызывает `Energine.boot()` и инициализирует компоненты по `data-e-js`. CSS — общие стили сайта. | `document.xslt` (JS — в `<script type="module">`, CSS — линк всегда). |
 | `energine.extended.js` / `energine.extended.css` | Логика админ-интерфейса (grid, формы, тулбары) и дополнительные стили интерфейса управления сайтом. | Подключаются только при входе пользователя (`is_user = 1`). |
 | `32px.png` и другие ресурсы | Статичные файлы, которые были импортированы внутри CSS (например, иконки из темы jsTree). Важно хранить их вместе с бандлами, чтобы браузер находил ресурсы по путям из CSS. | Используются прозрачным образом через ссылки внутри CSS. |
 

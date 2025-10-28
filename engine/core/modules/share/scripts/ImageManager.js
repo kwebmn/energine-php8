@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import Form from './Form.js';
 import ModalBox from './ModalBox.js';
 
@@ -140,14 +140,6 @@ class ImageManager extends Form {
 
 export { ImageManager };
 export default ImageManager;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return ImageManager;
-    }
-
-    target.ImageManager = ImageManager;
-    return ImageManager;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('ImageManager', ImageManager);
 }
-
-attachToWindow();

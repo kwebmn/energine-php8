@@ -1,4 +1,4 @@
-import Energine from '../../share/scripts/Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 import GridManager from '../../share/scripts/GridManager.js';
 import ModalBox from '../../share/scripts/ModalBox.js';
 
@@ -53,14 +53,6 @@ class TemplateWizard extends GridManager {
 
 export { TemplateWizard };
 export default TemplateWizard;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return TemplateWizard;
-    }
-
-    target.TemplateWizard = TemplateWizard;
-    return TemplateWizard;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('TemplateWizard', TemplateWizard);
 }
-
-attachToWindow();

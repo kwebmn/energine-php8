@@ -1,4 +1,4 @@
-import Energine from '../../share/scripts/Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -10,8 +10,15 @@ class SignIn {
     this.componentElement =
       typeof element === 'string' ? document.querySelector(element) : element;
 
+    const dataset = this.componentElement?.dataset || {};
+
     // Берём template из атрибута компонента (если есть)
-    this.singlePath = this.componentElement?.getAttribute('template') || '';
+    const templateAttr = dataset.eTemplate
+      || this.componentElement?.getAttribute('data-e-template')
+      || this.componentElement?.getAttribute('template')
+      || '';
+
+    this.singlePath = templateAttr.endsWith('/') ? templateAttr : `${templateAttr}/`;
 
     // Навешиваем обработчики
     this._bind();
@@ -32,7 +39,7 @@ class SignIn {
   }
 
   _bindForm(selector, urlBuilder) {
-    const form = document.querySelector(selector);
+    const form = this.componentElement?.querySelector(selector);
     if (!form) return;
 
     form.addEventListener('submit', async (e) => {
@@ -57,7 +64,8 @@ class SignIn {
   }
 
   _bindLogout(selector) {
-    document.querySelectorAll(selector).forEach((btn) => {
+    const scope = this.componentElement || document;
+    scope.querySelectorAll(selector).forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
         try {
@@ -188,17 +196,17 @@ class SignIn {
 
 export { SignIn };
 export default SignIn;
-
-export function attachToWindow(target = globalScope) {
-  if (!target) {
-    return SignIn;
+try {
+  if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('SignIn', SignIn);
   }
-
-  target.SignIn = SignIn;
-  return SignIn;
+} catch (error) {
+  if (Energine && typeof Energine.safeConsoleError === 'function') {
+    Energine.safeConsoleError(error, '[SignIn] Failed to register behavior');
+  } else if (typeof console !== 'undefined' && console.warn) {
+    console.warn('[SignIn] Failed to register behavior', error);
+  }
 }
-
-attachToWindow();
 
 // Пример использования:
 // new SignIn('#sign-in-component');

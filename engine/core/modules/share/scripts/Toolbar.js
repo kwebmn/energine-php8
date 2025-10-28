@@ -2,6 +2,107 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const TOOLBAR_DOCKED_CLASSES = ['bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2'];
+const INLINE_FLEX_CENTER_CLASSES = ['d-inline-flex', 'align-items-center'];
+const BUTTON_BASE_CLASSES = ['btn', 'btn-sm'];
+const CUSTOM_SELECT_BUTTON_CLASSES = [
+    'custom_select_button',
+    ...BUTTON_BASE_CLASSES,
+    'btn-outline-secondary',
+    'dropdown-toggle',
+    ...INLINE_FLEX_CENTER_CLASSES,
+    'gap-2'
+];
+
+const normalizeDatasetPropKey = (key = '') => key
+    .slice(4)
+    .replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+    .toLowerCase();
+
+const readValueFromElement = (element, { datasetKey, attributeNames = [], fallback } = {}) => {
+    if (!(element instanceof HTMLElement)) {
+        return '';
+    }
+    const dataset = element.dataset || {};
+    if (datasetKey && Object.prototype.hasOwnProperty.call(dataset, datasetKey)) {
+        const datasetValue = dataset[datasetKey];
+        if (datasetValue !== undefined && datasetValue !== null && datasetValue !== '') {
+            return datasetValue;
+        }
+    }
+    for (const attr of attributeNames) {
+        if (!attr || typeof element.getAttribute !== 'function') {
+            continue;
+        }
+        const attrValue = element.getAttribute(attr);
+        if (attrValue !== null && attrValue !== '') {
+            return attrValue;
+        }
+    }
+    if (typeof fallback === 'function') {
+        const fallbackValue = fallback(element);
+        if (fallbackValue !== undefined && fallbackValue !== null && fallbackValue !== '') {
+            return fallbackValue;
+        }
+    }
+    return '';
+};
+
+const createRegistryManager = () => {
+    const maps = new Map();
+    const ensureMap = (name) => {
+        if (!maps.has(name)) {
+            maps.set(name, new Map());
+        }
+        return maps.get(name);
+    };
+    return {
+        ensureMap,
+        assignTo(target, name) {
+            target[name] = ensureMap(name);
+            return target[name];
+        },
+        get(name, key) {
+            return ensureMap(name).get(key);
+        },
+        set(name, key, value) {
+            ensureMap(name).set(key, value);
+        },
+        delete(name, key) {
+            ensureMap(name).delete(key);
+        },
+        pushToList(name, key, value) {
+            const map = ensureMap(name);
+            const list = map.get(key) || [];
+            list.push(value);
+            map.set(key, list);
+            return list;
+        },
+        flushList(name, key) {
+            const map = ensureMap(name);
+            const list = map.get(key) || [];
+            map.delete(key);
+            return list;
+        }
+    };
+};
+
+const registryManager = createRegistryManager();
+
+const CONTROL_DESCRIPTOR_PROP_CONFIG = [
+    { key: 'id', datasetKey: 'controlId', attributeNames: ['data-control-id'] },
+    {
+        key: 'title',
+        datasetKey: 'title',
+        attributeNames: ['data-title'],
+        fallback: element => element.textContent?.trim() || ''
+    },
+    { key: 'tooltip', datasetKey: 'tooltip', attributeNames: ['title', 'data-tooltip', 'data-bs-original-title'] },
+    { key: 'icon', datasetKey: 'icon', attributeNames: ['data-icon'] },
+    { key: 'iconOnly', datasetKey: 'iconOnly', attributeNames: ['data-icon-only'] },
+    { key: 'action', datasetKey: 'action', attributeNames: ['data-action', 'data-click', 'onclick', 'onClick', 'action'] },
+];
+
 class Toolbar {
     constructor(toolbarNameOrElement, props = {}) {
         this.element = null;
@@ -10,40 +111,71 @@ class Toolbar {
         this.controls = [];
         this.properties = typeof props === 'object' ? props : {};
 
+        const { element, name } = this._initializeToolbarElement(toolbarNameOrElement);
+        this.element = element;
+        this.name = name;
+        if (this.element && this.name) {
+            this._assignToolbarIdentity(this.element, this.name);
+        }
+    }
+
+    _initializeToolbarElement(toolbarNameOrElement) {
         if (toolbarNameOrElement instanceof HTMLElement) {
-            this.element = toolbarNameOrElement;
-            this.name = this.element.dataset?.toolbar || '';
-            if (!this.name && typeof toolbarNameOrElement.getAttribute === 'function') {
-                this.name = toolbarNameOrElement.getAttribute('data-toolbar') || '';
-            }
-            if (!this.name && typeof toolbarNameOrElement.className === 'string') {
-                const nameMatch = /([\w-]+)_toolbar/.exec(toolbarNameOrElement.className);
-                if (nameMatch) {
-                    this.name = nameMatch[1];
-                }
-            }
-            if (!this.element.classList.contains('btn-toolbar')) {
-                this.element.classList.add('btn-toolbar');
-            }
-            this.element.classList.add('flex-wrap', 'gap-2', 'align-items-center');
-            this.element.setAttribute('role', 'toolbar');
-            if (this.name) {
-                this.element.dataset.toolbar = this.name;
-                this.element.classList.add(this.name);
-            }
-        } else {
-            const toolbarName = toolbarNameOrElement || '';
-            this.name = toolbarName;
-            if (typeof document !== 'undefined') {
-                this.element = document.createElement('div');
-                this.element.classList.add('btn-toolbar', 'flex-wrap', 'gap-2', 'align-items-center');
-                this.element.setAttribute('role', 'toolbar');
-                if (toolbarName) {
-                    this.element.classList.add(toolbarName);
-                    this.element.dataset.toolbar = toolbarName;
-                }
+            const element = toolbarNameOrElement;
+            const name = this._resolveToolbarName(element, toolbarNameOrElement);
+            this._applyBaseToolbarAttributes(element);
+            return { element, name };
+        }
+
+        const toolbarName = typeof toolbarNameOrElement === 'string' ? toolbarNameOrElement : '';
+        if (typeof document === 'undefined') {
+            return { element: null, name: toolbarName };
+        }
+
+        const element = document.createElement('div');
+        this._applyBaseToolbarAttributes(element);
+        return { element, name: toolbarName };
+    }
+
+    _resolveToolbarName(element, fallbackSource) {
+        const datasetName = element?.dataset?.eToolbar;
+        if (datasetName) {
+            return datasetName;
+        }
+        if (typeof element?.getAttribute === 'function') {
+            const attrName = element.getAttribute('data-e-toolbar');
+            if (attrName) {
+                return attrName;
             }
         }
+        if (typeof element?.className === 'string') {
+            const nameMatch = /([\w-]+)_toolbar/.exec(element.className);
+            if (nameMatch) {
+                return nameMatch[1];
+            }
+        }
+        if (typeof fallbackSource === 'string') {
+            return fallbackSource;
+        }
+        return '';
+    }
+
+    _applyBaseToolbarAttributes(element) {
+        if (!element) {
+            return;
+        }
+        Toolbar.applyClassList(element, {
+            add: ['btn-toolbar', 'flex-wrap', 'gap-2', 'align-items-center']
+        });
+        element.setAttribute('role', 'toolbar');
+    }
+
+    _assignToolbarIdentity(element, name) {
+        if (!element || !name) {
+            return;
+        }
+        element.dataset.eToolbar = name;
+        element.classList.add(name);
     }
 
     load(toolbarDescr) {
@@ -67,13 +199,14 @@ class Toolbar {
     }
 
     dock() {
-        this.element.classList.add('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
-        // this.element.classList.add( 'p-2',);
+        Toolbar.applyClassList(this.element, {
+            add: TOOLBAR_DOCKED_CLASSES
+        });
     }
     undock() {
-        // this.element.classList.add( 'p-2', 'ps-5');
-
-        this.element.classList.remove('bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2');
+        Toolbar.applyClassList(this.element, {
+            remove: TOOLBAR_DOCKED_CLASSES
+        });
     }
     getElement() {
         return this.element;
@@ -82,16 +215,41 @@ class Toolbar {
         this.boundTo = obj;
     }
 
-    appendControl(...args) {
-        args.forEach(control => {
-            if (control?.type && control.id) {
-                control.action = control.onclick;
-                delete control.onclick;
-                let Ctor = Toolbar[Toolbar.capitalize(control.type)];
-                if (!Ctor && control.type === 'submit') Ctor = Toolbar.Button;
-                if (Ctor) control = new Ctor(control);
+    _materializeControl(control) {
+        if (control?.type && control.id) {
+            control.action = control.onclick;
+            delete control.onclick;
+            const fallbackTypes = control.type === 'submit' ? ['button'] : [];
+            const factoryDescriptor = Toolbar.resolveControlFactory(control.type, fallbackTypes);
+            if (factoryDescriptor?.fromProps) {
+                control = factoryDescriptor.fromProps(control);
             }
-            if (control instanceof Toolbar.Control) {
+        }
+        return control instanceof Toolbar.Control ? control : null;
+    }
+
+    _collectControls(ids = []) {
+        if (!Array.isArray(ids) || !ids.length) {
+            return [...this.controls];
+        }
+        return ids
+            .map(id => (typeof id === 'string' ? this.getControlById(id) : id))
+            .filter(control => control instanceof Toolbar.Control);
+    }
+
+    _forEachControl(ids, iteratee) {
+        this._collectControls(ids).forEach(control => {
+            if (control) {
+                iteratee(control);
+            }
+        });
+    }
+
+    appendControl(...args) {
+        args
+            .map(control => this._materializeControl(control))
+            .filter(Boolean)
+            .forEach(control => {
                 control.toolbar = this;
                 control.build();
                 if (control.element) {
@@ -101,47 +259,34 @@ class Toolbar {
                     this.controls.push(control);
                     control.afterMount?.();
                 }
-            }
-        });
+            });
     }
 
     removeControl(control) {
-        if (typeof control === 'string') control = this.getControlById(control);
-        if (control instanceof Toolbar.Control) {
-            let idx = this.controls.indexOf(control);
+        const controls = this._collectControls([control]);
+        controls.forEach(ctrl => {
+            const idx = this.controls.indexOf(ctrl);
             if (idx !== -1) {
-                control.destroy?.();
-                if (control.element?.parentNode) control.element.parentNode.removeChild(control.element);
-                control.toolbar = null;
+                ctrl.destroy?.();
+                if (ctrl.element?.parentNode) ctrl.element.parentNode.removeChild(ctrl.element);
+                ctrl.toolbar = null;
                 this.controls.splice(idx, 1);
             }
-        }
+        });
     }
     getControlById(id) {
         return this.controls.find(c => c.properties.id === id) || null;
     }
     disableControls(...ids) {
-        if (!ids.length) {
-            this.controls.forEach(ctrl => { if (ctrl.properties.id !== 'close') ctrl.disable(); });
-        } else {
-            ids.forEach(id => {
-                let c = this.getControlById(id);
-                if (c) c.disable();
-            });
-        }
+        const controls = ids.length ? this._collectControls(ids) : this.controls.filter(ctrl => ctrl.properties.id !== 'close');
+        controls.forEach(ctrl => ctrl.disable());
     }
     enableControls(...ids) {
-        if (!ids.length) {
-            this.controls.forEach(ctrl => ctrl.enable());
-        } else {
-            ids.forEach(id => {
-                let c = this.getControlById(id);
-                if (c) c.enable();
-            });
-        }
+        const controls = ids.length ? this._collectControls(ids) : [...this.controls];
+        controls.forEach(ctrl => ctrl.enable());
     }
     allButtonsUp() {
-        this.controls.forEach(ctrl => {
+        this._forEachControl([], ctrl => {
             if (ctrl instanceof Toolbar.Button) ctrl.up();
         });
     }
@@ -153,19 +298,20 @@ class Toolbar {
 
     // Hydration helpers
     static extractPropertiesFromDataset(dataset = {}, overrides = {}) {
-        const props = {};
-        Object.entries(dataset).forEach(([key, value]) => {
-            if (!key || typeof value === 'undefined' || value === null) {
-                return;
-            }
-            if (key.startsWith('prop')) {
-                const normalized = key.slice(4).replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).toLowerCase();
+        const props = Object.entries(dataset)
+            .filter(([key, value]) => key && value !== undefined && value !== null && key.startsWith('prop'))
+            .reduce((acc, [key, value]) => {
+                const normalized = normalizeDatasetPropKey(key);
                 if (normalized) {
-                    props[normalized] = value;
+                    acc[normalized] = value;
                 }
-            }
-        });
+                return acc;
+            }, {});
         return Object.assign(props, overrides || {});
+    }
+
+    static readDatasetOrAttribute(element, datasetKey, attributeNames = []) {
+        return readValueFromElement(element, { datasetKey, attributeNames });
     }
 
     static extractControlDescriptor(element) {
@@ -173,40 +319,64 @@ class Toolbar {
             return null;
         }
         const dataset = element.dataset || {};
-        const rawType = dataset.type || element.getAttribute('data-type') || element.tagName.toLowerCase();
-        const type = (rawType || 'button').toLowerCase();
-        const controlId = dataset.controlId || element.getAttribute('data-control-id') || '';
-        const title = dataset.title || element.getAttribute('data-title') || '';
-        const tooltip = element.getAttribute('title') || dataset.tooltip || '';
-        const action = dataset.action || element.getAttribute('data-action') || '';
-        const icon = dataset.icon || element.getAttribute('data-icon') || '';
-        const iconOnly = dataset.iconOnly || element.getAttribute('data-icon-only') || '';
+        const declaredType = Toolbar.readDatasetOrAttribute(element, 'type', ['data-type']);
+        const rawType = declaredType || element.tagName.toLowerCase();
+        let type = (rawType || 'button').toLowerCase();
+
+        const props = CONTROL_DESCRIPTOR_PROP_CONFIG.reduce((acc, config) => {
+            const value = readValueFromElement(element, config);
+            acc[config.key] = value || '';
+            return acc;
+        }, {});
+
+        props.action = Toolbar.normalizeActionName(props.action);
         const disabled = element.hasAttribute('disabled')
             || dataset.disabled === 'true'
             || dataset.disabled === '1';
+        props.disabled = disabled;
 
-        if (!controlId && type !== 'separator') {
+        if (!props.id && type !== 'separator') {
             return null;
         }
+
+        const ariaPressedAttr = element.getAttribute('aria-pressed');
+        const bootstrapToggle = (element.getAttribute('data-bs-toggle') || '').toLowerCase();
+        const hasToggleDataset = typeof dataset.state !== 'undefined' || element.getAttribute('data-state') !== null;
+        const hasPressedClass = element.classList
+            ? (element.classList.contains('active') || element.classList.contains('pressed'))
+            : false;
+        const shouldForceSwitcher = (
+            type === 'switcher'
+            || (
+                (type === 'button' || type === 'link' || type === 'a')
+                && (
+                    ariaPressedAttr !== null
+                    || bootstrapToggle === 'button'
+                    || hasToggleDataset
+                    || hasPressedClass
+                )
+            )
+        );
+
+        if (shouldForceSwitcher) {
+            type = 'switcher';
+        }
+
+        props.title = props.title || element.textContent?.trim() || '';
+        props.type = type;
 
         const descriptor = {
             type,
             element,
-            props: {
-                id: controlId,
-                title: title || element.textContent?.trim() || '',
-                tooltip,
-                icon,
-                iconOnly,
-                action,
-                disabled,
-                type,
-            },
+            props,
         };
 
         if (type === 'switcher') {
-            descriptor.props.aicon = dataset.altIcon || element.getAttribute('data-alt-icon') || '';
-            descriptor.props.state = dataset.state || element.getAttribute('data-state') || '';
+            props.aicon = Toolbar.readDatasetOrAttribute(element, 'altIcon', ['data-alt-icon']);
+            const stateFromDataset = Toolbar.readDatasetOrAttribute(element, 'state', ['data-state']);
+            const stateFromAria = ariaPressedAttr !== null ? (ariaPressedAttr === 'true' ? '1' : '0') : '';
+            const stateFromClasses = hasPressedClass ? '1' : '';
+            props.state = stateFromDataset || stateFromAria || stateFromClasses || '';
         }
 
         if (type === 'select') {
@@ -220,14 +390,14 @@ class Toolbar {
                         initialValue = option.value;
                     }
                 });
-                descriptor.props.disabled = disabled || selectEl.hasAttribute('disabled');
+                props.disabled = disabled || selectEl.hasAttribute('disabled');
             }
             descriptor.options = options;
             descriptor.initial = initialValue;
         }
 
         if (type === 'separator') {
-            descriptor.props.id = controlId || descriptor.props.id || '';
+            props.id = props.id || '';
         }
 
         return descriptor;
@@ -237,66 +407,58 @@ class Toolbar {
         if (!descriptor || !descriptor.props) {
             return null;
         }
-
-        const { type, props, options, initial } = descriptor;
-
-        switch (type) {
-            case 'switcher':
-                return new Toolbar.Switcher(props);
-            case 'file':
-                return new Toolbar.File(props);
-            case 'select':
-                return new Toolbar.Select(props, options || {}, initial);
-            case 'separator':
-                return new Toolbar.Separator(props);
-            case 'link':
-                return new Toolbar.Button(props);
-            default:
-                return new Toolbar.Button(props);
+        const { type } = descriptor;
+        const fallbackTypes = (type === 'link' || type === 'submit') ? ['button'] : [];
+        const factoryDescriptor = Toolbar.resolveControlFactory(type, fallbackTypes);
+        if (!factoryDescriptor) {
+            return null;
         }
+        if (factoryDescriptor.fromDescriptor) {
+            return factoryDescriptor.fromDescriptor(descriptor);
+        }
+        if (factoryDescriptor.fromProps) {
+            return factoryDescriptor.fromProps(descriptor.props);
+        }
+        return null;
+    }
+
+    static ensureRegistryMaps(...keys) {
+        const targets = keys.length ? keys : ['registry', 'pendingToolbars', 'componentInstances'];
+        targets.forEach(key => {
+            registryManager.assignTo(Toolbar, key);
+        });
     }
 
     static registerToolbarInstance(toolbar, componentRef = null) {
         if (!(toolbar instanceof Toolbar)) {
             return;
         }
-        if (!Toolbar.registry) {
-            Toolbar.registry = new Map();
-        }
-        Toolbar.registry.set(toolbar.element, toolbar);
+        Toolbar.ensureRegistryMaps('registry');
+        registryManager.set('registry', toolbar.element, toolbar);
 
         if (!componentRef) {
             return;
         }
 
-        if (!Toolbar.pendingToolbars) {
-            Toolbar.pendingToolbars = new Map();
-        }
-        if (!Toolbar.componentInstances) {
-            Toolbar.componentInstances = new Map();
-        }
+        Toolbar.ensureRegistryMaps('pendingToolbars', 'componentInstances');
 
-        const componentInstance = Toolbar.componentInstances.get(componentRef);
+        const componentInstance = registryManager.get('componentInstances', componentRef);
         if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
             componentInstance.attachToolbar(toolbar);
             return;
         }
 
-        const list = Toolbar.pendingToolbars.get(componentRef) || [];
-        list.push(toolbar);
-        Toolbar.pendingToolbars.set(componentRef, list);
+        registryManager.pushToList('pendingToolbars', componentRef, toolbar);
     }
 
     static registerComponentInstance(componentRef, instance) {
         if (!componentRef || !instance) {
             return;
         }
-        if (!Toolbar.componentInstances) {
-            Toolbar.componentInstances = new Map();
-        }
-        Toolbar.componentInstances.set(componentRef, instance);
+        Toolbar.ensureRegistryMaps('componentInstances');
+        registryManager.set('componentInstances', componentRef, instance);
 
-        const pending = Toolbar.pendingToolbars && Toolbar.pendingToolbars.get(componentRef);
+        const pending = registryManager.flushList('pendingToolbars', componentRef);
         if (pending && pending.length) {
             pending.forEach(toolbar => {
                 try {
@@ -305,7 +467,6 @@ class Toolbar {
                     console.warn('[Toolbar] Failed to attach toolbar to component', componentRef, error);
                 }
             });
-            Toolbar.pendingToolbars.delete(componentRef);
         }
     }
 
@@ -314,12 +475,12 @@ class Toolbar {
             return null;
         }
 
-        if (element.dataset && element.dataset.toolbarHydrated) {
+        if (element.dataset && element.dataset.eToolbarHydrated) {
             return (Toolbar.registry && Toolbar.registry.get(element)) || null;
         }
 
         const dataset = element.dataset || {};
-        const toolbarName = dataset.toolbar || options.name || '';
+        const toolbarName = dataset.eToolbar || options.name || '';
         const props = Toolbar.extractPropertiesFromDataset(dataset, options.properties);
         const childElements = Array.from(element.children || []).filter(child => child instanceof HTMLElement);
         const descriptors = childElements.map(child => Toolbar.extractControlDescriptor(child)).filter(Boolean);
@@ -329,7 +490,7 @@ class Toolbar {
         const toolbar = new Toolbar(element, props);
         if (toolbarName) {
             toolbar.name = toolbarName;
-            toolbar.element.dataset.toolbar = toolbarName;
+            toolbar.element.dataset.eToolbar = toolbarName;
             toolbar.element.classList.add(toolbarName);
         }
 
@@ -341,10 +502,10 @@ class Toolbar {
         });
 
         if (toolbar.element?.dataset) {
-            toolbar.element.dataset.toolbarHydrated = '1';
+            toolbar.element.dataset.eToolbarHydrated = '1';
         }
 
-        const componentRef = dataset.toolbarComponent || dataset.componentRef || null;
+        const componentRef = dataset.eToolbarComponent || dataset.componentRef || null;
         Toolbar.registerToolbarInstance(toolbar, componentRef);
 
         return toolbar;
@@ -355,7 +516,7 @@ class Toolbar {
             return [];
         }
         const toolbars = [];
-        root.querySelectorAll('[data-toolbar]').forEach(element => {
+        root.querySelectorAll('[data-e-toolbar]').forEach(element => {
             const toolbar = Toolbar.hydrate(element);
             if (toolbar) {
                 toolbars.push(toolbar);
@@ -367,6 +528,72 @@ class Toolbar {
     // STATIC
     static capitalize(s) {
         return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    static applyClassList(element, config = {}) {
+        if (!element || typeof element.classList === 'undefined') {
+            return;
+        }
+        const { add = [], remove = [], toggle = {} } = config;
+        add.forEach(className => className && element.classList.add(className));
+        remove.forEach(className => className && element.classList.remove(className));
+        Object.entries(toggle).forEach(([className, condition]) => {
+            if (!className) {
+                return;
+            }
+            if (condition) {
+                element.classList.add(className);
+            } else {
+                element.classList.remove(className);
+            }
+        });
+    }
+
+    static getControlFactories() {
+        if (!Toolbar.controlFactories) {
+            Toolbar.controlFactories = new Map();
+        }
+        return Toolbar.controlFactories;
+    }
+
+    static registerControlFactory(type, factory) {
+        if (!type || !factory) {
+            return;
+        }
+        const normalized = String(type).toLowerCase();
+        let descriptor = null;
+        if (typeof factory === 'function') {
+            descriptor = { fromProps: factory };
+        } else if (typeof factory === 'object') {
+            descriptor = {
+                fromProps: typeof factory.fromProps === 'function' ? factory.fromProps : null,
+                fromDescriptor: typeof factory.fromDescriptor === 'function' ? factory.fromDescriptor : null,
+            };
+        }
+        if (descriptor) {
+            Toolbar.getControlFactories().set(normalized, descriptor);
+        }
+    }
+
+    static resolveControlFactory(type, fallbackTypes = []) {
+        const factories = Toolbar.getControlFactories();
+        const candidates = [type];
+        if (Array.isArray(fallbackTypes)) {
+            candidates.push(...fallbackTypes);
+        } else {
+            candidates.push(fallbackTypes);
+        }
+        for (const candidate of candidates) {
+            if (!candidate && candidate !== 0) {
+                continue;
+            }
+            const normalized = String(candidate).toLowerCase();
+            const descriptor = factories.get(normalized);
+            if (descriptor) {
+                return descriptor;
+            }
+        }
+        return null;
     }
 
     static hasBootstrapStyles() {
@@ -382,29 +609,41 @@ class Toolbar {
             !!document.querySelector('script[src*="bootstrap.bundle.min.js"], script[src*="energine.vendor.js"]');
     }
 
-    static createBootstrapTooltip(element, config = {}) {
-        if (!Toolbar.hasBootstrapScript() || typeof bootstrap === 'undefined' || typeof bootstrap.Tooltip !== 'function') {
-            return null;
+    static bootstrap = {
+        attach(type, element, config = {}) {
+            if (!Toolbar.hasBootstrapScript() || typeof bootstrap === 'undefined') {
+                return null;
+            }
+            const ctor = bootstrap?.[type];
+            if (typeof ctor !== 'function') {
+                return null;
+            }
+            return ctor.getOrCreateInstance(element, config);
+        },
+        detach(instance) {
+            if (instance && typeof instance.dispose === 'function') {
+                instance.dispose();
+            }
         }
-        return bootstrap.Tooltip.getOrCreateInstance(element, Object.assign({
+    };
+
+    static createBootstrapTooltip(element, config = {}) {
+        const instance = Toolbar.bootstrap.attach('Tooltip', element, Object.assign({
             container: 'body',
             boundary: 'window'
         }, config));
+        return instance;
     }
 
     static disposeBootstrapTooltip(instance) {
-        if (instance && typeof instance.dispose === 'function') {
-            instance.dispose();
-        }
+        Toolbar.bootstrap.detach(instance);
     }
 
     static createBootstrapDropdown(element, config = {}) {
-        if (!Toolbar.hasBootstrapScript() || typeof bootstrap === 'undefined' || typeof bootstrap.Dropdown !== 'function') {
-            return null;
-        }
-        return bootstrap.Dropdown.getOrCreateInstance(element, Object.assign({
+        const instance = Toolbar.bootstrap.attach('Dropdown', element, Object.assign({
             autoClose: true
         }, config));
+        return instance;
     }
 
     // ---- Controls ----
@@ -418,6 +657,20 @@ class Toolbar {
         return false;
     }
 
+    static normalizeActionName(value) {
+        if (typeof value === 'undefined' || value === null) {
+            return '';
+        }
+        let candidate = String(value).trim();
+        if (!candidate) {
+            return '';
+        }
+        candidate = candidate.replace(/^javascript\s*:/i, '');
+        candidate = candidate.replace(/\(\s*\)$/, '');
+        candidate = candidate.replace(/;+\s*$/, '');
+        return candidate.trim();
+    }
+
     static Control = class {
         constructor(properties = {}) {
             this.toolbar = null;
@@ -425,6 +678,7 @@ class Toolbar {
             this.bootstrapTooltip = null;
             this.existingElement = null;
             this.usesDeclarativeElement = false;
+            this._eventBindings = [];
             this.properties = Object.assign({
                 id: '',
                 icon: '',
@@ -450,17 +704,40 @@ class Toolbar {
             this.usesDeclarativeElement = true;
         }
         load(controlDescr) {
-            this.properties.id = controlDescr.getAttribute('id') || '';
-            this.properties.icon = controlDescr.getAttribute('icon') || '';
-            this.properties.iconOnly = Toolbar.normalizeBoolean(
-                controlDescr.getAttribute('icon-only') || controlDescr.getAttribute('data-icon-only')
-            );
-            this.properties.title = controlDescr.getAttribute('title') || controlDescr.textContent?.trim() || '';
-            const actionAttr = controlDescr.getAttribute('action') || controlDescr.getAttribute('onclick') || '';
-            this.properties.action = actionAttr.replace(/^javascript:/i, '').trim();
-            const tooltipAttr = controlDescr.getAttribute('tooltip') || controlDescr.getAttribute('data-bs-original-title') || '';
-            this.properties.tooltip = tooltipAttr || '';
-            this.properties.type = controlDescr.getAttribute('type') || '';
+            const propertyReaders = [
+                { prop: 'id', read: el => el.getAttribute('id') || '' },
+                { prop: 'icon', read: el => Toolbar.readDatasetOrAttribute(el, 'icon', ['icon', 'data-icon']) },
+                {
+                    prop: 'iconOnly',
+                    read: el => Toolbar.readDatasetOrAttribute(el, 'iconOnly', ['icon-only', 'data-icon-only']),
+                    transform: Toolbar.normalizeBoolean
+                },
+                {
+                    prop: 'title',
+                    read: el => readValueFromElement(el, {
+                        datasetKey: 'title',
+                        attributeNames: ['title', 'data-title'],
+                        fallback: node => node.textContent?.trim() || ''
+                    })
+                },
+                {
+                    prop: 'action',
+                    read: el => Toolbar.readDatasetOrAttribute(el, 'action', ['action', 'onclick', 'data-action']),
+                    transform: Toolbar.normalizeActionName
+                },
+                {
+                    prop: 'tooltip',
+                    read: el => Toolbar.readDatasetOrAttribute(el, 'tooltip', ['tooltip', 'title', 'data-bs-original-title'])
+                },
+                { prop: 'type', read: el => Toolbar.readDatasetOrAttribute(el, 'type', ['type']) }
+            ];
+
+            propertyReaders.forEach(({ prop, read, transform }) => {
+                const raw = (typeof read === 'function') ? read(controlDescr) : '';
+                const value = transform ? transform(raw) : raw;
+                this.properties[prop] = (value !== undefined && value !== null) ? value : '';
+            });
+
             this.properties.isDisabled = controlDescr.hasAttribute('disabled');
             this.properties.isInitiallyDisabled = this.properties.isDisabled;
         }
@@ -475,6 +752,32 @@ class Toolbar {
             this.element.dataset.controlId = this.properties.id;
             this.element.setAttribute('unselectable', 'on');
             this.updateTooltip();
+        }
+        bindEvent(target, event, handler, options) {
+            if (!target || typeof target.addEventListener !== 'function' || typeof handler !== 'function') {
+                return null;
+            }
+            target.addEventListener(event, handler, options);
+            const binding = { target, event, handler, options };
+            this._eventBindings.push(binding);
+            return () => this.unbindEvent(binding);
+        }
+        unbindEvent(binding) {
+            if (!binding || !binding.target || typeof binding.target.removeEventListener !== 'function') {
+                return;
+            }
+            binding.target.removeEventListener(binding.event, binding.handler, binding.options);
+            const idx = this._eventBindings.indexOf(binding);
+            if (idx !== -1) {
+                this._eventBindings.splice(idx, 1);
+            }
+        }
+        removeAllEvents() {
+            this._eventBindings.splice(0).forEach(binding => {
+                if (binding && binding.target && typeof binding.target.removeEventListener === 'function') {
+                    binding.target.removeEventListener(binding.event, binding.handler, binding.options);
+                }
+            });
         }
         updateTooltip() {
             if (!this.element) return;
@@ -554,16 +857,17 @@ class Toolbar {
             this.element.innerHTML = '';
 
             if (hasIcon) {
-                this.element.classList.add('d-inline-flex', 'align-items-center');
+                Toolbar.applyClassList(this.element, {
+                    add: INLINE_FLEX_CENTER_CLASSES,
+                    toggle: {
+                        'gap-2': !iconOnly,
+                        'justify-content-center': iconOnly,
+                        'px-2': iconOnly
+                    }
+                });
                 const iconElement = this.createIconElement(this.properties.icon);
                 this.element.appendChild(iconElement);
-                if (iconOnly) {
-                    this.element.classList.remove('gap-2');
-                    this.element.classList.add('justify-content-center', 'px-2');
-                } else {
-                    this.element.classList.add('gap-2');
-                    this.element.classList.remove('justify-content-center');
-                    this.element.classList.remove('px-2');
+                if (!iconOnly) {
                     const textSpan = document.createElement('span');
                     textSpan.classList.add('toolbar-control-label', 'd-none', 'd-sm-inline');
                     textSpan.textContent = titleText || accessibleLabel;
@@ -575,8 +879,9 @@ class Toolbar {
                     this.element.removeAttribute('aria-label');
                 }
             } else {
-                this.element.classList.remove('gap-2');
-                this.element.classList.remove('justify-content-center', 'px-2');
+                Toolbar.applyClassList(this.element, {
+                    remove: ['gap-2', 'justify-content-center', 'px-2']
+                });
                 const label = titleText || fallbackLabel;
                 this.element.textContent = label;
                 if (label) {
@@ -589,21 +894,31 @@ class Toolbar {
         build() {
             if (!this.toolbar || !this.properties.id) return;
             if (this.existingElement) {
-                this.element = this.existingElement;
-                this.applyCommonAttributes();
-                const elementDisabled = this.element.classList.contains('disabled')
-                    || this.element.hasAttribute('disabled')
-                    || this.element.getAttribute('aria-disabled') === 'true';
-                if (elementDisabled) {
-                    this.properties.isDisabled = true;
-                }
-                if (this.properties.isDisabled) this.disable();
+                this._adoptExistingElement();
                 return;
             }
+            this._buildFreshElement();
+        }
+        _adoptExistingElement() {
+            this.element = this.existingElement;
+            this.applyCommonAttributes();
+            const elementDisabled = this.element.classList.contains('disabled')
+                || this.element.hasAttribute('disabled')
+                || this.element.getAttribute('aria-disabled') === 'true';
+            if (elementDisabled) {
+                this.properties.isDisabled = true;
+            }
+            if (this.properties.isDisabled) {
+                this.disable();
+            }
+        }
+        _buildFreshElement() {
             this.element = this.createElement();
             this.applyCommonAttributes();
             this.render();
-            if (this.properties.isDisabled) this.disable();
+            if (this.properties.isDisabled) {
+                this.disable();
+            }
         }
         afterMount() {
             this.initBootstrapBehaviors();
@@ -646,6 +961,7 @@ class Toolbar {
         initially_disabled() { return this.properties.isInitiallyDisabled; }
         setAction(action) { this.properties.action = action; }
         destroy() {
+            this.removeAllEvents();
             this.disposeBootstrapBehaviors();
         }
     };
@@ -675,22 +991,23 @@ class Toolbar {
             } else if (!usingExisting) {
                 this.element.setAttribute('type', typeAttr);
             }
-            if (usingExisting) {
-                if (!this.element.classList.contains('btn')) {
-                    this.element.classList.add('btn');
+            Toolbar.applyClassList(this.element, { add: BUTTON_BASE_CLASSES });
+            if (this.properties.id) {
+                Toolbar.applyClassList(this.element, { add: [`${this.properties.id}_btn`] });
+            }
+            if (!usingExisting) {
+                const layoutClasses = [...INLINE_FLEX_CENTER_CLASSES];
+                if (variantClass) {
+                    layoutClasses.push(variantClass);
                 }
-                if (!this.element.classList.contains('btn-sm')) {
-                    this.element.classList.add('btn-sm');
-                }
-                if (this.properties.id) this.element.classList.add(`${this.properties.id}_btn`);
+                Toolbar.applyClassList(this.element, {
+                    add: layoutClasses,
+                    toggle: { 'gap-2': !iconOnly }
+                });
             } else {
-                this.element.classList.add('btn', 'btn-sm', variantClass, 'd-inline-flex', 'align-items-center');
-                if (!iconOnly) {
-                    this.element.classList.add('gap-2');
-                } else {
-                    this.element.classList.remove('gap-2');
-                }
-                if (this.properties.id) this.element.classList.add(`${this.properties.id}_btn`);
+                Toolbar.applyClassList(this.element, {
+                    toggle: { 'gap-2': !iconOnly }
+                });
             }
             this._bindEvents();
         }
@@ -718,26 +1035,11 @@ class Toolbar {
         _bindEvents() {
             if (!this.element) return;
             this._ensureHandlers();
-            this._unbindEvents();
-            this.element.addEventListener('mouseover', this.handleMouseOver);
-            this.element.addEventListener('mouseout', this.handleMouseOut);
-            this.element.addEventListener('click', this.handleClick);
-            this.element.addEventListener('mousedown', this.handleMouseDown);
-        }
-        _unbindEvents() {
-            if (!this.element) return;
-            if (this.handleMouseOver) {
-                this.element.removeEventListener('mouseover', this.handleMouseOver);
-            }
-            if (this.handleMouseOut) {
-                this.element.removeEventListener('mouseout', this.handleMouseOut);
-            }
-            if (this.handleClick) {
-                this.element.removeEventListener('click', this.handleClick);
-            }
-            if (this.handleMouseDown) {
-                this.element.removeEventListener('mousedown', this.handleMouseDown);
-            }
+            this.removeAllEvents();
+            this.bindEvent(this.element, 'mouseover', this.handleMouseOver);
+            this.bindEvent(this.element, 'mouseout', this.handleMouseOut);
+            this.bindEvent(this.element, 'click', this.handleClick);
+            this.bindEvent(this.element, 'mousedown', this.handleMouseDown);
         }
         getVariantClass() {
             const source = [this.properties.id, this.properties.action, this.properties.title]
@@ -769,7 +1071,6 @@ class Toolbar {
             return this.element.classList.contains('active') || this.element.classList.contains('pressed');
         }
         destroy() {
-            this._unbindEvents();
             super.destroy();
         }
     };
@@ -804,20 +1105,22 @@ class Toolbar {
                     reader.readAsDataURL(file);
                 };
             }
-            if (this.fileInput && this.fileInput !== input && this.handleFileChange) {
-                this.fileInput.removeEventListener('change', this.handleFileChange);
+            if (this.unbindFileChange) {
+                this.unbindFileChange();
+                this.unbindFileChange = null;
             }
-            input.addEventListener('change', this.handleFileChange);
+            this.unbindFileChange = this.bindEvent(input, 'change', this.handleFileChange);
             this.fileInput = input;
         }
         callAction() {
             if (this.fileInput) this.fileInput.click();
         }
         destroy() {
-            if (this.fileInput) {
-                this.fileInput.removeEventListener('change', this.handleFileChange);
-                this.fileInput = null;
+            if (this.unbindFileChange) {
+                this.unbindFileChange();
+                this.unbindFileChange = null;
             }
+            this.fileInput = null;
             super.destroy();
         }
     };
@@ -858,7 +1161,7 @@ class Toolbar {
                     toggle();
                 }
             };
-            this.element.addEventListener('click', this.handleSwitch);
+            this.bindEvent(this.element, 'click', this.handleSwitch);
             toggle();
         }
         load(controlDescr) {
@@ -873,9 +1176,6 @@ class Toolbar {
         }
         getState() { return this.properties.state; }
         destroy() {
-            if (this.element) {
-                this.element.removeEventListener('click', this.handleSwitch);
-            }
             super.destroy();
         }
     };
@@ -913,19 +1213,19 @@ class Toolbar {
             if (!this.toolbar || !this.properties.id) return;
             this.element = document.createElement('div');
             this.applyCommonAttributes();
-            this.element.classList.add('toolbar-select', 'd-flex', 'align-items-center', 'gap-2');
+            Toolbar.applyClassList(this.element, { add: ['toolbar-select', 'd-flex', 'align-items-center', 'gap-2'] });
             if (this.properties.title) {
                 const span = document.createElement('span');
-                span.classList.add('fw-semibold', 'text-body-secondary');
+                Toolbar.applyClassList(span, { add: ['fw-semibold', 'text-body-secondary'] });
                 span.textContent = this.properties.title;
                 this.element.appendChild(span);
             }
             this.select = document.createElement('select');
-            this.select.classList.add('form-select', 'form-select-sm');
+            Toolbar.applyClassList(this.select, { add: ['form-select', 'form-select-sm'] });
             this.handleChange = () => {
                 this.toolbar.callAction(this.properties.action, this);
             };
-            this.select.addEventListener('change', this.handleChange);
+            this.bindEvent(this.select, 'change', this.handleChange);
             this.element.appendChild(this.select);
             Object.entries(this.options).forEach(([key, value]) => {
                 const option = document.createElement('option');
@@ -965,9 +1265,6 @@ class Toolbar {
             }
         }
         destroy() {
-            if (this.select) {
-                this.select.removeEventListener('change', this.handleChange);
-            }
             super.destroy();
         }
     };
@@ -987,102 +1284,115 @@ class Toolbar {
         }
         build() {
             if (!this.toolbar || !this.properties.id) return;
+            this._createStructure();
+            this._populateOptions();
+            this._bindCustomSelectEvents();
+            this.collapse();
+            if (this.properties.isDisabled) this.disable();
+        }
+        _createStructure() {
             this.element = document.createElement('div');
             this.applyCommonAttributes();
-            this.element.classList.add('custom_select', 'dropdown', 'toolbar-dropdown', 'd-flex', 'flex-column', 'gap-1');
+            Toolbar.applyClassList(this.element, {
+                add: ['custom_select', 'dropdown', 'toolbar-dropdown', 'd-flex', 'flex-column', 'gap-1']
+            });
             if (this.properties.title) {
-                let span = document.createElement('span');
-                span.classList.add('label', 'text-body-secondary', 'small', 'fw-semibold');
+                const span = document.createElement('span');
+                Toolbar.applyClassList(span, { add: ['label', 'text-body-secondary', 'small', 'fw-semibold'] });
                 span.textContent = this.properties.title;
                 this.element.appendChild(span);
             }
             this.select = document.createElement('div');
-            this.select.classList.add('custom_select_box', 'btn-group', 'd-flex', 'align-items-stretch');
+            Toolbar.applyClassList(this.select, { add: ['custom_select_box', 'btn-group', 'd-flex', 'align-items-stretch'] });
             this.button = document.createElement('button');
             this.button.type = 'button';
-            this.button.classList.add('custom_select_button', 'btn', 'btn-sm', 'btn-outline-secondary', 'dropdown-toggle', 'd-inline-flex', 'align-items-center', 'gap-2');
+            Toolbar.applyClassList(this.button, {
+                add: CUSTOM_SELECT_BUTTON_CLASSES
+            });
             this.button.setAttribute('data-bs-toggle', 'dropdown');
             this.button.setAttribute('aria-expanded', 'false');
             this.view = document.createElement('span');
-            this.view.classList.add('custom_select_view', 'd-inline-flex', 'align-items-center', 'gap-2');
+            Toolbar.applyClassList(this.view, { add: ['custom_select_view', 'd-inline-flex', 'align-items-center', 'gap-2'] });
             this.button.appendChild(this.view);
             this.dropbox = document.createElement('div');
-            this.dropbox.classList.add('custom_select_dropbox', 'dropdown-menu', 'shadow', 'p-0', 'w-100');
+            Toolbar.applyClassList(this.dropbox, { add: ['custom_select_dropbox', 'dropdown-menu', 'shadow', 'p-0', 'w-100'] });
             this.options_container = document.createElement('div');
-            this.options_container.classList.add('custom_select_options', 'list-group', 'list-group-flush');
+            Toolbar.applyClassList(this.options_container, { add: ['custom_select_options', 'list-group', 'list-group-flush'] });
             this.dropbox.appendChild(this.options_container);
             this.select.appendChild(this.button);
             this.select.appendChild(this.dropbox);
             this.element.appendChild(this.select);
-
             [this.element, this.view, this.button, this.dropbox, this.options_container].forEach(el => {
                 el.setAttribute('unselectable', 'on');
                 el.style.userSelect = 'none';
             });
-
+        }
+        _populateOptions() {
             Object.entries(this.options).forEach(([key, value]) => {
-                let el = document.createElement('button');
-                el.type = 'button';
-                el.classList.add('custom_select_option', 'dropdown-item');
-                el.setAttribute('data-value', key);
-                el.innerHTML = value['html'] || value['caption'] || '';
-                el.setAttribute('data-caption', value['caption'] || '');
-                el.setAttribute('data-element', value['element'] || '');
-                el.setAttribute('data-class', value['class'] || '');
-                if (key == this.initial) el.classList.add('selected', 'active');
-                this.options_container.appendChild(el);
-                el.addEventListener('click', e => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                const option = document.createElement('button');
+                option.type = 'button';
+                Toolbar.applyClassList(option, { add: ['custom_select_option', 'dropdown-item'] });
+                option.setAttribute('data-value', key);
+                option.innerHTML = value['html'] || value['caption'] || '';
+                option.setAttribute('data-caption', value['caption'] || '');
+                option.setAttribute('data-element', value['element'] || '');
+                option.setAttribute('data-class', value['class'] || '');
+                if (key == this.initial) {
+                    Toolbar.applyClassList(option, { add: ['selected', 'active'] });
+                }
+                this.options_container.appendChild(option);
+                this.bindEvent(option, 'click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
                     this.setSelected(key);
                     this.select.dispatchEvent(new CustomEvent('afterchange'));
                 });
             });
-
-            this.handleButtonClick = e => {
+        }
+        _bindCustomSelectEvents() {
+            this.handleButtonClick = event => {
                 if (this.dropdownInstance) {
                     return;
                 }
-                this.toggle(e);
+                this.toggle(event);
             };
-            this.button.addEventListener('click', this.handleButtonClick);
-
-            this.handleViewClick = e => {
-                e.preventDefault();
+            this.handleViewClick = event => {
+                event.preventDefault();
                 this.button.click();
             };
-            this.view.addEventListener('click', this.handleViewClick);
-
-            this.collapse();
-            if (this.properties.isDisabled) this.disable();
+            this.bindEvent(this.button, 'click', this.handleButtonClick);
+            this.bindEvent(this.view, 'click', this.handleViewClick);
         }
-        toggle(e) {
+        toggle(event) {
             if (this.dropdownInstance) return;
-            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             this.select.dispatchEvent(new CustomEvent('beforechange'));
-            (this.expanded) ? this.collapse() : this.expand();
+            this.expanded ? this.collapse() : this.expand();
         }
         expand() {
             if (!this.properties.isDisabled) {
                 this.expanded = true;
-                this.dropbox.classList.add('show');
-                this.button.classList.add('show');
+                Toolbar.applyClassList(this.dropbox, { add: ['show'] });
+                Toolbar.applyClassList(this.button, { add: ['show'] });
                 this.button.setAttribute('aria-expanded', 'true');
             }
         }
         collapse() {
             this.expanded = false;
-            this.dropbox.classList.remove('show');
-            this.button.classList.remove('show');
+            Toolbar.applyClassList(this.dropbox, { remove: ['show'] });
+            Toolbar.applyClassList(this.button, { remove: ['show'] });
             this.button.setAttribute('aria-expanded', 'false');
         }
         disable() {
             if (!this.properties.isDisabled) {
                 super.disable();
-                this.select.classList.add('disabled', 'opacity-50');
-                this.button.classList.add('disabled');
+                Toolbar.applyClassList(this.select, { add: ['disabled', 'opacity-50'] });
+                Toolbar.applyClassList(this.button, { add: ['disabled'] });
                 this.button.disabled = true;
-                if (this.dropdownInstance) {
+                if (this.dropdownInstance?.hide) {
                     this.dropdownInstance.hide();
                 } else {
                     this.collapse();
@@ -1094,15 +1404,15 @@ class Toolbar {
             if (this.properties.isDisabled) {
                 super.enable(force);
                 if (!this.properties.isDisabled) {
-                    this.select.classList.remove('disabled', 'opacity-50');
-                    this.button.classList.remove('disabled');
+                    Toolbar.applyClassList(this.select, { remove: ['disabled', 'opacity-50'] });
+                    Toolbar.applyClassList(this.button, { remove: ['disabled'] });
                     this.button.disabled = false;
                 }
             }
         }
         getOptions() { return this.options; }
         getValue() {
-            let selected = Array.from(this.select.querySelectorAll('.custom_select_option.selected, .custom_select_option.active')).pop();
+            const selected = Array.from(this.select.querySelectorAll('.custom_select_option.selected, .custom_select_option.active')).pop();
             if (!selected) return null;
             return {
                 value: selected.getAttribute('data-value'),
@@ -1113,10 +1423,10 @@ class Toolbar {
         setSelected(itemId) {
             if (this.options[itemId] && this.select) {
                 Array.from(this.select.querySelectorAll('.custom_select_option')).forEach(opt => {
-                    opt.classList.remove('selected', 'active');
+                    Toolbar.applyClassList(opt, { remove: ['selected', 'active'] });
                 });
                 Array.from(this.select.querySelectorAll(`.custom_select_option[data-value="${itemId}"]`)).forEach(opt => {
-                    opt.classList.add('selected', 'active');
+                    Toolbar.applyClassList(opt, { add: ['selected', 'active'] });
                 });
                 const optionData = this.options[itemId];
                 if (optionData.caption) {
@@ -1126,7 +1436,7 @@ class Toolbar {
                 } else {
                     this.view.textContent = '';
                 }
-                if (this.dropdownInstance) {
+                if (this.dropdownInstance?.hide) {
                     this.dropdownInstance.hide();
                 } else {
                     this.collapse();
@@ -1135,63 +1445,113 @@ class Toolbar {
         }
         afterMount() {
             super.afterMount();
-            if (this.button) {
-                if (Toolbar.hasBootstrapScript() && typeof bootstrap !== 'undefined' && typeof bootstrap.Dropdown === 'function') {
-                    this.dropdownInstance = Toolbar.createBootstrapDropdown(this.button);
-                    this.handleBootstrapShow = () => {
-                        this.expanded = true;
-                        this.select.dispatchEvent(new CustomEvent('beforechange'));
-                    };
-                    this.handleBootstrapHide = () => {
-                        this.expanded = false;
-                    };
-                    this.button.addEventListener('show.bs.dropdown', this.handleBootstrapShow);
-                    this.button.addEventListener('hide.bs.dropdown', this.handleBootstrapHide);
-                } else {
-                    this.documentClickHandler = event => {
-                        if (!this.element.contains(event.target)) {
-                            this.collapse();
-                        }
-                    };
-                    document.addEventListener('click', this.documentClickHandler);
-                }
+            this._initializeDropdownIntegration();
+            this._applyInitialSelection();
+        }
+        _initializeDropdownIntegration() {
+            if (!this.button) {
+                return;
             }
+            if (Toolbar.hasBootstrapScript() && typeof bootstrap !== 'undefined' && typeof bootstrap.Dropdown === 'function') {
+                this.dropdownInstance = Toolbar.createBootstrapDropdown(this.button);
+                this.handleBootstrapShow = () => {
+                    this.expanded = true;
+                    this.select.dispatchEvent(new CustomEvent('beforechange'));
+                };
+                this.handleBootstrapHide = () => {
+                    this.expanded = false;
+                };
+                this.bindEvent(this.button, 'show.bs.dropdown', this.handleBootstrapShow);
+                this.bindEvent(this.button, 'hide.bs.dropdown', this.handleBootstrapHide);
+            } else if (typeof document !== 'undefined') {
+                this.documentClickHandler = event => {
+                    if (!this.element.contains(event.target)) {
+                        this.collapse();
+                    }
+                };
+                this.bindEvent(document, 'click', this.documentClickHandler);
+            }
+        }
+        _applyInitialSelection() {
             if (this.initial !== false && this.options[this.initial]) {
                 this.setSelected(this.initial);
             } else {
-                const firstOption = Object.keys(this.options)[0];
-                if (typeof firstOption !== 'undefined') this.setSelected(firstOption);
+                const [firstOption] = Object.keys(this.options);
+                if (typeof firstOption !== 'undefined') {
+                    this.setSelected(firstOption);
+                }
             }
         }
         destroy() {
-            if (this.button) {
-                this.button.removeEventListener('click', this.handleButtonClick);
-                if (this.handleBootstrapShow) {
-                    this.button.removeEventListener('show.bs.dropdown', this.handleBootstrapShow);
-                }
-                if (this.handleBootstrapHide) {
-                    this.button.removeEventListener('hide.bs.dropdown', this.handleBootstrapHide);
-                }
-            }
-            if (this.view) {
-                this.view.removeEventListener('click', this.handleViewClick);
-            }
             if (this.dropdownInstance) {
-                this.dropdownInstance.dispose();
+                Toolbar.bootstrap.detach(this.dropdownInstance);
                 this.dropdownInstance = null;
             }
-            if (this.documentClickHandler) {
-                document.removeEventListener('click', this.documentClickHandler);
-                this.documentClickHandler = null;
-            }
+            this.handleBootstrapShow = null;
+            this.handleBootstrapHide = null;
+            this.documentClickHandler = null;
             super.destroy();
         }
     };
 }
 
-Toolbar.registry = new Map();
-Toolbar.pendingToolbars = new Map();
-Toolbar.componentInstances = new Map();
+Toolbar.registry = registryManager.ensureMap('registry');
+Toolbar.pendingToolbars = registryManager.ensureMap('pendingToolbars');
+Toolbar.componentInstances = registryManager.ensureMap('componentInstances');
+
+const buttonFactory = {
+    fromProps: props => new Toolbar.Button(Object.assign({}, props)),
+    fromDescriptor: descriptor => new Toolbar.Button(Object.assign({}, descriptor.props))
+};
+Toolbar.registerControlFactory('button', buttonFactory);
+Toolbar.registerControlFactory('link', buttonFactory);
+Toolbar.registerControlFactory('submit', buttonFactory);
+
+Toolbar.registerControlFactory('switcher', {
+    fromProps: props => new Toolbar.Switcher(Object.assign({}, props)),
+    fromDescriptor: descriptor => new Toolbar.Switcher(Object.assign({}, descriptor.props))
+});
+
+Toolbar.registerControlFactory('file', {
+    fromProps: props => new Toolbar.File(Object.assign({}, props)),
+    fromDescriptor: descriptor => new Toolbar.File(Object.assign({}, descriptor.props))
+});
+
+Toolbar.registerControlFactory('separator', {
+    fromProps: props => new Toolbar.Separator(Object.assign({}, props)),
+    fromDescriptor: descriptor => new Toolbar.Separator(Object.assign({}, descriptor.props))
+});
+
+Toolbar.registerControlFactory('text', {
+    fromProps: props => new Toolbar.Text(Object.assign({}, props)),
+    fromDescriptor: descriptor => new Toolbar.Text(Object.assign({}, descriptor.props))
+});
+
+Toolbar.registerControlFactory('select', {
+    fromProps: props => {
+        const { options = {}, initial = false, ...rest } = props || {};
+        return new Toolbar.Select(Object.assign({}, rest), options, initial);
+    },
+    fromDescriptor: descriptor => new Toolbar.Select(
+        Object.assign({}, descriptor.props),
+        Object.assign({}, descriptor.options || {}),
+        descriptor.initial
+    )
+});
+
+const customSelectFactory = {
+    fromProps: props => {
+        const { options = {}, initial = false, ...rest } = props || {};
+        return new Toolbar.CustomSelect(Object.assign({}, rest), options, initial);
+    },
+    fromDescriptor: descriptor => new Toolbar.CustomSelect(
+        Object.assign({}, descriptor.props),
+        Object.assign({}, descriptor.options || {}),
+        descriptor.initial
+    )
+};
+Toolbar.registerControlFactory('custom-select', customSelectFactory);
+Toolbar.registerControlFactory('custom_select', customSelectFactory);
 
 export { Toolbar };
 export default Toolbar;
@@ -1203,14 +1563,3 @@ export function initializeToolbars(root) {
 export function registerToolbarComponent(componentRef, instance) {
     return Toolbar.registerComponentInstance(componentRef, instance);
 }
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Toolbar;
-    }
-
-    target.Toolbar = Toolbar;
-    return Toolbar;
-}
-
-attachToWindow();

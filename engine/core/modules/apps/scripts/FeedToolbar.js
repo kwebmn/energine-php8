@@ -1,4 +1,4 @@
-import Energine from '../../share/scripts/Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 import Toolbar from '../../share/scripts/Toolbar.js';
 import ModalBox from '../../share/scripts/ModalBox.js';
 
@@ -34,9 +34,16 @@ class FeedToolbar extends Toolbar {
         }
 
         this.load(Container);
-        this.singlePath = Container.getAttribute('single_template');
-        const linkedToId = Container.getAttribute('linkedTo');
-        const feedElement = linkedToId ? document.getElementById(linkedToId) : null;
+        const dataset = Container?.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || Container.getAttribute('data-e-single-template')
+            || Container.getAttribute('single_template');
+        const linkedToId = dataset.eLinkedTo
+            || Container.getAttribute('data-e-linked-to')
+            || Container.getAttribute('linkedTo');
+        const feedElement = linkedToId
+            ? document.querySelector(`[data-e-feed-id="${linkedToId}"]`) || document.getElementById(linkedToId)
+            : null;
 
         this.disableControls();
 
@@ -89,9 +96,18 @@ class FeedToolbar extends Toolbar {
     }
 
     initializeFeedElements() {
-        this.singlePath = this.container.getProperty('single_template');
-        const linkedToId = this.container.getProperty('linkedTo');
-        const feedElement = linkedToId ? document.getElementById(linkedToId) : null;
+        const dataset = this.container?.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.container.getAttribute?.('data-e-single-template')
+            || this.container.getAttribute?.('single_template')
+            || this.container.getProperty?.('single_template');
+        const linkedToId = dataset.eLinkedTo
+            || this.container.getAttribute?.('data-e-linked-to')
+            || this.container.getAttribute?.('linkedTo')
+            || this.container.getProperty?.('linkedTo');
+        const feedElement = linkedToId
+            ? document.querySelector(`[data-e-feed-id="${linkedToId}"]`) || document.getElementById(linkedToId)
+            : null;
         this.disableControls();
         if (feedElement) {
             this._prepareDataSet(feedElement);
@@ -218,14 +234,14 @@ class FeedToolbar extends Toolbar {
 
 export { FeedToolbar };
 export default FeedToolbar;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FeedToolbar;
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('FeedToolbar', FeedToolbar);
     }
-
-    target.FeedToolbar = FeedToolbar;
-    return FeedToolbar;
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[FeedToolbar] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[FeedToolbar] Failed to register behavior', error);
+    }
 }
-
-attachToWindow();

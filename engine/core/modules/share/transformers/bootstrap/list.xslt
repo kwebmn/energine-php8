@@ -30,34 +30,50 @@
     </xsl:template>
 
     <xsl:template match="component[@type='list' and @exttype='grid']/recordset">
-        <xsl:variable name="NAME" select="../@name"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100" template="{$BASE}{$LANG_ABBR}{../@template}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="NAME" select="$COMPONENT/@name"/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <div data-role="pane" class="card border-0 overflow-hidden d-flex flex-column h-100">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
             <xsl:if test="../@quickUploadPath">
-                <xsl:attribute name="quick_upload_path">
+                <xsl:attribute name="data-e-quick-upload-path">
                     <xsl:value-of select="../@quickUploadPath"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@quickUploadPid">
-                <xsl:attribute name="quick_upload_pid">
+                <xsl:attribute name="data-e-quick-upload-pid">
                     <xsl:value-of select="../@quickUploadPid"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@quickUploadEnabled">
-                <xsl:attribute name="quick_upload_enabled">
+                <xsl:attribute name="data-e-quick-upload-enabled">
                     <xsl:value-of select="../@quickUploadEnabled"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="../@moveFromId">
-                <xsl:attribute name="move_from_id">
+                <xsl:attribute name="data-e-move-from-id">
                     <xsl:value-of select="../@moveFromId"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:call-template name="BUILD_GRID"/>
-            <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+            <div class="card-footer bg-body border-top px-3 py-2 mt-auto d-flex flex-wrap gap-2 align-items-center" data-pane-part="footer"></div>
             <xsl:if test="count($TRANSLATION[@component=$NAME])&gt;0">
-                <script type="module">
-                    import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-                    stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+                <script type="application/json" data-energine-translations="1">
+                    <xsl:value-of select="/document/translations/@json" disable-output-escaping="yes" />
                 </script>
             </xsl:if>
         </div>
@@ -65,9 +81,8 @@
     
     <!-- Выводим переводы для WYSIWYG -->
     <xsl:template match="document/translations[translation[@component=//component[@type='form' and @exttype='grid'][descendant::field[@type='htmlblock']]/@name]]">
-        <script type="module">
-            import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+        <script type="application/json" data-energine-translations="1">
+            <xsl:value-of select="/document/translations/@json" disable-output-escaping="yes" />
         </script>
 
     </xsl:template>
@@ -79,7 +94,7 @@
         <xsl:variable name="FIELDS" select="record/field"/>
         <xsl:variable name="TAB_ID" select="generate-id(record)"/>
 
-        <div class="card-header bg-body border-bottom px-3 pt-3 pb-0" data-pane-part="header" data-pane-toolbar="top">
+        <div class="card-header bg-body border-bottom px-3 pt-3 pb-0" data-pane-part="header">
             <ul class="nav nav-tabs card-header-tabs mb-0 gap-2" data-role="tabs" role="tablist">
                 <xsl:choose>
                     <xsl:when test="$FIELDS[@language]">

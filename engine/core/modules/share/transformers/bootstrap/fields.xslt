@@ -68,11 +68,6 @@
                     </xsl:if>
                 </xsl:for-each>
             </xsl:attribute>
-            <xsl:if test="@name = 'tags'">
-                <xsl:attribute name="component_id">
-                    <xsl:value-of select="generate-id(../..)"/>
-                </xsl:attribute>
-            </xsl:if>
         </input>
     </xsl:template>
 
@@ -216,7 +211,6 @@
                 <button class="btn btn-outline-secondary" type="button" data-action="quick-upload">
                     <xsl:attribute name="data-link"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                     <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
-                    <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
                     <xsl:attribute name="data-quick-upload-pid"><xsl:value-of select="@quickUploadPid"/></xsl:attribute>
                     <xsl:if test="@quickUploadPath">
                         <xsl:attribute name="data-quick-upload-path"><xsl:value-of select="@quickUploadPath"/></xsl:attribute>
@@ -249,9 +243,6 @@
                     </xsl:attribute>
                     <xsl:attribute name="data-target"><xsl:value-of select="$PATH_ID"/></xsl:attribute>
                     <xsl:attribute name="data-preview"><xsl:value-of select="$PREVIEW_ID"/></xsl:attribute>
-                    <xsl:if test="@quickUploadPid">
-                        <xsl:attribute name="data-input"><xsl:value-of select="$FILE_INPUT_ID"/></xsl:attribute>
-                    </xsl:if>
                     <xsl:value-of select="$TRANSLATION[@const='TXT_CLEAR']"/>
                 </button>
             </xsl:if>

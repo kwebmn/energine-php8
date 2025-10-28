@@ -6,17 +6,35 @@
     extension-element-prefixes="set">
 
     <xsl:template match="document/translations[translation[@component=//component[@sample='DivisionEditor' or @class='SiteEditor']/@name]]">
-        <script type="module">
-            import { stageTranslations } from "<xsl:value-of select="/document/properties/property[@name='base']/@static"/>scripts/Energine.js";
-            stageTranslations(<xsl:value-of select="/document/translations/@json" />);
+        <script type="application/json" data-energine-translations="1">
+            <xsl:value-of select="/document/translations/@json" disable-output-escaping="yes" />
         </script>
     </xsl:template>
     
     <!-- вывод дерева разделов -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivManager' or javascript/behavior/@name='DivSelector'or javascript/behavior/@name='DivTree'][@sample='DivisionEditor'][@type='list']]">
         <xsl:variable name="TAB_ID" select="generate-id(record[1])"/>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}" lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
-            <div class="card-header pb-0" data-pane-part="header" data-pane-toolbar="top">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <div data-role="pane" class="card">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-lang-id"><xsl:value-of select="$LANG_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-site"><xsl:value-of select="../@site"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
+            <div class="card-header pb-0" data-pane-part="header">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
                         <a href="#{$TAB_ID}" data-role="tab-link">
@@ -31,22 +49,41 @@
             <div class="card-body" data-pane-part="body">
                 <div class="tab-content" data-role="tab-content">
                     <div id="{$TAB_ID}" class="tab-pane fade show active" data-role="pane-item">
-                        <div id="treeContainer" data-role="tree-panel">
+                        <div data-role="tree-panel">
                             <xsl:apply-templates select="$COMPONENTS[@class='SiteList']" mode="insideEditor"/>
                         </div>
                     </div>
                 </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+                <div class="card-footer" data-pane-part="footer"></div>
             </xsl:if>
         </div>
     </xsl:template>
         
     <!-- вывод дерева разделов в боковом тулбаре -->
     <xsl:template match="recordset[parent::component[javascript/behavior/@name='DivSidebar'][@sample='DivisionEditor'][@componentAction='main'][@type='list']]">
-        <div id="{generate-id(.)}" class="division-editor d-flex flex-column flex-xl-row gap-3 p-3" template="{$BASE}{$LANG_ABBR}{../@template}"  lang_id="{$LANG_ID}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" site="{../@site}">
-            <aside id="treeContainer" data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <div class="division-editor d-flex flex-column flex-xl-row gap-3 p-3">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-lang-id"><xsl:value-of select="$LANG_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-site"><xsl:value-of select="../@site"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
+            <aside data-role="tree-panel" class="division-editor__tree flex-shrink-0"></aside>
             <main data-role="editor-content" class="division-editor__content flex-grow-1"></main>
         </div>
     </xsl:template>
@@ -248,7 +285,8 @@
                 <xsl:apply-templates mode="field_input"/>
             </select>
             <xsl:if test="@reset">
-                <button type="button" class="btn btn-outline-secondary" onclick="{generate-id(../..)}.resetPageContentTemplate();">
+                <button type="button" class="btn btn-outline-secondary">
+                    <xsl:attribute name="data-e-action">resetPageContentTemplate</xsl:attribute>
                     <xsl:value-of select="@reset"/>
                 </button>
             </xsl:if>

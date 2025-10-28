@@ -81,18 +81,18 @@
 
         <section class="e-page-toolbar sticky-top position-sticky top-0 start-0 end-0" data-role="page-toolbar-root">
             <xsl:attribute name="data-e-js">PageToolbar</xsl:attribute>
-            <xsl:attribute name="data-toolbar-scope">page</xsl:attribute>
-            <xsl:attribute name="data-page-toolbar"><xsl:value-of select="$TOOLBAR_NAME"/></xsl:attribute>
-            <xsl:attribute name="data-component-path"><xsl:value-of select="$COMPONENT_PATH"/></xsl:attribute>
-            <xsl:attribute name="data-document-id"><xsl:value-of select="$DOCUMENT_ID"/></xsl:attribute>
-            <xsl:attribute name="data-sidebar-id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
-            <xsl:attribute name="data-offcanvas-id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
-            <xsl:attribute name="data-sidebar-url"><xsl:value-of select="$SIDEBAR_URL"/></xsl:attribute>
-            <xsl:attribute name="data-sidebar-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
-            <xsl:attribute name="data-offcanvas-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
-            <xsl:attribute name="data-sidebar-expanded">0</xsl:attribute>
-            <xsl:attribute name="data-sidebar-state">closed</xsl:attribute>
-            <xsl:attribute name="data-toolbar-dock">
+            <xsl:attribute name="data-e-toolbar-scope">page</xsl:attribute>
+            <xsl:attribute name="data-e-page-toolbar"><xsl:value-of select="$TOOLBAR_NAME"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-name"><xsl:value-of select="$TOOLBAR_NAME"/></xsl:attribute>
+            <xsl:attribute name="data-e-component-path"><xsl:value-of select="$COMPONENT_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-document-id"><xsl:value-of select="$DOCUMENT_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-sidebar-id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-offcanvas-id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-sidebar-url"><xsl:value-of select="$SIDEBAR_URL"/></xsl:attribute>
+            <xsl:attribute name="data-e-offcanvas-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+            <xsl:attribute name="data-e-sidebar-expanded">0</xsl:attribute>
+            <xsl:attribute name="data-e-sidebar-state">closed</xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-dock">
                 <xsl:choose>
                     <xsl:when test="string-length(normalize-space($DOCK_POSITION)) &gt; 0">
                         <xsl:value-of select="$DOCK_POSITION"/>
@@ -130,14 +130,15 @@
                     <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                 </xsl:if>
                 <div class="offcanvas-body d-flex flex-column gap-3 p-0 bg-body-tertiary e-sideframe-content" data-role="sidebar-content">
-                    <header class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
-                        <div class="d-flex align-items-center gap-2 flex-wrap" data-role="sidebar-environment"></div>
-                        <div class="d-flex align-items-center gap-2 ms-auto" data-role="sidebar-actions">
-                            <button type="button" class="btn btn-sm btn-light" data-role="sidebar-close" data-bs-dismiss="offcanvas">
+                    <header class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
+                        <div class="d-flex align-items-center gap-2" data-role="sidebar-actions">
+                            <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center" data-role="sidebar-close" data-bs-dismiss="offcanvas">
                                 <xsl:if test="string-length(normalize-space($CLOSE_LABEL)) &gt; 0">
                                     <xsl:attribute name="aria-label"><xsl:value-of select="$CLOSE_LABEL"/></xsl:attribute>
-                                    <xsl:value-of select="$CLOSE_LABEL"/>
                                 </xsl:if>
+                                <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
+                                    <i class="fa fa-chevron-left" aria-hidden="true"></i>
+                                </span>
                             </button>
                         </div>
                     </header>

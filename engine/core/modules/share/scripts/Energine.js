@@ -4,36 +4,266 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const bridgeMethodNames = [
-    'request',
-    'cancelEvent',
-    'resize',
-    'confirmBox',
-    'alertBox',
-    'noticeBox',
-    'loadCSS',
-    'run',
-    'createDatePicker',
-    'createDateTimePicker',
-];
+const Config = {
+    allowedKeys: [
+        'debug',
+        'base',
+        'static',
+        'resizer',
+        'media',
+        'root',
+        'lang',
+        'singleMode',
+    ],
+    mergeInto(target, values = {}) {
+        if (!target || !values || typeof values !== 'object') {
+            return;
+        }
 
-const allowedConfigKeys = [
-    'debug',
-    'base',
-    'static',
-    'resizer',
-    'media',
-    'root',
-    'lang',
-    'singleMode',
-];
+        this.allowedKeys.forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(values, key)) {
+                target[key] = values[key];
+            }
+        });
+    },
+};
 
-const noticeIconMap = {
-    success: { variant: 'success', icon: 'fa-circle-check' },
-    error: { variant: 'danger', icon: 'fa-circle-xmark' },
-    warning: { variant: 'warning', icon: 'fa-triangle-exclamation' },
-    info: { variant: 'info', icon: 'fa-circle-info' },
-    question: { variant: 'primary', icon: 'fa-circle-question' },
+const Notifications = {
+    iconMap: {
+        success: { variant: 'success', icon: 'fa-circle-check' },
+        error: { variant: 'danger', icon: 'fa-circle-xmark' },
+        warning: { variant: 'warning', icon: 'fa-triangle-exclamation' },
+        info: { variant: 'info', icon: 'fa-circle-info' },
+        question: { variant: 'primary', icon: 'fa-circle-question' },
+    },
+    resolveIconConfig(icon) {
+        return this.iconMap[icon] || this.iconMap.info;
+    },
+};
+
+const BooleanUtils = {
+    truthyValues: new Set(['1', 'true', 'yes', 'on']),
+    normalize(value, { truthyValues = null, falseValues = null, defaultValue = false } = {}) {
+        if (typeof value === 'boolean') {
+            return value;
+        }
+
+        if (typeof value === 'number') {
+            return value !== 0;
+        }
+
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+
+            if (falseValues && falseValues.has(normalized)) {
+                return false;
+            }
+
+            if (truthyValues) {
+                return truthyValues.has(normalized);
+            }
+
+            if (falseValues) {
+                return normalized.length > 0;
+            }
+
+            return this.truthyValues.has(normalized);
+        }
+
+        if (value === null || typeof value === 'undefined') {
+            return defaultValue;
+        }
+
+        return Boolean(value);
+    },
+};
+
+const Dataset = {
+    falseValues: new Set(['0', 'false', 'no', 'off']),
+    normalizeBoolean(value) {
+        return BooleanUtils.normalize(value, { falseValues: this.falseValues });
+    },
+};
+
+const BootstrapHelpers = {
+    resolve(scope) {
+        if (scope && scope.bootstrap) {
+            return scope.bootstrap;
+        }
+
+        if (typeof bootstrap !== 'undefined') {
+            return bootstrap;
+        }
+
+        return null;
+    },
+
+    ensureModalElement(id, template) {
+        if (typeof document === 'undefined') {
+            return null;
+        }
+
+        let element = document.getElementById(id);
+        if (element) {
+            return element;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = template.trim();
+        element = wrapper.firstElementChild;
+        if (element) {
+            document.body.appendChild(element);
+        }
+
+        return element;
+    },
+
+    getToastContainer() {
+        if (typeof document === 'undefined') {
+            return null;
+        }
+
+        let container = document.getElementById('energine-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'energine-toast-container';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '11000';
+            document.body.appendChild(container);
+        }
+
+        return container;
+    },
+
+    renderModal({ scope, id, template, onShow, fallback }) {
+        const bootstrapLib = this.resolve(scope);
+        if (!bootstrapLib || typeof document === 'undefined') {
+            return typeof fallback === 'function' ? fallback() : null;
+        }
+
+        const modal = this.ensureModalElement(id, template);
+        if (!modal) {
+            return typeof fallback === 'function' ? fallback() : null;
+        }
+
+        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
+        if (typeof onShow === 'function') {
+            onShow({ modal, instance, bootstrap: bootstrapLib });
+        }
+
+        instance.show();
+        return modal;
+    },
+};
+
+const RequestHelpers = {
+    buildFetchOptions({ runtime, uri, data, method = 'post' }) {
+        const normalizedMethod = (method || 'post').toUpperCase();
+        const isGet = normalizedMethod === 'GET';
+
+        const headers = {
+            'X-Request': 'json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, text/plain, */*',
+        };
+
+        const fetchOpts = { method: normalizedMethod, headers };
+        let url = uri;
+
+        if (runtime.forceJSON) {
+            headers['Content-Type'] = 'application/json';
+
+            if (!isGet) {
+                fetchOpts.body = JSON.stringify(data);
+            } else if (data) {
+                const params = new URLSearchParams(data).toString();
+                url += (url.includes('?') ? '&' : '?') + params;
+            }
+
+            return { url, fetchOpts };
+        }
+
+        if (typeof data === 'string') {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            fetchOpts.body = data;
+            return { url, fetchOpts };
+        }
+
+        const formEncoded = runtime.serializeToFormEncoded(data || {});
+        if (isGet) {
+            url += (url.includes('?') ? '&' : '?') + formEncoded;
+        } else {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            fetchOpts.body = formEncoded;
+        }
+
+        return { url, fetchOpts };
+    },
+
+    handleJsonResponse({ text, onSuccess, onUserError, onServerError }) {
+        let response;
+
+        try {
+            response = JSON.parse(text);
+        } catch {
+            response = null;
+        }
+
+        if (!response) {
+            if (typeof onServerError === 'function') {
+                onServerError(text);
+            }
+            return;
+        }
+
+        if (response.result) {
+            if (typeof onSuccess === 'function') {
+                onSuccess(response);
+            }
+            return;
+        }
+
+        let msg = response.title || 'Произошла ошибка:\n';
+        if (Array.isArray(response.errors)) {
+            response.errors.forEach((error) => {
+                if (typeof error.field !== 'undefined') {
+                    msg += `${error.field} :\t`;
+                }
+                if (typeof error.message !== 'undefined') {
+                    msg += `${error.message}\n`;
+                } else {
+                    msg += `${error}\n`;
+                }
+            });
+        }
+
+        alert(msg);
+        if (typeof onUserError === 'function') {
+            onUserError(response);
+        }
+    },
+};
+
+const exposeRuntimeToGlobal = (runtime, target = globalScope) => {
+    if (!runtime || !target) {
+        return runtime;
+    }
+
+    if (typeof runtime.safeConsoleError === 'function') {
+        target.safeConsoleError = runtime.safeConsoleError.bind(runtime);
+    }
+
+    if (typeof runtime.showLoader === 'function') {
+        target.showLoader = runtime.showLoader.bind(runtime);
+    }
+
+    if (typeof runtime.hideLoader === 'function') {
+        target.hideLoader = runtime.hideLoader.bind(runtime);
+    }
+
+    target.Energine = runtime;
+
+    return runtime;
 };
 
 class EnergineCore {
@@ -50,7 +280,6 @@ class EnergineCore {
         this.singleMode = false;
         this.forceJSON = false;
         this.supportContentEdit = true;
-        this.tasks = [];
 
         this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
             ? import.meta.url
@@ -59,9 +288,6 @@ class EnergineCore {
 
         this.translationStore = {};
         this.translations = this.createTranslationsFacade();
-
-        this.bridge = this.initBridge();
-        this.applyDatasetConfigToBridge();
     }
 
     createTranslationsFacade() {
@@ -82,157 +308,6 @@ class EnergineCore {
                 Object.assign(store, values);
             },
         };
-    }
-
-    initBridge() {
-        if (!this.globalScope) {
-            return null;
-        }
-        if (this.globalScope.__energineBridge) {
-            return this.globalScope.__energineBridge;
-        }
-
-        const pending = {
-            config: {},
-            tasks: [],
-            translations: {},
-        };
-        let runtime = null;
-
-        const translationFacade = {
-            get: (constant) => {
-                if (runtime && runtime.translations) {
-                    return runtime.translations.get(constant);
-                }
-                return Object.prototype.hasOwnProperty.call(pending.translations, constant)
-                    ? pending.translations[constant]
-                    : null;
-            },
-            set: (constant, value) => {
-                if (runtime && runtime.translations) {
-                    runtime.translations.set(constant, value);
-                } else {
-                    pending.translations[constant] = value;
-                }
-            },
-            extend: (values) => {
-                if (runtime && runtime.translations) {
-                    runtime.translations.extend(values);
-                } else if (values && typeof values === 'object') {
-                    Object.assign(pending.translations, values);
-                }
-            },
-        };
-
-        const queueTask = (task, priority = 5) => {
-            if (typeof task !== 'function') {
-                return;
-            }
-
-            if (runtime) {
-                runtime.addTask(task, priority);
-            } else {
-                pending.tasks.push({ task, priority });
-            }
-        };
-
-        const extendTranslations = (values) => {
-            if (!values || typeof values !== 'object') {
-                return;
-            }
-            translationFacade.extend(values);
-        };
-
-        const setRuntime = (instance) => {
-            runtime = instance;
-
-            if (runtime && typeof runtime.mergeConfigValues === 'function') {
-                runtime.mergeConfigValues(pending.config);
-            } else if (runtime && pending.config) {
-                Object.assign(runtime, pending.config);
-            }
-
-            if (runtime
-                && runtime.translations
-                && typeof runtime.translations.extend === 'function'
-                && Object.keys(pending.translations).length) {
-                runtime.translations.extend(pending.translations);
-                pending.translations = {};
-            }
-
-            if (runtime && pending.tasks.length) {
-                pending.tasks.forEach(({ task, priority }) => runtime.addTask(task, priority));
-                pending.tasks = [];
-            }
-        };
-
-        const api = new Proxy(
-            {},
-            {
-                get: (_, prop) => {
-                    if (prop === '__setRuntime') {
-                        return setRuntime;
-                    }
-                    if (prop === 'translations') {
-                        return translationFacade;
-                    }
-                    if (prop === 'addTask') {
-                        return queueTask;
-                    }
-                    if (prop === 'tasks') {
-                        return runtime ? runtime.tasks : pending.tasks;
-                    }
-                    if (runtime) {
-                        const value = runtime[prop];
-                        return typeof value === 'function' ? value.bind(runtime) : value;
-                    }
-                    if (bridgeMethodNames.includes(prop)) {
-                        return (...args) => {
-                            if (!runtime || typeof runtime[prop] !== 'function') {
-                                throw new Error('Energine runtime is not ready yet');
-                            }
-                            return runtime[prop](...args);
-                        };
-                    }
-                    if (Object.prototype.hasOwnProperty.call(pending.config, prop)) {
-                        return pending.config[prop];
-                    }
-                    return undefined;
-                },
-                set: (_, prop, value) => {
-                    if (prop === 'translations') {
-                        translationFacade.extend(value);
-                        return true;
-                    }
-                    if (runtime) {
-                        runtime[prop] = value;
-                    } else {
-                        pending.config[prop] = value;
-                    }
-                    return true;
-                },
-            },
-        );
-
-        this.globalScope.Energine = api;
-        this.globalScope.__energineBridge = {
-            setRuntime,
-            pendingConfig: pending.config,
-            queueTask,
-            extendTranslations,
-        };
-
-        return this.globalScope.__energineBridge;
-    }
-
-    applyDatasetConfigToBridge() {
-        if (!this.bridge || !this.bridge.pendingConfig) {
-            return;
-        }
-        const datasetConfig = this.readConfigFromScriptDataset();
-        if (Object.keys(datasetConfig).length) {
-            Object.assign(this.bridge.pendingConfig, datasetConfig);
-        }
     }
 
     resolveModuleScriptElement() {
@@ -278,14 +353,16 @@ class EnergineCore {
         }
 
         const config = {};
-        allowedConfigKeys.forEach((key) => {
+        Config.allowedKeys.forEach((key) => {
             if (typeof scriptEl.dataset[key] === 'undefined') {
                 return;
             }
+
+            const value = scriptEl.dataset[key];
             if (key === 'debug' || key === 'singleMode') {
-                config[key] = scriptEl.dataset[key] === 'true';
+                config[key] = BooleanUtils.normalize(value, { truthyValues: BooleanUtils.truthyValues });
             } else {
-                config[key] = scriptEl.dataset[key];
+                config[key] = value;
             }
         });
 
@@ -293,15 +370,7 @@ class EnergineCore {
     }
 
     mergeConfigValues(values = {}) {
-        if (!values || typeof values !== 'object') {
-            return;
-        }
-
-        allowedConfigKeys.forEach((key) => {
-            if (Object.prototype.hasOwnProperty.call(values, key)) {
-                this[key] = values[key];
-            }
-        });
+        Config.mergeInto(this, values);
     }
 
     serializeToFormEncoded(obj, prefix) {
@@ -326,71 +395,26 @@ class EnergineCore {
     }
 
     async request(uri, data, onSuccess, onUserError, onServerError = () => {}, method = 'post') {
-        let url = uri + (this.forceJSON ? '?json' : '');
-        const isGet = method.toLowerCase() === 'get';
-        const headers = { 'X-Request': 'json' };
-        const fetchOpts = { method: method.toUpperCase(), headers };
-
-        if (this.forceJSON) {
-            headers['Content-Type'] = 'application/json';
-            if (!isGet) {
-                fetchOpts.body = JSON.stringify(data);
-            } else if (data) {
-                const params = new URLSearchParams(data).toString();
-                url += (url.includes('?') ? '&' : '?') + params;
-            }
-        } else if (typeof data === 'string') {
-            headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            fetchOpts.body = data;
-        } else {
-            const formEncoded = this.serializeToFormEncoded(data || {});
-            if (isGet) {
-                url += (url.includes('?') ? '&' : '?') + formEncoded;
-            } else {
-                headers['Content-Type'] = 'application/x-www-form-urlencoded';
-                fetchOpts.body = formEncoded;
-            }
-        }
+        const { url, fetchOpts } = RequestHelpers.buildFetchOptions({
+            runtime: this,
+            uri,
+            data,
+            method,
+        });
 
         try {
             const res = await fetch(url, fetchOpts);
             const text = await res.text();
-            let response;
 
-            try {
-                response = JSON.parse(text);
-            } catch {
-                response = null;
-            }
-
-            if (!response) {
-                onServerError(text);
-                return;
-            }
-
-            if (response.result) {
-                onSuccess(response);
-                return;
-            }
-
-            let msg = response.title || 'Произошла ошибка:\n';
-            if (Array.isArray(response.errors)) {
-                response.errors.forEach((error) => {
-                    if (typeof error.field !== 'undefined') {
-                        msg += `${error.field} :\t`;
-                    }
-                    if (typeof error.message !== 'undefined') {
-                        msg += `${error.message}\n`;
-                    } else {
-                        msg += `${error}\n`;
-                    }
-                });
-            }
-            alert(msg);
-            if (onUserError) onUserError(response);
-        } catch (e) {
-            console.error(e);
-            onServerError(e.toString());
+            RequestHelpers.handleJsonResponse({
+                text,
+                onSuccess,
+                onUserError,
+                onServerError,
+            });
+        } catch (error) {
+            console.error(error);
+            onServerError(error.toString());
         }
     }
 
@@ -414,63 +438,19 @@ class EnergineCore {
         img.setAttribute('src', `${this.resizer}${r}w${w}-h${h}/${src}`);
     }
 
-    resolveBootstrap() {
-        if (this.globalScope && this.globalScope.bootstrap) {
-            return this.globalScope.bootstrap;
-        }
-        if (typeof bootstrap !== 'undefined') {
-            return bootstrap;
-        }
-        return null;
-    }
-
-    ensureModalElement(id, template) {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-
-        let element = document.getElementById(id);
-        if (element) {
-            return element;
-        }
-
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = template.trim();
-        element = wrapper.firstElementChild;
-        if (element) {
-            document.body.appendChild(element);
-        }
-
-        return element;
-    }
-
-    getToastContainer() {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-        let container = document.getElementById('energine-toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'energine-toast-container';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '11000';
-            document.body.appendChild(container);
-        }
-        return container;
-    }
-
     confirmBox(message, yes, no) {
-        const bootstrapLib = this.resolveBootstrap();
-        if (!bootstrapLib || typeof document === 'undefined') {
+        const fallback = () => {
             if (confirm(message)) {
                 if (yes) yes();
             } else if (no) {
                 no();
             }
-            return;
-        }
+        };
 
-        const modal = this.ensureModalElement('energine-confirm-modal', `
+        const modal = BootstrapHelpers.renderModal({
+            scope: this.globalScope,
+            id: 'energine-confirm-modal',
+            template: `
             <div class="modal fade" id="energine-confirm-modal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -495,60 +475,56 @@ class EnergineCore {
                     </div>
                 </div>
             </div>
-        `);
+        `,
+            fallback,
+            onShow: ({ modal }) => {
+                const messageContainer = modal.querySelector('[data-role="message"]');
+                if (messageContainer) {
+                    messageContainer.textContent = message;
+                }
+
+                const confirmBtn = modal.querySelector('[data-role="confirm"]');
+                const cancelBtn = modal.querySelector('[data-role="cancel"]');
+                let resolved = false;
+
+                const handleConfirm = () => {
+                    resolved = true;
+                    if (yes) yes();
+                };
+                const handleCancel = () => {
+                    resolved = true;
+                    if (no) no();
+                };
+
+                if (confirmBtn) {
+                    confirmBtn.addEventListener('click', handleConfirm, { once: true });
+                }
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', handleCancel, { once: true });
+                }
+
+                modal.addEventListener('hidden.bs.modal', () => {
+                    if (!resolved && no) {
+                        no();
+                    }
+                }, { once: true });
+            },
+        });
 
         if (!modal) {
-            if (confirm(message)) {
-                if (yes) yes();
-            } else if (no) {
-                no();
-            }
             return;
         }
-
-        const messageContainer = modal.querySelector('[data-role="message"]');
-        if (messageContainer) {
-            messageContainer.textContent = message;
-        }
-
-        const confirmBtn = modal.querySelector('[data-role="confirm"]');
-        const cancelBtn = modal.querySelector('[data-role="cancel"]');
-        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
-
-        let resolved = false;
-        const handleConfirm = () => {
-            resolved = true;
-            if (yes) yes();
-        };
-        const handleCancel = () => {
-            resolved = true;
-            if (no) no();
-        };
-
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', handleConfirm, { once: true });
-        }
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', handleCancel, { once: true });
-        }
-
-        modal.addEventListener('hidden.bs.modal', () => {
-            if (!resolved && no) {
-                no();
-            }
-        }, { once: true });
-
-        instance.show();
     }
 
     alertBox(message) {
-        const bootstrapLib = this.resolveBootstrap();
-        if (!bootstrapLib || typeof document === 'undefined') {
+        const fallback = () => {
             alert(message);
-            return;
-        }
+        };
 
-        const modal = this.ensureModalElement('energine-alert-modal', `
+        const modal = BootstrapHelpers.renderModal({
+            scope: this.globalScope,
+            id: 'energine-alert-modal',
+            template: `
             <div class="modal fade" id="energine-alert-modal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -570,38 +546,37 @@ class EnergineCore {
                     </div>
                 </div>
             </div>
-        `);
+        `,
+            fallback,
+            onShow: ({ modal }) => {
+                const messageContainer = modal.querySelector('[data-role="message"]');
+                if (messageContainer) {
+                    messageContainer.textContent = message;
+                }
+            },
+        });
 
         if (!modal) {
-            alert(message);
             return;
         }
-
-        const messageContainer = modal.querySelector('[data-role="message"]');
-        if (messageContainer) {
-            messageContainer.textContent = message;
-        }
-
-        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
-        instance.show();
     }
 
     noticeBox(message, icon, callback) {
-        const bootstrapLib = this.resolveBootstrap();
+        const bootstrapLib = BootstrapHelpers.resolve(this.globalScope);
         if (!bootstrapLib || typeof document === 'undefined') {
             alert(message);
             if (callback) callback();
             return;
         }
 
-        const container = this.getToastContainer();
+        const container = BootstrapHelpers.getToastContainer();
         if (!container) {
             alert(message);
             if (callback) callback();
             return;
         }
 
-        const { variant, icon: iconClass } = noticeIconMap[icon] || noticeIconMap.info;
+        const { variant, icon: iconClass } = Notifications.resolveIconConfig(icon);
 
         const toast = document.createElement('div');
         toast.className = `toast align-items-center text-bg-${variant} border-0`;
@@ -654,41 +629,13 @@ class EnergineCore {
         }
     }
 
-    addTask(task, priority = 5) {
-        if (!this.tasks[priority]) {
-            this.tasks[priority] = [];
-        }
-        this.tasks[priority].push(task);
-    }
-
-    run() {
-        if (!this.tasks) {
-            return;
-        }
-
-        for (const priority of this.tasks) {
-            if (!priority) continue;
-            for (const func of priority) {
-                try {
-                    func();
-                } catch (e) {
-                    this.safeConsoleError(e);
-                }
-            }
-        }
-    }
-
     boot(config = {}) {
-        const { translations: translationsConfig, tasks, ...rest } = config;
+        const { translations: translationsConfig, ...rest } = config;
 
         this.mergeConfigValues(rest);
 
         if (translationsConfig) {
             this.translations.extend(translationsConfig);
-        }
-
-        if (Array.isArray(tasks)) {
-            this.tasks = tasks;
         }
 
         return this;
@@ -699,51 +646,17 @@ class EnergineCore {
             return;
         }
 
-        if (this.bridge && typeof this.bridge.extendTranslations === 'function') {
-            this.bridge.extendTranslations(values);
-            return;
-        }
-
         this.translations.extend(values);
-    }
-
-    queueTask(task, priority = 5) {
-        if (typeof task !== 'function') {
-            return;
-        }
-
-        if (this.bridge && typeof this.bridge.queueTask === 'function') {
-            this.bridge.queueTask(task, priority);
-            return;
-        }
-
-        this.addTask(task, priority);
     }
 
     createConfigFromProps(props = {}) {
         const config = { ...props };
 
-        const normalizeBoolean = (value) => {
-            if (typeof value === 'boolean') return value;
-            if (typeof value === 'number') return value !== 0;
-            if (typeof value === 'string') {
-                return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+        ['debug', 'forceJSON', 'supportContentEdit', 'singleMode'].forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(config, key)) {
+                config[key] = BooleanUtils.normalize(config[key], { truthyValues: BooleanUtils.truthyValues });
             }
-            return Boolean(value);
-        };
-
-        if (Object.prototype.hasOwnProperty.call(config, 'debug')) {
-            config.debug = normalizeBoolean(config.debug);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'forceJSON')) {
-            config.forceJSON = normalizeBoolean(config.forceJSON);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'supportContentEdit')) {
-            config.supportContentEdit = normalizeBoolean(config.supportContentEdit);
-        }
-        if (Object.prototype.hasOwnProperty.call(config, 'singleMode')) {
-            config.singleMode = normalizeBoolean(config.singleMode);
-        }
+        });
 
         return config;
     }
@@ -751,13 +664,6 @@ class EnergineCore {
     createConfigFromScriptDataset(overrides = {}) {
         const baseConfig = this.readConfigFromScriptDataset();
         return this.createConfigFromProps({ ...baseConfig, ...overrides });
-    }
-
-    createConfigFromBridgePending(overrides = {}) {
-        const bridgeConfig = (this.bridge && this.bridge.pendingConfig)
-            ? { ...this.bridge.pendingConfig }
-            : {};
-        return this.createConfigFromProps({ ...bridgeConfig, ...overrides });
     }
 
     safeConsoleError(e, context = '') {
@@ -826,66 +732,52 @@ class EnergineCore {
         }
     }
 
-    attachToWindow(target = this.globalScope, runtime = this) {
-        if (!target) {
-            return runtime;
-        }
-
-        target.safeConsoleError = this.safeConsoleError.bind(this);
-        target.showLoader = this.showLoader.bind(this);
-        target.hideLoader = this.hideLoader.bind(this);
-        target.Energine = runtime;
-
-        return runtime;
-    }
 }
 
 const Energine = new EnergineCore(globalScope);
 
-const existingConfig = (() => {
-    if (!globalScope) {
-        return undefined;
-    }
-    if (globalScope.__energineBridge && globalScope.__energineBridge.pendingConfig) {
-        return { ...globalScope.__energineBridge.pendingConfig };
-    }
-    if (typeof globalScope.Energine === 'object') {
-        return { ...globalScope.Energine };
-    }
-    return undefined;
-})();
+exposeRuntimeToGlobal(Energine, globalScope);
 
-if (existingConfig && Object.keys(existingConfig).length) {
-    Energine.boot(existingConfig);
-}
+const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
 
-const datasetFalseValues = new Set(['0', 'false', 'no', 'off']);
-
-const parseJSONAttribute = (value, fallback = null) => {
-    if (typeof value !== 'string') {
-        return fallback;
+const applyTranslationsFromScripts = (runtime) => {
+    if (typeof document === 'undefined' || !runtime || typeof runtime.stageTranslations !== 'function') {
+        return;
     }
 
-    const trimmed = value.trim();
-    if (!trimmed) {
-        return fallback;
+    const scripts = document.querySelectorAll(translationScriptSelector);
+    if (!scripts || !scripts.length) {
+        return;
     }
 
-    try {
-        return JSON.parse(trimmed);
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse JSON dataset value');
-        return fallback;
-    }
-};
+    scripts.forEach((script) => {
+        if (!script || (script.dataset && script.dataset.energineTranslationsProcessed === '1')) {
+            return;
+        }
 
-const readDatasetString = (value) => {
-    if (typeof value !== 'string') {
-        return undefined;
-    }
+        const payload = script.textContent ? script.textContent.trim() : '';
+        if (!payload) {
+            if (script.dataset) {
+                script.dataset.energineTranslationsProcessed = '1';
+            }
+            return;
+        }
 
-    const trimmed = value.trim();
-    return trimmed ? trimmed : undefined;
+        try {
+            const parsed = JSON.parse(payload);
+            runtime.stageTranslations(parsed);
+            if (script.dataset) {
+                script.dataset.energineTranslationsProcessed = '1';
+            }
+            if (typeof script.remove === 'function') {
+                script.remove();
+            } else {
+                script.textContent = '';
+            }
+        } catch (error) {
+            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse staged translations');
+        }
+    });
 };
 
 const scheduleRetry = (task, options = {}) => {
@@ -897,6 +789,7 @@ const scheduleRetry = (task, options = {}) => {
         attempts = 5,
         delay = 50,
         onError = null,
+        onGiveUp = null,
     } = options;
 
     const schedule = (globalScope && typeof globalScope.setTimeout === 'function')
@@ -920,6 +813,13 @@ const scheduleRetry = (task, options = {}) => {
         }
 
         if (result || !schedule || remainingAttempts <= 0) {
+            if (!result && (remainingAttempts <= 0 || !schedule) && typeof onGiveUp === 'function') {
+                try {
+                    onGiveUp();
+                } catch (error) {
+                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] onGiveUp callback failed');
+                }
+            }
             return result;
         }
 
@@ -931,137 +831,237 @@ const scheduleRetry = (task, options = {}) => {
     return execute();
 };
 
-const getGlobalConstructor = (name) => {
-    if (!name || typeof name !== 'string' || !globalScope) {
-        return null;
-    }
+const BehaviorRegistry = {
+    storage: new Map(),
+    pending: new Map(),
+    debugThreshold: 5,
+    recordPending(name) {
+        if (!name) {
+            return null;
+        }
 
-    const ctor = globalScope[name];
-    return typeof ctor === 'function' ? ctor : null;
+        if (!this.pending.has(name)) {
+            this.pending.set(name, {
+                count: 0,
+                lastSeen: Date.now(),
+            });
+        }
+
+        const entry = this.pending.get(name);
+        entry.count += 1;
+        entry.lastSeen = Date.now();
+        return entry;
+    },
+    clearPending(name) {
+        if (!name || !this.pending.has(name)) {
+            return;
+        }
+
+        this.pending.delete(name);
+    },
+    getPendingNames() {
+        return Array.from(this.pending.keys()).sort();
+    },
+    getPendingInfo(name) {
+        if (!name) {
+            return null;
+        }
+
+        return this.pending.get(name) || null;
+    },
+    resolve(name) {
+        if (!name || typeof name !== 'string') {
+            return null;
+        }
+
+        return this.storage.get(name) || null;
+    },
+    has(name) {
+        return this.storage.has(name);
+    },
+    set(name, ClassRef) {
+        this.storage.set(name, ClassRef);
+    },
 };
 
-const instantiateComponentBehavior = (descriptor = {}) => {
-    if (!descriptor || typeof descriptor !== 'object') {
-        return null;
-    }
+const PENDING_BEHAVIOR = Symbol('Energine.pendingBehavior');
 
-    const { id, behavior } = descriptor;
-    if (!id || !behavior || typeof document === 'undefined') {
-        return null;
-    }
-
-    const element = document.getElementById(id);
+const disposeExistingBehaviorInstance = (element) => {
     if (!element) {
-        return null;
+        return;
     }
 
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
-        return null;
+    const existing = element.__energineBehavior;
+    if (existing && typeof existing.destroy === 'function') {
+        try {
+            existing.destroy();
+        } catch (error) {
+            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to dispose existing component instance');
+        }
+    }
+
+    element.__energineBehavior = null;
+    if (element.dataset) {
+        delete element.dataset.eReady;
+    }
+};
+
+const attachToolbarBinding = (element, instance) => {
+    if (!element || typeof registerToolbarComponent !== 'function') {
+        return;
+    }
+
+    const dataset = element.dataset || {};
+    const componentRef = dataset.eToolbarComponent
+        || element.getAttribute('data-e-toolbar-component');
+
+    if (!componentRef) {
+        return;
     }
 
     try {
-        const instance = new Constructor(element);
-        if (globalScope) {
-            globalScope[id] = instance;
+        registerToolbarComponent(componentRef, instance);
+    } catch (error) {
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${componentRef}"`);
+    }
+};
+
+const instantiateBehaviorForElement = (element, explicitBehaviorName = null, options = {}) => {
+    if (!(element instanceof HTMLElement)) {
+        return null;
+    }
+
+    const dataset = element.dataset || {};
+    const shouldRefresh = Dataset.normalizeBoolean(dataset.eRefresh);
+    const isReady = Dataset.normalizeBoolean(dataset.eReady);
+
+    const { silentOnMissing = false } = options || {};
+
+    if (isReady && !shouldRefresh && element.__energineBehavior) {
+        return element.__energineBehavior;
+    }
+
+    const behaviorName = explicitBehaviorName || dataset.eJs || element.getAttribute('data-e-js');
+    if (!behaviorName) {
+        return null;
+    }
+
+    const Constructor = BehaviorRegistry.resolve(behaviorName);
+    if (!Constructor) {
+        const pendingInfo = BehaviorRegistry.recordPending(behaviorName) || BehaviorRegistry.getPendingInfo(behaviorName);
+        const pendingCount = pendingInfo ? pendingInfo.count : 0;
+        const message = `[Energine.autoBootstrap] Behavior "${behaviorName}" is not registered yet. Waiting for registration.`;
+
+        if (
+            pendingCount <= 1
+            && !silentOnMissing
+            && typeof console !== 'undefined'
+            && console.info
+        ) {
+            console.info(message);
         }
-        if (typeof registerToolbarComponent === 'function') {
-            try {
-                registerToolbarComponent(id, instance);
-            } catch (error) {
-                Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to register toolbar component "${id}"`);
+
+        const shouldThrow = Boolean(
+            Energine
+            && typeof Energine.debug === 'boolean'
+            && Energine.debug
+            && pendingCount >= BehaviorRegistry.debugThreshold,
+        );
+
+        if (shouldThrow) {
+            const error = new Error(`${message} Enable and import the module that registers this behavior via registerBehavior.`);
+            error.element = element;
+            throw error;
+        }
+
+        return PENDING_BEHAVIOR;
+    }
+
+    if (shouldRefresh && element.__energineBehavior) {
+        disposeExistingBehaviorInstance(element);
+        if (element.dataset) {
+            delete element.dataset.eRefresh;
+        }
+    }
+
+    try {
+        const instance = new Constructor(element, dataset);
+        element.__energineBehavior = instance;
+        if (element.dataset) {
+            element.dataset.eReady = '1';
+        }
+
+        attachToolbarBinding(element, instance);
+
+        BehaviorRegistry.clearPending(behaviorName);
+
+        if (globalScope && element.id && typeof globalScope[element.id] === 'undefined') {
+            const diagnostic = `[Energine.autoBootstrap] Behavior "${behaviorName}" attached to #${element.id}. Global exposure via window["${element.id}"] is no longer supported.`;
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn(diagnostic);
             }
         }
+
         return instance;
     } catch (error) {
-        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behavior}"`);
+        Energine.safeConsoleError(error, `[Energine.autoBootstrap] Failed to instantiate behavior "${behaviorName}"`);
     }
 
     return null;
 };
 
-const bootstrapPageToolbarFromConfig = (config = {}) => {
-    if (!config || typeof config !== 'object' || typeof document === 'undefined') {
-        return null;
-    }
-
-    const { name, behavior, rootSelector, toolbarSelector } = config;
-    if (!name || !behavior) {
-        return null;
-    }
-
-    const root = document.querySelector(rootSelector || `[data-page-toolbar="${name}"]`);
-    if (!root) {
-        return null;
-    }
-
-    const toolbarElement = root.querySelector(toolbarSelector || '[data-toolbar]');
-    if (!toolbarElement) {
-        return null;
-    }
-
-    if (toolbarElement.dataset && !toolbarElement.dataset.toolbarHydrated) {
-        toolbarElement.dataset.toolbarHydrated = 'pending';
-    }
-
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
-        return null;
-    }
-
-    if (globalScope && globalScope.Toolbar && globalScope.Toolbar.registry) {
-        const existing = globalScope.Toolbar.registry.get(toolbarElement);
-        if (existing && typeof existing.destroy === 'function') {
-            try {
-                existing.destroy();
-            } catch (error) {
-                console.warn('[Energine.autoBootstrap] Failed to dispose existing toolbar instance', error);
-            }
-        }
-        globalScope.Toolbar.registry.delete(toolbarElement);
-    }
-
-    try {
-        const instance = new Constructor(toolbarElement, { root });
-
-        if (globalScope && typeof name === 'string' && name) {
-            try {
-                globalScope[name] = instance;
-            } catch (error) {
-                console.warn('[Energine.autoBootstrap] Failed to expose page toolbar on global scope', error);
-            }
-        }
-
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create page toolbar instance');
-    }
-
-    return null;
+const createScanResultContainer = () => {
+    const container = [];
+    container.metrics = { initialized: 0, failed: 0, skipped: 0, pending: 0 };
+    container.pending = 0;
+    container.failed = 0;
+    container.skipped = 0;
+    return container;
 };
 
-const instantiatePageEditorFromConfig = (config = {}) => {
-    if (!config || typeof config !== 'object') {
-        return null;
+const scanForComponents = (root = (typeof document !== 'undefined' ? document : null)) => {
+    const emptyResult = createScanResultContainer();
+
+    if (!root || typeof root.querySelectorAll !== 'function') {
+        return emptyResult;
     }
 
-    const { behavior, id } = config;
-    const Constructor = getGlobalConstructor(behavior);
-    if (!Constructor) {
-        return null;
-    }
+    const nodes = Array.from(root.querySelectorAll('[data-e-js]'));
+    const instantiated = createScanResultContainer();
 
-    try {
-        const instance = new Constructor();
-        if (globalScope && id) {
-            globalScope[id] = instance;
+    nodes.forEach((element) => {
+        if (!(element instanceof HTMLElement)) {
+            return;
         }
-        return instance;
-    } catch (error) {
-        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to create PageEditor instance');
-    }
 
-    return null;
+        const dataset = element.dataset || {};
+        const shouldRefresh = Dataset.normalizeBoolean(dataset.eRefresh);
+        const alreadyReady = Dataset.normalizeBoolean(dataset.eReady);
+
+        if (alreadyReady && !shouldRefresh && element.__energineBehavior) {
+            instantiated.metrics.skipped += 1;
+            instantiated.skipped = instantiated.metrics.skipped;
+            return;
+        }
+
+        const instance = instantiateBehaviorForElement(element, null, { silentOnMissing: true });
+        if (instance && instance !== PENDING_BEHAVIOR) {
+            instantiated.push(instance);
+            instantiated.metrics.initialized += 1;
+        } else if (instance === PENDING_BEHAVIOR) {
+            instantiated.metrics.pending += 1;
+            instantiated.pending = instantiated.metrics.pending;
+        } else {
+            instantiated.metrics.failed += 1;
+            instantiated.failed = instantiated.metrics.failed;
+        }
+    });
+
+    instantiated.failed = instantiated.metrics.failed;
+    instantiated.pending = instantiated.metrics.pending;
+    instantiated.skipped = instantiated.metrics.skipped;
+
+    return instantiated;
 };
 
 let autoBootstrapExecuted = false;
@@ -1077,7 +1077,7 @@ const autoBootstrapRuntime = () => {
     }
 
     const { dataset } = scriptEl;
-    if (dataset.run && datasetFalseValues.has(dataset.run.toLowerCase())) {
+    if (typeof dataset.run !== 'undefined' && !Dataset.normalizeBoolean(dataset.run)) {
         return;
     }
 
@@ -1085,95 +1085,62 @@ const autoBootstrapRuntime = () => {
 
     const config = Energine.createConfigFromScriptDataset();
     const runtime = Energine.boot(config);
-
-    if (globalScope && globalScope.__energineBridge && typeof globalScope.__energineBridge.setRuntime === 'function') {
-        try {
-            globalScope.__energineBridge.setRuntime(runtime);
-        } catch (error) {
-            runtime.safeConsoleError(error, '[Energine.autoBootstrap] Failed to sync bridge runtime');
-        }
-    }
-
-    const attachedRuntime = Energine.attachToWindow(globalScope, runtime);
-
-    const componentDescriptors = parseJSONAttribute(dataset.components, []);
-    const pageToolbarName = readDatasetString(dataset.pageToolbarName);
-    const pageToolbarBehavior = readDatasetString(dataset.pageToolbarBehavior);
-    const pageToolbarRootSelector = readDatasetString(dataset.pageToolbarRootSelector);
-    const pageToolbarToolbarSelector = readDatasetString(dataset.pageToolbarToolbarSelector);
-    const pageToolbarConfig = (pageToolbarName && pageToolbarBehavior)
-        ? {
-            name: pageToolbarName,
-            behavior: pageToolbarBehavior,
-            ...(pageToolbarRootSelector ? { rootSelector: pageToolbarRootSelector } : {}),
-            ...(pageToolbarToolbarSelector ? { toolbarSelector: pageToolbarToolbarSelector } : {}),
-        }
-        : null;
-    const pageEditorConfig = parseJSONAttribute(dataset.pageEditorConfig, null);
-
-    if (Array.isArray(componentDescriptors) && globalScope) {
-        componentDescriptors.forEach((descriptor) => {
-            if (descriptor && typeof descriptor.id === 'string' && typeof globalScope[descriptor.id] === 'undefined') {
-                globalScope[descriptor.id] = null;
-            }
-        });
-    }
+    const exposedRuntime = exposeRuntimeToGlobal(runtime, globalScope);
 
     const bootstrapDom = () => {
-        if (pageToolbarConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => bootstrapPageToolbarFromConfig(pageToolbarConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
+        applyTranslationsFromScripts(exposedRuntime);
 
-        if (Array.isArray(componentDescriptors)) {
-            componentDescriptors.forEach((descriptor) => {
-                attachedRuntime.addTask(() => scheduleRetry(
-                    () => instantiateComponentBehavior(descriptor),
-                    {
-                        attempts: 20,
-                        delay: 120,
-                        onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
-                    },
-                ));
-            });
-        }
+        let toolbarsInitialized = false;
 
-        if (pageEditorConfig) {
-            attachedRuntime.addTask(() => scheduleRetry(
-                () => instantiatePageEditorFromConfig(pageEditorConfig),
-                { attempts: 20, delay: 150 },
-            ));
-        }
+        scheduleRetry(
+            () => {
+                const initialized = scanForComponents(document);
+                const pending = initialized && typeof initialized.pending === 'number'
+                    ? initialized.pending
+                    : 0;
+                const ready = Array.isArray(initialized) && pending === 0;
 
-        attachedRuntime.addTask(() => {
-            if (typeof initializeToolbars === 'function') {
-                try {
-                    initializeToolbars(document);
-                } catch (error) {
-                    Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+                if (ready && typeof initializeToolbars === 'function' && !toolbarsInitialized) {
+                    try {
+                        initializeToolbars(document);
+                        toolbarsInitialized = true;
+                    } catch (error) {
+                        Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+                    }
                 }
-            }
-        });
-    };
 
-    const runTasks = () => {
-        try {
-            attachedRuntime.run();
-        } catch (error) {
-            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to run queued tasks');
-        }
+                return ready;
+            },
+            {
+                attempts: 20,
+                delay: 150,
+                onError: (error) => Energine.safeConsoleError(error, '[Energine.autoBootstrap] Component bootstrap failed'),
+                onGiveUp: () => {
+                    if (typeof initializeToolbars === 'function' && !toolbarsInitialized) {
+                        try {
+                            initializeToolbars(document);
+                            toolbarsInitialized = true;
+                        } catch (error) {
+                            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to initialize toolbars');
+                        }
+                    }
+
+                    const unresolved = BehaviorRegistry.getPendingNames();
+                    if (Array.isArray(unresolved) && unresolved.length) {
+                        const details = unresolved.join(', ');
+                        Energine.safeConsoleError(new Error(`Unresolved behaviors after bootstrap: ${details}`), '[Energine.autoBootstrap] Behavior registry');
+                    }
+                },
+            },
+        );
     };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             bootstrapDom();
-            runTasks();
         }, { once: true });
     } else {
         bootstrapDom();
-        runTasks();
     }
 };
 
@@ -1181,24 +1148,33 @@ autoBootstrapRuntime();
 
 export const serializeToFormEncoded = (obj, prefix) => Energine.serializeToFormEncoded(obj, prefix);
 
-export const bootEnergine = (config = {}) => Energine.boot(config);
-
-export const stageTranslations = (values) => Energine.stageTranslations(values);
-
-export const queueTask = (task, priority = 5) => Energine.queueTask(task, priority);
-
-export const createConfigFromProps = (props = {}) => Energine.createConfigFromProps(props);
-
-export const createConfigFromScriptDataset = (overrides = {}) => Energine.createConfigFromScriptDataset(overrides);
-
-export const createConfigFromBridgePending = (overrides = {}) => Energine.createConfigFromBridgePending(overrides);
-
 export const safeConsoleError = (error, context = '') => Energine.safeConsoleError(error, context);
 
 export const showLoader = (container) => Energine.showLoader(container);
 
 export const hideLoader = (container) => Energine.hideLoader(container);
 
-export const attachToWindow = (target = globalScope, runtime = Energine) => Energine.attachToWindow(target, runtime);
+export const registerBehavior = (name, ClassRef, options = {}) => {
+    if (!name || typeof name !== 'string' || typeof ClassRef !== 'function') {
+        return false;
+    }
+
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+        return false;
+    }
+
+    const { force = false } = options || {};
+    if (BehaviorRegistry.has(normalizedName) && !force) {
+        console.warn(`[Energine.autoBootstrap] Behavior "${normalizedName}" is already registered. Pass { force: true } to overwrite.`);
+        return false;
+    }
+
+    BehaviorRegistry.clearPending(normalizedName);
+    BehaviorRegistry.set(normalizedName, ClassRef);
+    return true;
+};
+
+export const getRegisteredBehavior = (name) => BehaviorRegistry.resolve(name);
 
 export default Energine;

@@ -1,3 +1,5 @@
+import ModalBox from './ModalBox.js';
+
 /**
  * @file Contain the description of the next classes:
  * <ul>
@@ -15,6 +17,7 @@
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+const ModalBoxHost = ModalBox || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
 
 /**
  * Words — работа с разделёнными строками.
@@ -148,9 +151,20 @@ class ActiveList {
             item.addEventListener('mouseover', () => {
                 this.selectItem(idx);
             });
-            item.addEventListener('click', () => {
-                this._fireEvent('choose', this.items[this.selected]);
-            });
+            const pointerHandler = (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                this.selectItem(idx);
+                this._fireEvent('choose', this.items[idx]);
+            };
+            item.addEventListener('mousedown', pointerHandler);
+            try {
+                item.addEventListener('touchstart', pointerHandler, { passive: false });
+            } catch (error) {
+                item.addEventListener('touchstart', pointerHandler);
+            }
         });
     }
 
@@ -367,7 +381,11 @@ class AcplField {
         }
         this.element.classList.add('form-control');
 
-        this.componentId = this.element.getAttribute('component_id');
+        this.componentElement = this.element.closest('[data-e-js]');
+        const componentDataset = this.componentElement?.dataset || {};
+        this.singlePath = componentDataset.eSingleTemplate
+            || this.componentElement?.getAttribute?.('data-e-single-template')
+            || '';
 
         this.container = this.element.closest('.input-group');
         if (this.container) {
@@ -448,9 +466,24 @@ class AcplField {
             return false;
         }
 
-        const component = this.componentId ? window[this.componentId] : null;
+        const component = this.componentElement?.__energineBehavior || null;
         if (component && typeof component.openTagEditor === 'function') {
             component.openTagEditor(this.button);
+            return true;
+        }
+
+        if (this.singlePath && ModalBoxHost && typeof ModalBoxHost.open === 'function') {
+            const fieldId = this.button?.dataset?.target;
+            const linkInput = fieldId ? document.getElementById(fieldId) : this.element;
+
+            ModalBoxHost.open({
+                url: `${this.singlePath}tags/show/`,
+                onClose: (result) => {
+                    if (result && linkInput) {
+                        linkInput.value = result;
+                    }
+                }
+            });
             return true;
         }
 
@@ -509,14 +542,107 @@ class AcplField {
         }
     }
 
+    getRequestUrls() {
+        if (!this.url) {
+            return [];
+        }
+
+        const candidates = [];
+        const normalized = (this.url.includes('?') || this.url.endsWith('/'))
+            ? this.url
+            : `${this.url}/`;
+
+        candidates.push(normalized);
+        if (normalized !== this.url) {
+            candidates.push(this.url);
+        }
+
+        const seen = new Set();
+        return candidates
+            .map((candidate) => this.ensureJsonQuery(candidate))
+            .filter((candidate) => {
+                if (!candidate || seen.has(candidate)) {
+                    return false;
+                }
+                seen.add(candidate);
+                return true;
+            });
+    }
+
+    ensureJsonQuery(url) {
+        if (!url) {
+            return url;
+        }
+
+        const [base, hash = ''] = url.split('#');
+        const hasJson = /([?&])json(?:=[^&#]*)?(?:&|#|$)/.test(base);
+
+        const resultBase = hasJson
+            ? base
+            : `${base}${base.includes('?') ? '&' : '?'}json=1`;
+
+        return hash ? `${resultBase}#${hash}` : resultBase;
+    }
+
+    parseResponse(resp, requestUrl) {
+        if (!resp.ok) {
+            throw new Error(`Request failed with status ${resp.status}`);
+        }
+
+        const contentType = resp.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            return resp.json();
+        }
+
+        return resp.text().then((text) => {
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                const err = new SyntaxError(`Unexpected response for ${requestUrl}`);
+                err.cause = { originalError: error, body: text };
+                throw err;
+            }
+        });
+    }
+
     requestValues(str) {
-        fetch(this.url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'value=' + encodeURIComponent(str)
-        })
-            .then(resp => resp.json())
-            .then(data => this._prepareData(data));
+        const urls = this.getRequestUrls();
+
+        if (!urls.length) {
+            return;
+        }
+
+        const attemptRequest = (index = 0) => {
+            const requestUrl = urls[index];
+
+            return fetch(requestUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'json=1&value=' + encodeURIComponent(str),
+                credentials: 'same-origin'
+            })
+                .then((resp) => this.parseResponse(resp, requestUrl))
+                .catch((error) => {
+                    const nextIndex = index + 1;
+                    if (nextIndex < urls.length) {
+                        return attemptRequest(nextIndex);
+                    }
+                    throw error;
+                });
+        };
+
+        attemptRequest()
+            .then(data => this._prepareData(data))
+            .catch((error) => {
+                if (typeof console !== 'undefined' && console.error) {
+                    console.error('[AcplField] Failed to fetch suggestions', error);
+                }
+                this.list.hide();
+            });
     }
 
     setValues(data) {
@@ -543,18 +669,3 @@ class AcplField {
 
 export { Words, ActiveList, DropBoxList, AcplField };
 export default AcplField;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return AcplField;
-    }
-
-    target.Words = Words;
-    target.ActiveList = ActiveList;
-    target.DropBoxList = DropBoxList;
-    target.AcplField = AcplField;
-
-    return AcplField;
-}
-
-attachToWindow();

@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import GridManager from './GridManager.js';
 import ModalBox from './ModalBox.js';
 
@@ -60,14 +60,6 @@ class SiteManager extends GridManager {
 
 export { SiteManager };
 export default SiteManager;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return SiteManager;
-    }
-
-    target.SiteManager = SiteManager;
-    return SiteManager;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('SiteManager', SiteManager);
 }
-
-attachToWindow();

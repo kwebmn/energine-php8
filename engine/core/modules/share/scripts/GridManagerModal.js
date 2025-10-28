@@ -1,5 +1,6 @@
 import GridManager from './GridManager.js';
 import ModalBoxModule from './ModalBox.js';
+import { registerBehavior as registerEnergineBehavior } from './Energine.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -55,14 +56,6 @@ class GridManagerModal extends GridManager {
 
 export { GridManagerModal };
 export default GridManagerModal;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return GridManagerModal;
-    }
-
-    target.GridManagerModal = GridManagerModal;
-    return GridManagerModal;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('GridManagerModal', GridManagerModal);
 }
-
-attachToWindow();

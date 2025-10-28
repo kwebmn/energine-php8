@@ -1,3 +1,5 @@
+import { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
+
 const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
@@ -13,14 +15,6 @@ class Testfeed {
 
 export { Testfeed };
 export default Testfeed;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return Testfeed;
-    }
-
-    target.Testfeed = Testfeed;
-    return Testfeed;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('Testfeed', Testfeed);
 }
-
-attachToWindow();

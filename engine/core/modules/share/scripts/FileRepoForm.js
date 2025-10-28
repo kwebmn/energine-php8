@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import Form from './Form.js';
 import ModalBox from './ModalBox.js';
 import {
@@ -178,14 +178,6 @@ class FileRepoForm extends Form {
 
 export { FileRepoForm };
 export default FileRepoForm;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FileRepoForm;
-    }
-
-    target.FileRepoForm = FileRepoForm;
-    return FileRepoForm;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('FileRepoForm', FileRepoForm);
 }
-
-attachToWindow();

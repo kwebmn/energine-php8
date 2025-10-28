@@ -1,4 +1,4 @@
-import Energine from './Energine.js';
+import Energine, { registerBehavior as registerEnergineBehavior } from './Energine.js';
 import ModalBox from './ModalBox.js';
 
 const globalScope = typeof window !== 'undefined'
@@ -19,7 +19,32 @@ class FiltersTreeEditor {
         this.componentElement = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
-        this.singlePath = this.componentElement.getAttribute('single-template');
+
+        if (!this.componentElement) {
+            throw new Error('FiltersTreeEditor: component element was not found.');
+        }
+
+        const dataset = this.componentElement.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.componentElement.getAttribute?.('data-e-single-template')
+            || '';
+
+        this.translations = {
+            add: dataset.eTxtAdd || this.componentElement.getAttribute?.('data-e-txt-add') || '',
+            edit: dataset.eTxtEdit || this.componentElement.getAttribute?.('data-e-txt-edit') || '',
+            delete: dataset.eTxtDelete || this.componentElement.getAttribute?.('data-e-txt-delete') || '',
+            confirm: dataset.eTxtConfirm || this.componentElement.getAttribute?.('data-e-txt-confirm') || '',
+            refresh: dataset.eTxtRefresh || this.componentElement.getAttribute?.('data-e-txt-refresh') || '',
+            up: dataset.eTxtUp || this.componentElement.getAttribute?.('data-e-txt-up') || '',
+            down: dataset.eTxtDown || this.componentElement.getAttribute?.('data-e-txt-down') || '',
+        };
+
+        this.treeElement = this.componentElement.querySelector('[data-role="filter-tree"]');
+        if (!this.treeElement) {
+            throw new Error('FiltersTreeEditor: tree container [data-role="filter-tree"] is required.');
+        }
+
+        this.$tree = $(this.treeElement);
         Energine.loadCSS('scripts/jstree/themes/default/style.css');
         this.initTree();
         this.initKeyboard();
@@ -27,13 +52,15 @@ class FiltersTreeEditor {
 
     moveUp(obj) {
         if (!obj) return;
+        if (!this.$tree || !this.$tree.length) return;
+
         $.get(
             `${this.singlePath}${obj.id}/up/`,
             () => {
-                $('#filter-tree').jstree(true).load_node(obj.parent);
+                this.$tree.jstree(true).load_node(obj.parent);
                 setTimeout(() => {
-                    $('#filter-tree').jstree("deselect_all");
-                    $('#filter-tree').jstree('select_node', obj.id);
+                    this.$tree.jstree('deselect_all');
+                    this.$tree.jstree('select_node', obj.id);
                 }, 200);
             }
         );
@@ -41,13 +68,15 @@ class FiltersTreeEditor {
 
     moveDown(obj) {
         if (!obj) return;
+        if (!this.$tree || !this.$tree.length) return;
+
         $.get(
             `${this.singlePath}${obj.id}/down/`,
             () => {
-                $('#filter-tree').jstree(true).load_node(obj.parent);
+                this.$tree.jstree(true).load_node(obj.parent);
                 setTimeout(() => {
-                    $('#filter-tree').jstree("deselect_all");
-                    $('#filter-tree').jstree('select_node', obj.id);
+                    this.$tree.jstree('deselect_all');
+                    this.$tree.jstree('select_node', obj.id);
                 }, 200);
             }
         );
@@ -73,7 +102,11 @@ class FiltersTreeEditor {
 
     initTree() {
         const self = this;
-        $('#filter-tree').jstree({
+        if (!this.$tree || !this.$tree.length) {
+            return;
+        }
+
+        this.$tree.jstree({
             plugins: [ "checkbox", "contextmenu", "dnd" ],
             core: {
                 expand_selected_onload: false,
@@ -92,9 +125,9 @@ class FiltersTreeEditor {
             },
             contextmenu: {
                 items: function (o, cb) {
-                    return {
-                        "create": {
-                            label: self.componentElement.getAttribute('txt_add'),
+                        return {
+                            "create": {
+                            label: self.translations.add,
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
@@ -104,37 +137,37 @@ class FiltersTreeEditor {
                                 ModalBox.open({
                                     url,
                                     onClose: function() {
-                                        $('#filter-tree').jstree(true).load_node(obj.parent || '#');
-                                        $('#filter-tree').jstree("deselect_all");
+                                        self.$tree.jstree(true).load_node(obj.parent || '#');
+                                        self.$tree.jstree('deselect_all');
                                     }
                                 });
                             }
                         },
                         "edit": {
-                            label: self.componentElement.getAttribute('txt_edit'),
+                            label: self.translations.edit,
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
                                 ModalBox.open({
                                     url: `${self.singlePath}${obj.id}/edit/`,
                                     onClose: function() {
-                                        $('#filter-tree').jstree(true).load_node(obj.parent);
-                                        $('#filter-tree').jstree("deselect_all");
+                                        self.$tree.jstree(true).load_node(obj.parent);
+                                        self.$tree.jstree('deselect_all');
                                     }
                                 });
                             }
                         },
                         "delete": {
-                            label: self.componentElement.getAttribute('txt_delete'),
+                            label: self.translations.delete,
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
-                                if (confirm(self.componentElement.getAttribute('txt_confirm'))) {
+                                if (confirm(self.translations.confirm)) {
                                     $.get(
                                         `${self.singlePath}${obj.id}/delete/`,
                                         function() {
-                                            $('#filter-tree').jstree(true).load_node(obj.parent);
-                                            $('#filter-tree').jstree("deselect_all");
+                                            self.$tree.jstree(true).load_node(obj.parent);
+                                            self.$tree.jstree('deselect_all');
                                         }
                                     );
                                 }
@@ -142,15 +175,15 @@ class FiltersTreeEditor {
                         },
                         "refresh": {
                             separator_before: true,
-                            label: self.componentElement.getAttribute('txt_refresh'),
+                            label: self.translations.refresh,
                             action: function() {
-                                $('#filter-tree').jstree(true).load_node('#');
-                                $('#filter-tree').jstree("deselect_all");
+                                self.$tree.jstree(true).load_node('#');
+                                self.$tree.jstree('deselect_all');
                             }
                         },
                         "up": {
                             separator_before: true,
-                            label: self.componentElement.getAttribute('txt_up'),
+                            label: self.translations.up,
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
@@ -158,7 +191,7 @@ class FiltersTreeEditor {
                             }
                         },
                         "down": {
-                            label: self.componentElement.getAttribute('txt_down'),
+                            label: self.translations.down,
                             action: function(data) {
                                 const inst = $.jstree.reference(data.reference);
                                 const obj = inst.get_node(data.reference);
@@ -176,12 +209,12 @@ class FiltersTreeEditor {
             }
         });
 
-        $('#filter-tree').on('check_node.jstree', (e, data) => {
+        this.$tree.on('check_node.jstree', (e, data) => {
             self.checkNode(data.node.id);
-            $('#filter-tree').jstree(true).check_node(data.node.parents);
+            self.$tree.jstree(true).check_node(data.node.parents);
         });
 
-        $('#filter-tree').on('uncheck_node.jstree', (e, data) => {
+        this.$tree.on('uncheck_node.jstree', (e, data) => {
             self.uncheckNode(data.node.id);
         });
 
@@ -195,7 +228,7 @@ class FiltersTreeEditor {
             $.get(
                 `${self.singlePath}move/${nodeID}/above/${targetNodeID}/?json`,
                 function() {
-                    $('#filter-tree').jstree(true).load_node(parentID);
+                    self.$tree.jstree(true).load_node(parentID);
                 },
                 'json'
             );
@@ -207,12 +240,12 @@ class FiltersTreeEditor {
         $(document).keypress(function(e) {
             // Plus or = key
             if (e.charCode === 61 || e.charCode === 43) {
-                const obj = $('#filter-tree').jstree('get_selected', true);
+                const obj = self.$tree.jstree('get_selected', true);
                 if (obj && obj.length) self.moveUp(obj[0]);
             }
             // Minus key
             if (e.charCode === 45) {
-                const obj = $('#filter-tree').jstree('get_selected', true);
+                const obj = self.$tree.jstree('get_selected', true);
                 if (obj && obj.length) self.moveDown(obj[0]);
             }
         });
@@ -221,14 +254,6 @@ class FiltersTreeEditor {
 
 export { FiltersTreeEditor };
 export default FiltersTreeEditor;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return FiltersTreeEditor;
-    }
-
-    target.FiltersTreeEditor = FiltersTreeEditor;
-    return FiltersTreeEditor;
+if (typeof registerEnergineBehavior === 'function') {
+    registerEnergineBehavior('FiltersTreeEditor', FiltersTreeEditor);
 }
-
-attachToWindow();

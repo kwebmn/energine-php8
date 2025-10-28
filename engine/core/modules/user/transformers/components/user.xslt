@@ -7,26 +7,53 @@
     <!-- компонент LoginForm  -->
     <!-- режим гостя -->
     <xsl:template match="component[@sample='LoginForm']">
-        <form method="post" action="{@action}" class="base_form login_form">
-            <input type="hidden" name="componentAction" value="{@componentAction}" />
-            <xsl:apply-templates/>
-        </form>
+        <xsl:variable name="HAS_TITLE" select="string-length(normalize-space(@title)) &gt; 0"/>
+        <section class="card shadow-sm border-0 rounded-3" data-role="pane">
+            <xsl:if test="$HAS_TITLE">
+                <div class="card-header bg-body-tertiary border-bottom" data-pane-part="header">
+                    <h2 class="h5 mb-0">
+                        <xsl:value-of select="@title"/>
+                    </h2>
+                </div>
+            </xsl:if>
+            <div class="card-body p-4 d-flex flex-column gap-3" data-pane-part="body">
+                <form method="post" action="{@action}" class="d-flex flex-column gap-3" data-role="login-form">
+                    <input type="hidden" name="componentAction" value="{@componentAction}" />
+                    <xsl:apply-templates/>
+                </form>
+            </div>
+        </section>
     </xsl:template>
 
     <xsl:template match="recordset[parent::component[@sample='LoginForm']]">
-        <div id="{generate-id(.)}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}" template="{$BASE}{$LANG_ABBR}{../@template}">
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="TEMPLATE_PATH" select="concat($BASE, $LANG_ABBR, $COMPONENT/@template)"/>
+        <xsl:variable name="SINGLE_TEMPLATE_PATH" select="concat($BASE, $LANG_ABBR, $COMPONENT/@single_template)"/>
+        <div class="d-flex flex-column gap-3">
+            <xsl:attribute name="id"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
+            <xsl:attribute name="template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="$SINGLE_TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="$SINGLE_TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:if test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$COMPONENT/javascript/behavior/@name"/></xsl:attribute>
+            </xsl:if>
             <xsl:apply-templates/>
         </div>
     </xsl:template>
 
     <xsl:template match="control[(@id='restore') and (@mode!=0)][ancestor::component[@sample='LoginForm']]">
-            <div class="restore_link">
-                <a href="{$BASE}{$LANG_ABBR}{@click}"><xsl:value-of select="@title" /></a>
-            </div>
+        <div class="d-flex justify-content-end">
+            <a class="link-secondary" data-action="restore-password" href="{$BASE}{$LANG_ABBR}{@click}">
+                <xsl:value-of select="@title" />
+            </a>
+        </div>
     </xsl:template>
 
     <xsl:template match="control[(@id='auth.facebook') and not(@disabled)][ancestor::component[@sample='LoginForm']]">
-        <a href="#" id="fbAuth" onclick="return false;"><xsl:value-of select="@title"/></a>
+        <a href="#" id="fbAuth" class="btn btn-outline-primary w-100" data-action="auth-facebook" onclick="return false;">
+            <xsl:value-of select="@title"/>
+        </a>
         <script type="text/javascript">
             FBL.set('<xsl:value-of select="@appID"/>');
         </script>
@@ -35,55 +62,97 @@
 
     <xsl:template match="control[(@id='auth.vk') and not(@disabled)][ancestor::component[@sample='LoginForm']]">
         <script type="text/javascript" src="//vk.com/js/api/openapi.js?95"></script>
-        <a href="#" id="vkAuth" onclick="return false;"><xsl:value-of select="@title"/></a>
+        <a href="#" id="vkAuth" class="btn btn-outline-primary w-100" data-action="auth-vk" onclick="return false;">
+            <xsl:value-of select="@title"/>
+        </a>
         <script type="text/javascript">
             VKI.set('<xsl:value-of select="@appID"/>');
         </script>
     </xsl:template>
 
     <xsl:template match="field[@name='message'][ancestor::component[@sample='LoginForm']]">
-        <div class="error_message">
+        <div class="alert alert-danger" data-role="form-error" role="alert">
             <xsl:apply-templates/>
         </div>
     </xsl:template>
 
     <!-- режим пользователя за логином -->
     <xsl:template match="recordset[parent::component[@sample='LoginForm'][@componentAction='showLogoutForm']]">
-        <div>
-           <xsl:apply-templates/>
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="TEMPLATE_PATH" select="concat($BASE, $LANG_ABBR, $COMPONENT/@template)"/>
+        <xsl:variable name="SINGLE_TEMPLATE_PATH" select="concat($BASE, $LANG_ABBR, $COMPONENT/@single_template)"/>
+        <div class="d-flex flex-column gap-3">
+            <xsl:attribute name="id"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
+            <xsl:attribute name="template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="$SINGLE_TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="$SINGLE_TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:if test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$COMPONENT/javascript/behavior/@name"/></xsl:attribute>
+            </xsl:if>
+            <xsl:apply-templates/>
         </div>
     </xsl:template>
 
     <xsl:template match="record[ancestor::component[@sample='LoginForm'][@componentAction='showLogoutForm']]">
-        <span class="user_greeting"><xsl:value-of select="$TRANSLATION[@const='TXT_USER_GREETING']"/></span><xsl:value-of select="$NBSP" disable-output-escaping="yes" />
-        <span class="user_name"><xsl:value-of select="$TRANSLATION[@const='TXT_USER_NAME']"/>:<xsl:value-of select="$NBSP" disable-output-escaping="yes" /><strong><xsl:value-of select="field[@name='u_name']"/></strong></span><br/>
-        <span class="user_role"><xsl:value-of select="$TRANSLATION[@const='TXT_ROLE_TEXT']"/>:<xsl:value-of select="$NBSP" disable-output-escaping="yes" /><strong><xsl:value-of select="field[@name='role_name']"/></strong></span>
+        <div class="d-flex flex-column gap-2">
+            <p class="mb-0 text-muted">
+                <xsl:value-of select="$TRANSLATION[@const='TXT_USER_GREETING']"/>
+            </p>
+            <p class="mb-0">
+                <span class="text-muted me-2">
+                    <xsl:value-of select="$TRANSLATION[@const='TXT_USER_NAME']"/>
+                    <xsl:text>:</xsl:text>
+                </span>
+                <strong><xsl:value-of select="field[@name='u_name']"/></strong>
+            </p>
+            <p class="mb-0">
+                <span class="text-muted me-2">
+                    <xsl:value-of select="$TRANSLATION[@const='TXT_ROLE_TEXT']"/>
+                    <xsl:text>:</xsl:text>
+                </span>
+                <strong><xsl:value-of select="field[@name='role_name']"/></strong>
+            </p>
+        </div>
     </xsl:template>
     <!-- /компонент LoginForm  -->
 
     <!-- компонент Register -->
     <xsl:template match="component[@class='Register'][@componentAction='success']">
-        <div class="result_message">
+        <div class="alert alert-success" role="alert">
             <xsl:value-of select="recordset/record/field" disable-output-escaping="yes"/>
         </div>
     </xsl:template>
 
     <xsl:template match="recordset[parent::component[@class='Register']]">
-        <div><xsl:value-of select="$TRANSLATION[@const='TXT_REGISTRATION_TEXT']" disable-output-escaping="yes"/></div>
-        <div id="{generate-id(.)}" single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
+        <div class="text-muted mb-4">
+            <xsl:value-of select="$TRANSLATION[@const='TXT_REGISTRATION_TEXT']" disable-output-escaping="yes"/>
+        </div>
+        <xsl:variable name="COMPONENT" select=".."/>
+        <xsl:variable name="TEMPLATE_PATH" select="concat($BASE, $LANG_ABBR, $COMPONENT/@template)"/>
+        <xsl:variable name="SINGLE_TEMPLATE_PATH" select="concat($BASE, $LANG_ABBR, $COMPONENT/@single_template)"/>
+        <div class="d-flex flex-column gap-3">
+            <xsl:attribute name="id"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
+            <xsl:attribute name="single_template"><xsl:value-of select="$SINGLE_TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="$SINGLE_TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="$TEMPLATE_PATH"/></xsl:attribute>
+            <xsl:if test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$COMPONENT/javascript/behavior/@name"/></xsl:attribute>
+            </xsl:if>
             <xsl:apply-templates/>
         </div>
         <xsl:if test="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']">
-            <div class="note">
+            <p class="text-muted small mb-0">
                 <xsl:value-of select="$TRANSLATION[@const='TXT_REQUIRED_FIELDS']" disable-output-escaping="yes"/>
-            </div>
+            </p>
         </xsl:if>
     </xsl:template>
     <!-- /компонент Register -->
 
     <!-- компонент UserProfile -->
     <xsl:template match="component[@class='UserProfile'][@componentAction='success']">
-        <div class="result_message">
+        <div class="alert alert-success" role="alert">
             <xsl:value-of select="recordset/record/field" disable-output-escaping="yes"/>
         </div>
     </xsl:template>
@@ -163,8 +232,12 @@
     <!-- /компонент RoleEditor -->
 
     <xsl:template match="field[@name='u_avatar_img'][@mode='1'][ancestor::component[@type='form']]" mode="field_input_readonly">
-        <div><img src="{.}" alt=""/></div>
-        <a href="{.}" target="_blank"><xsl:value-of select="."/></a>
+        <div class="d-flex flex-column gap-2">
+            <img class="img-thumbnail" src="{.}" alt="" loading="lazy"/>
+            <a class="link-secondary" href="{.}" target="_blank" rel="noopener">
+                <xsl:value-of select="."/>
+            </a>
+        </div>
         <input>
             <xsl:call-template name="FORM_ELEMENT_ATTRIBUTES_READONLY"/>
         </input>

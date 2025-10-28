@@ -20,9 +20,26 @@
     </xsl:template>
     
     <xsl:template match="recordset[parent::component[@class='ImageManager']]">
+        <xsl:variable name="COMPONENT" select=".."/>
         <xsl:variable name="IDD"><xsl:value-of select="generate-id(record)"/></xsl:variable>
-        <div id="{generate-id(.)}" data-role="pane" class="card" template="{$BASE}{$LANG_ABBR}{../@template}"  single_template="{$BASE}{$LANG_ABBR}{../@single_template}">
-            <div class="card-header" data-pane-part="header" data-pane-toolbar="top">
+        <xsl:variable name="BEHAVIOR">
+            <xsl:choose>
+                <xsl:when test="string-length(normalize-space($COMPONENT/javascript/behavior/@name)) &gt; 0">
+                    <xsl:value-of select="$COMPONENT/javascript/behavior/@name"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$COMPONENT/@sample"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <div data-role="pane" class="card">
+            <xsl:if test="string-length(normalize-space($BEHAVIOR)) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:attribute name="data-e-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
+            <div class="card-header" data-pane-part="header">
                 <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
                         <a href="#{$IDD}" data-role="tab-link">
@@ -50,7 +67,7 @@
                 </div>
             </div>
             <xsl:if test="../toolbar">
-                <div class="card-footer" data-pane-part="footer" data-pane-toolbar="bottom"></div>
+                <div class="card-footer" data-pane-part="footer"></div>
             </xsl:if>
         </div>
     </xsl:template>
@@ -58,11 +75,11 @@
     <xsl:template match="toolbar[parent::component[@class='ImageManager']]">
         <div class="btn-toolbar flex-wrap gap-2 align-items-center" role="toolbar">
             <xsl:if test="@name">
-                <xsl:attribute name="data-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
+                <xsl:attribute name="data-e-toolbar"><xsl:value-of select="@name"/></xsl:attribute>
             </xsl:if>
-            <xsl:attribute name="data-toolbar-scope">image-manager</xsl:attribute>
+            <xsl:attribute name="data-e-toolbar-scope">image-manager</xsl:attribute>
             <xsl:if test="ancestor::component[1]/recordset">
-                <xsl:attribute name="data-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
+                <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(ancestor::component[1]/recordset)"/></xsl:attribute>
             </xsl:if>
             <xsl:apply-templates/>
         </div>

@@ -1,4 +1,4 @@
-import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn } from './Energine.js';
+import EnergineModule, { showLoader as showLoaderFn, hideLoader as hideLoaderFn, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import TabPaneModule from './TabPane.js';
 import ToolbarModule from './Toolbar.js';
 import ModalBoxModule from './ModalBox.js';
@@ -8,117 +8,1023 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const Energine = EnergineModule || globalScope?.Energine || {};
-const TabPane = TabPaneModule || globalScope?.TabPane;
-const PageList = PageListModule || globalScope?.PageList;
-const Toolbar = ToolbarModule || globalScope?.Toolbar;
-const showLoader = showLoaderFn || globalScope?.showLoader || (() => {});
-const hideLoader = hideLoaderFn || globalScope?.hideLoader || (() => {});
-const getModalBox = () => ModalBoxModule || globalScope?.top?.ModalBox || globalScope?.ModalBox || null;
+const noop = () => {};
+
+const resolveDependency = (moduleValue, fallbackPaths = [], defaultValue = undefined) => {
+    if (moduleValue) {
+        return moduleValue;
+    }
+
+    if (!globalScope) {
+        return defaultValue;
+    }
+
+    const pathVariants = Array.isArray(fallbackPaths?.[0])
+        ? fallbackPaths
+        : (fallbackPaths ? [fallbackPaths] : []);
+
+    for (const path of pathVariants) {
+        const segments = Array.isArray(path) ? path : String(path).split('.');
+        let current = globalScope;
+        let resolved = null;
+
+        for (const segment of segments) {
+            if (current == null) {
+                resolved = null;
+                break;
+            }
+            current = current[segment];
+            resolved = current;
+        }
+
+        if (resolved != null) {
+            return resolved;
+        }
+    }
+
+    return defaultValue;
+};
+
+const Energine = resolveDependency(EnergineModule, 'Energine', {});
+const TabPane = resolveDependency(TabPaneModule, 'TabPane');
+const PageList = resolveDependency(PageListModule, 'PageList');
+const Toolbar = resolveDependency(ToolbarModule, 'Toolbar');
+const showLoader = resolveDependency(showLoaderFn, 'showLoader', noop);
+const hideLoader = resolveDependency(hideLoaderFn, 'hideLoader', noop);
+const getModalBox = () => resolveDependency(ModalBoxModule, [['top', 'ModalBox'], 'ModalBox'], null);
+
+const normalizeLifecycleStep = (context, step) => {
+    if (typeof step === 'function') {
+        return { fn: step, args: [] };
+    }
+
+    if (typeof step === 'string') {
+        const fn = context?.[step];
+        return typeof fn === 'function' ? { fn, args: [] } : null;
+    }
+
+    if (step && typeof step === 'object') {
+        const candidate = typeof step.step === 'function'
+            ? step.step
+            : (typeof step.step === 'string' ? context?.[step.step] : null);
+
+        if (typeof candidate !== 'function') {
+            return null;
+        }
+
+        return {
+            fn: candidate,
+            args: Array.isArray(step.args) ? step.args : [],
+            condition: typeof step.condition === 'function' ? step.condition : null,
+        };
+    }
+
+    return null;
+};
+
+const runLifecycleSteps = (context, steps = []) => {
+    if (!context || !Array.isArray(steps)) {
+        return;
+    }
+
+    steps
+        .map(step => normalizeLifecycleStep(context, step))
+        .filter(Boolean)
+        .forEach(({ fn, args, condition }) => {
+            if (condition && !condition(context)) {
+                return;
+            }
+            fn.apply(context, args);
+        });
+};
+
+const createToolbarFacade = (resolveToolbar) => {
+    const getToolbar = () => (typeof resolveToolbar === 'function' ? resolveToolbar() : null) || null;
+
+    const useToolbar = (callback, fallback) => {
+        const toolbar = getToolbar();
+        if (!toolbar || typeof callback !== 'function') {
+            return fallback;
+        }
+        return callback(toolbar);
+    };
+
+    return {
+        with(callback) {
+            useToolbar(callback);
+        },
+        invoke(methodName, ...args) {
+            return useToolbar(toolbar => {
+                const method = toolbar?.[methodName];
+                if (typeof method === 'function') {
+                    return method.apply(toolbar, args);
+                }
+                return undefined;
+            });
+        },
+        withControl(controlId, callback) {
+            return useToolbar(toolbar => {
+                if (typeof toolbar.getControlById !== 'function') {
+                    return undefined;
+                }
+                const control = toolbar.getControlById(controlId);
+                if (control) {
+                    return callback?.(control);
+                }
+                return undefined;
+            });
+        },
+        controls() {
+            const toolbar = getToolbar();
+            return (toolbar && Array.isArray(toolbar.controls)) ? toolbar.controls : [];
+        },
+    };
+};
+
+const MODAL_ACTIONS = Object.freeze({
+    view: {
+        requiresId: true,
+        url: (manager, id) => `${manager.singlePath}${id}`,
+    },
+    add: {
+        url: manager => `${manager.singlePath}add/`,
+        onClose: manager => manager.processAfterCloseAction.bind(manager),
+    },
+    edit: {
+        requiresId: true,
+        url: (manager, id) => `${manager.singlePath}${id}/edit`,
+        onClose: manager => manager.processAfterCloseAction.bind(manager),
+    },
+    move: {
+        requiresId: true,
+        beforeOpen: (manager, id) => manager.setMvElementId(id),
+        url: (manager, id) => `${manager.singlePath}move/${id}`,
+        onClose: manager => manager.processAfterCloseAction.bind(manager),
+    },
+});
+
+const DOM = Object.freeze({
+    withElement(element, callback, fallback = undefined) {
+        if (!element || typeof callback !== 'function') {
+            return fallback;
+        }
+
+        return callback(element);
+    },
+    addClasses(element, classes = []) {
+        return this.withElement(element, el => {
+            if (classes.length) {
+                el.classList.add(...classes);
+            }
+        });
+    },
+    removeClasses(element, classes = []) {
+        return this.withElement(element, el => {
+            if (classes.length) {
+                el.classList.remove(...classes);
+            }
+        });
+    },
+    ensureMinHeightZero(element) {
+        return this.withElement(element, el => {
+            if (!el.style.minHeight || el.style.minHeight === '' || el.style.minHeight === 'auto') {
+                el.style.minHeight = '0';
+            }
+        });
+    },
+    ensureFlexOverflowHidden(element) {
+        return this.withElement(element, el => {
+            try {
+                const computed = window.getComputedStyle(el);
+                if (computed.display.includes('flex') && computed.overflow === 'visible') {
+                    el.style.overflow = 'hidden';
+                }
+            } catch (e) {
+                // Ignore layout read errors in environments without layout engine
+            }
+        });
+    },
+    decorate(element, { add = [], remove = [], attributes = {} } = {}) {
+        this.withElement(element, el => {
+            this.addClasses(el, add);
+            this.removeClasses(el, remove);
+
+            Object.entries(attributes).forEach(([name, value]) => {
+                if (value === null || value === undefined) {
+                    el.removeAttribute(name);
+                } else {
+                    el.setAttribute(name, value);
+                }
+            });
+        });
+    },
+});
+
+const parsePixels = value => {
+    const numeric = Number.parseFloat(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const getNumericStyle = (element, property) => {
+    if (!element) {
+        return 0;
+    }
+
+    try {
+        const styles = window.getComputedStyle(element);
+        return parsePixels(styles?.[property]);
+    } catch (error) {
+        return 0;
+    }
+};
+
+const SELECTION_KEYWORDS_EXACT = new Set([
+    'view', 'edit', 'del', 'delete', 'use', 'up', 'down', 'open', 'preview',
+]);
+
+const SELECTION_KEYWORDS_PREFIX = Object.freeze([
+    'move', 'activate', 'deactivate', 'approve', 'decline', 'restore', 'publish', 'unpublish',
+    'archive', 'unarchive', 'assign', 'unassign', 'lock', 'unlock', 'block', 'unblock', 'ban',
+    'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject',
+    'disable', 'enable', 'suspend', 'resume',
+]);
+
+const TABLE_BODY_CLASSES = Object.freeze(['table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0']);
+const HEADER_CLASSES = Object.freeze(['text-center', 'align-middle', 'fw-semibold', 'position-relative']);
+const GRID_HEAD_CONTAINER_CLASSES = Object.freeze(['table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0']);
+const GRID_BODY_CONTAINER_CLASSES = Object.freeze(['table-responsive', 'bg-body', 'border', 'border-top-0']);
+
+const SELECTION_CONTROL_PREDICATES = Object.freeze([
+    control => isSelectionKeywordMatch(control?.properties?.action),
+    control => isSelectionKeywordMatch(control?.properties?.id),
+]);
+
+const CONTROL_PREPARATION_STEPS = Object.freeze([
+    control => {
+        if (control?.element) {
+            control.element.dataset.requiresSelection = 'true';
+        }
+    },
+    control => {
+        if (
+            control
+            && typeof control.enable === 'function'
+            && typeof control.initially_disabled === 'function'
+            && control.initially_disabled()
+        ) {
+            control.enable(true);
+        }
+    },
+    control => {
+        if (control) {
+            control._disabledBySelection = false;
+        }
+    },
+]);
+
+const CONTROL_STATE_HANDLERS = Object.freeze({
+    disable: {
+        shouldApply(control) {
+            if (!control) {
+                return false;
+            }
+
+            const initiallyDisabled = typeof control.initially_disabled === 'function'
+                ? control.initially_disabled()
+                : false;
+
+            if (initiallyDisabled) {
+                return false;
+            }
+
+            const alreadyDisabled = typeof control.disabled === 'function'
+                ? control.disabled()
+                : false;
+
+            return !alreadyDisabled && typeof control.disable === 'function';
+        },
+        apply(control) {
+            control.disable();
+            control._disabledBySelection = true;
+        },
+    },
+    enable: {
+        shouldApply(control) {
+            return Boolean(
+                control
+                && control._disabledBySelection
+                && typeof control.enable === 'function',
+            );
+        },
+        apply(control) {
+            control.enable();
+            control._disabledBySelection = false;
+        },
+    },
+});
+
+class GridLayoutHelper {
+    constructor(grid) {
+        this.grid = grid;
+    }
+
+    prepareContainers() {
+        const grid = this.grid;
+        DOM.ensureMinHeightZero(grid.element);
+
+        if (!grid.paneContent) {
+            return;
+        }
+
+        const tabContent = (grid.paneContent.parentElement && grid.paneContent.parentElement.classList
+            && grid.paneContent.parentElement.classList.contains('tab-content'))
+            ? grid.paneContent.parentElement
+            : null;
+        const paneBody = grid.paneContent.closest('[data-pane-part="body"]');
+        const paneRoot = grid.paneContent.closest('[data-role="pane"]');
+
+        if (paneBody) {
+            paneBody.classList.add('d-flex', 'flex-column');
+        }
+
+        if (tabContent) {
+            tabContent.classList.add('flex-grow-1');
+            if (!tabContent.classList.contains('d-flex')) {
+                tabContent.classList.add('d-flex', 'flex-column');
+            }
+        }
+
+        grid.paneContent.classList.add('flex-grow-1');
+        if (!grid.paneContent.style.flexBasis) {
+            grid.paneContent.style.flexBasis = 'auto';
+        }
+
+        const nodesToNormalize = [grid.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
+
+        nodesToNormalize.forEach(node => {
+            DOM.ensureMinHeightZero(node);
+            DOM.ensureFlexOverflowHidden(node);
+        });
+    }
+
+    fitGridSize() {
+        const grid = this.grid;
+
+        if (!grid.gridContainer) {
+            return;
+        }
+
+        if (grid.paneContent && !grid.paneContent.offsetParent) {
+            return;
+        }
+
+        const headElement = (grid.gridHeadContainer && grid.gridHeadContainer === grid.gridContainer && grid.table && grid.table.tHead)
+            ? grid.table.tHead
+            : grid.gridHeadContainer;
+
+        let gridHeight = null;
+
+        if (grid.paneContent) {
+            const margin = parseInt(grid.element.style.marginTop, 10) || 0;
+            const externalToolbar = grid.pane
+                ? grid.pane.querySelector('[data-pane-part="footer"]')
+                : null;
+            const toolbarHeight = grid.gridToolbar ? grid.gridToolbar.offsetHeight : 0;
+            const headHeight = headElement ? headElement.offsetHeight : 0;
+            const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
+
+            gridHeight = grid.paneContent.offsetHeight
+                - headHeight
+                - toolbarHeight
+                - margin
+                - externalToolbarHeight;
+
+            if (gridHeight < 0) {
+                gridHeight = 0;
+            }
+
+            if (grid.gridContainer === grid.gridHeadContainer && headElement) {
+                gridHeight += headHeight;
+            }
+        }
+
+        const viewportLimit = this.getGridViewportLimit();
+        const paneHeight = grid.paneContent ? grid.paneContent.offsetHeight : null;
+        const minHeightBaseline = grid.minGridHeight || 300;
+
+        let effectiveMinHeight = minHeightBaseline;
+        if (paneHeight) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, paneHeight);
+        }
+        if (viewportLimit !== null) {
+            effectiveMinHeight = Math.min(effectiveMinHeight, viewportLimit);
+        }
+
+        if (gridHeight === null) {
+            gridHeight = effectiveMinHeight;
+        } else {
+            gridHeight = Math.max(gridHeight, effectiveMinHeight);
+        }
+
+        if (viewportLimit !== null) {
+            gridHeight = Math.min(gridHeight, viewportLimit);
+        }
+
+        const paneLimit = this.getPaneContentLimit();
+        if (paneLimit !== null) {
+            gridHeight = Math.min(gridHeight, paneLimit);
+        }
+
+        if (gridHeight > 0) {
+            grid.gridContainer.style.height = gridHeight + 'px';
+            grid.gridContainer.style.minHeight = '0px';
+            grid.gridContainer.style.overflowY = 'auto';
+            grid.gridContainer.style.overflowX = 'hidden';
+        } else {
+            grid.gridContainer.style.removeProperty('height');
+            grid.gridContainer.style.removeProperty('min-height');
+            grid.gridContainer.style.removeProperty('overflow-y');
+            grid.gridContainer.style.removeProperty('overflow-x');
+        }
+
+        grid.syncGridHeadScroll();
+    }
+
+    fitGridFormSize() {
+        const grid = this.grid;
+        if (!grid.gridContainer) {
+            return;
+        }
+
+        if (!grid.pane) {
+            this.fitGridSize();
+            return;
+        }
+
+        if (!grid.paneContent) {
+            grid.fitGridSize();
+            return;
+        }
+
+        const toolbarHeight = grid.gridToolbar ? grid.gridToolbar.offsetHeight : 0;
+        const headElement = (grid.gridHeadContainer && grid.gridHeadContainer === grid.gridContainer && grid.table && grid.table.tHead)
+            ? grid.table.tHead
+            : grid.gridHeadContainer;
+        const gridHeadHeight = headElement ? headElement.offsetHeight : 0;
+        const paneToolbarTop = grid.pane.querySelector('[data-pane-part="header"]');
+        const paneToolbarBottom = grid.pane.querySelector('[data-pane-part="footer"]');
+        const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
+        const paneToolbarBottomHeight = paneToolbarBottom ? paneToolbarBottom.offsetHeight : 0;
+        const paneHeight = grid.pane.offsetHeight;
+        const margin = parseInt(grid.element.style.marginTop, 10) || 0;
+        const gridBodyContainer = grid.gridBodyContainer
+            || grid.element.querySelector('[data-grid-section="body-inner"]');
+        let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
+            + parseInt(window.getComputedStyle(grid.gridContainer).borderTopWidth || 0, 10)
+            + parseInt(window.getComputedStyle(grid.gridContainer).borderBottomWidth || 0, 10);
+
+        if (grid.minGridHeight && gridBodyHeight < grid.minGridHeight) {
+            gridBodyHeight = grid.minGridHeight;
+        }
+
+        const totalHeight = toolbarHeight
+            + gridHeadHeight
+            + gridBodyHeight
+            + paneToolbarTopHeight
+            + paneToolbarBottomHeight
+            + margin
+            + 3;
+
+        const { height: viewportHeight, offsetTop } = this.getViewportBox();
+
+        if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
+            const paneRect = grid.pane.getBoundingClientRect();
+            const marginBottom = getNumericStyle(grid.pane, 'marginBottom');
+            const paddingBottom = getNumericStyle(grid.pane, 'paddingBottom');
+            const borderBottom = getNumericStyle(grid.pane, 'borderBottomWidth');
+
+            const paneTop = paneRect && Number.isFinite(paneRect.top)
+                ? paneRect.top - offsetTop
+                : 0;
+
+            let availablePaneHeight = viewportHeight - paneTop - marginBottom - paddingBottom - borderBottom;
+            if (!Number.isFinite(availablePaneHeight)) {
+                availablePaneHeight = viewportHeight;
+            }
+
+            if (availablePaneHeight < 0) {
+                availablePaneHeight = 0;
+            }
+
+            if (availablePaneHeight > 0) {
+                grid.pane.style.maxHeight = availablePaneHeight + 'px';
+
+                const targetPaneHeightCandidate = Math.max(totalHeight, availablePaneHeight);
+                const targetPaneHeight = Number.isFinite(targetPaneHeightCandidate)
+                    ? Math.min(targetPaneHeightCandidate, availablePaneHeight)
+                    : availablePaneHeight;
+
+                if (targetPaneHeight > 0) {
+                    grid.pane.style.height = targetPaneHeight + 'px';
+                } else {
+                    grid.pane.style.removeProperty('height');
+                }
+            } else {
+                grid.pane.style.removeProperty('height');
+                grid.pane.style.removeProperty('max-height');
+            }
+        } else {
+            grid.pane.style.removeProperty('height');
+            grid.pane.style.removeProperty('max-height');
+        }
+
+        if (grid.gridContainer) {
+            const candidateHeight = Math.max(grid.gridContainer.offsetHeight, grid.minGridHeight || 0);
+            if (candidateHeight > paneHeight) {
+                grid.gridContainer.style.maxHeight = paneHeight + 'px';
+                if (grid.gridBodyContainer && grid.gridBodyContainer !== grid.gridContainer) {
+                    grid.gridBodyContainer.style.maxHeight = paneHeight + 'px';
+                }
+            }
+        }
+
+        this.fitGridSize();
+    }
+
+    getGridViewportLimit() {
+        const grid = this.grid;
+        const viewport = this.getViewportBox();
+        if (!viewport || !Number.isFinite(viewport.height) || viewport.height <= 0) {
+            return null;
+        }
+
+        const paneRect = grid.paneContent ? grid.paneContent.getBoundingClientRect() : null;
+        if (!paneRect) {
+            return null;
+        }
+
+        const marginBottom = getNumericStyle(grid.paneContent, 'marginBottom');
+        const paddingBottom = getNumericStyle(grid.paneContent, 'paddingBottom');
+        const borderBottom = getNumericStyle(grid.paneContent, 'borderBottomWidth');
+
+        let paneTop = paneRect.top - viewport.offsetTop;
+        if (!Number.isFinite(paneTop)) {
+            paneTop = 0;
+        }
+
+        const limit = viewport.height - paneTop - marginBottom - paddingBottom - borderBottom;
+        return Number.isFinite(limit) ? Math.max(limit, 0) : null;
+    }
+
+    getPaneContentLimit() {
+        const grid = this.grid;
+        if (!grid.paneContent || !grid.pane) {
+            return null;
+        }
+
+        const paneRect = grid.pane.getBoundingClientRect();
+        if (!paneRect) {
+            return null;
+        }
+
+        const paneContentRect = grid.paneContent.getBoundingClientRect();
+        if (!paneContentRect) {
+            return null;
+        }
+
+        const marginBottom = getNumericStyle(grid.paneContent, 'marginBottom');
+        const paddingBottom = getNumericStyle(grid.paneContent, 'paddingBottom');
+        const borderBottom = getNumericStyle(grid.paneContent, 'borderBottomWidth');
+
+        let limit = paneRect.bottom - paneContentRect.top - marginBottom - paddingBottom - borderBottom;
+        if (!Number.isFinite(limit)) {
+            return null;
+        }
+
+        if (limit < 0) {
+            limit = 0;
+        }
+
+        return limit;
+    }
+
+    getViewportBox() {
+        try {
+            if (window.visualViewport) {
+                const viewport = window.visualViewport;
+                if (viewport) {
+                    return {
+                        height: viewport.height,
+                        width: typeof viewport.width === 'number'
+                            ? viewport.width
+                            : (window.innerWidth || document.documentElement.clientWidth || 0),
+                        offsetTop: viewport.offsetTop || 0,
+                        offsetLeft: viewport.offsetLeft || 0,
+                    };
+                }
+            }
+        } catch (error) {
+            // visualViewport might not be accessible (e.g., cross-origin iframes)
+        }
+
+        return {
+            height: window.innerHeight || document.documentElement.clientHeight || 0,
+            width: window.innerWidth || document.documentElement.clientWidth || 0,
+            offsetTop: 0,
+            offsetLeft: 0,
+        };
+    }
+}
+
+class GridSelectionHelper {
+    constructor(grid) {
+        this.grid = grid;
+    }
+
+    selectItem(item) {
+        const grid = this.grid;
+        const current = grid.selectedItem;
+
+        if (!item) {
+            this.deselectItem();
+            return;
+        }
+
+        if (item === current) {
+            this.deselectItem();
+            return;
+        }
+
+        if (current) {
+            this.deselectItem({ silent: true });
+        }
+
+        item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
+        item.classList.add('grid-row-selected');
+        grid.selectedItem = item;
+        grid.fireEvent('select', item);
+        grid.fireEvent('selectionChange', item);
+        grid.updateSortHighlight();
+    }
+
+    deselectItem(options = {}) {
+        const grid = this.grid;
+        if (grid.selectedItem) {
+            grid.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
+        }
+        grid.selectedItem = null;
+        if (!options.silent) {
+            grid.fireEvent('selectionChange', null);
+        }
+        grid.updateSortHighlight();
+    }
+
+    getSelectedItem() {
+        return this.grid.selectedItem;
+    }
+
+    getSelectedRecord() {
+        const selected = this.getSelectedItem();
+        return selected ? selected.record : false;
+    }
+
+    getSelectedRecordKey() {
+        const grid = this.grid;
+        if (!grid.keyFieldName) {
+            return false;
+        }
+        const record = this.getSelectedRecord();
+        return record ? record[grid.keyFieldName] : false;
+    }
+
+    dataKeyExists(key) {
+        const grid = this.grid;
+        if (!grid.data || !grid.keyFieldName) {
+            return false;
+        }
+        return grid.data.some(item => item[grid.keyFieldName] == key);
+    }
+
+    clear() {
+        const grid = this.grid;
+        this.deselectItem();
+        while (grid.tbody?.firstChild) {
+            grid.tbody.removeChild(grid.tbody.firstChild);
+        }
+        grid.clearSortHighlight();
+    }
+}
+
+class GridEventHelper {
+    constructor(grid) {
+        this.grid = grid;
+    }
+
+    bindGlobalHandlers() {
+        const grid = this.grid;
+        grid.handleWindowResize = () => {
+            grid.fitGridFormSize();
+        };
+
+        window.addEventListener('resize', grid.handleWindowResize);
+
+        grid.on('dirty', () => {
+            grid.isDirty = true;
+        });
+    }
+}
+
+const createRequestService = ({ request = null, show = noop, hide = noop } = {}) => {
+    const perform = typeof request === 'function'
+        ? request
+        : ((url, body, onSuccess, onError) => {
+            if (typeof Energine?.request === 'function') {
+                Energine.request(url, body ?? null, onSuccess, null, onError);
+            } else {
+                hide();
+                throw new Error('GridManager: request function is not available.');
+            }
+        });
+
+    return {
+        run(url, { body = null, onSuccess = noop, onError = null } = {}) {
+            show();
+
+            const handleSuccess = (...args) => {
+                try {
+                    onSuccess?.(...args);
+                } finally {
+                    hide();
+                }
+            };
+
+            const handleError = (responseText) => {
+                try {
+                    const handled = typeof onError === 'function' ? onError(responseText) : false;
+                    if (!handled && responseText) {
+                        alert(responseText);
+                    }
+                } finally {
+                    hide();
+                }
+            };
+
+            return perform(url, body ?? null, handleSuccess, handleError);
+        },
+    };
+};
+
+const defaultRequestService = createRequestService({
+    request: (url, body, onSuccess, onError) => {
+        Energine.request(url, body ?? null, onSuccess, null, onError);
+    },
+    show: showLoader,
+    hide: hideLoader,
+});
+
+const GRID_INITIALIZATION_SEQUENCE = Object.freeze([
+    '_initializeState',
+    '_captureDomStructure',
+    '_prepareHeaders',
+    '_bindGlobalHandlers',
+    '_initializeLayoutPlaceholders',
+]);
+
+const GRID_MANAGER_INITIALIZATION_SEQUENCE = Object.freeze([
+    '_initializeState',
+    '_initializeFilter',
+    '_initializePageList',
+    '_initializeGrid',
+    '_initializeTabPane',
+    '_placePaginationControls',
+    '_setupModalCloseHandler',
+    '_initializeMoveState',
+]);
+
+const isSelectionKeywordMatch = (value = '') => {
+    const normalized = value.toLowerCase();
+    if (!normalized) {
+        return false;
+    }
+
+    if (SELECTION_KEYWORDS_EXACT.has(normalized)) {
+        return true;
+    }
+
+    return SELECTION_KEYWORDS_PREFIX.some(prefix => normalized.startsWith(prefix));
+};
+
+class ToolbarSelectionController {
+    constructor(predicate = isSelectionKeywordMatch) {
+        this.predicate = predicate;
+        this.toolbar = null;
+        this.controls = [];
+        this.lastKnownSelection = false;
+    }
+
+    setToolbar(toolbar) {
+        this.toolbar = toolbar || null;
+        this.collectControls();
+    }
+
+    collectControls() {
+        const controls = Array.isArray(this.toolbar?.controls)
+            ? this.toolbar.controls
+            : [];
+
+        this.controls = controls.filter(control => this._isSelectionDependentControl(control));
+        this.controls.forEach(control => this._prepareControl(control));
+    }
+
+    update(hasSelection = this.lastKnownSelection) {
+        this.lastKnownSelection = Boolean(hasSelection);
+        this.controls.forEach(control => this._toggleControl(control, this.lastKnownSelection));
+    }
+
+    _isSelectionDependentControl(control) {
+        return SELECTION_CONTROL_PREDICATES.some(predicate => predicate(control));
+    }
+
+    _prepareControl(control) {
+        CONTROL_PREPARATION_STEPS.forEach(step => step(control));
+    }
+
+    _toggleControl(control, hasSelection) {
+        const state = hasSelection ? 'enable' : 'disable';
+        const handler = CONTROL_STATE_HANDLERS[state];
+
+        if (!control || !handler) {
+            return;
+        }
+
+        if (handler.shouldApply(control, { hasSelection })) {
+            handler.apply(control, { hasSelection });
+        }
+    }
+}
 class Grid {
     /**
      * @param {HTMLElement|string} element
      * @param {Object} [options]
      */
     constructor(element, options = {}) {
-        // Ensure document has robust flex-based layout rules when a grid exists.
-        // This helps grids inside iframes stretch to full available height.
         Grid.ensureEnhancedLayoutStyles(document);
 
-        // Load grid-specific CSS (selection color etc.)
-        try { (window.Energine || {}).loadCSS ? Energine.loadCSS('stylesheets/grid.css') : null; } catch (e) {}
+        this._loadLegacyStyles();
+        this.element = this._resolveElement(element);
+        this.options = this._normalizeOptions(options);
+        this.layoutHelper = new GridLayoutHelper(this);
+        this.selectionHelper = new GridSelectionHelper(this);
+        this.eventHelper = new GridEventHelper(this);
 
-        // Универсальная обертка для работы с элементами по селектору или объекту
-        this.element = (typeof element === 'string')
-            ? document.querySelector(element)
-            : element;
+        runLifecycleSteps(this, GRID_INITIALIZATION_SEQUENCE);
 
-        this.data = [];
-        this.metadata = {};
-        this.selectedItem = null;
-        this.sort = { field: null, order: null };
-        this.isDirty = false;
-        this.keyFieldName = null;
-        this.prevDataLength = 0;
-        this.options = options;
-        this.events = {};
-        this.pendingSelectionKey = null;
-        this.activeSortColumnIndex = null;
-        this.columnResizeState = null;
-        this.isColumnResizing = false;
-        this.columnResizeSuppressSort = false;
+        this.on('select', this.options.onSelect);
+        this.on('doubleClick', this.options.onDoubleClick);
+    }
+
+    _loadLegacyStyles() {
+        try {
+            (window.Energine || {}).loadCSS ? Energine.loadCSS('stylesheets/grid.css') : null;
+        } catch (error) {
+            // Loading CSS is optional for modern builds, ignore failures silently.
+        }
+    }
+
+    _resolveElement(element) {
+        if (element instanceof HTMLElement) {
+            return element;
+        }
+
+        if (typeof element === 'string') {
+            return document.querySelector(element);
+        }
+
+        return element || null;
+    }
+
+    _normalizeOptions(options) {
+        const defaults = {
+            onSelect: noop,
+            onSortChange: noop,
+            onDoubleClick: noop,
+        };
+
+        return { ...defaults, ...options };
+    }
+
+    _initializeState() {
+        Object.assign(this, {
+            data: [],
+            metadata: {},
+            selectedItem: null,
+            sort: { field: null, order: null },
+            isDirty: false,
+            keyFieldName: null,
+            prevDataLength: 0,
+            events: {},
+            pendingSelectionKey: null,
+            activeSortColumnIndex: null,
+            columnResizeState: null,
+            isColumnResizing: false,
+            columnResizeSuppressSort: false,
+            _rowHandlersBound: false,
+        });
+
+        this._bindInstanceHandlers();
+    }
+
+    _bindInstanceHandlers() {
         this.handleColumnResizeMove = this.handleColumnResizeMove.bind(this);
         this.stopColumnResize = this.stopColumnResize.bind(this);
         this.handleGridBodyScroll = this.handleGridBodyScroll.bind(this);
+        this.handleHeaderClick = this.onChangeSort.bind(this);
+        this._handleRowMouseOver = this._handleRowMouseOver.bind(this);
+        this._handleRowMouseOut = this._handleRowMouseOut.bind(this);
+        this._handleRowClick = this._handleRowClick.bind(this);
+        this._handleRowDoubleClick = this._handleRowDoubleClick.bind(this);
+    }
 
-        // --- DOM привязка ---
+    _captureDomStructure() {
         this.useCombinedTable = false;
         this.table = null;
         this.tbody = null;
-
         this.headOff = null;
+
+        if (!this.element) {
+            this.headers = [];
+            return;
+        }
 
         const combinedTable = this.element.querySelector('[data-role="grid-table"][data-grid-part="table"]');
         if (combinedTable) {
             this.useCombinedTable = true;
             this.table = combinedTable;
-            this.tbody = combinedTable.querySelector('tbody');
-            if (!this.tbody) {
-                this.tbody = document.createElement('tbody');
-                combinedTable.appendChild(this.tbody);
-            }
+            this.tbody = this._ensureSection(combinedTable, 'tbody');
             this.headers = Array.from(combinedTable.querySelectorAll('thead th'));
             this.headOff = combinedTable.tHead || null;
-            combinedTable.classList.add('table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0');
+            DOM.addClasses(combinedTable, TABLE_BODY_CLASSES);
         } else {
             this.table = this.element.querySelector('[data-role="grid-table"][data-grid-part="body"]');
             if (this.table) {
                 this.headOff = this.table.querySelector('thead');
-                if (this.headOff) this.headOff.style.display = 'none';
-                this.tbody = this.table.querySelector('tbody');
-                this.table.classList.add('table', 'table-hover', 'table-bordered', 'table-sm', 'align-middle', 'mb-0');
+                if (this.headOff) {
+                    this.headOff.style.display = 'none';
+                }
+                this.tbody = this._ensureSection(this.table, 'tbody');
+                DOM.addClasses(this.table, TABLE_BODY_CLASSES);
             }
+
             const headTable = this.element.querySelector('[data-grid-section="head"] [data-role="grid-table"]');
             if (headTable) {
-                headTable.classList.add('table', 'table-sm', 'align-middle', 'mb-0');
+                DOM.addClasses(headTable, ['table', 'table-sm', 'align-middle', 'mb-0']);
             }
+
             this.headers = Array.from(this.element.querySelectorAll('[data-grid-section="head"] [data-role="grid-table"] th'));
         }
 
         if (!this.tbody && this.table) {
-            this.tbody = this.table.querySelector('tbody');
-            if (!this.tbody) {
-                this.tbody = document.createElement('tbody');
-                this.table.appendChild(this.tbody);
-            }
+            this.tbody = this._ensureSection(this.table, 'tbody');
         }
 
         this.headers = this.headers || [];
-        this.headers.forEach(header => {
-            header.addEventListener('click', this.onChangeSort.bind(this));
-            header.classList.add('text-center', 'align-middle', 'fw-semibold', 'position-relative');
-            header.style.cursor = 'pointer';
-        });
 
+        this._setupRowEventDelegation();
+    }
+
+    _ensureSection(table, tagName) {
+        if (!table) {
+            return null;
+        }
+
+        let section = table.querySelector(tagName);
+        if (!section) {
+            section = document.createElement(tagName);
+            table.appendChild(section);
+        }
+        return section;
+    }
+
+    _prepareHeaders() {
         this.headers.forEach(header => {
+            header.addEventListener('click', this.handleHeaderClick);
+            DOM.addClasses(header, HEADER_CLASSES);
+            header.style.cursor = 'pointer';
+
             if (!header.dataset.originalLabel) {
                 header.dataset.originalLabel = header.textContent.trim();
             }
         });
+
         this.enableColumnResize();
         this.refreshSortIndicators();
+    }
 
-        this.handleWindowResize = () => {
-            this.fitGridFormSize();
-        };
-        window.addEventListener('resize', this.handleWindowResize);
+    _bindGlobalHandlers() {
+        this.eventHelper.bindGlobalHandlers();
+    }
 
-        // Поддержка событий
-        this.on('dirty', () => {
-            this.isDirty = true;
-        });
-
-        // Структура для дальнейших ссылок
+    _initializeLayoutPlaceholders() {
         this.paneContent = null;
         this.gridToolbar = null;
         this.gridHeadContainer = null;
@@ -130,9 +1036,6 @@ class Grid {
         this.gridBodyScrollElement = null;
         this.boundGridBodyScrollElement = null;
         this.tabShownHandler = null;
-
-        this.on('doubleClick', this.options.onDoubleClick);
-
     }
 
 
@@ -169,63 +1072,26 @@ class Grid {
     }
 
     selectItem(item) {
-        const current = this.selectedItem;
-
-        if (!item) {
-            this.deselectItem();
-            return;
-        }
-
-        if (item === current) {
-            this.deselectItem();
-            return;
-        }
-
-        if (current) {
-            this.deselectItem({ silent: true });
-        }
-
-        item.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
-        item.classList.add('grid-row-selected');
-        this.selectedItem = item;
-        this.fireEvent('select', item);
-        this.fireEvent('selectionChange', item);
-        this.updateSortHighlight();
+        this.selectionHelper.selectItem(item);
     }
     deselectItem(options = {}) {
-        if (this.selectedItem) {
-            this.selectedItem.classList.remove('table-active', 'table-primary', 'bg-primary', 'text-white', 'grid-row-selected');
-        }
-        this.selectedItem = null;
-        if (!options.silent) {
-            this.fireEvent('selectionChange', null);
-        }
-        this.updateSortHighlight();
+        this.selectionHelper.deselectItem(options);
     }
-    getSelectedItem() { return this.selectedItem; }
+    getSelectedItem() { return this.selectionHelper.getSelectedItem(); }
     isEmpty() { return !this.data || !this.data.length; }
 
     getSelectedRecord() {
-        if (!this.getSelectedItem()) return false;
-        return this.getSelectedItem().record;
+        return this.selectionHelper.getSelectedRecord();
     }
     getSelectedRecordKey() {
-        if (!this.keyFieldName) return false;
-        let rec = this.getSelectedRecord();
-        return rec ? rec[this.keyFieldName] : false;
+        return this.selectionHelper.getSelectedRecordKey();
     }
     dataKeyExists(key) {
-        if (!this.data) return false;
-        if (!this.keyFieldName) return false;
-        return this.data.some(item => item[this.keyFieldName] == key);
+        return this.selectionHelper.dataKeyExists(key);
     }
 
     clear() {
-        this.deselectItem();
-        while (this.tbody.firstChild) {
-            this.tbody.removeChild(this.tbody.firstChild);
-        }
-        this.clearSortHighlight();
+        this.selectionHelper.clear();
     }
 
     build() {
@@ -266,7 +1132,7 @@ class Grid {
         }
         if (this.gridHeadContainer && this.gridHeadContainer !== this.table) {
             if (!this.gridHeadContainer.classList.contains('grid-head')) {
-                this.gridHeadContainer.classList.add('table-responsive', 'bg-body-tertiary', 'border', 'border-bottom-0');
+                DOM.addClasses(this.gridHeadContainer, GRID_HEAD_CONTAINER_CLASSES);
             }
         }
         this.gridContainer = this.element.querySelector('[data-grid-section="body"]');
@@ -275,12 +1141,9 @@ class Grid {
         }
         if (this.gridContainer && this.gridContainer !== this.gridHeadContainer) {
             if (!this.gridContainer.classList.contains('grid-table-wrapper')) {
-                const bodyClasses = ['table-responsive', 'bg-body', 'border', 'border-top-0'];
-                this.gridContainer.classList.add(...bodyClasses);
+                DOM.addClasses(this.gridContainer, GRID_BODY_CONTAINER_CLASSES);
             }
-            if (!this.gridContainer.style.minHeight || this.gridContainer.style.minHeight === '' || this.gridContainer.style.minHeight === 'auto') {
-                this.gridContainer.style.minHeight = '0';
-            }
+            DOM.ensureMinHeightZero(this.gridContainer);
         }
         this.pane = this.element.closest('[data-role="pane"]');
         this.gridBodyContainer = this.element.querySelector('[data-grid-section="body-inner"]');
@@ -332,84 +1195,92 @@ class Grid {
             this.selectItem(row);
             // row.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-
-        // Навешиваем события
-        row.addEventListener('mouseover', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.add('highlighted', 'table-active');
-            }
-        });
-        row.addEventListener('mouseout', () => {
-            if (row !== this.getSelectedItem()) {
-                row.classList.remove('highlighted', 'table-active');
-            } else {
-                row.classList.remove('highlighted');
-            }
-        });
-        row.addEventListener('click', event => {
-            if (event.detail > 1) {
-                return;
-            }
-            this.selectItem(row);
-        });
-        row.addEventListener('dblclick', () => {
-            if (this.getSelectedItem() !== row) {
-                this.selectItem(row);
-            }
-            if (this.getSelectedItem() === row) {
-                this.fireEvent('doubleClick');
-            }
-        });
     }
 
-    prepareGridLayoutContainers() {
-        if (this.element && (!this.element.style.minHeight || this.element.style.minHeight === '' || this.element.style.minHeight === 'auto')) {
-            this.element.style.minHeight = '0';
-        }
-
-        if (!this.paneContent) {
+    _setupRowEventDelegation() {
+        if (!this.tbody || this._rowHandlersBound) {
             return;
         }
 
-        const tabContent = (this.paneContent.parentElement && this.paneContent.parentElement.classList
-            && this.paneContent.parentElement.classList.contains('tab-content'))
-            ? this.paneContent.parentElement
-            : null;
-        const paneBody = this.paneContent.closest('[data-pane-part="body"]');
-        const paneRoot = this.paneContent.closest('[data-role="pane"]');
+        this.tbody.addEventListener('mouseover', this._handleRowMouseOver);
+        this.tbody.addEventListener('mouseout', this._handleRowMouseOut);
+        this.tbody.addEventListener('click', this._handleRowClick);
+        this.tbody.addEventListener('dblclick', this._handleRowDoubleClick);
 
-        if (paneBody) {
-            paneBody.classList.add('d-flex', 'flex-column');
+        this._rowHandlersBound = true;
+    }
+
+    _resolveRowFromEvent(event) {
+        if (!event || !this.tbody) {
+            return null;
         }
 
-        if (tabContent) {
-            tabContent.classList.add('flex-grow-1');
-            if (!tabContent.classList.contains('d-flex')) {
-                tabContent.classList.add('d-flex', 'flex-column');
-            }
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : null;
+        const rawTarget = path && path.length ? path[0] : event.target;
+        let target = rawTarget instanceof Element ? rawTarget : null;
+        if (!target && rawTarget && rawTarget.parentElement) {
+            target = rawTarget.parentElement;
+        }
+        if (!target) {
+            return null;
         }
 
-        this.paneContent.classList.add('flex-grow-1');
-        if (!this.paneContent.style.flexBasis) {
-            this.paneContent.style.flexBasis = 'auto';
+        const row = target.closest('tr');
+        return row && this.tbody.contains(row) ? row : null;
+    }
+
+    _handleRowMouseOver(event) {
+        const row = this._resolveRowFromEvent(event);
+        if (!row || row === this.getSelectedItem()) {
+            return;
         }
 
-        const nodesToNormalize = [this.paneContent, paneBody, paneRoot, tabContent].filter(Boolean);
+        row.classList.add('highlighted', 'table-active');
+    }
 
-        nodesToNormalize.forEach(node => {
-            if (!node) return;
-            if (!node.style.minHeight || node.style.minHeight === '' || node.style.minHeight === 'auto') {
-                node.style.minHeight = '0';
-            }
-            try {
-                const computed = window.getComputedStyle(node);
-                if (computed.display.includes('flex') && computed.overflow === 'visible') {
-                    node.style.overflow = 'hidden';
-                }
-            } catch (e) {
-                // Ignore layout read errors in environments without layout engine
-            }
-        });
+    _handleRowMouseOut(event) {
+        const row = this._resolveRowFromEvent(event);
+        if (!row) {
+            return;
+        }
+
+        if (row !== this.getSelectedItem()) {
+            row.classList.remove('highlighted', 'table-active');
+        } else {
+            row.classList.remove('highlighted');
+        }
+    }
+
+    _handleRowClick(event) {
+        if (event?.detail > 1) {
+            return;
+        }
+
+        const row = this._resolveRowFromEvent(event);
+        if (!row) {
+            return;
+        }
+
+        this.selectItem(row);
+    }
+
+    _handleRowDoubleClick(event) {
+        const row = this._resolveRowFromEvent(event);
+        if (!row) {
+            return;
+        }
+
+        if (this.getSelectedItem() !== row) {
+            this.selectItem(row);
+        }
+
+        if (this.getSelectedItem() === row) {
+            this.fireEvent('doubleClick');
+        }
+    }
+
+    prepareGridLayoutContainers() {
+        this.layoutHelper.prepareContainers();
     }
 
     bindTabActivationHandler() {
@@ -961,289 +1832,23 @@ class Grid {
     }
 
     fitGridSize() {
-        if (!this.gridContainer) {
-            return;
-        }
-
-        if (this.paneContent && !this.paneContent.offsetParent) {
-            return;
-        }
-
-        const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
-            ? this.table.tHead
-            : this.gridHeadContainer;
-
-        let gridHeight = null;
-
-        if (this.paneContent) {
-            const margin = parseInt(this.element.style.marginTop, 10) || 0;
-            const externalToolbar = this.pane
-                ? this.pane.querySelector('[data-pane-part="footer"]')
-                : null;
-            const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
-            const headHeight = headElement ? headElement.offsetHeight : 0;
-            const externalToolbarHeight = externalToolbar ? externalToolbar.offsetHeight : 0;
-
-            gridHeight = this.paneContent.offsetHeight
-                - headHeight
-                - toolbarHeight
-                - margin
-                - externalToolbarHeight;
-
-            if (gridHeight < 0) {
-                gridHeight = 0;
-            }
-
-            if (this.gridContainer === this.gridHeadContainer && headElement) {
-                gridHeight += headHeight;
-            }
-        }
-
-        const viewportLimit = this.getGridViewportLimit();
-        const paneHeight = this.paneContent ? this.paneContent.offsetHeight : null;
-        const minHeightBaseline = this.minGridHeight || 300;
-
-        let effectiveMinHeight = minHeightBaseline;
-        if (paneHeight) {
-            effectiveMinHeight = Math.min(effectiveMinHeight, paneHeight);
-        }
-        if (viewportLimit !== null) {
-            effectiveMinHeight = Math.min(effectiveMinHeight, viewportLimit);
-        }
-
-        if (gridHeight === null) {
-            gridHeight = effectiveMinHeight;
-        } else {
-            gridHeight = Math.max(gridHeight, effectiveMinHeight);
-        }
-
-        if (viewportLimit !== null) {
-            gridHeight = Math.min(gridHeight, viewportLimit);
-        }
-
-        const paneLimit = this.getPaneContentLimit();
-        if (paneLimit !== null) {
-            gridHeight = Math.min(gridHeight, paneLimit);
-        }
-
-        if (gridHeight > 0) {
-            this.gridContainer.style.height = gridHeight + 'px';
-            this.gridContainer.style.minHeight = '0px';
-            this.gridContainer.style.overflowY = 'auto';
-            this.gridContainer.style.overflowX = 'hidden';
-        } else {
-            this.gridContainer.style.removeProperty('height');
-            this.gridContainer.style.removeProperty('min-height');
-            this.gridContainer.style.removeProperty('overflow-y');
-            this.gridContainer.style.removeProperty('overflow-x');
-        }
-
-        this.syncGridHeadScroll();
+        this.layoutHelper.fitGridSize();
     }
 
     getGridViewportLimit() {
-        if (!this.gridContainer) {
-            return null;
-        }
-
-        try {
-            const parsePixels = value => {
-                const numeric = Number.parseFloat(value);
-                return Number.isFinite(numeric) ? numeric : 0;
-            };
-
-            const rect = this.gridContainer.getBoundingClientRect();
-            const { height: viewportHeight, offsetTop } = this.getViewportBox();
-
-            if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
-                return null;
-            }
-
-            if (!rect || !Number.isFinite(rect.top)) {
-                return null;
-            }
-
-            const styles = window.getComputedStyle(this.gridContainer);
-            const marginBottom = parsePixels(styles.marginBottom);
-            const paddingBottom = parsePixels(styles.paddingBottom);
-            const borderBottom = parsePixels(styles.borderBottomWidth);
-
-            const distanceFromViewportTop = rect.top - offsetTop;
-            let available = viewportHeight - distanceFromViewportTop - marginBottom - paddingBottom - borderBottom;
-
-            if (this.pane) {
-                const subtractPaneSpace = element => {
-                    if (!element || !element.offsetParent) {
-                        return 0;
-                    }
-
-                    const elementStyles = window.getComputedStyle(element);
-                    const elementMarginTop = parsePixels(elementStyles.marginTop);
-                    const elementMarginBottom = parsePixels(elementStyles.marginBottom);
-
-                    return element.offsetHeight + elementMarginTop + elementMarginBottom;
-                };
-
-                const paneFooter = this.pane.querySelector('[data-pane-part="footer"]');
-                if (paneFooter && paneFooter.compareDocumentPosition(this.gridContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
-                    available -= subtractPaneSpace(paneFooter);
-                }
-            }
-
-            return Number.isFinite(available) ? Math.max(available, 0) : null;
-        } catch (error) {
-            return null;
-        }
+        return this.layoutHelper.getGridViewportLimit();
     }
 
     getPaneContentLimit() {
-        if (!this.paneContent || !this.gridContainer) {
-            return null;
-        }
-
-        try {
-            const parsePixels = value => {
-                const numeric = Number.parseFloat(value);
-                return Number.isFinite(numeric) ? numeric : 0;
-            };
-
-            const paneRect = this.paneContent.getBoundingClientRect();
-            const containerRect = this.gridContainer.getBoundingClientRect();
-
-            if (!paneRect || !containerRect) {
-                return null;
-            }
-
-            if (!Number.isFinite(paneRect.bottom) || !Number.isFinite(containerRect.top)) {
-                return null;
-            }
-
-            const paneStyles = window.getComputedStyle(this.paneContent);
-            const paddingBottom = parsePixels(paneStyles.paddingBottom);
-            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
-
-            const available = paneRect.bottom - paddingBottom - borderBottom - containerRect.top;
-
-            return Number.isFinite(available) ? Math.max(available, 0) : null;
-        } catch (error) {
-            return null;
-        }
+        return this.layoutHelper.getPaneContentLimit();
     }
 
     getViewportBox() {
-        try {
-            const viewport = window.visualViewport;
-            if (viewport && typeof viewport.height === 'number') {
-                return {
-                    height: viewport.height,
-                    width: typeof viewport.width === 'number'
-                        ? viewport.width
-                        : (window.innerWidth || document.documentElement.clientWidth || 0),
-                    offsetTop: viewport.offsetTop || 0,
-                    offsetLeft: viewport.offsetLeft || 0,
-                };
-            }
-        } catch (error) {
-            // visualViewport might not be accessible (e.g., cross-origin iframes)
-        }
-
-        return {
-            height: window.innerHeight || document.documentElement.clientHeight || 0,
-            width: window.innerWidth || document.documentElement.clientWidth || 0,
-            offsetTop: 0,
-            offsetLeft: 0,
-        };
+        return this.layoutHelper.getViewportBox();
     }
 
     fitGridFormSize() {
-        if (!this.gridContainer) {
-            return;
-        }
-
-        if (!this.pane) {
-            this.fitGridSize();
-            return;
-        }
-
-        const toolbarHeight = this.gridToolbar ? this.gridToolbar.offsetHeight : 0;
-        const headElement = (this.gridHeadContainer && this.gridHeadContainer === this.gridContainer && this.table && this.table.tHead)
-            ? this.table.tHead
-            : this.gridHeadContainer;
-        const gridHeadHeight = headElement ? headElement.offsetHeight : 0;
-        const paneToolbarTop = this.pane.querySelector('[data-pane-part="header"]');
-        const paneToolbarBottom = this.pane.querySelector('[data-pane-part="footer"]');
-        const paneToolbarTopHeight = paneToolbarTop ? paneToolbarTop.offsetHeight : 0;
-        const paneToolbarBottomHeight = paneToolbarBottom ? paneToolbarBottom.offsetHeight : 0;
-        const paneHeight = this.pane.offsetHeight;
-        const margin = parseInt(this.element.style.marginTop, 10) || 0;
-        const gridBodyContainer = this.gridBodyContainer
-            || this.element.querySelector('[data-grid-section="body-inner"]');
-        let gridBodyHeight = (gridBodyContainer ? gridBodyContainer.offsetHeight : 0)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderTopWidth || 0, 10)
-            + parseInt(window.getComputedStyle(this.gridContainer).borderBottomWidth || 0, 10);
-
-        if (this.minGridHeight && gridBodyHeight < this.minGridHeight) {
-            gridBodyHeight = this.minGridHeight;
-        }
-
-        const totalHeight = toolbarHeight
-            + gridHeadHeight
-            + gridBodyHeight
-            + paneToolbarTopHeight
-            + paneToolbarBottomHeight
-            + margin
-            + 3;
-
-        const parsePixels = value => {
-            const numeric = Number.parseFloat(value);
-            return Number.isFinite(numeric) ? numeric : 0;
-        };
-
-        const { height: viewportHeight, offsetTop } = this.getViewportBox();
-
-        if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
-            const paneRect = this.pane.getBoundingClientRect();
-            const paneStyles = window.getComputedStyle(this.pane);
-            const marginBottom = parsePixels(paneStyles.marginBottom);
-            const paddingBottom = parsePixels(paneStyles.paddingBottom);
-            const borderBottom = parsePixels(paneStyles.borderBottomWidth);
-
-            const paneTop = paneRect && Number.isFinite(paneRect.top)
-                ? paneRect.top - offsetTop
-                : 0;
-
-            let availablePaneHeight = viewportHeight - paneTop - marginBottom - paddingBottom - borderBottom;
-            if (!Number.isFinite(availablePaneHeight)) {
-                availablePaneHeight = viewportHeight;
-            }
-
-            if (availablePaneHeight < 0) {
-                availablePaneHeight = 0;
-            }
-
-            if (availablePaneHeight > 0) {
-                this.pane.style.maxHeight = availablePaneHeight + 'px';
-
-                const targetPaneHeightCandidate = Math.max(totalHeight, availablePaneHeight);
-                const targetPaneHeight = Number.isFinite(targetPaneHeightCandidate)
-                    ? Math.min(targetPaneHeightCandidate, availablePaneHeight)
-                    : availablePaneHeight;
-
-                if (targetPaneHeight > 0) {
-                    this.pane.style.height = targetPaneHeight + 'px';
-                } else {
-                    this.pane.style.removeProperty('height');
-                }
-            } else {
-                this.pane.style.removeProperty('height');
-                this.pane.style.removeProperty('max-height');
-            }
-        } else {
-            this.pane.style.removeProperty('height');
-            this.pane.style.removeProperty('max-height');
-        }
-
-        this.fitGridSize();
+        this.layoutHelper.fitGridFormSize();
     }
 
     // --- Sorting
@@ -1382,15 +1987,7 @@ class GridManager {
      */
     constructor(element) {
         this.element = this._resolveElement(element);
-        this._initializeState();
-
-        this._initializeFilter();
-        this._initializePageList();
-        this._initializeGrid();
-        this._initializeTabPane();
-        this._placePaginationControls();
-        this._setupModalCloseHandler();
-        this._initializeMoveState();
+        runLifecycleSteps(this, GRID_MANAGER_INITIALIZATION_SEQUENCE);
 
         this.reload();
     }
@@ -1416,20 +2013,117 @@ class GridManager {
         throw new Error('GridManager: unexpected element reference.');
     }
 
+    _resolveActionRecordId(candidate) {
+        if (parseInt(candidate, 10)) {
+            return candidate;
+        }
+        return this.grid?.getSelectedRecordKey();
+    }
+
+    _openModalAction(actionName, candidateId) {
+        const config = MODAL_ACTIONS[actionName];
+        if (!config) {
+            return;
+        }
+
+        const modalBox = getModalBox();
+        if (!modalBox || typeof modalBox.open !== 'function') {
+            return;
+        }
+
+        const recordId = config.requiresId ? this._resolveActionRecordId(candidateId) : null;
+        if (config.requiresId && (recordId === undefined || recordId === null || recordId === '')) {
+            return;
+        }
+
+        config.beforeOpen?.(this, recordId);
+
+        const modalOptions = { url: config.url(this, recordId) };
+        if (config.onClose) {
+            modalOptions.onClose = config.onClose(this);
+        }
+
+        modalBox.open(modalOptions);
+    }
+
+    _invokeReorder(direction) {
+        if (!this.grid) {
+            return;
+        }
+
+        const payload = this._getFilterValue(null) || undefined;
+        Energine.request(
+            `${this.singlePath}${this.grid.getSelectedRecordKey()}/${direction}/`,
+            payload,
+            this.loadPage.bind(this, this._getCurrentPage() || 1)
+        );
+    }
+
+    _getExportBasePath() {
+        return this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || this.singlePath;
+    }
+
+    _getDatasetValue(datasetKey, ...attributeNames) {
+        const dataset = this.element?.dataset || {};
+        const datasetValue = datasetKey ? dataset[datasetKey] : undefined;
+
+        if (datasetValue) {
+            return datasetValue;
+        }
+
+        for (const name of attributeNames) {
+            const value = this.element?.getAttribute ? this.element.getAttribute(name) : null;
+            if (value) {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    _invokeFilter(methodName, defaultValue = undefined, ...args) {
+        const target = this.filter;
+        const method = target?.[methodName];
+
+        if (typeof method !== 'function') {
+            return defaultValue;
+        }
+
+        const result = method.apply(target, args);
+        return result === undefined ? defaultValue : result;
+    }
+
+    _getFilterValue(defaultValue = '') {
+        const value = this._invokeFilter('getValue', defaultValue);
+        return value == null ? defaultValue : value;
+    }
+
+    _getCurrentPage() {
+        return (this.pageList && this.pageList.currentPage) || null;
+    }
+
+    _requestWithLoader(url, options = {}) {
+        this.requestService.run(url, options);
+    }
+
     /**
      * Prepare baseline state holders used across the manager lifecycle.
      *
      * @private
      */
     _initializeState() {
-        this.mvElementId = null;
-        this.langId = 0;
-        this.initialized = false;
-        this.toolbar = null;
-        this.gridPendingSelection = null;
-        this.selectionControls = [];
-        this.hasSelection = false;
-        this.singlePath = this.element.getAttribute('single_template') || '';
+        Object.assign(this, {
+            mvElementId: null,
+            langId: 0,
+            initialized: false,
+            toolbar: null,
+            gridPendingSelection: null,
+            selectionController: new ToolbarSelectionController(),
+            singlePath: this._getDatasetValue('eSingleTemplate', 'data-e-single-template') || '',
+        });
+
+        this.toolbarFacade = createToolbarFacade(() => this.toolbar);
+        this.requestService = defaultRequestService;
     }
 
     /**
@@ -1540,7 +2234,7 @@ class GridManager {
      * @private
      */
     _initializeMoveState() {
-        const moveFromId = this.element.getAttribute('move_from_id');
+        const moveFromId = this._getDatasetValue('eMoveFromId', 'data-e-move-from-id', 'move_from_id');
         if (moveFromId) {
             this.setMvElementId(moveFromId);
         }
@@ -1634,14 +2328,11 @@ class GridManager {
             hostElement.appendChild(toolbarElement);
         }
 
-        if (typeof this.toolbar.disableControls === 'function') {
-            this.toolbar.disableControls();
-        }
-        if (typeof this.toolbar.bindTo === 'function') {
-            this.toolbar.bindTo(this);
-        }
+        this.toolbarFacade.invoke('disableControls');
+        this.toolbarFacade.invoke('bindTo', this);
 
         this.setupSelectionControls();
+        this.syncToolbarStateAfterAttach();
     }
 
     /**
@@ -1650,66 +2341,46 @@ class GridManager {
      * @param {HTMLElement|null} item
      */
     handleSelectionChange(item) {
-        this.hasSelection = !!item;
-        this.updateSelectionDependentControls(this.hasSelection);
+        if (!this.selectionController) {
+            return;
+        }
+
+        this.selectionController.update(!!item);
     }
 
     /**
      * Scan toolbar controls and store ones that depend on row selection.
      */
     setupSelectionControls() {
-        if (!this.toolbar || !Array.isArray(this.toolbar.controls)) {
-            this.selectionControls = [];
-            return;
+        if (!this.selectionController) {
+            this.selectionController = new ToolbarSelectionController();
         }
 
-        const keywordsExact = ['view', 'edit', 'del', 'delete', 'use', 'up', 'down', 'open', 'preview'];
-        const keywordsPrefix = [
-            'move', 'activate', 'deactivate', 'approve', 'decline', 'restore', 'publish', 'unpublish',
-            'archive', 'unarchive', 'assign', 'unassign', 'lock', 'unlock', 'block', 'unblock', 'ban',
-            'unban', 'send', 'resend', 'select', 'clone', 'copy', 'download', 'remove', 'reject',
-            'disable', 'enable', 'suspend', 'resume'
-        ];
-
-        this.selectionControls = this.toolbar.controls.filter(control =>
-            this.isSelectionDependentControl(control, keywordsExact, keywordsPrefix)
-        );
-
-        this.selectionControls.forEach(control => {
-            if (control && control.element) {
-                control.element.dataset.requiresSelection = 'true';
-            }
-            control._disabledBySelection = false;
-        });
-
-        this.updateSelectionDependentControls(!!(this.grid && this.grid.getSelectedItem()));
+        this.selectionController.setToolbar(this.toolbar);
+        const hasSelection = Boolean(this.grid && this.grid.getSelectedItem());
+        this.selectionController.update(hasSelection);
     }
 
     /**
-     * Determine whether control should be enabled only when row is selected.
-     *
-     * @param {Object} control
-     * @param {string[]} keywordsExact
-     * @param {string[]} keywordsPrefix
-     * @returns {boolean}
+     * Restore toolbar state when it attaches later than initial data load.
      */
-    isSelectionDependentControl(control, keywordsExact, keywordsPrefix) {
-        if (!control || !control.properties) {
-            return false;
+    syncToolbarStateAfterAttach() {
+        if (!this.toolbar) {
+            return;
         }
 
-        const action = (control.properties.action || '').toLowerCase();
-        const id = (control.properties.id || '').toLowerCase();
+        this.toolbarFacade.withControl('add', control => {
+            if (typeof control.enable === 'function') {
+                control.enable(true);
+            }
+        });
 
-        if (!action && !id) {
-            return false;
+        if (this.grid && !this.grid.isEmpty()) {
+            this.toolbarFacade.invoke('enableControls');
         }
 
-        if (keywordsExact.includes(action) || keywordsExact.includes(id)) {
-            return true;
-        }
-
-        return keywordsPrefix.some(prefix => action.startsWith(prefix) || id.startsWith(prefix));
+        const hasSelection = Boolean(this.grid && this.grid.getSelectedItem());
+        this.updateSelectionDependentControls(hasSelection);
     }
 
     /**
@@ -1718,37 +2389,9 @@ class GridManager {
      * @param {boolean} hasSelection
      */
     updateSelectionDependentControls(hasSelection) {
-        if (!Array.isArray(this.selectionControls) || !this.selectionControls.length) {
-            return;
+        if (this.selectionController) {
+            this.selectionController.update(hasSelection);
         }
-
-        this.selectionControls.forEach(control => {
-            if (!control) {
-                return;
-            }
-
-            const initiallyDisabled = typeof control.initially_disabled === 'function'
-                ? control.initially_disabled()
-                : false;
-
-            if (!hasSelection) {
-                if (initiallyDisabled) {
-                    return;
-                }
-
-                const alreadyDisabled = typeof control.disabled === 'function'
-                    ? control.disabled()
-                    : false;
-
-                if (!alreadyDisabled && typeof control.disable === 'function') {
-                    control.disable();
-                    control._disabledBySelection = true;
-                }
-            } else if (control._disabledBySelection && typeof control.enable === 'function') {
-                control.enable();
-                control._disabledBySelection = false;
-            }
-        });
     }
 
     // --- Tabs ---
@@ -1763,9 +2406,7 @@ class GridManager {
             this.langId = normalized.lang;
         }
 
-        if (this.filter && typeof this.filter.remove === 'function') {
-            this.filter.remove();
-        }
+        this._invokeFilter('remove');
 
         this.reload();
     }
@@ -1774,12 +2415,18 @@ class GridManager {
     onSelect() { /* no-op, override as needed */ }
 
     onDoubleClick() {
-        if (this.toolbar && typeof this.toolbar.getControlById === 'function' && this.toolbar.getControlById('edit')) {
-            this.edit();
-        } else if (this.toolbar && Array.isArray(this.toolbar.controls) && this.toolbar.controls.length) {
-            const action = this.toolbar.controls[0].properties.action;
-            if (typeof this[action] === 'function') this[action]();
-        }
+        this.toolbarFacade.with(toolbar => {
+            if (typeof toolbar.getControlById === 'function' && toolbar.getControlById('edit')) {
+                this.edit();
+                return;
+            }
+
+            const [firstControl] = this.toolbarFacade.controls();
+            const action = firstControl?.properties?.action;
+            if (action && typeof this[action] === 'function') {
+                this[action]();
+            }
+        });
     }
 
     onSortChange() { this.loadPage(1); }
@@ -1803,26 +2450,21 @@ class GridManager {
         if (this.pageList && typeof this.pageList.disable === 'function') {
             this.pageList.disable();
         }
-        if (this.toolbar && typeof this.toolbar.disableControls === 'function') {
-            this.toolbar.disableControls();
-        }
+        this.toolbarFacade.invoke('disableControls');
 
-        showLoader();
         this.grid.clear();
 
-        if (this.pageList && this.pageList.currentPage) {
-            pageNum = this.pageList.currentPage;
-        }
+        const currentPage = this._getCurrentPage();
+        const targetPage = currentPage || pageNum;
 
-        setTimeout(() => {
-            Energine.request(
-                this.buildRequestURL(pageNum),
-                this.buildRequestPostBody(),
-                this.processServerResponse.bind(this),
-                null,
-                this.processServerError.bind(this)
-            );
-        }, 0);
+        this._requestWithLoader(
+            this.buildRequestURL(targetPage),
+            {
+                body: this.buildRequestPostBody(),
+                onSuccess: this.processServerResponse.bind(this),
+                onError: this.processServerError.bind(this),
+            }
+        );
     }
 
     /**
@@ -1850,11 +2492,9 @@ class GridManager {
             parts.push(`languageID=${encodeURIComponent(this.langId)}`);
         }
 
-        if (this.filter && typeof this.filter.getValue === 'function') {
-            const filterQuery = this.filter.getValue();
-            if (filterQuery) {
-                parts.push(filterQuery);
-            }
+        const filterQuery = this._getFilterValue('');
+        if (filterQuery) {
+            parts.push(filterQuery);
         }
 
         return parts.join('&');
@@ -1866,10 +2506,6 @@ class GridManager {
      * @param {Object} result
      */
     processServerResponse(result) {
-        const addControl = (this.toolbar && typeof this.toolbar.getControlById === 'function')
-            ? this.toolbar.getControlById('add')
-            : null;
-
         const pendingSelection = this.gridPendingSelection;
         this.gridPendingSelection = null;
 
@@ -1888,20 +2524,19 @@ class GridManager {
         }
 
         if (!this.grid.isEmpty()) {
-            if (this.toolbar && typeof this.toolbar.enableControls === 'function') {
-                this.toolbar.enableControls();
-            }
+            this.toolbarFacade.invoke('enableControls');
             if (this.pageList && typeof this.pageList.enable === 'function') {
                 this.pageList.enable();
             }
         }
 
-        if (addControl && typeof addControl.enable === 'function') {
-            addControl.enable();
-        }
+        this.toolbarFacade.withControl('add', control => {
+            if (typeof control.enable === 'function') {
+                control.enable(true);
+            }
+        });
 
         this.grid.build();
-        hideLoader();
     }
 
     /**
@@ -1911,7 +2546,7 @@ class GridManager {
      */
     processServerError(responseText) {
         alert(responseText);
-        hideLoader();
+        return true;
     }
 
     /**
@@ -1927,36 +2562,16 @@ class GridManager {
         if (returnValue.afterClose && typeof this[returnValue.afterClose] === 'function') {
             this[returnValue.afterClose](null);
         } else {
-            this.loadPage(this.pageList ? this.pageList.currentPage : 1);
+            this.loadPage(this._getCurrentPage() || 1);
         }
         this.grid.fireEvent('dirty');
     }
 
     // --- Actions ---
-    view() {
-        getModalBox()?.open({ url: `${this.singlePath}${this.grid.getSelectedRecordKey()}` });
-    }
-    add() {
-        getModalBox()?.open({
-            url: `${this.singlePath}add/`,
-            onClose: this.processAfterCloseAction.bind(this)
-        });
-    }
-    edit(id) {
-        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
-        getModalBox()?.open({
-            url: `${this.singlePath}${id}/edit`,
-            onClose: this.processAfterCloseAction.bind(this)
-        });
-    }
-    move(id) {
-        if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
-        this.setMvElementId(id);
-        getModalBox()?.open({
-            url: `${this.singlePath}move/${id}`,
-            onClose: this.processAfterCloseAction.bind(this)
-        });
-    }
+    view(id) { this._openModalAction('view', id); }
+    add() { this._openModalAction('add'); }
+    edit(id) { this._openModalAction('edit', id); }
+    move(id) { this._openModalAction('move', id); }
     moveFirst() { this.moveTo('first', this.getMvElementId()); }
     moveLast() { this.moveTo('last', this.getMvElementId()); }
     moveAbove(id) {
@@ -1967,58 +2582,48 @@ class GridManager {
         if (!parseInt(id, 10)) id = this.grid.getSelectedRecordKey();
         this.moveTo('below', this.getMvElementId(), id);
     }
+    _editSibling(direction) {
+        if (!this.grid || typeof this.grid.getSelectedItem !== 'function') {
+            return;
+        }
+
+        const current = this.grid.getSelectedItem();
+        if (!current) {
+            return;
+        }
+
+        const sibling = current?.[direction];
+        if (sibling) {
+            this.grid.selectItem(sibling);
+            this.edit();
+        }
+    }
     moveTo(dir, fromId, toId) {
         toId = toId || '';
-        showLoader();
-        Energine.request(
+        this._requestWithLoader(
             `${this.singlePath}move/${fromId}/${dir}/${toId}/`,
-            null,
-            () => {
-                hideLoader();
-                const modalBox = getModalBox();
-                modalBox?.setReturnValue(true);
-                this.close();
-            },
-            () => hideLoader(),
-            (responseText) => {
-                alert(responseText);
-                hideLoader();
+            {
+                onSuccess: () => {
+                    const modalBox = getModalBox();
+                    modalBox?.setReturnValue(true);
+                    this.close();
+                }
             }
         );
     }
-    editPrev() {
-        let prevRow;
-        const curr = this.grid.getSelectedItem();
-        if (curr && (prevRow = curr.previousElementSibling)) {
-            this.grid.selectItem(prevRow);
-            this.edit();
-        }
-    }
-    editNext() {
-        let nextRow;
-        const curr = this.grid.getSelectedItem();
-        if (curr && (nextRow = curr.nextElementSibling)) {
-            this.grid.selectItem(nextRow);
-            this.edit();
-        }
-    }
+    editPrev() { this._editSibling('previousElementSibling'); }
+    editNext() { this._editSibling('nextElementSibling'); }
     del() {
         const MSG_CONFIRM_DELETE = (Energine.translations && Energine.translations.get('MSG_CONFIRM_DELETE')) ||
             'Do you really want to delete the chosen record?';
         if (confirm(MSG_CONFIRM_DELETE)) {
-            showLoader();
-            Energine.request(
+            this._requestWithLoader(
                 `${this.singlePath}${this.grid.getSelectedRecordKey()}/delete/`,
-                null,
-                () => {
-                    hideLoader();
-                    this.grid.fireEvent('dirty');
-                    this.loadPage(this.pageList ? this.pageList.currentPage : 1);
-                },
-                () => hideLoader(),
-                (responseText) => {
-                    alert(responseText);
-                    hideLoader();
+                {
+                    onSuccess: () => {
+                        this.grid.fireEvent('dirty');
+                        this.loadPage(this._getCurrentPage() || 1);
+                    }
                 }
             );
         }
@@ -2031,28 +2636,10 @@ class GridManager {
     close() {
         getModalBox()?.close();
     }
-    up() {
-        const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
-        Energine.request(
-            `${this.singlePath}${this.grid.getSelectedRecordKey()}/up/`,
-            payload || undefined,
-            this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)
-        );
-    }
-    down() {
-        const payload = (this.filter && typeof this.filter.getValue === 'function') ? this.filter.getValue() : null;
-        Energine.request(
-            `${this.singlePath}${this.grid.getSelectedRecordKey()}/down/`,
-            payload || undefined,
-            this.loadPage.bind(this, this.pageList ? this.pageList.currentPage : 1)
-        );
-    }
-    print() {
-        window.open(`${this.element.getAttribute('single_template')}print/`);
-    }
-    csv() {
-        window.location.href = `${this.element.getAttribute('single_template')}csv/`;
-    }
+    up() { this._invokeReorder('up'); }
+    down() { this._invokeReorder('down'); }
+    print() { window.open(`${this._getExportBasePath()}print/`); }
+    csv() { window.location.href = `${this._getExportBasePath()}csv/`; }
 
     // --- Static stub for Filter (should be redefined elsewhere) ---
     static Filter = class {
@@ -2086,32 +2673,11 @@ class Filter {
             throw new Error('Element for GridManager.Filter was not found.');
         }
 
-        this.element.classList.add('row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'bg-body');
-        this.element.classList.remove('mb-3');
-
-        // Привязки к основным элементам управления
-        const applyButton = this.element.querySelector('[data-action="apply-filter"]');
-        const resetLink = this.element.querySelector('[data-action="reset-filter"]');
+        const controls = this._decorateControls();
+        const { applyButton, resetLink, fields, condition } = controls;
+        this.fields = fields;
+        this.condition = condition;
         this.active = false;
-
-        if (applyButton) {
-            applyButton.classList.add('btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
-        }
-        if (resetLink) {
-            resetLink.classList.remove('btn-link', 'p-0', 'text-decoration-none');
-            resetLink.classList.add('btn', 'btn-outline-secondary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2');
-            resetLink.setAttribute('role', 'button');
-        }
-
-        // Поля фильтра
-        this.fields = this.element.querySelector('[data-role="filter-field"]');
-        this.condition = this.element.querySelector('[data-role="filter-condition"]');
-
-        if (!this.fields) throw new Error('Filter: data-role="filter-field" not found!');
-        if (!this.condition) throw new Error('Filter: data-role="filter-condition" not found!');
-
-        this.fields.classList.add('form-select', 'form-select-sm');
-        this.condition.classList.add('form-select', 'form-select-sm');
 
         // Инициализация QueryControls
         this.inputs = new GridManager.Filter.QueryControls(
@@ -2119,32 +2685,102 @@ class Filter {
             applyButton
         );
 
-        // Перенос типов из data-types в dataset (store/retrieve)
-        Array.from(this.condition.children).forEach(el => {
-            let types = el.getAttribute('data-types');
-            if (types) {
-                el.dataset.type = types;
-                el.removeAttribute('data-types');
-            }
-        });
-
-        // События
-        applyButton.addEventListener('click', () => {
-            this.use();
-            gridManager.reload();
-        });
-        resetLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.remove();
-            gridManager.reload();
-        });
-        this.fields.addEventListener('change', this.checkCondition.bind(this));
-        this.condition.addEventListener('change', (event) => {
-            const fieldType = this.fields.options[this.fields.selectedIndex].getAttribute('type');
-            this.switchInputs(event.target.value, fieldType);
-        });
+        this._normalizeConditionTypes();
+        this._bindEvents({ applyButton, resetLink, gridManager });
 
         this.checkCondition();
+    }
+
+    _decorateControls() {
+        const plan = [
+            {
+                element: this.element,
+                config: {
+                    add: ['row', 'row-cols-lg-auto', 'g-3', 'align-items-center', 'w-100', 'bg-body'],
+                    remove: ['mb-3'],
+                },
+            },
+            {
+                key: 'applyButton',
+                selector: '[data-action="apply-filter"]',
+                config: {
+                    add: ['btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
+                },
+            },
+            {
+                key: 'resetLink',
+                selector: '[data-action="reset-filter"]',
+                config: {
+                    remove: ['btn-link', 'p-0', 'text-decoration-none'],
+                    add: ['btn', 'btn-outline-secondary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'],
+                    attributes: { role: 'button' },
+                },
+            },
+            {
+                key: 'fields',
+                selector: '[data-role="filter-field"]',
+                config: { add: ['form-select', 'form-select-sm'] },
+                required: true,
+                errorMessage: 'Filter: data-role="filter-field" not found!',
+            },
+            {
+                key: 'condition',
+                selector: '[data-role="filter-condition"]',
+                config: { add: ['form-select', 'form-select-sm'] },
+                required: true,
+                errorMessage: 'Filter: data-role="filter-condition" not found!',
+            },
+        ];
+
+        return plan.reduce((acc, descriptor) => {
+            const target = descriptor.element || this.element.querySelector(descriptor.selector);
+            if (!target) {
+                if (descriptor.required) {
+                    throw new Error(descriptor.errorMessage || `Filter: ${descriptor.selector} not found!`);
+                }
+                return acc;
+            }
+
+            DOM.decorate(target, descriptor.config);
+            if (descriptor.key) {
+                acc[descriptor.key] = target;
+            }
+
+            return acc;
+        }, {});
+    }
+
+    _normalizeConditionTypes() {
+        Array.from(this.condition?.children || []).forEach(option => {
+            const types = option?.getAttribute?.('data-types');
+            if (types) {
+                option.dataset.type = types;
+                option.removeAttribute('data-types');
+            }
+        });
+    }
+
+    _bindEvents({ applyButton, resetLink, gridManager }) {
+        if (applyButton) {
+            applyButton.addEventListener('click', () => {
+                this.use();
+                gridManager.reload();
+            });
+        }
+
+        if (resetLink) {
+            resetLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.remove();
+                gridManager.reload();
+            });
+        }
+
+        this.fields?.addEventListener('change', this.checkCondition.bind(this));
+        this.condition?.addEventListener('change', (event) => {
+            const fieldType = this._getSelectedFieldType();
+            this.switchInputs(event.target.value, fieldType);
+        });
     }
 
     // Проверка условий фильтрации
@@ -2162,67 +2798,116 @@ class Filter {
             return;
         }
 
-        const fieldType = this.fields.options[this.fields.selectedIndex].getAttribute('type');
-        const isDate = (fieldType === 'datetime' || fieldType === 'date');
+        const fieldType = this._getSelectedFieldType();
 
-        Array.from(this.condition.options).forEach(option => {
-            if (!option) return;
-            const types = option.dataset.type ? option.dataset.type.split('|') : [];
-            option.style.display = types.includes(fieldType) ? '' : 'none';
-        });
-
-        // Убедиться, что выбранная опция видима
-        const options = Array.from(this.condition.options);
-        if (getComputedStyle(this.condition.options[this.condition.selectedIndex]).display === 'none') {
-            for (let n = 0; n < options.length; n++) {
-                if (getComputedStyle(options[n]).display !== 'none') {
-                    this.condition.selectedIndex = n;
-                    break;
-                }
-            }
-        }
-
-        // Переключить поля ввода
+        this._filterConditionOptions(fieldType);
+        this._ensureVisibleCondition();
         this.switchInputs(this.condition.value, fieldType);
-        this.disableInputField(isDate);
+
+        const isDate = this._isDateField(fieldType);
+        this._setInputsDisabled(isDate);
         if (this.inputs.showDatePickers) {
             this.inputs.showDatePickers(isDate);
         }
 
-        if (this.inputs.inputs && this.inputs.inputs[0] && this.inputs.inputs[0].style.display !== 'none') {
-            this.inputs.inputs[0].focus();
-        }
+        this._focusFirstVisibleInput();
     }
 
     // Переключение режима ввода (скаляр/период) в зависимости от типа и условия
     switchInputs(condition, type) {
-        if (type === 'boolean') {
-            if (this.inputs.hide) this.inputs.hide();
-        } else {
-            if (condition === 'between') {
-                if (this.inputs.asPeriod) this.inputs.asPeriod();
-            } else {
-                if (this.inputs.asScalar) this.inputs.asScalar();
-            }
-        }
+        this._applyInputMode(condition, type);
     }
 
     // Отключить/включить поля ввода
     disableInputField(disable) {
-        const arr = this.inputs.inputs ? this.inputs.inputs : [];
+        this._setInputsDisabled(disable);
+    }
+
+    _getSelectedFieldType() {
+        const option = this.fields?.options?.[this.fields.selectedIndex];
+        return option ? option.getAttribute('type') : '';
+    }
+
+    _isDateField(fieldType) {
+        return fieldType === 'datetime' || fieldType === 'date';
+    }
+
+    _filterConditionOptions(fieldType) {
+        Array.from(this.condition.options || []).forEach(option => {
+            if (!option) return;
+            const types = option.dataset.type ? option.dataset.type.split('|') : [];
+            option.style.display = types.includes(fieldType) ? '' : 'none';
+        });
+    }
+
+    _ensureVisibleCondition() {
+        const options = Array.from(this.condition.options || []);
+        const selected = this.condition.options?.[this.condition.selectedIndex];
+        if (selected && getComputedStyle(selected).display !== 'none') {
+            return;
+        }
+
+        for (const option of options) {
+            if (option && getComputedStyle(option).display !== 'none') {
+                this.condition.selectedIndex = options.indexOf(option);
+                break;
+            }
+        }
+    }
+
+    _applyInputMode(condition, type) {
+        if (!this.inputs) {
+            return;
+        }
+
+        if (type === 'boolean') {
+            this.inputs.hide?.();
+            return;
+        }
+
+        if (condition === 'between') {
+            this.inputs.asPeriod?.();
+        } else {
+            this.inputs.asScalar?.();
+        }
+    }
+
+    _setInputsDisabled(disable) {
+        const inputs = Array.isArray(this.inputs?.inputs) ? this.inputs.inputs : [];
+        if (!inputs.length) {
+            return;
+        }
+
         if (disable) {
-            arr.forEach(input => {
-                if (input && input.disabled !== undefined) {
-                    input.disabled = true;
-                    input.value = '';
+            inputs.forEach(input => {
+                if (!input || input.disabled === undefined) {
+                    return;
                 }
+                input.disabled = true;
+                input.value = '';
             });
-        } else if (arr[0] && arr[0].disabled) {
-            arr.forEach(input => {
-                if (input && input.disabled !== undefined) {
-                    input.disabled = false;
-                }
-            });
+            return;
+        }
+
+        if (!inputs[0]?.disabled) {
+            return;
+        }
+
+        inputs.forEach(input => {
+            if (input && input.disabled !== undefined) {
+                input.disabled = false;
+            }
+        });
+    }
+
+    _focusFirstVisibleInput() {
+        const candidates = typeof this.inputs?.getActiveInputs === 'function'
+            ? this.inputs.getActiveInputs()
+            : (this.inputs?.inputs || []);
+
+        const target = candidates.find(input => input && input.offsetParent !== null);
+        if (target) {
+            target.focus();
         }
     }
 
@@ -2325,8 +3010,10 @@ class QueryControls {
         this.wrapperGroups = new Map();
 
         this.containers.forEach((container, index) => {
-            container.classList.add('d-flex', 'flex-nowrap', 'align-items-center', 'gap-2');
-            container.classList.remove('mb-2');
+            DOM.decorate(container, {
+                add: ['d-flex', 'flex-nowrap', 'align-items-center', 'gap-2'],
+                remove: ['mb-2'],
+            });
             const wrapper = container.closest('.col');
             if (wrapper) {
                 this.wrapperMap.set(container, wrapper);
@@ -2342,7 +3029,7 @@ class QueryControls {
         this.inputs = this.containers.map(container => {
             const input = container.querySelector('input');
             if (input) {
-                input.classList.add('form-control', 'form-control-sm');
+                DOM.addClasses(input, ['form-control', 'form-control-sm']);
             }
             return input;
         });
@@ -2352,7 +3039,7 @@ class QueryControls {
             if (!input) return null;
             const clone = input.cloneNode(true);
             clone.type = 'date';
-            clone.classList.add(this.hiddenClass, 'form-control', 'form-control-sm');
+            DOM.addClasses(clone, [this.hiddenClass, 'form-control', 'form-control-sm']);
             if (input.parentNode) {
                 input.parentNode.appendChild(clone);
             }
@@ -2472,6 +3159,18 @@ export function attachGridManagerGlobals(target = globalScope) {
 }
 
 attachGridManagerGlobals();
+
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('GridManager', GridManager);
+    }
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[GridManager] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[GridManager] Failed to register behavior', error);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     /**

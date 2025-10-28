@@ -199,7 +199,7 @@ final class TextBlock extends DataSet implements SampleTextBlock
 
         $result = '';
         try
-        {
+        {            
             if (!isset($_POST['data'], $_POST['num']))
             {
                 throw new SystemException('ERR_DEV_NO_DATA', SystemException::ERR_DEVELOPER);

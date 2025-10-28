@@ -13,14 +13,3 @@ class DefaultTemplateJs {
 
 export { DefaultTemplateJs };
 export default DefaultTemplateJs;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return DefaultTemplateJs;
-    }
-
-    target.DefaultTemplateJs = DefaultTemplateJs;
-    return DefaultTemplateJs;
-}
-
-attachToWindow();

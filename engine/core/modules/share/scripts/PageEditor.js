@@ -1,4 +1,4 @@
-import Energine, { showLoader, hideLoader } from './Energine.js';
+import Energine, { showLoader, hideLoader, registerBehavior as registerEnergineBehavior } from './Energine.js';
 import loadCKEditor from './ckeditor/loader.js';
 
 const globalScope = typeof window !== 'undefined'
@@ -92,18 +92,33 @@ class PageEditor {
         constructor(area, CKEDITOR) {
             PageEditor.configureCKEditor(CKEDITOR);
             this.area = area;
+            const dataset = area.dataset || {};
             area.setAttribute('contenteditable', true);
             this.isActive = false;
-            this.singlePath = area.getAttribute('single_template');
+            this.singlePath = dataset.eSingleTemplate
+                || area.getAttribute('data-e-single-template');
             this.ID = area.getAttribute('eID') || '';
-            this.num = area.getAttribute('num') || '';
+            this.num = dataset.eNum
+                ?? area.getAttribute('data-e-num')
+                ?? area.getAttribute('num')
+                ?? '';
             if (!area.id) {
                 area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
             }
-            this.editor = CKEDITOR.inline(area.id);
-            this.editor.singleTemplate = this.singlePath;
-            this.editor.editorId = area.id;
-            applyEditorOutline(this.area, this.editor);
+
+            const existingEditor = (CKEDITOR.instances && CKEDITOR.instances[area.id])
+                ? CKEDITOR.instances[area.id]
+                : null;
+
+            this.editor = existingEditor || CKEDITOR.inline(area.id);
+
+            if (this.editor) {
+                this.editor.singleTemplate = this.singlePath;
+                this.editor.editorId = area.id;
+                applyEditorOutline(this.area, this.editor);
+            } else {
+                console.warn('[PageEditor.BlockEditor] Failed to acquire CKEditor instance for element', area);
+            }
             //this.overlay = new Overlay();
             // Если нужны события blur/focus, можно раскомментировать:
             /*
@@ -130,14 +145,15 @@ class PageEditor {
 
         if (!async) showLoader();
 
-        let data = 'data=' + encodeURIComponent(this.editor.getData());
-        if (this.ID) data += '&ID=' + this.ID;
-        if (this.num) data += '&num=' + this.num;
+        const payload = new URLSearchParams();
+        payload.set('data', this.editor.getData());
+        if (this.ID) payload.set('ID', this.ID);
+        payload.set('num', this.num ?? '');
 
         fetch(this.singlePath + 'save-text', {
             method: 'POST',
-            body: data,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: payload,
+            credentials: 'same-origin',
         })
             .then(response => response.text())
             .then(response => {
@@ -178,7 +194,9 @@ class BlockEditor {
          * Single path.
          * @type {string}
          */
-        this.singlePath = this.area.getAttribute('single_template');
+        const dataset = this.area.dataset || {};
+        this.singlePath = dataset.eSingleTemplate
+            || this.area.getAttribute('data-e-single-template');
 
         /**
          * Block editor ID.
@@ -190,7 +208,10 @@ class BlockEditor {
          * Text block ID.
          * @type {string}
          */
-        this.num = this.area.getAttribute('num') || '';
+        this.num = dataset.eNum
+            || this.area.getAttribute('data-e-num')
+            || this.area.getAttribute('num')
+            || '';
 
         /**
          * Editor.
@@ -209,10 +230,21 @@ class BlockEditor {
                     this.area.id = `nrg-editor-${Math.random().toString(36).slice(2)}`;
                 }
 
-                this.editor = CKEDITOR.inline(this.area.id);
-                this.editor.singleTemplate = this.area.getAttribute('single_template');
-                this.editor.editorId = this.area.id;
-                applyEditorOutline(this.area, this.editor);
+                const existingEditor = (CKEDITOR.instances && CKEDITOR.instances[this.area.id])
+                    ? CKEDITOR.instances[this.area.id]
+                    : null;
+
+                this.editor = existingEditor || CKEDITOR.inline(this.area.id);
+                const dataset = this.area.dataset || {};
+
+                if (this.editor) {
+                    this.editor.singleTemplate = dataset.eSingleTemplate
+                        || this.area.getAttribute('data-e-single-template');
+                    this.editor.editorId = this.area.id;
+                    applyEditorOutline(this.area, this.editor);
+                } else {
+                    console.warn('[BlockEditor] Failed to acquire CKEditor instance for element', this.area);
+                }
 
                 return this.editor;
             })
@@ -257,37 +289,37 @@ class BlockEditor {
             showLoader();
         }
 
-        const params = {
-            data: this.editor.getData(),
-        };
+        const params = new URLSearchParams();
+        params.append('data', this.editor.getData());
         if (this.ID) {
-            params.ID = this.ID;
+            params.append('ID', this.ID);
         }
-        if (this.num) {
-            params.num = this.num;
-        }
+        params.append('num', this.num ?? '');
 
-        Energine.request(
-            this.singlePath + 'save-text',
-            params,
-            (response) => {
-                if (onSuccess) onSuccess.call(this, response);
-                this.editor.resetDirty && this.editor.resetDirty();
-                if (!async) {
-                    hideLoader();
-                }
+        fetch(this.singlePath + 'save-text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             },
-            () => {
+            body: params.toString(),
+        })
+            .then((response) => response.text())
+            .then((responseText) => {
+                if (onSuccess) onSuccess.call(this, responseText);
+                if (this.editor.resetDirty) {
+                    this.editor.resetDirty();
+                }
+            })
+            .catch((error) => {
+                if (typeof console !== 'undefined' && console.error) {
+                    console.error('[BlockEditor] Failed to save text block', error);
+                }
+            })
+            .finally(() => {
                 if (!async) {
                     hideLoader();
                 }
-            },
-            () => {
-                if (!async) {
-                    hideLoader();
-                }
-            }
-        );
+            });
     }
 }
 
@@ -295,16 +327,15 @@ PageEditor.BlockEditor = BlockEditor;
 
 export { PageEditor, BlockEditor };
 export default PageEditor;
-
-export function attachToWindow(target = globalScope) {
-    if (!target) {
-        return PageEditor;
+try {
+    if (typeof registerEnergineBehavior === 'function') {
+        registerEnergineBehavior('PageEditor', PageEditor);
     }
-
-    target.PageEditor = PageEditor;
-    target.PageEditor.BlockEditor = BlockEditor;
-    return PageEditor;
+} catch (error) {
+    if (Energine && typeof Energine.safeConsoleError === 'function') {
+        Energine.safeConsoleError(error, '[PageEditor] Failed to register behavior');
+    } else if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[PageEditor] Failed to register behavior', error);
+    }
 }
-
-attachToWindow();
 ;
