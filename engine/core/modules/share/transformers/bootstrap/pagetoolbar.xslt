@@ -104,11 +104,13 @@
             <nav class="e-topframe py-1 px-0 bg-body-tertiary border-bottom" data-role="page-toolbar-topframe">
                 <div class="container-fluid d-flex align-items-start justify-content-start gap-3 flex-wrap py-0">
                     <div class="d-flex align-items-center flex-shrink-0" data-role="toolbar-brand">
-                        <button type="button" class="btn py-2 btn-sm btn-light d-inline-flex align-items-center gap-2 rounded-1 px-3 flex-shrink-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
+                        <button type="button" class="btn py-2 btn-sm btn-light d-inline-flex align-items-center gap-2 rounded-1 px-3 flex-shrink-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas" data-mdb-toggle="sidenav" data-mdb-ripple-init="">
                             <xsl:attribute name="data-bs-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+                            <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:attribute name="aria-controls"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:if test="string-length(normalize-space($SIDEBAR_LABEL)) &gt; 0">
                                 <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
+                                <xsl:attribute name="data-mdb-sidenav-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                             </xsl:if>
                             <span class="toolbar-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
                                 <i class="fa fa-bars" aria-hidden="true"></i>
@@ -123,16 +125,18 @@
                 </div>
             </nav>
 
-            <div class="offcanvas offcanvas-start shadow border-0 bg-light e-sideframe" data-role="page-toolbar-sidebar">
+            <div class="offcanvas offcanvas-start shadow border-0 bg-light e-sideframe sidenav sidenav-light" data-role="page-toolbar-sidebar" data-mdb-sidenav-init="" data-mdb-hidden="true">
                 <xsl:attribute name="id"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                 <xsl:attribute name="tabindex">-1</xsl:attribute>
+                <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                 <xsl:if test="string-length(normalize-space($SIDEBAR_LABEL)) &gt; 0">
                     <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
+                    <xsl:attribute name="data-mdb-sidenav-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                 </xsl:if>
                 <div class="offcanvas-body d-flex flex-column gap-3 p-0 bg-body-tertiary e-sideframe-content" data-role="sidebar-content">
                     <header class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
                         <div class="d-flex align-items-center gap-2" data-role="sidebar-actions">
-                            <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center" data-role="sidebar-close" data-bs-dismiss="offcanvas">
+                            <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center" data-role="sidebar-close" data-bs-dismiss="offcanvas" data-mdb-dismiss="sidenav" data-mdb-ripple-init="">
                                 <xsl:if test="string-length(normalize-space($CLOSE_LABEL)) &gt; 0">
                                     <xsl:attribute name="aria-label"><xsl:value-of select="$CLOSE_LABEL"/></xsl:attribute>
                                 </xsl:if>
