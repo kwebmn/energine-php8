@@ -1,3 +1,14 @@
 @import 'engine/core/modules/share/stylesheets/form.css';
 @import 'engine/core/modules/share/stylesheets/grid.css';
 @import 'engine/core/modules/apps/stylesheets/feedtoolbar.css';
+
+.e-page-toolbar {
+    z-index: 1040;
+}
+
+.e-page-toolbar .e-sideframe {
+    --bs-offcanvas-zindex: 1000;
+    z-index: var(--bs-offcanvas-zindex);
+    top: var(--page-toolbar-height, 0px);
+    height: calc(100vh - var(--page-toolbar-height, 0px));
+}

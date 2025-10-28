@@ -896,12 +896,30 @@ class PageToolbar extends Toolbar {
             const closeLabel = getTranslation('TXT_CLOSE', 'BTN_CLOSE', 'TXT_CANCEL', 'BTN_CANCEL') || 'Close';
             const sidebarCloseButton = document.createElement('button');
             sidebarCloseButton.type = 'button';
-            sidebarCloseButton.classList.add('btn', 'btn-sm', 'btn-outline-secondary');
+            sidebarCloseButton.classList.add(
+                'btn',
+                'btn-sm',
+                'btn-light',
+                'd-inline-flex',
+                'align-items-center',
+                'justify-content-center',
+            );
             sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
+            sidebarCloseButton.setAttribute('data-role', 'sidebar-close');
             if (closeLabel) {
                 sidebarCloseButton.setAttribute('aria-label', closeLabel);
-                sidebarCloseButton.textContent = closeLabel;
             }
+
+            const closeIconWrapper = document.createElement('span');
+            closeIconWrapper.classList.add('toolbar-icon', 'd-inline-flex', 'align-items-center', 'justify-content-center');
+            closeIconWrapper.setAttribute('aria-hidden', 'true');
+
+            const closeIcon = document.createElement('i');
+            closeIcon.classList.add('fa', 'fa-chevron-left');
+            closeIcon.setAttribute('aria-hidden', 'true');
+
+            closeIconWrapper.appendChild(closeIcon);
+            sidebarCloseButton.appendChild(closeIconWrapper);
             headerActions.appendChild(sidebarCloseButton);
 
             sidebarFrameContent.appendChild(sidebarHeader);
