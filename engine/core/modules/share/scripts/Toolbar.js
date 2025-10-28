@@ -2,6 +2,32 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const TOOLBAR_DOCKED_CLASSES = ['bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2'];
+const INLINE_FLEX_CENTER_CLASSES = ['d-inline-flex', 'align-items-center'];
+const BUTTON_BASE_CLASSES = ['btn', 'btn-sm'];
+const CUSTOM_SELECT_BUTTON_CLASSES = [
+    'custom_select_button',
+    ...BUTTON_BASE_CLASSES,
+    'btn-outline-secondary',
+    'dropdown-toggle',
+    ...INLINE_FLEX_CENTER_CLASSES,
+    'gap-2'
+];
+
+const CONTROL_DESCRIPTOR_PROP_CONFIG = [
+    { key: 'id', datasetKey: 'controlId', attributeNames: ['data-control-id'] },
+    {
+        key: 'title',
+        datasetKey: 'title',
+        attributeNames: ['data-title'],
+        fallback: element => element.textContent?.trim() || ''
+    },
+    { key: 'tooltip', datasetKey: 'tooltip', attributeNames: ['title', 'data-tooltip', 'data-bs-original-title'] },
+    { key: 'icon', datasetKey: 'icon', attributeNames: ['data-icon'] },
+    { key: 'iconOnly', datasetKey: 'iconOnly', attributeNames: ['data-icon-only'] },
+    { key: 'action', datasetKey: 'action', attributeNames: ['data-action', 'data-click', 'onclick', 'onClick', 'action'] },
+];
+
 class Toolbar {
     constructor(toolbarNameOrElement, props = {}) {
         this.element = null;
@@ -99,12 +125,12 @@ class Toolbar {
 
     dock() {
         Toolbar.applyClassList(this.element, {
-            add: ['bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2']
+            add: TOOLBAR_DOCKED_CLASSES
         });
     }
     undock() {
         Toolbar.applyClassList(this.element, {
-            remove: ['bg-body', 'border', 'rounded-3', 'shadow-sm', 'p-2']
+            remove: TOOLBAR_DOCKED_CLASSES
         });
     }
     getElement() {
@@ -119,8 +145,8 @@ class Toolbar {
             if (control?.type && control.id) {
                 control.action = control.onclick;
                 delete control.onclick;
-                const factoryDescriptor = Toolbar.resolveControlFactory(control.type)
-                    || (control.type === 'submit' ? Toolbar.resolveControlFactory('button') : null);
+                const fallbackTypes = control.type === 'submit' ? ['button'] : [];
+                const factoryDescriptor = Toolbar.resolveControlFactory(control.type, fallbackTypes);
                 if (factoryDescriptor?.fromProps) {
                     control = factoryDescriptor.fromProps(control);
                 }
@@ -232,24 +258,23 @@ class Toolbar {
         const declaredType = Toolbar.readDatasetOrAttribute(element, 'type', ['data-type']);
         const rawType = declaredType || element.tagName.toLowerCase();
         let type = (rawType || 'button').toLowerCase();
-        const controlId = Toolbar.readDatasetOrAttribute(element, 'controlId', ['data-control-id']);
-        const title = Toolbar.readDatasetOrAttribute(element, 'title', ['data-title']);
-        const tooltip = Toolbar.readDatasetOrAttribute(element, 'tooltip', ['title', 'data-tooltip', 'data-bs-original-title']);
-        const rawAction = Toolbar.readDatasetOrAttribute(element, 'action', [
-            'data-action',
-            'data-click',
-            'onclick',
-            'onClick',
-            'action'
-        ]);
-        const action = Toolbar.normalizeActionName(rawAction);
-        const icon = Toolbar.readDatasetOrAttribute(element, 'icon', ['data-icon']);
-        const iconOnly = Toolbar.readDatasetOrAttribute(element, 'iconOnly', ['data-icon-only']);
+
+        const props = {};
+        CONTROL_DESCRIPTOR_PROP_CONFIG.forEach(({ key, datasetKey, attributeNames, fallback }) => {
+            let value = Toolbar.readDatasetOrAttribute(element, datasetKey, attributeNames);
+            if ((!value || value === '') && typeof fallback === 'function') {
+                value = fallback(element);
+            }
+            props[key] = value || '';
+        });
+
+        props.action = Toolbar.normalizeActionName(props.action);
         const disabled = element.hasAttribute('disabled')
             || dataset.disabled === 'true'
             || dataset.disabled === '1';
+        props.disabled = disabled;
 
-        if (!controlId && type !== 'separator') {
+        if (!props.id && type !== 'separator') {
             return null;
         }
 
@@ -276,27 +301,21 @@ class Toolbar {
             type = 'switcher';
         }
 
+        props.title = props.title || element.textContent?.trim() || '';
+        props.type = type;
+
         const descriptor = {
             type,
             element,
-            props: {
-                id: controlId,
-                title: title || element.textContent?.trim() || '',
-                tooltip,
-                icon,
-                iconOnly,
-                action,
-                disabled,
-                type,
-            },
+            props,
         };
 
         if (type === 'switcher') {
-            descriptor.props.aicon = Toolbar.readDatasetOrAttribute(element, 'altIcon', ['data-alt-icon']);
+            props.aicon = Toolbar.readDatasetOrAttribute(element, 'altIcon', ['data-alt-icon']);
             const stateFromDataset = Toolbar.readDatasetOrAttribute(element, 'state', ['data-state']);
             const stateFromAria = ariaPressedAttr !== null ? (ariaPressedAttr === 'true' ? '1' : '0') : '';
             const stateFromClasses = hasPressedClass ? '1' : '';
-            descriptor.props.state = stateFromDataset || stateFromAria || stateFromClasses || '';
+            props.state = stateFromDataset || stateFromAria || stateFromClasses || '';
         }
 
         if (type === 'select') {
@@ -310,14 +329,14 @@ class Toolbar {
                         initialValue = option.value;
                     }
                 });
-                descriptor.props.disabled = disabled || selectEl.hasAttribute('disabled');
+                props.disabled = disabled || selectEl.hasAttribute('disabled');
             }
             descriptor.options = options;
             descriptor.initial = initialValue;
         }
 
         if (type === 'separator') {
-            descriptor.props.id = controlId || descriptor.props.id || '';
+            props.id = props.id || '';
         }
 
         return descriptor;
@@ -328,8 +347,8 @@ class Toolbar {
             return null;
         }
         const { type } = descriptor;
-        const factoryDescriptor = Toolbar.resolveControlFactory(type)
-            || (type === 'link' || type === 'submit' ? Toolbar.resolveControlFactory('button') : null);
+        const fallbackTypes = (type === 'link' || type === 'submit') ? ['button'] : [];
+        const factoryDescriptor = Toolbar.resolveControlFactory(type, fallbackTypes);
         if (!factoryDescriptor) {
             return null;
         }
@@ -342,25 +361,27 @@ class Toolbar {
         return null;
     }
 
+    static ensureRegistryMaps(...keys) {
+        const targets = keys.length ? keys : ['registry', 'pendingToolbars', 'componentInstances'];
+        targets.forEach(key => {
+            if (!Toolbar[key]) {
+                Toolbar[key] = new Map();
+            }
+        });
+    }
+
     static registerToolbarInstance(toolbar, componentRef = null) {
         if (!(toolbar instanceof Toolbar)) {
             return;
         }
-        if (!Toolbar.registry) {
-            Toolbar.registry = new Map();
-        }
+        Toolbar.ensureRegistryMaps('registry');
         Toolbar.registry.set(toolbar.element, toolbar);
 
         if (!componentRef) {
             return;
         }
 
-        if (!Toolbar.pendingToolbars) {
-            Toolbar.pendingToolbars = new Map();
-        }
-        if (!Toolbar.componentInstances) {
-            Toolbar.componentInstances = new Map();
-        }
+        Toolbar.ensureRegistryMaps('pendingToolbars', 'componentInstances');
 
         const componentInstance = Toolbar.componentInstances.get(componentRef);
         if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
@@ -377,9 +398,7 @@ class Toolbar {
         if (!componentRef || !instance) {
             return;
         }
-        if (!Toolbar.componentInstances) {
-            Toolbar.componentInstances = new Map();
-        }
+        Toolbar.ensureRegistryMaps('componentInstances');
         Toolbar.componentInstances.set(componentRef, instance);
 
         const pending = Toolbar.pendingToolbars && Toolbar.pendingToolbars.get(componentRef);
@@ -500,12 +519,25 @@ class Toolbar {
         }
     }
 
-    static resolveControlFactory(type) {
-        if (!type) {
-            return null;
+    static resolveControlFactory(type, fallbackTypes = []) {
+        const factories = Toolbar.getControlFactories();
+        const candidates = [type];
+        if (Array.isArray(fallbackTypes)) {
+            candidates.push(...fallbackTypes);
+        } else {
+            candidates.push(fallbackTypes);
         }
-        const normalized = String(type).toLowerCase();
-        return Toolbar.getControlFactories().get(normalized) || null;
+        for (const candidate of candidates) {
+            if (!candidate && candidate !== 0) {
+                continue;
+            }
+            const normalized = String(candidate).toLowerCase();
+            const descriptor = factories.get(normalized);
+            if (descriptor) {
+                return descriptor;
+            }
+        }
+        return null;
     }
 
     static hasBootstrapStyles() {
@@ -748,7 +780,7 @@ class Toolbar {
 
             if (hasIcon) {
                 Toolbar.applyClassList(this.element, {
-                    add: ['d-inline-flex', 'align-items-center'],
+                    add: INLINE_FLEX_CENTER_CLASSES,
                     toggle: {
                         'gap-2': !iconOnly,
                         'justify-content-center': iconOnly,
@@ -784,21 +816,31 @@ class Toolbar {
         build() {
             if (!this.toolbar || !this.properties.id) return;
             if (this.existingElement) {
-                this.element = this.existingElement;
-                this.applyCommonAttributes();
-                const elementDisabled = this.element.classList.contains('disabled')
-                    || this.element.hasAttribute('disabled')
-                    || this.element.getAttribute('aria-disabled') === 'true';
-                if (elementDisabled) {
-                    this.properties.isDisabled = true;
-                }
-                if (this.properties.isDisabled) this.disable();
+                this._adoptExistingElement();
                 return;
             }
+            this._buildFreshElement();
+        }
+        _adoptExistingElement() {
+            this.element = this.existingElement;
+            this.applyCommonAttributes();
+            const elementDisabled = this.element.classList.contains('disabled')
+                || this.element.hasAttribute('disabled')
+                || this.element.getAttribute('aria-disabled') === 'true';
+            if (elementDisabled) {
+                this.properties.isDisabled = true;
+            }
+            if (this.properties.isDisabled) {
+                this.disable();
+            }
+        }
+        _buildFreshElement() {
             this.element = this.createElement();
             this.applyCommonAttributes();
             this.render();
-            if (this.properties.isDisabled) this.disable();
+            if (this.properties.isDisabled) {
+                this.disable();
+            }
         }
         afterMount() {
             this.initBootstrapBehaviors();
@@ -871,14 +913,17 @@ class Toolbar {
             } else if (!usingExisting) {
                 this.element.setAttribute('type', typeAttr);
             }
-            const baseButtonClasses = ['btn', 'btn-sm'];
-            Toolbar.applyClassList(this.element, { add: baseButtonClasses });
+            Toolbar.applyClassList(this.element, { add: BUTTON_BASE_CLASSES });
             if (this.properties.id) {
                 Toolbar.applyClassList(this.element, { add: [`${this.properties.id}_btn`] });
             }
             if (!usingExisting) {
+                const layoutClasses = [...INLINE_FLEX_CENTER_CLASSES];
+                if (variantClass) {
+                    layoutClasses.push(variantClass);
+                }
                 Toolbar.applyClassList(this.element, {
-                    add: ['d-inline-flex', 'align-items-center', variantClass].filter(Boolean),
+                    add: layoutClasses,
                     toggle: { 'gap-2': !iconOnly }
                 });
             } else {
@@ -1184,7 +1229,7 @@ class Toolbar {
             this.button = document.createElement('button');
             this.button.type = 'button';
             Toolbar.applyClassList(this.button, {
-                add: ['custom_select_button', 'btn', 'btn-sm', 'btn-outline-secondary', 'dropdown-toggle', 'd-inline-flex', 'align-items-center', 'gap-2']
+                add: CUSTOM_SELECT_BUTTON_CLASSES
             });
             this.button.setAttribute('data-bs-toggle', 'dropdown');
             this.button.setAttribute('aria-expanded', 'false');
