@@ -43,18 +43,19 @@
     <xsl:template match="component[@name='breadCrumbs']/recordset/record">
         <xsl:variable name="IS_LAST" select="position() = last()"/>
         <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
+        <xsl:variable name="ITEM_NAME" select="normalize-space(field[@name='Name'])"/>
 
         <xsl:choose>
             <xsl:when test="position() = 1">
                 <li class="breadcrumb-item">
                     <a class="link-dark text-decoration-none" href="{$BASE}{$LANG_ABBR}">
-                        <xsl:value-of select="field[@name='Name']"/>
+                        <xsl:value-of select="$ITEM_NAME"/>
                     </a>
                 </li>
             </xsl:when>
             <xsl:when test="$IS_LAST">
                 <li class="breadcrumb-item active" aria-current="page">
-                    <xsl:value-of select="field[@name='Name']"/>
+                    <xsl:value-of select="$ITEM_NAME"/>
                 </li>
             </xsl:when>
             <xsl:otherwise>
@@ -62,11 +63,11 @@
                     <xsl:choose>
                         <xsl:when test="string-length($SEGMENT) &gt; 0">
                             <a class="link-dark text-decoration-none" href="{$BASE}{$LANG_ABBR}{$SEGMENT}">
-                                <xsl:value-of select="field[@name='Name']"/>
+                                <xsl:value-of select="$ITEM_NAME"/>
                             </a>
                         </xsl:when>
                         <xsl:otherwise>
-                            <span><xsl:value-of select="field[@name='Name']"/></span>
+                            <span><xsl:value-of select="$ITEM_NAME"/></span>
                         </xsl:otherwise>
                     </xsl:choose>
                 </li>
@@ -138,6 +139,7 @@
 
     <xsl:template match="component[@name='childDivisions']/recordset/record" mode="child-card">
         <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
+        <xsl:variable name="NAME" select="normalize-space(field[@name='Name'])"/>
         <div class="col">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
@@ -145,11 +147,11 @@
                         <xsl:choose>
                             <xsl:when test="string-length($SEGMENT) &gt; 0">
                                 <a class="stretched-link text-decoration-none" href="{$LANG_ABBR}{$SEGMENT}">
-                                    <xsl:value-of select="field[@name='Name']"/>
+                                    <xsl:value-of select="$NAME"/>
                                 </a>
                             </xsl:when>
                             <xsl:otherwise>
-                                <span><xsl:value-of select="field[@name='Name']"/></span>
+                                <span><xsl:value-of select="$NAME"/></span>
                             </xsl:otherwise>
                         </xsl:choose>
                     </h3>
