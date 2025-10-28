@@ -7,6 +7,8 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const SIDEBAR_OFFCANVAS_Z_INDEX = 1000;
+
 const CONTROL_FALLBACK_ACTIONS = Object.freeze({
     editMode: 'editMode',
     transEditor: 'showTransEditor',
@@ -332,6 +334,27 @@ class PageToolbar extends Toolbar {
             this.sidebarFrameElement = sidebarFrame;
         }
 
+        const topFrame = root.querySelector('[data-role="page-toolbar-topframe"]') || null;
+        const syncSidebarOffset = () => {
+            PageToolbar._syncSidebarGeometry(this.sidebarFrameElement, topFrame);
+        };
+
+        if (sidebarFrame) {
+            syncSidebarOffset();
+
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+                const handleResize = () => syncSidebarOffset();
+                window.addEventListener('resize', handleResize);
+                this._sidebarEventHandlers.push({ element: window, type: 'resize', handler: handleResize });
+            }
+
+            if (typeof ResizeObserver !== 'undefined' && topFrame instanceof HTMLElement) {
+                const resizeObserver = new ResizeObserver(() => syncSidebarOffset());
+                resizeObserver.observe(topFrame);
+                this._registerLayoutCleanup(() => resizeObserver.disconnect());
+            }
+        }
+
         const toggleButtons = PageToolbar._collectSidebarToggleButtons(
             root,
             sidebarFrame,
@@ -379,8 +402,14 @@ class PageToolbar extends Toolbar {
         this._handleSidebarStateChange(initialState, { persist: false });
 
         if (sidebarFrame) {
-            const handleShown = () => this._handleSidebarStateChange(true);
-            const handleHidden = () => this._handleSidebarStateChange(false);
+            const handleShown = () => {
+                syncSidebarOffset();
+                this._handleSidebarStateChange(true);
+            };
+            const handleHidden = () => {
+                syncSidebarOffset();
+                this._handleSidebarStateChange(false);
+            };
             sidebarFrame.addEventListener('shown.bs.offcanvas', handleShown);
             sidebarFrame.addEventListener('hidden.bs.offcanvas', handleHidden);
             this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'shown.bs.offcanvas', handler: handleShown });
@@ -861,18 +890,18 @@ class PageToolbar extends Toolbar {
             this.sidebarFrameElement = sidebarFrame;
 
             const syncSidebarOffset = () => {
-                if (!this.sidebarFrameElement) {
-                    return;
-                }
-                const navHeight = Math.max(0, Math.round(topFrame.getBoundingClientRect().height || 0));
-                this.sidebarFrameElement.style.top = navHeight ? `${navHeight}px` : '0';
-                this.sidebarFrameElement.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
+                PageToolbar._syncSidebarGeometry(this.sidebarFrameElement, topFrame);
             };
             syncSidebarOffset();
-            window.addEventListener('resize', syncSidebarOffset);
-            if (window.ResizeObserver) {
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+                const handleResize = () => syncSidebarOffset();
+                window.addEventListener('resize', handleResize);
+                this._registerLayoutCleanup(() => window.removeEventListener('resize', handleResize));
+            }
+            if (typeof ResizeObserver !== 'undefined' && topFrame instanceof HTMLElement) {
                 const resizeObserver = new ResizeObserver(() => syncSidebarOffset());
                 resizeObserver.observe(topFrame);
+                this._registerLayoutCleanup(() => resizeObserver.disconnect());
             }
 
             const sidebarHeader = document.createElement('div');
@@ -1625,6 +1654,30 @@ class PageToolbar extends Toolbar {
 
     // Вложенный контрол логотипа (если нужно)
     static Logo = class extends Toolbar.Control {};
+
+    static _syncSidebarGeometry(sidebarFrame, anchorElement = null, zIndex = SIDEBAR_OFFCANVAS_Z_INDEX) {
+        if (!(sidebarFrame instanceof HTMLElement)) {
+            return;
+        }
+
+        if (typeof zIndex === 'number' || (typeof zIndex === 'string' && zIndex.trim().length)) {
+            const normalizedZIndex = `${zIndex}`;
+            try {
+                sidebarFrame.style.setProperty('--bs-offcanvas-zindex', normalizedZIndex);
+            } catch (error) {
+                // ignore CSS variable assignment failures
+            }
+            sidebarFrame.style.zIndex = normalizedZIndex;
+        }
+
+        const anchor = anchorElement instanceof HTMLElement ? anchorElement : null;
+        const navHeight = anchor ? Math.max(0, Math.round(anchor.getBoundingClientRect().height || 0)) : 0;
+        sidebarFrame.style.top = navHeight ? `${navHeight}px` : '0';
+        sidebarFrame.style.height = navHeight ? `calc(100vh - ${navHeight}px)` : '100vh';
+        if (sidebarFrame.style.bottom) {
+            sidebarFrame.style.bottom = 'auto';
+        }
+    }
 
     _registerLayoutCleanup(callback) {
         if (typeof callback === 'function') {
