@@ -1138,6 +1138,10 @@ class PageToolbar extends Toolbar {
             sidebarFrame.style.setProperty('--mdb-sidenav-width', defaultSidebarWidth);
             sidebarFrame.style.width = defaultSidebarWidth;
             sidebarFrame.style.maxWidth = defaultSidebarWidth;
+            if (sidebarFrame.dataset) {
+                sidebarFrame.dataset.mdbBaseWidth = 'var(--bs-offcanvas-width, 240px)';
+                sidebarFrame.dataset.mdbExpandedWidth = defaultSidebarWidth;
+            }
             if (sidebarLabel) {
                 sidebarFrame.setAttribute('aria-label', sidebarLabel);
                 sidebarFrame.setAttribute('data-mdb-sidenav-label', sidebarLabel);
@@ -2068,6 +2072,43 @@ class PageToolbar extends Toolbar {
     // Вложенный контрол логотипа (если нужно)
     static Logo = class extends Toolbar.Control {};
 
+    static _expandSidebarWidth(baseWidth, extraPixels = 100) {
+        const extraValue = `${extraPixels}px`;
+
+        if (!baseWidth && baseWidth !== 0) {
+            return `calc(var(--bs-offcanvas-width, 240px) + ${extraValue})`;
+        }
+
+        const normalized = String(baseWidth).trim();
+        if (!normalized) {
+            return `calc(var(--bs-offcanvas-width, 240px) + ${extraValue})`;
+        }
+
+        const pxMatch = normalized.match(/^(-?\d+(?:\.\d+)?)px$/i);
+        if (pxMatch) {
+            const numericWidth = Number.parseFloat(pxMatch[1]);
+            if (!Number.isNaN(numericWidth)) {
+                return `${numericWidth + extraPixels}px`;
+            }
+        }
+
+        const calcMatch = normalized.match(/^calc\((.*)\)$/i);
+        if (calcMatch) {
+            const innerExpression = calcMatch[1].trim();
+            const extraPattern = new RegExp(`([+\-])\\s*${extraValue.replace('.', '\\.')}`);
+            if (extraPattern.test(innerExpression)) {
+                return normalized;
+            }
+            return `calc(${innerExpression} + ${extraValue})`;
+        }
+
+        if (normalized.includes(extraValue)) {
+            return normalized;
+        }
+
+        return `calc(${normalized} + ${extraValue})`;
+    }
+
     static _syncSidebarGeometry(sidebarFrame, anchorElement = null, zIndex = SIDEBAR_OFFCANVAS_Z_INDEX) {
         if (!(sidebarFrame instanceof HTMLElement)) {
             return;
@@ -2095,42 +2136,161 @@ class PageToolbar extends Toolbar {
             sidebarFrame.style.bottom = 'auto';
         }
 
+        let baseWidth = '';
+        let expandedWidth = '';
+
+        const dataset = sidebarFrame.dataset || null;
+        if (dataset?.mdbBaseWidth) {
+            baseWidth = dataset.mdbBaseWidth.trim();
+        }
+        if (dataset?.mdbExpandedWidth) {
+            expandedWidth = dataset.mdbExpandedWidth.trim();
+        }
+
+        const canonicalizeWidth = value => (value ? String(value).replace(/\s+/g, '') : '');
+        const parsePx = value => {
+            const match = value ? String(value).trim().match(/^(-?\d+(?:\.\d+)?)px$/i) : null;
+            return match ? Number.parseFloat(match[1]) : Number.NaN;
+        };
+
+        let computedStyles = null;
         if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
             try {
-                const computedStyles = window.getComputedStyle(sidebarFrame);
-                const bootstrapWidth = (computedStyles.getPropertyValue('--bs-offcanvas-width')
-                    || computedStyles.width
-                    || '').trim();
-                const normalizedWidth = bootstrapWidth || sidebarFrame.style.width || '';
-                const fallbackWidth = '340px';
-                let expandedWidth = normalizedWidth || fallbackWidth;
-
-                if (normalizedWidth) {
-                    const pxMatch = normalizedWidth.match(/^-?\s*([\d.]+)px$/i);
-                    if (pxMatch) {
-                        const baseWidth = Number.parseFloat(pxMatch[1]);
-                        if (!Number.isNaN(baseWidth)) {
-                            expandedWidth = `${baseWidth + 100}px`;
-                        }
-                    } else if (!/calc\(/i.test(normalizedWidth)) {
-                        expandedWidth = `calc(${normalizedWidth} + 100px)`;
-                    }
-                } else {
-                    expandedWidth = fallbackWidth;
-                }
-
-                if (expandedWidth) {
-                    sidebarFrame.style.setProperty('--mdb-sidenav-width', expandedWidth);
-                    if (sidebarFrame.style.width !== expandedWidth) {
-                        sidebarFrame.style.width = expandedWidth;
-                    }
-                    if (sidebarFrame.style.maxWidth !== expandedWidth) {
-                        sidebarFrame.style.maxWidth = expandedWidth;
-                    }
-                }
+                computedStyles = window.getComputedStyle(sidebarFrame);
             } catch (error) {
-                // ignore width synchronization failures
+                computedStyles = null;
             }
+        }
+
+        if (!baseWidth && computedStyles) {
+            const candidateBase = (computedStyles.getPropertyValue('--bs-offcanvas-width') || '').trim();
+            if (candidateBase) {
+                baseWidth = candidateBase;
+            }
+        }
+
+        if (!baseWidth && dataset?.bsOffcanvasWidth) {
+            baseWidth = dataset.bsOffcanvasWidth.trim();
+        }
+
+        if (!baseWidth && sidebarFrame.getAttribute) {
+            const attrBase = sidebarFrame.getAttribute('data-bs-width') || sidebarFrame.getAttribute('data-width');
+            if (attrBase) {
+                baseWidth = attrBase.trim();
+            }
+        }
+
+        const inlineStyles = sidebarFrame.style || null;
+        if (!expandedWidth && inlineStyles?.getPropertyValue) {
+            const inlineVarWidth = inlineStyles.getPropertyValue('--mdb-sidenav-width');
+            if (inlineVarWidth && inlineVarWidth.trim()) {
+                expandedWidth = inlineVarWidth.trim();
+            }
+        }
+
+        const evaluateWidthCandidate = rawValue => {
+            if (!rawValue) {
+                return '';
+            }
+            const trimmed = String(rawValue).trim();
+            if (!trimmed) {
+                return '';
+            }
+
+            if (baseWidth) {
+                const expectedExpanded = PageToolbar._expandSidebarWidth(baseWidth);
+                if (expectedExpanded && canonicalizeWidth(trimmed) === canonicalizeWidth(expectedExpanded)) {
+                    return trimmed;
+                }
+
+                const basePx = parsePx(baseWidth);
+                const candidatePx = parsePx(trimmed);
+                if (!Number.isNaN(basePx) && !Number.isNaN(candidatePx)) {
+                    if (candidatePx - basePx >= 99.5) {
+                        return trimmed;
+                    }
+                }
+
+                if (trimmed.includes('100px')) {
+                    return trimmed;
+                }
+
+                return '';
+            }
+
+            if (trimmed.includes('100px')) {
+                return trimmed;
+            }
+
+            return '';
+        };
+
+        if (!expandedWidth && inlineStyles?.width) {
+            const inlineCandidate = evaluateWidthCandidate(inlineStyles.width);
+            if (inlineCandidate) {
+                expandedWidth = inlineCandidate;
+            }
+        }
+
+        if (!expandedWidth && computedStyles) {
+            const computedWidth = computedStyles.width && computedStyles.width.trim ? computedStyles.width.trim() : '';
+            const candidate = evaluateWidthCandidate(computedWidth);
+            if (candidate) {
+                expandedWidth = candidate;
+            }
+        }
+
+        if (!expandedWidth && computedStyles) {
+            const candidateExpanded = (computedStyles.getPropertyValue('--mdb-sidenav-width') || '').trim();
+            if (candidateExpanded) {
+                expandedWidth = candidateExpanded;
+            }
+        }
+
+        if (!baseWidth && expandedWidth) {
+            const calcMatch = expandedWidth.match(/^calc\((.*)\)$/i);
+            if (calcMatch) {
+                const innerExpression = calcMatch[1];
+                const subtractionMatch = innerExpression.match(/^(.+)[+]\s*100px$/i);
+                if (subtractionMatch) {
+                    baseWidth = subtractionMatch[1].trim();
+                }
+            } else {
+                const candidatePx = parsePx(expandedWidth);
+                if (!Number.isNaN(candidatePx) && candidatePx > 100) {
+                    baseWidth = `${candidatePx - 100}px`;
+                }
+            }
+        }
+
+        if (!baseWidth) {
+            baseWidth = 'var(--bs-offcanvas-width, 240px)';
+        }
+
+        if (!expandedWidth) {
+            expandedWidth = PageToolbar._expandSidebarWidth(baseWidth);
+        }
+
+        if (!expandedWidth) {
+            expandedWidth = 'calc(var(--bs-offcanvas-width, 240px) + 100px)';
+        }
+
+        if (sidebarFrame.dataset) {
+            sidebarFrame.dataset.mdbBaseWidth = baseWidth;
+            sidebarFrame.dataset.mdbExpandedWidth = expandedWidth;
+        }
+
+        try {
+            sidebarFrame.style.setProperty('--mdb-sidenav-width', expandedWidth);
+        } catch (error) {
+            // ignore CSS variable assignment failures
+        }
+
+        if (sidebarFrame.style.width !== expandedWidth) {
+            sidebarFrame.style.width = expandedWidth;
+        }
+        if (sidebarFrame.style.maxWidth !== expandedWidth) {
+            sidebarFrame.style.maxWidth = expandedWidth;
         }
     }
 
