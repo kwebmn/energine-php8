@@ -7,12 +7,37 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const CONTROL_FALLBACK_ACTIONS = Object.freeze({
+    editMode: 'editMode',
+    transEditor: 'showTransEditor',
+    language: 'showLangEditor',
+    user: 'showUserEditor',
+    role: 'showRoleEditor',
+    fileRepository: 'showFileRepository',
+    siteEditor: 'showSiteEditor',
+    tmplEditor: 'showTmplEditor',
+});
+
 class PageToolbar extends Toolbar {
     constructor(...args) {
         const config = PageToolbar._normalizeConstructorArgs(...args);
 
         super(config.element || config.toolbarName, config.properties);
 
+        this._initializeInstanceState(config);
+        this._bindToolbarContext();
+        this._hydrateControls(config);
+        this._registerDeclarativeInstance(config);
+
+        this._ensureDefaultControlActions();
+
+        this.setupLayout();
+
+        this._ensureRoutingConfigFromLayout();
+
+    }
+
+    _initializeInstanceState(config) {
         this.componentPath = config.componentPath;
         this.documentId = config.documentId;
         this.layoutManager = null;
@@ -33,36 +58,42 @@ class PageToolbar extends Toolbar {
         if (config.mode !== 'declarative' && config.shouldDock) {
             this.dock();
         }
+    }
 
+    _bindToolbarContext() {
         this.bindTo(this);
 
         window.addEventListener('oneditmodeunpressed', this._boundEditModeUnpressed);
+    }
 
+    _hydrateControls(config) {
         if (config.mode === 'declarative') {
             this._hydrateFromElement(config.element, config.descriptors);
-        } else if (config.controls && Array.isArray(config.controls)) {
+            return;
+        }
+
+        if (Array.isArray(config.controls)) {
             config.controls.forEach(control => this.appendControl(control));
         }
+    }
 
-        if (config.mode === 'declarative') {
-            if (this.element?.dataset) {
-                this.element.dataset.eToolbarHydrated = '1';
-            }
-            const componentRef = config.componentRef
-                || this.element?.dataset?.eToolbarComponent
-                || this.element?.dataset?.componentRef
-                || this._layoutConfig?.dataset?.eToolbarComponent
-                || this._layoutConfig?.toolbarDataset?.eToolbarComponent
-                || null;
-            Toolbar.registerToolbarInstance(this, componentRef);
+    _registerDeclarativeInstance(config) {
+        if (config.mode !== 'declarative') {
+            return;
         }
 
-        this._ensureDefaultControlActions();
+        if (this.element?.dataset) {
+            this.element.dataset.eToolbarHydrated = '1';
+        }
 
-        this.setupLayout();
+        const componentRef = config.componentRef
+            || this.element?.dataset?.eToolbarComponent
+            || this.element?.dataset?.componentRef
+            || this._layoutConfig?.dataset?.eToolbarComponent
+            || this._layoutConfig?.toolbarDataset?.eToolbarComponent
+            || null;
 
-        this._ensureRoutingConfigFromLayout();
-
+        Toolbar.registerToolbarInstance(this, componentRef);
     }
 
     _hydrateFromElement(element, descriptors = null) {
@@ -122,47 +153,38 @@ class PageToolbar extends Toolbar {
             return;
         }
 
-        const fallbackActions = {
-            editMode: 'editMode',
-            transEditor: 'showTransEditor',
-            language: 'showLangEditor',
-            user: 'showUserEditor',
-            role: 'showRoleEditor',
-            fileRepository: 'showFileRepository',
-            siteEditor: 'showSiteEditor',
-            tmplEditor: 'showTmplEditor',
-        };
+        this.controls.forEach(control => PageToolbar._assignFallbackAction(control, this));
+    }
 
-        this.controls.forEach(control => {
-            if (!control || typeof control !== 'object') {
-                return;
-            }
+    static _assignFallbackAction(control, toolbarInstance) {
+        if (!control || typeof control !== 'object') {
+            return;
+        }
 
-            const controlId = control.properties?.id || '';
-            if (!controlId || control.properties?.action) {
-                return;
-            }
+        const controlId = control.properties?.id || '';
+        if (!controlId || control.properties?.action) {
+            return;
+        }
 
-            const fallbackAction = fallbackActions[controlId];
-            if (!fallbackAction || typeof this[fallbackAction] !== 'function') {
-                return;
-            }
+        const fallbackAction = CONTROL_FALLBACK_ACTIONS[controlId];
+        if (!fallbackAction || typeof toolbarInstance[fallbackAction] !== 'function') {
+            return;
+        }
 
-            if (typeof control.setAction === 'function') {
-                control.setAction(fallbackAction);
-            } else if (control.properties) {
-                control.properties.action = fallbackAction;
-            }
+        if (typeof control.setAction === 'function') {
+            control.setAction(fallbackAction);
+        } else if (control.properties) {
+            control.properties.action = fallbackAction;
+        }
 
-            if (control.element instanceof HTMLElement) {
-                try {
-                    control.element.dataset.action = fallbackAction;
-                    control.element.setAttribute('data-action', fallbackAction);
-                } catch (error) {
-                    // ignore dataset failures
-                }
+        if (control.element instanceof HTMLElement) {
+            try {
+                control.element.dataset.action = fallbackAction;
+                control.element.setAttribute('data-action', fallbackAction);
+            } catch (error) {
+                // ignore dataset failures
             }
-        });
+        }
     }
 
     static _addClass(el, cls) { el.classList.add(cls); }
