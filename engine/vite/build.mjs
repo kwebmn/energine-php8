@@ -3,6 +3,7 @@ import { resolve, join } from 'node:path';
 import { cpSync, existsSync, mkdirSync, rmSync, mkdtempSync, readdirSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
+import { resolveBuildTargets } from './config.js';
 
 const rootDir = resolve(process.cwd(), 'engine/vite');
 const repoRoot = resolve(rootDir, '..', '..');
@@ -49,17 +50,12 @@ const removeSamplesDirectory = (directory) => {
     }
 };
 
-const targets = [
-    { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
-    { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
-    { name: 'energine.ckeditor', entry: 'energine.ckeditor.entry.js' },
-    { name: 'energine', entry: 'energine.entry.js' },
-    { name: 'energine.extended', entry: 'energine.extended.entry.js' },
-];
+const targets = resolveBuildTargets();
+const vendorBundles = new Set(['energine.vendor', 'energine.mdvendor', 'energine.extended.vendor']);
 
 for (let index = 0; index < targets.length; index += 1) {
     const { name, entry } = targets[index];
-    const isVendor = name === 'energine.vendor' || name === 'energine.extended.vendor';
+    const isVendor = vendorBundles.has(name);
     await build({
         root: rootDir,
         publicDir: false,

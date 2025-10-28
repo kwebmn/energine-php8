@@ -1,8 +1,16 @@
 {
   "scripts": {
-    "build": "node engine/vite/build.mjs"
+    "build": "node engine/vite/build.mjs",
+    "build:ui:bootstrap": "cross-env UI_FRAMEWORK=bootstrap5 node engine/vite/build.mjs",
+    "build:ui:md": "cross-env UI_FRAMEWORK=mdbootstrap node engine/vite/build.mjs",
+    "dev": "vite --config engine/vite/config.js",
+    "lint:ui": "node engine/vite/check-ui-imports.mjs"
   },
   "devDependencies": {
+    "cross-env": "^7.0.0",
     "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "mdb-ui-kit": "^9.2.0"
   }
 }

@@ -22,8 +22,12 @@ class XSLTTransformer extends BaseObject implements ITransformer
     /** @var DOMDocument|null Входной XML-документ */
     private ?DOMDocument $document = null;
 
+    /** @var string Active UI framework */
+    private string $uiFramework;
+
     public function __construct()
     {
+        $this->uiFramework = $this->getUiFramework();
         $this->setFileName((string)$this->getConfigValue('document.transformer'));
     }
 
@@ -39,23 +43,64 @@ class XSLTTransformer extends BaseObject implements ITransformer
     {
         if (!$isAbsolutePath)
         {
-            $siteFolder = E()->getSiteManager()->getCurrentSite()->folder;
-            $transformerFilename = sprintf(
-                SITE_DIR . self::MAIN_TRANSFORMER_DIR,
-                $siteFolder
-            ) . $transformerFilename;
+            $transformerFilename = $this->maybeApplyUiSuffix($transformerFilename);
         }
 
-        if (!is_file($transformerFilename))
+        $resolvedFilename = $this->resolveTransformerPath($transformerFilename, $isAbsolutePath);
+
+        if (!is_file($resolvedFilename))
         {
             throw new SystemException(
                 'ERR_DEV_NO_MAIN_TRANSFORMER',
                 SystemException::ERR_DEVELOPER,
-                $transformerFilename
+                $resolvedFilename
             );
         }
 
-        $this->fileName = $transformerFilename;
+        $this->fileName = $resolvedFilename;
+    }
+
+    private function resolveTransformerPath(string $transformerFilename, bool $isAbsolutePath = false): string
+    {
+        if ($isAbsolutePath)
+        {
+            return $transformerFilename;
+        }
+
+        $siteFolder = E()->getSiteManager()->getCurrentSite()->folder;
+
+        return sprintf(
+            SITE_DIR . self::MAIN_TRANSFORMER_DIR,
+            $siteFolder
+        ) . $transformerFilename;
+    }
+
+    private function maybeApplyUiSuffix(string $transformerFilename): string
+    {
+        if ($this->uiFramework !== 'mdbootstrap')
+        {
+            return $transformerFilename;
+        }
+
+        if (str_ends_with($transformerFilename, '_md.xslt'))
+        {
+            return $transformerFilename;
+        }
+
+        if (!str_ends_with($transformerFilename, '.xslt'))
+        {
+            return $transformerFilename;
+        }
+
+        $candidate = substr($transformerFilename, 0, -5) . '_md.xslt';
+        $resolved = $this->resolveTransformerPath($candidate);
+
+        if (is_file($resolved))
+        {
+            return $candidate;
+        }
+
+        return $transformerFilename;
     }
 
     /**

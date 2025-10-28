@@ -46,18 +46,33 @@ final class ErrorDocument extends BaseObject implements IDocument
         $siteManager = E()->getSiteManager();
         $curSite     = $siteManager->getCurrentSite();
 
-        $propBase = $this->doc->createElement('property', (string)$curSite->base);
+        $baseValue = (string)$curSite->base;
+        $propBase = $this->doc->createElement('property', $baseValue);
         $propBase->setAttribute('name', 'base');
+        $propBase->setAttribute('value', $baseValue);
+        $propBase->setAttribute('static', (string)($this->getConfigValue('site.static') ?: $baseValue));
+        $propBase->setAttribute('media', (string)($this->getConfigValue('site.media') ?: $baseValue));
+        $propBase->setAttribute('resizer', (string)($this->getConfigValue('site.resizer') ?: ($siteManager->getDefaultSite()->base . 'resizer/')));
         $propBase->setAttribute('folder', (string)$curSite->folder);
+        $propBase->setAttribute('default', (string)$siteManager->getDefaultSite()->base);
         $props->appendChild($propBase);
 
         $lang      = E()->getLanguage();
         $langID    = (int)$lang->getCurrent();
-        $propLang  = $this->doc->createElement('property', (string)$langID);
+        $langValue = (string)$langID;
+        $propLang  = $this->doc->createElement('property', $langValue);
         $propLang->setAttribute('name', 'lang');
+        $propLang->setAttribute('value', $langValue);
         $propLang->setAttribute('abbr', (string)E()->getRequest()->getLangSegment());
+        $propLang->setAttribute('default', (string)$lang->getDefault());
         $propLang->setAttribute('real_abbr', (string)$lang->getAbbrByID($langID));
         $props->appendChild($propLang);
+
+        $uiValue = $this->getUiFramework();
+        $propUi = $this->doc->createElement('property', $uiValue);
+        $propUi->setAttribute('name', 'ui');
+        $propUi->setAttribute('value', $uiValue);
+        $props->appendChild($propUi);
 
         // Контейнер ошибок
         $errorsNode = $this->doc->createElement('errors');
@@ -121,7 +136,22 @@ final class ErrorDocument extends BaseObject implements IDocument
             // В HTML-режиме можно подменить XSLT-шаблон на спец. страницу ошибки
             if ($vm === DocumentController::TRANSFORM_HTML)
             {
-                E()->getController()->getTransformer()->setFileName('error_page.xslt');
+                $transformer = E()->getController()->getTransformer();
+                if ($this->getUiFramework() === 'mdbootstrap')
+                {
+                    try
+                    {
+                        $transformer->setFileName('error_page_md.xslt');
+                    }
+                    catch (SystemException $exception)
+                    {
+                        $transformer->setFileName('error_page.xslt');
+                    }
+                }
+                else
+                {
+                    $transformer->setFileName('error_page.xslt');
+                }
             }
 
             // В debug-режиме можно добавить trace (опционально, без ломки XSLT)

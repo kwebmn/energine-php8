@@ -120,6 +120,7 @@ final class Document extends DBWorker implements IDocument
         $this->setProperty('keywords', (string)($this->documentInfo['MetaKeywords'] ?? ''));
         $this->setProperty('description', (string)($this->documentInfo['MetaDescription'] ?? ''));
         $this->setProperty('robots', (string)($this->documentInfo['MetaRobots'] ?? ''));
+        $this->setProperty('ui', $this->getUiFramework());
         $this->setProperty('ID', (string)$this->getID());
         $this->setProperty('default', (string)((int)($this->sitemap->getDefault() == $this->getID())));
 
@@ -204,11 +205,13 @@ final class Document extends DBWorker implements IDocument
         {
             $prop = $this->doc->createElement('property');
             $prop->setAttribute('name', (string)$name);
+            $propValue = (string)($value ?? '');
+            $prop->setAttribute('value', $propValue);
             if ($name === 'title')
             {
                 $prop->setAttribute('alt', (string)($this->documentInfo['HtmlTitle'] ?? ''));
             }
-            $prop->appendChild($this->doc->createTextNode((string)($value ?? '')));
+            $prop->appendChild($this->doc->createTextNode($propValue));
             $propsNode->appendChild($prop);
         }
         $root->appendChild($propsNode);
@@ -217,6 +220,7 @@ final class Document extends DBWorker implements IDocument
         $baseURL = E()->getSiteManager()->getCurrentSite()->base;
         $prop = $this->doc->createElement('property', $baseURL);
         $prop->setAttribute('name', 'base');
+        $prop->setAttribute('value', $baseURL);
         $prop->setAttribute('static', (string)($this->getConfigValue('site.static') ?: $baseURL));
         $prop->setAttribute('media', (string)($this->getConfigValue('site.media') ?: $baseURL));
         $prop->setAttribute('resizer', (string)($this->getConfigValue('site.resizer') ?: (E()->getSiteManager()->getDefaultSite()->base . 'resizer/')));
@@ -224,8 +228,10 @@ final class Document extends DBWorker implements IDocument
         $prop->setAttribute('default', E()->getSiteManager()->getDefaultSite()->base);
         $propsNode->appendChild($prop);
 
-        $prop = $this->doc->createElement('property', (string)$this->getLang());
+        $langValue = (string)$this->getLang();
+        $prop = $this->doc->createElement('property', $langValue);
         $prop->setAttribute('name', 'lang');
+        $prop->setAttribute('value', $langValue);
         $prop->setAttribute('abbr', (string)$this->request->getLangSegment());
         $prop->setAttribute('default', (string)E()->getLanguage()->getDefault());
         $prop->setAttribute('real_abbr', (string)E()->getLanguage()->getAbbrByID($this->getLang()));

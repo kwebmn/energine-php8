@@ -5,7 +5,7 @@
 
     <xsl:output method="html" doctype-system="about:legacy-compat" indent="yes" />
 
-    <xsl:include href="../../../../engine/core/modules/share/transformers/include.xslt"/>
+    <xsl:include href="../../../../engine/core/modules/share/transformers/bootstrap/include.xslt"/>
     <xsl:include href="../../../../engine/core/modules/user/transformers/include.xslt"/>
     <xsl:include href="../../../../engine/core/modules/apps/transformers/include.xslt"/>
     <xsl:include href="../../../../engine/core/modules/auto/transformers/include.xslt"/>

@@ -12,6 +12,9 @@ abstract class BaseObject
     /** Configuration file name. */
     public const CONFIG_FILE = 'system.config.php';
 
+    /** Supported UI frameworks. */
+    private const UI_FRAMEWORKS = ['bootstrap5', 'mdbootstrap'];
+
     /** System configuration (tree as nested arrays). */
     private static ?array $systemConfig = null;
 
@@ -126,5 +129,21 @@ abstract class BaseObject
             self::setConfigArray($cfg);
         }
         return self::$systemConfig;
+    }
+
+    /**
+     * Returns the UI framework configured for the project.
+     */
+    protected function getUiFramework(): string
+    {
+        $raw = (string)$this->getConfigValue('ui_framework', 'bootstrap5');
+        $normalized = strtolower(trim($raw));
+
+        if (in_array($normalized, self::UI_FRAMEWORKS, true))
+        {
+            return $normalized;
+        }
+
+        return 'bootstrap5';
     }
 }
