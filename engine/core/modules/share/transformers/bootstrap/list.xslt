@@ -95,7 +95,7 @@
         <xsl:variable name="TAB_ID" select="generate-id(record)"/>
 
         <div class="card-header bg-body border-bottom px-3 pt-3 pb-0" data-pane-part="header">
-            <ul class="nav nav-tabs card-header-tabs mb-0 gap-2" data-role="tabs" role="tablist">
+            <ul class="nav nav-tabs" data-role="tabs" role="tablist">
                 <xsl:choose>
                     <xsl:when test="$FIELDS[@language]">
                         <xsl:variable name="CURRENT_LANG_ID" select="$LANG_ID"/>
@@ -114,11 +114,13 @@
                                 <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
                                 <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
                                     <xsl:attribute name="class">
-                                        <xsl:text>nav-link py-2 px-3</xsl:text>
+                                        <xsl:text>nav-link</xsl:text>
                                         <xsl:if test="$IS_ACTIVE">
                                             <xsl:text> active</xsl:text>
                                         </xsl:if>
                                     </xsl:attribute>
+                                    <xsl:attribute name="data-mdb-toggle">tab</xsl:attribute>
+                                    <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
                                     <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
                                     <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
                                     <xsl:attribute name="role">tab</xsl:attribute>
@@ -142,11 +144,13 @@
                                 <xsl:variable name="TAB_LINK_ID" select="concat($TAB_ID, '-tab-', position())"/>
                                 <a href="#{$TAB_ID}" id="{$TAB_LINK_ID}" data-role="tab-link">
                                     <xsl:attribute name="class">
-                                        <xsl:text>nav-link py-2 px-3</xsl:text>
+                                        <xsl:text>nav-link</xsl:text>
                                         <xsl:if test="position()=1">
                                             <xsl:text> active</xsl:text>
                                         </xsl:if>
                                     </xsl:attribute>
+                                    <xsl:attribute name="data-mdb-toggle">tab</xsl:attribute>
+                                    <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
                                     <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
                                     <xsl:attribute name="data-bs-target">#<xsl:value-of select="$TAB_ID"/></xsl:attribute>
                                     <xsl:attribute name="role">tab</xsl:attribute>

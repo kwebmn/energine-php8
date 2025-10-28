@@ -156,7 +156,7 @@
         <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
         <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
         <div class="card-header bg-body-tertiary border-bottom flex-shrink-0 pb-0" data-pane-part="header">
-            <ul class="nav nav-tabs card-header-tabs" data-role="tabs" role="tablist">
+            <ul class="nav nav-tabs" data-role="tabs" role="tablist">
                 <xsl:for-each select="set:distinct($FIELDS/@tabName)">
                     <xsl:variable name="TAB_NAME" select="."/>
                     <xsl:if test="count(set:distinct($FIELDS[not(@index='PRI') and not(@type='hidden')][@tabName=$TAB_NAME])) &gt; 0">
@@ -168,6 +168,8 @@
                                id="{$TAB_UID}-tab"
                                class="nav-link"
                                data-role="tab-link"
+                               data-mdb-toggle="tab"
+                               data-mdb-target="#{$TAB_UID}"
                                data-bs-toggle="tab"
                                data-bs-target="#{$TAB_UID}"
                                role="tab"
