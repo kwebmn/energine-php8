@@ -111,6 +111,8 @@
             <xsl:choose>
                 <xsl:when test="$HAS_CHILDREN">
                     <a class="nav-link dropdown-toggle" id="{$DROPDOWN_ID}" role="button" data-bs-toggle="dropdown" data-mdb-toggle="dropdown">
+                        <xsl:attribute name="data-mdb-dropdown-init"></xsl:attribute>
+                        <xsl:attribute name="data-mdb-ripple-init"></xsl:attribute>
                         <xsl:attribute name="href">
                             <xsl:choose>
                                 <xsl:when test="string-length(normalize-space(field[@name='Segment'])) &gt; 0">
@@ -193,6 +195,8 @@
                         aria-expanded="false"
                         aria-haspopup="true"
                 >
+                    <xsl:attribute name="data-mdb-dropdown-init"></xsl:attribute>
+                    <xsl:attribute name="data-mdb-ripple-init"></xsl:attribute>
                     <xsl:value-of select="//field[@name='lang_id' and text() = $LANG_ID]/../field[@name='lang_name']" />
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="{$DROPDOWN_ID}">
