@@ -8,6 +8,7 @@ const globalScope = typeof window !== 'undefined'
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
 const SIDEBAR_OFFCANVAS_Z_INDEX = 1050;
+const TOOLBAR_Z_INDEX = SIDEBAR_OFFCANVAS_Z_INDEX + 10;
 
 const CONTROL_FALLBACK_ACTIONS = Object.freeze({
     editMode: 'editMode',
@@ -541,7 +542,7 @@ class PageToolbar extends Toolbar {
                 topFrame.style.top = '0px';
             }
             if (!topFrame.style.zIndex) {
-                topFrame.style.zIndex = '1040';
+                topFrame.style.zIndex = `${TOOLBAR_Z_INDEX}`;
             }
             if (!topFrame.style.left) {
                 topFrame.style.left = '0px';
@@ -565,7 +566,7 @@ class PageToolbar extends Toolbar {
                     root.style.right = '0px';
                 }
                 if (!root.style.zIndex) {
-                    root.style.zIndex = '1040';
+                    root.style.zIndex = `${TOOLBAR_Z_INDEX}`;
                 }
             }
         };
@@ -584,7 +585,7 @@ class PageToolbar extends Toolbar {
                 topFrame.style.right = '0px';
             }
             if (!topFrame.style.zIndex) {
-                topFrame.style.zIndex = '1040';
+                topFrame.style.zIndex = `${TOOLBAR_Z_INDEX}`;
             }
             if (root) {
                 if (!root.style.position || root.style.position === 'static') {
@@ -600,7 +601,7 @@ class PageToolbar extends Toolbar {
                     root.style.right = '0px';
                 }
                 if (!root.style.zIndex) {
-                    root.style.zIndex = '1040';
+                    root.style.zIndex = `${TOOLBAR_Z_INDEX}`;
                 }
             }
         };
