@@ -50,6 +50,7 @@ class PageToolbar extends Toolbar {
         this.sidebarToggleButtons = [];
         this._updateSidebarToggleState = null;
         this.sidebarOffcanvas = null;
+        this.sidebarControllerType = null;
         this.sidebarFrameElement = null;
         this._ensureSidebarOffcanvas = null;
         this._sidebarEventHandlers = [];
@@ -373,8 +374,16 @@ class PageToolbar extends Toolbar {
                 button.setAttribute('aria-pressed', pressed);
                 button.setAttribute('aria-expanded', pressed);
                 button.classList.toggle('active', !!state);
-                if (sidebarFrame?.id && !button.getAttribute('aria-controls')) {
-                    button.setAttribute('aria-controls', sidebarFrame.id);
+                if (sidebarFrame?.id) {
+                    if (!button.getAttribute('aria-controls')) {
+                        button.setAttribute('aria-controls', sidebarFrame.id);
+                    }
+                    if (!button.getAttribute('data-bs-target')) {
+                        button.setAttribute('data-bs-target', `#${sidebarFrame.id}`);
+                    }
+                    if (!button.getAttribute('data-mdb-target')) {
+                        button.setAttribute('data-mdb-target', `#${sidebarFrame.id}`);
+                    }
                 }
                 if (button.dataset) {
                     button.dataset.eSidebarState = state ? 'open' : 'closed';
@@ -403,6 +412,9 @@ class PageToolbar extends Toolbar {
         this._handleSidebarStateChange(initialState, { persist: false });
 
         if (sidebarFrame) {
+            const hasBootstrapOffcanvas = !!(window?.bootstrap?.Offcanvas);
+            const hasMdbSidenav = !!(window?.mdb?.Sidenav);
+
             const handleShown = () => {
                 syncSidebarOffset();
                 this._handleSidebarStateChange(true);
@@ -411,33 +423,71 @@ class PageToolbar extends Toolbar {
                 syncSidebarOffset();
                 this._handleSidebarStateChange(false);
             };
+
             sidebarFrame.addEventListener('shown.bs.offcanvas', handleShown);
             sidebarFrame.addEventListener('hidden.bs.offcanvas', handleHidden);
+            sidebarFrame.addEventListener('shown.mdb.sidenav', handleShown);
+            sidebarFrame.addEventListener('hidden.mdb.sidenav', handleHidden);
             this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'shown.bs.offcanvas', handler: handleShown });
             this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'hidden.bs.offcanvas', handler: handleHidden });
+            this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'shown.mdb.sidenav', handler: handleShown });
+            this._sidebarEventHandlers.push({ element: sidebarFrame, type: 'hidden.mdb.sidenav', handler: handleHidden });
 
             this._ensureSidebarOffcanvas = () => {
                 if (this.sidebarOffcanvas) {
                     return this.sidebarOffcanvas;
                 }
+
                 const bootstrapGlobal = window?.bootstrap;
-                if (!bootstrapGlobal || !bootstrapGlobal.Offcanvas) {
-                    return null;
+                if (bootstrapGlobal?.Offcanvas) {
+                    this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                        backdrop: false,
+                        scroll: false,
+                    });
+                    this.sidebarControllerType = this.sidebarOffcanvas ? 'bootstrap' : null;
+                    return this.sidebarOffcanvas;
                 }
-                this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
-                    backdrop: false,
-                    scroll: false,
-                });
-                return this.sidebarOffcanvas;
+
+                const mdbGlobal = window?.mdb;
+                const SidenavConstructor = mdbGlobal?.Sidenav;
+                if (SidenavConstructor) {
+                    try {
+                        if (typeof SidenavConstructor.getOrCreateInstance === 'function') {
+                            this.sidebarOffcanvas = SidenavConstructor.getOrCreateInstance(sidebarFrame);
+                        } else if (typeof SidenavConstructor.getInstance === 'function') {
+                            this.sidebarOffcanvas = SidenavConstructor.getInstance(sidebarFrame)
+                                || new SidenavConstructor(sidebarFrame);
+                        } else if (typeof SidenavConstructor === 'function') {
+                            this.sidebarOffcanvas = new SidenavConstructor(sidebarFrame);
+                        }
+                        this.sidebarControllerType = this.sidebarOffcanvas ? 'mdb' : null;
+                    } catch (error) {
+                        console.warn('[PageToolbar] Failed to initialize MDB Sidenav instance', error);
+                        this.sidebarOffcanvas = null;
+                        this.sidebarControllerType = null;
+                    }
+                    return this.sidebarOffcanvas;
+                }
+
+                this.sidebarControllerType = null;
+                return null;
             };
 
             if (initialState) {
-                if (window?.bootstrap?.Offcanvas) {
+                if (hasBootstrapOffcanvas || hasMdbSidenav) {
                     this._ensureSidebarOffcanvas();
                     if (this.sidebarOffcanvas) {
                         const elementRef = this.sidebarOffcanvas._element || sidebarFrame;
-                        if (!elementRef.classList.contains('show')) {
-                            this.sidebarOffcanvas.show();
+                        const isShown = elementRef?.classList?.contains('show')
+                            || elementRef?.classList?.contains('sidenav-open');
+                        if (!isShown) {
+                            if (typeof this.sidebarOffcanvas.show === 'function') {
+                                this.sidebarOffcanvas.show();
+                            } else if (typeof this.sidebarOffcanvas.toggle === 'function') {
+                                this.sidebarOffcanvas.toggle();
+                            } else {
+                                elementRef?.classList?.add('show');
+                            }
                         }
                     }
                 } else {
@@ -448,7 +498,7 @@ class PageToolbar extends Toolbar {
 
         if (toggleButtons.length) {
             const handleToggleClick = event => {
-                if (window?.bootstrap?.Offcanvas) {
+                if (window?.bootstrap?.Offcanvas || window?.mdb?.Sidenav) {
                     return;
                 }
                 event.preventDefault();
@@ -782,8 +832,13 @@ class PageToolbar extends Toolbar {
             'flex-shrink-0',
             'text-secondary',
         );
+        sidebarToggle.setAttribute('data-role', 'sidebar-toggle');
+        sidebarToggle.setAttribute('data-bs-toggle', 'offcanvas');
+        sidebarToggle.setAttribute('data-mdb-toggle', 'sidenav');
+        sidebarToggle.setAttribute('data-mdb-ripple-init', '');
         if (sidebarLabel) {
             sidebarToggle.setAttribute('aria-label', sidebarLabel);
+            sidebarToggle.setAttribute('data-mdb-sidenav-label', sidebarLabel);
         }
 
         const iconWrapper = document.createElement('span');
@@ -865,19 +920,24 @@ class PageToolbar extends Toolbar {
         // Боковая панель (sidebar)
         if (!this.properties['noSideFrame']) {
             const sidebarId = (`${toolbarIdBase}-sidebar`).replace(/[^A-Za-z0-9_-]/g, '-');
-            const sidebarFrame = document.createElement('div');
+            const sidebarFrame = document.createElement('nav');
             PageToolbar._addClass(sidebarFrame, 'e-sideframe');
-            sidebarFrame.classList.add('offcanvas', 'offcanvas-start', 'shadow', 'border-0', 'bg-light');
+            sidebarFrame.classList.add('offcanvas', 'offcanvas-start', 'shadow', 'border-0', 'bg-light', 'sidenav', 'sidenav-light');
+            sidebarFrame.setAttribute('data-role', 'page-toolbar-sidebar');
+            sidebarFrame.setAttribute('data-mdb-sidenav-init', '');
+            sidebarFrame.setAttribute('data-mdb-hidden', 'true');
             sidebarFrame.id = sidebarId;
             sidebarFrame.setAttribute('tabindex', '-1');
+            sidebarFrame.setAttribute('data-mdb-target', `#${sidebarId}`);
             sidebarFrame.style.width = '320px';
             if (sidebarLabel) {
                 sidebarFrame.setAttribute('aria-label', sidebarLabel);
+                sidebarFrame.setAttribute('data-mdb-sidenav-label', sidebarLabel);
             }
 
             const sidebarFrameContent = document.createElement('div');
             PageToolbar._addClass(sidebarFrameContent, 'e-sideframe-content');
-            sidebarFrameContent.classList.add('offcanvas-body', 'd-flex', 'flex-column', 'gap-3', 'p-0', 'bg-body-tertiary');
+            sidebarFrameContent.classList.add('offcanvas-body', 'd-flex', 'flex-column', 'gap-3', 'p-0', 'bg-body-tertiary', 'sidenav-menu');
             sidebarFrameContent.style.minHeight = '0';
 
             const sidebarFrameBorder = document.createElement('div');
@@ -906,7 +966,7 @@ class PageToolbar extends Toolbar {
             }
 
             const sidebarHeader = document.createElement('div');
-            sidebarHeader.classList.add('d-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'px-3', 'py-2', 'border-bottom', 'bg-white');
+            sidebarHeader.classList.add('d-flex', 'align-items-center', 'justify-content-between', 'gap-2', 'px-3', 'py-2', 'border-bottom', 'bg-white', 'sidenav-item');
 
             const sidebarHeaderContent = document.createElement('div');
             sidebarHeaderContent.classList.add('d-flex', 'align-items-center', 'gap-2', 'flex-wrap');
@@ -935,6 +995,8 @@ class PageToolbar extends Toolbar {
                 'justify-content-center',
             );
             sidebarCloseButton.setAttribute('data-bs-dismiss', 'offcanvas');
+            sidebarCloseButton.setAttribute('data-mdb-dismiss', 'sidenav');
+            sidebarCloseButton.setAttribute('data-mdb-ripple-init', '');
             sidebarCloseButton.setAttribute('data-role', 'sidebar-close');
             if (closeLabel) {
                 sidebarCloseButton.setAttribute('aria-label', closeLabel);
@@ -956,7 +1018,7 @@ class PageToolbar extends Toolbar {
 
             const sidebarBody = document.createElement('div');
             //sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1', 'p-3');
-            sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1');
+            sidebarBody.classList.add('d-flex', 'flex-column', 'gap-3', 'flex-grow-1', 'sidenav-item');
             sidebarFrameContent.appendChild(sidebarBody);
 
             const iframeWrapper = document.createElement('div');
@@ -994,27 +1056,58 @@ class PageToolbar extends Toolbar {
 
             sidebarFrame.addEventListener('shown.bs.offcanvas', handleSidebarShown);
             sidebarFrame.addEventListener('hidden.bs.offcanvas', handleSidebarHidden);
+            sidebarFrame.addEventListener('shown.mdb.sidenav', handleSidebarShown);
+            sidebarFrame.addEventListener('hidden.mdb.sidenav', handleSidebarHidden);
 
             const bootstrapInitAttempts = { count: 0, max: 40 };
             const ensureOffcanvas = () => {
                 if (this.sidebarOffcanvas) {
                     return true;
                 }
+
                 const bootstrapGlobal = window?.bootstrap;
-                if (!bootstrapGlobal || !bootstrapGlobal.Offcanvas) {
-                    return false;
+                if (bootstrapGlobal?.Offcanvas) {
+                    this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                        backdrop: false,
+                        scroll: false
+                    });
+                    this.sidebarControllerType = this.sidebarOffcanvas ? 'bootstrap' : null;
+                    if (PageToolbar._hasClass(html, 'e-has-sideframe')) {
+                        this.sidebarOffcanvas.show();
+                    }
+                    return !!this.sidebarOffcanvas;
                 }
 
-                this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
-                    backdrop: false,
-                    scroll: false
-                });
-
-                if (PageToolbar._hasClass(html, 'e-has-sideframe')) {
-                    this.sidebarOffcanvas.show();
+                const mdbGlobal = window?.mdb;
+                const SidenavConstructor = mdbGlobal?.Sidenav;
+                if (SidenavConstructor) {
+                    try {
+                        if (typeof SidenavConstructor.getOrCreateInstance === 'function') {
+                            this.sidebarOffcanvas = SidenavConstructor.getOrCreateInstance(sidebarFrame);
+                        } else if (typeof SidenavConstructor.getInstance === 'function') {
+                            this.sidebarOffcanvas = SidenavConstructor.getInstance(sidebarFrame)
+                                || new SidenavConstructor(sidebarFrame);
+                        } else if (typeof SidenavConstructor === 'function') {
+                            this.sidebarOffcanvas = new SidenavConstructor(sidebarFrame);
+                        }
+                        this.sidebarControllerType = this.sidebarOffcanvas ? 'mdb' : null;
+                        if (this.sidebarOffcanvas && PageToolbar._hasClass(html, 'e-has-sideframe')) {
+                            if (typeof this.sidebarOffcanvas.show === 'function') {
+                                this.sidebarOffcanvas.show();
+                            } else if (typeof this.sidebarOffcanvas.toggle === 'function') {
+                                this.sidebarOffcanvas.toggle();
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[PageToolbar] Failed to initialize MDB Sidenav instance', error);
+                        this.sidebarOffcanvas = null;
+                        this.sidebarControllerType = null;
+                    }
+                    return !!this.sidebarOffcanvas;
                 }
 
-                return true;
+                this.sidebarControllerType = null;
+                return false;
             };
 
             const waitForOffcanvas = () => {
@@ -1022,7 +1115,7 @@ class PageToolbar extends Toolbar {
                     if (bootstrapInitAttempts.count++ < bootstrapInitAttempts.max) {
                         window.setTimeout(waitForOffcanvas, 50);
                     } else {
-                        console.warn('[PageToolbar] Bootstrap Offcanvas API is not available.');
+                        console.warn('[PageToolbar] Sidebar controller API is not available.');
                     }
                 }
             };
@@ -1031,12 +1124,17 @@ class PageToolbar extends Toolbar {
             this._ensureSidebarOffcanvas = ensureOffcanvas;
 
             sidebarToggle.addEventListener('click', event => {
+                if (window?.bootstrap?.Offcanvas || window?.mdb?.Sidenav) {
+                    return;
+                }
                 event.preventDefault();
                 event.stopPropagation();
                 this.toggleSidebar();
             });
 
             sidebarToggle.setAttribute('aria-controls', sidebarId);
+            sidebarToggle.setAttribute('data-bs-target', `#${sidebarId}`);
+            sidebarToggle.setAttribute('data-mdb-target', `#${sidebarId}`);
         } else {
             sidebarToggle.classList.add('disabled');
             sidebarToggle.setAttribute('aria-disabled', 'true');
@@ -1046,6 +1144,7 @@ class PageToolbar extends Toolbar {
             this._updateSidebarToggleState = null;
             this.sidebarFrameElement = null;
             this.sidebarOffcanvas = null;
+            this.sidebarControllerType = null;
             this._ensureSidebarOffcanvas = null;
         }
 
@@ -1081,10 +1180,23 @@ class PageToolbar extends Toolbar {
             this._ensureSidebarOffcanvas();
         }
 
-        if (this.sidebarOffcanvas && typeof this.sidebarOffcanvas.toggle === 'function') {
+        if (this.sidebarOffcanvas) {
             const element = this.sidebarOffcanvas._element || this.sidebarFrameElement;
-            const isShown = element ? element.classList.contains('show') : false;
-            this.sidebarOffcanvas.toggle();
+            const isShown = element
+                ? element.classList.contains('show') || element.classList.contains('sidenav-open')
+                : false;
+
+            if (typeof this.sidebarOffcanvas.toggle === 'function') {
+                this.sidebarOffcanvas.toggle();
+            } else if (typeof this.sidebarOffcanvas.show === 'function'
+                && typeof this.sidebarOffcanvas.hide === 'function') {
+                if (isShown) {
+                    this.sidebarOffcanvas.hide();
+                } else {
+                    this.sidebarOffcanvas.show();
+                }
+            }
+
             const nextState = !isShown;
             this._handleSidebarStateChange(nextState, { persist: false });
             return nextState;
@@ -1123,6 +1235,7 @@ class PageToolbar extends Toolbar {
             this.sidebarOffcanvas.dispose();
         }
         this.sidebarOffcanvas = null;
+        this.sidebarControllerType = null;
 
         if (Array.isArray(this._layoutCleanupFns) && this._layoutCleanupFns.length) {
             this._layoutCleanupFns.forEach(cleanup => {

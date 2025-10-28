@@ -24,5 +24,6 @@
     <!-- Overrides specific to MDBootstrap UI -->
     <xsl:include href="form-field-wrapper.xslt"/>
     <xsl:include href="fields.xslt"/>
+    <xsl:include href="pagetoolbar.xslt"/>
 
 </xsl:stylesheet>
