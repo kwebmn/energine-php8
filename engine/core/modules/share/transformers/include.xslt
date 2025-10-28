@@ -15,7 +15,7 @@
     <xsl:include href="bootstrap/pagetoolbar.xslt"/>
     <xsl:include href="bootstrap/file.xslt"/>
     <xsl:include href="bootstrap/divisionEditor.xslt"/>
-    <xsl:include href="bootstrap/tagEditor.xslt"/>
+    <xsl:include href="bootstrap/tageditor.xslt"/>
     <xsl:include href="bootstrap/text.xslt"/>
     <xsl:include href="bootstrap/media.xslt"/>
     <xsl:include href="bootstrap/filters_tree_editor.xslt"/>
