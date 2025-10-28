@@ -130,14 +130,15 @@
                     <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
                 </xsl:if>
                 <div class="offcanvas-body d-flex flex-column gap-3 p-0 bg-body-tertiary e-sideframe-content" data-role="sidebar-content">
-                    <header class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
-                        <div class="d-flex align-items-center gap-2 flex-wrap" data-role="sidebar-environment"></div>
-                        <div class="d-flex align-items-center gap-2 ms-auto" data-role="sidebar-actions">
-                            <button type="button" class="btn btn-sm btn-light" data-role="sidebar-close" data-bs-dismiss="offcanvas">
+                    <header class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
+                        <div class="d-flex align-items-center gap-2" data-role="sidebar-actions">
+                            <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center" data-role="sidebar-close" data-bs-dismiss="offcanvas">
                                 <xsl:if test="string-length(normalize-space($CLOSE_LABEL)) &gt; 0">
                                     <xsl:attribute name="aria-label"><xsl:value-of select="$CLOSE_LABEL"/></xsl:attribute>
-                                    <xsl:value-of select="$CLOSE_LABEL"/>
                                 </xsl:if>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                                    <path d="M10.5 2.5a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 1 0V3a.5.5 0 0 0-.5-.5Zm-5.354 5.646a.5.5 0 0 0 0 .708l3 3a.5.5 0 1 0 .708-.708L6.707 8l2.147-2.146a.5.5 0 0 0-.708-.708l-3 3Z"/>
+                                </svg>
                             </button>
                         </div>
                     </header>

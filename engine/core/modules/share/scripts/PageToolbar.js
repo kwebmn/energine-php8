@@ -302,26 +302,6 @@ class PageToolbar extends Toolbar {
             }
         }
 
-        const sidebarEnvironmentTarget = root.querySelector('[data-role="sidebar-environment"]');
-        if (sidebarEnvironmentTarget && !sidebarEnvironmentTarget.childElementCount) {
-            const environmentOverride = PageToolbar._resolveDatasetValue(
-                ['eEnvironmentLabel', 'eEnvironment', 'environmentLabel', 'environment', 'environmentName'],
-                this._layoutConfig,
-                dataset,
-                rootDataset,
-                sidebarEnvironmentTarget.dataset || {}
-            );
-            const environmentLabel = (typeof environmentOverride === 'string' && environmentOverride.trim())
-                ? environmentOverride.trim()
-                : PageToolbar._extractEnvironmentLabel();
-            if (environmentLabel) {
-                const badge = document.createElement('span');
-                badge.classList.add('badge', 'text-bg-secondary', 'fw-semibold');
-                badge.textContent = environmentLabel;
-                sidebarEnvironmentTarget.appendChild(badge);
-            }
-        }
-
         const offcanvasSelectorValue = PageToolbar._resolveDatasetValue(
             ['eOffcanvasTarget', 'eSidebarTarget', 'offcanvasTarget', 'sidebarTarget', 'sidebarSelector'],
             this._layoutConfig,
