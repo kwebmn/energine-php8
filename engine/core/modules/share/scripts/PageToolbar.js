@@ -1134,7 +1134,10 @@ class PageToolbar extends Toolbar {
             sidebarFrame.id = sidebarId;
             sidebarFrame.setAttribute('tabindex', '-1');
             sidebarFrame.setAttribute('data-mdb-target', `#${sidebarId}`);
-            sidebarFrame.style.width = '320px';
+            const defaultSidebarWidth = 'calc(var(--bs-offcanvas-width, 240px) + 100px)';
+            sidebarFrame.style.setProperty('--mdb-sidenav-width', defaultSidebarWidth);
+            sidebarFrame.style.width = defaultSidebarWidth;
+            sidebarFrame.style.maxWidth = defaultSidebarWidth;
             if (sidebarLabel) {
                 sidebarFrame.setAttribute('aria-label', sidebarLabel);
                 sidebarFrame.setAttribute('data-mdb-sidenav-label', sidebarLabel);
@@ -2099,7 +2102,8 @@ class PageToolbar extends Toolbar {
                     || computedStyles.width
                     || '').trim();
                 const normalizedWidth = bootstrapWidth || sidebarFrame.style.width || '';
-                let expandedWidth = normalizedWidth;
+                const fallbackWidth = '340px';
+                let expandedWidth = normalizedWidth || fallbackWidth;
 
                 if (normalizedWidth) {
                     const pxMatch = normalizedWidth.match(/^-?\s*([\d.]+)px$/i);
@@ -2111,14 +2115,16 @@ class PageToolbar extends Toolbar {
                     } else if (!/calc\(/i.test(normalizedWidth)) {
                         expandedWidth = `calc(${normalizedWidth} + 100px)`;
                     }
+                } else {
+                    expandedWidth = fallbackWidth;
                 }
 
                 if (expandedWidth) {
                     sidebarFrame.style.setProperty('--mdb-sidenav-width', expandedWidth);
-                    if (!sidebarFrame.style.width || sidebarFrame.style.width === 'auto') {
+                    if (sidebarFrame.style.width !== expandedWidth) {
                         sidebarFrame.style.width = expandedWidth;
                     }
-                    if (!sidebarFrame.style.maxWidth || sidebarFrame.style.maxWidth === 'none') {
+                    if (sidebarFrame.style.maxWidth !== expandedWidth) {
                         sidebarFrame.style.maxWidth = expandedWidth;
                     }
                 }
