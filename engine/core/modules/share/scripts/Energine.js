@@ -184,7 +184,7 @@ const UIHelpers = {
         if (!container) {
             container = document.createElement('div');
             container.id = 'energine-toast-container';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3 energine-swal-toast-container';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
             container.style.zIndex = '11000';
             document.body.appendChild(container);
         }
@@ -526,22 +526,20 @@ class EnergineCore {
             id: 'energine-confirm-modal',
             templateId: 'swal-confirm-v1',
             template: `
-            <div class="modal fade energine-swal-modal" id="energine-confirm-modal" data-energine-template="swal-confirm-v1" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="energine-confirm-modal-title" aria-describedby="energine-confirm-modal-message">
-                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content energine-swal-content">
-                        <div class="modal-header energine-swal-header border-0">
-                            <button type="button" class="btn-close energine-swal-close" data-role="close" data-bs-dismiss="modal" data-mdb-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body energine-swal-body text-center">
-                            <div class="energine-swal-icon energine-swal-icon--warning" data-role="icon">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
+            <div class="modal fade" id="energine-confirm-modal" data-energine-template="swal-confirm-v1" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="energine-confirm-modal-title" aria-describedby="energine-confirm-modal-message">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header border-0 pb-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation text-warning fs-3"></i>
+                                <h5 class="modal-title mb-0" id="energine-confirm-modal-title" data-role="title">Подтверждение</h5>
                             </div>
-                            <h5 class="modal-title energine-swal-title" id="energine-confirm-modal-title" data-role="title">Подтверждение</h5>
-                            <div class="energine-swal-message" id="energine-confirm-modal-message" data-role="message"></div>
+                            <button type="button" class="btn-close" data-role="close" data-bs-dismiss="modal" data-mdb-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div class="modal-footer energine-swal-actions border-0">
-                            <button type="button" class="btn btn-outline-secondary energine-swal-btn" data-role="cancel" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="dark">Нет</button>
-                            <button type="button" class="btn btn-primary energine-swal-btn" data-role="confirm" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="light">Да</button>
+                        <div class="modal-body" id="energine-confirm-modal-message" data-role="message"></div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-outline-secondary" data-role="cancel" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="dark">Нет</button>
+                            <button type="button" class="btn btn-primary" data-role="confirm" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="light">Да</button>
                         </div>
                     </div>
                 </div>
@@ -611,21 +609,19 @@ class EnergineCore {
             id: 'energine-alert-modal',
             templateId: 'swal-alert-v1',
             template: `
-            <div class="modal fade energine-swal-modal" id="energine-alert-modal" data-energine-template="swal-alert-v1" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="energine-alert-modal-title" aria-describedby="energine-alert-modal-message">
-                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content energine-swal-content">
-                        <div class="modal-header energine-swal-header border-0">
-                            <button type="button" class="btn-close energine-swal-close" data-role="close" data-bs-dismiss="modal" data-mdb-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body energine-swal-body text-center">
-                            <div class="energine-swal-icon energine-swal-icon--danger" data-role="icon">
-                                <i class="fa-solid fa-circle-exclamation"></i>
+            <div class="modal fade" id="energine-alert-modal" data-energine-template="swal-alert-v1" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="energine-alert-modal-title" aria-describedby="energine-alert-modal-message">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header border-0 pb-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-circle-exclamation text-danger fs-3"></i>
+                                <h5 class="modal-title mb-0" id="energine-alert-modal-title" data-role="title">Внимание</h5>
                             </div>
-                            <h5 class="modal-title energine-swal-title" id="energine-alert-modal-title" data-role="title">Внимание</h5>
-                            <div class="energine-swal-message" id="energine-alert-modal-message" data-role="message"></div>
+                            <button type="button" class="btn-close" data-role="close" data-bs-dismiss="modal" data-mdb-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div class="modal-footer energine-swal-actions border-0">
-                            <button type="button" class="btn btn-primary energine-swal-btn" data-role="confirm" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="light">Ок</button>
+                        <div class="modal-body" id="energine-alert-modal-message" data-role="message"></div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-primary" data-role="confirm" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="light">Ок</button>
                         </div>
                     </div>
                 </div>
@@ -685,17 +681,15 @@ class EnergineCore {
         const { variant, icon: iconClass, toastClasses = [] } = Notifications.resolveIconConfig(icon);
 
         const toast = document.createElement('div');
-        toast.className = 'toast energine-swal-toast fade shadow border-0';
+        toast.className = 'toast fade shadow border-0';
         toast.dataset.variant = variant;
         toast.setAttribute('role', 'alert');
         toast.setAttribute('aria-live', 'assertive');
         toast.setAttribute('aria-atomic', 'true');
         toast.innerHTML = `
-            <div class="d-flex align-items-center energine-swal-toast-body">
-                <span class="energine-swal-toast-icon">
-                    <i class="fa-solid ${iconClass}"></i>
-                </span>
-                <span class="flex-grow-1 energine-swal-toast-message" data-role="message"></span>
+            <div class="d-flex align-items-center gap-3 px-3 py-2">
+                <span class="fs-5"><i class="fa-solid ${iconClass}"></i></span>
+                <span class="flex-grow-1" data-role="message"></span>
                 <button type="button" class="btn-close" data-role="close" data-bs-dismiss="toast" data-mdb-dismiss="toast" aria-label="Close"></button>
             </div>
         `;
