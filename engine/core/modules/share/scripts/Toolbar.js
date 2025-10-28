@@ -14,6 +14,81 @@ const CUSTOM_SELECT_BUTTON_CLASSES = [
     'gap-2'
 ];
 
+const normalizeDatasetPropKey = (key = '') => key
+    .slice(4)
+    .replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+    .toLowerCase();
+
+const readValueFromElement = (element, { datasetKey, attributeNames = [], fallback } = {}) => {
+    if (!(element instanceof HTMLElement)) {
+        return '';
+    }
+    const dataset = element.dataset || {};
+    if (datasetKey && Object.prototype.hasOwnProperty.call(dataset, datasetKey)) {
+        const datasetValue = dataset[datasetKey];
+        if (datasetValue !== undefined && datasetValue !== null && datasetValue !== '') {
+            return datasetValue;
+        }
+    }
+    for (const attr of attributeNames) {
+        if (!attr || typeof element.getAttribute !== 'function') {
+            continue;
+        }
+        const attrValue = element.getAttribute(attr);
+        if (attrValue !== null && attrValue !== '') {
+            return attrValue;
+        }
+    }
+    if (typeof fallback === 'function') {
+        const fallbackValue = fallback(element);
+        if (fallbackValue !== undefined && fallbackValue !== null && fallbackValue !== '') {
+            return fallbackValue;
+        }
+    }
+    return '';
+};
+
+const createRegistryManager = () => {
+    const maps = new Map();
+    const ensureMap = (name) => {
+        if (!maps.has(name)) {
+            maps.set(name, new Map());
+        }
+        return maps.get(name);
+    };
+    return {
+        ensureMap,
+        assignTo(target, name) {
+            target[name] = ensureMap(name);
+            return target[name];
+        },
+        get(name, key) {
+            return ensureMap(name).get(key);
+        },
+        set(name, key, value) {
+            ensureMap(name).set(key, value);
+        },
+        delete(name, key) {
+            ensureMap(name).delete(key);
+        },
+        pushToList(name, key, value) {
+            const map = ensureMap(name);
+            const list = map.get(key) || [];
+            list.push(value);
+            map.set(key, list);
+            return list;
+        },
+        flushList(name, key) {
+            const map = ensureMap(name);
+            const list = map.get(key) || [];
+            map.delete(key);
+            return list;
+        }
+    };
+};
+
+const registryManager = createRegistryManager();
+
 const CONTROL_DESCRIPTOR_PROP_CONFIG = [
     { key: 'id', datasetKey: 'controlId', attributeNames: ['data-control-id'] },
     {
@@ -140,18 +215,41 @@ class Toolbar {
         this.boundTo = obj;
     }
 
-    appendControl(...args) {
-        args.forEach(control => {
-            if (control?.type && control.id) {
-                control.action = control.onclick;
-                delete control.onclick;
-                const fallbackTypes = control.type === 'submit' ? ['button'] : [];
-                const factoryDescriptor = Toolbar.resolveControlFactory(control.type, fallbackTypes);
-                if (factoryDescriptor?.fromProps) {
-                    control = factoryDescriptor.fromProps(control);
-                }
+    _materializeControl(control) {
+        if (control?.type && control.id) {
+            control.action = control.onclick;
+            delete control.onclick;
+            const fallbackTypes = control.type === 'submit' ? ['button'] : [];
+            const factoryDescriptor = Toolbar.resolveControlFactory(control.type, fallbackTypes);
+            if (factoryDescriptor?.fromProps) {
+                control = factoryDescriptor.fromProps(control);
             }
-            if (control instanceof Toolbar.Control) {
+        }
+        return control instanceof Toolbar.Control ? control : null;
+    }
+
+    _collectControls(ids = []) {
+        if (!Array.isArray(ids) || !ids.length) {
+            return [...this.controls];
+        }
+        return ids
+            .map(id => (typeof id === 'string' ? this.getControlById(id) : id))
+            .filter(control => control instanceof Toolbar.Control);
+    }
+
+    _forEachControl(ids, iteratee) {
+        this._collectControls(ids).forEach(control => {
+            if (control) {
+                iteratee(control);
+            }
+        });
+    }
+
+    appendControl(...args) {
+        args
+            .map(control => this._materializeControl(control))
+            .filter(Boolean)
+            .forEach(control => {
                 control.toolbar = this;
                 control.build();
                 if (control.element) {
@@ -161,47 +259,34 @@ class Toolbar {
                     this.controls.push(control);
                     control.afterMount?.();
                 }
-            }
-        });
+            });
     }
 
     removeControl(control) {
-        if (typeof control === 'string') control = this.getControlById(control);
-        if (control instanceof Toolbar.Control) {
-            let idx = this.controls.indexOf(control);
+        const controls = this._collectControls([control]);
+        controls.forEach(ctrl => {
+            const idx = this.controls.indexOf(ctrl);
             if (idx !== -1) {
-                control.destroy?.();
-                if (control.element?.parentNode) control.element.parentNode.removeChild(control.element);
-                control.toolbar = null;
+                ctrl.destroy?.();
+                if (ctrl.element?.parentNode) ctrl.element.parentNode.removeChild(ctrl.element);
+                ctrl.toolbar = null;
                 this.controls.splice(idx, 1);
             }
-        }
+        });
     }
     getControlById(id) {
         return this.controls.find(c => c.properties.id === id) || null;
     }
     disableControls(...ids) {
-        if (!ids.length) {
-            this.controls.forEach(ctrl => { if (ctrl.properties.id !== 'close') ctrl.disable(); });
-        } else {
-            ids.forEach(id => {
-                let c = this.getControlById(id);
-                if (c) c.disable();
-            });
-        }
+        const controls = ids.length ? this._collectControls(ids) : this.controls.filter(ctrl => ctrl.properties.id !== 'close');
+        controls.forEach(ctrl => ctrl.disable());
     }
     enableControls(...ids) {
-        if (!ids.length) {
-            this.controls.forEach(ctrl => ctrl.enable());
-        } else {
-            ids.forEach(id => {
-                let c = this.getControlById(id);
-                if (c) c.enable();
-            });
-        }
+        const controls = ids.length ? this._collectControls(ids) : [...this.controls];
+        controls.forEach(ctrl => ctrl.enable());
     }
     allButtonsUp() {
-        this.controls.forEach(ctrl => {
+        this._forEachControl([], ctrl => {
             if (ctrl instanceof Toolbar.Button) ctrl.up();
         });
     }
@@ -213,41 +298,20 @@ class Toolbar {
 
     // Hydration helpers
     static extractPropertiesFromDataset(dataset = {}, overrides = {}) {
-        const props = {};
-        Object.entries(dataset).forEach(([key, value]) => {
-            if (!key || typeof value === 'undefined' || value === null) {
-                return;
-            }
-            if (key.startsWith('prop')) {
-                const normalized = key.slice(4).replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).toLowerCase();
+        const props = Object.entries(dataset)
+            .filter(([key, value]) => key && value !== undefined && value !== null && key.startsWith('prop'))
+            .reduce((acc, [key, value]) => {
+                const normalized = normalizeDatasetPropKey(key);
                 if (normalized) {
-                    props[normalized] = value;
+                    acc[normalized] = value;
                 }
-            }
-        });
+                return acc;
+            }, {});
         return Object.assign(props, overrides || {});
     }
 
     static readDatasetOrAttribute(element, datasetKey, attributeNames = []) {
-        if (!(element instanceof HTMLElement)) {
-            return '';
-        }
-        if (datasetKey && element.dataset && typeof element.dataset === 'object') {
-            const datasetValue = element.dataset[datasetKey];
-            if (typeof datasetValue !== 'undefined' && datasetValue !== null && datasetValue !== '') {
-                return datasetValue;
-            }
-        }
-        for (const attr of attributeNames) {
-            if (!attr || typeof element.getAttribute !== 'function') {
-                continue;
-            }
-            const attrValue = element.getAttribute(attr);
-            if (attrValue !== null && attrValue !== '') {
-                return attrValue;
-            }
-        }
-        return '';
+        return readValueFromElement(element, { datasetKey, attributeNames });
     }
 
     static extractControlDescriptor(element) {
@@ -259,14 +323,11 @@ class Toolbar {
         const rawType = declaredType || element.tagName.toLowerCase();
         let type = (rawType || 'button').toLowerCase();
 
-        const props = {};
-        CONTROL_DESCRIPTOR_PROP_CONFIG.forEach(({ key, datasetKey, attributeNames, fallback }) => {
-            let value = Toolbar.readDatasetOrAttribute(element, datasetKey, attributeNames);
-            if ((!value || value === '') && typeof fallback === 'function') {
-                value = fallback(element);
-            }
-            props[key] = value || '';
-        });
+        const props = CONTROL_DESCRIPTOR_PROP_CONFIG.reduce((acc, config) => {
+            const value = readValueFromElement(element, config);
+            acc[config.key] = value || '';
+            return acc;
+        }, {});
 
         props.action = Toolbar.normalizeActionName(props.action);
         const disabled = element.hasAttribute('disabled')
@@ -364,9 +425,7 @@ class Toolbar {
     static ensureRegistryMaps(...keys) {
         const targets = keys.length ? keys : ['registry', 'pendingToolbars', 'componentInstances'];
         targets.forEach(key => {
-            if (!Toolbar[key]) {
-                Toolbar[key] = new Map();
-            }
+            registryManager.assignTo(Toolbar, key);
         });
     }
 
@@ -375,7 +434,7 @@ class Toolbar {
             return;
         }
         Toolbar.ensureRegistryMaps('registry');
-        Toolbar.registry.set(toolbar.element, toolbar);
+        registryManager.set('registry', toolbar.element, toolbar);
 
         if (!componentRef) {
             return;
@@ -383,15 +442,13 @@ class Toolbar {
 
         Toolbar.ensureRegistryMaps('pendingToolbars', 'componentInstances');
 
-        const componentInstance = Toolbar.componentInstances.get(componentRef);
+        const componentInstance = registryManager.get('componentInstances', componentRef);
         if (componentInstance && typeof componentInstance.attachToolbar === 'function') {
             componentInstance.attachToolbar(toolbar);
             return;
         }
 
-        const list = Toolbar.pendingToolbars.get(componentRef) || [];
-        list.push(toolbar);
-        Toolbar.pendingToolbars.set(componentRef, list);
+        registryManager.pushToList('pendingToolbars', componentRef, toolbar);
     }
 
     static registerComponentInstance(componentRef, instance) {
@@ -399,9 +456,9 @@ class Toolbar {
             return;
         }
         Toolbar.ensureRegistryMaps('componentInstances');
-        Toolbar.componentInstances.set(componentRef, instance);
+        registryManager.set('componentInstances', componentRef, instance);
 
-        const pending = Toolbar.pendingToolbars && Toolbar.pendingToolbars.get(componentRef);
+        const pending = registryManager.flushList('pendingToolbars', componentRef);
         if (pending && pending.length) {
             pending.forEach(toolbar => {
                 try {
@@ -410,7 +467,6 @@ class Toolbar {
                     console.warn('[Toolbar] Failed to attach toolbar to component', componentRef, error);
                 }
             });
-            Toolbar.pendingToolbars.delete(componentRef);
         }
     }
 
@@ -648,18 +704,40 @@ class Toolbar {
             this.usesDeclarativeElement = true;
         }
         load(controlDescr) {
-            this.properties.id = controlDescr.getAttribute('id') || '';
-            this.properties.icon = Toolbar.readDatasetOrAttribute(controlDescr, 'icon', ['icon', 'data-icon']);
-            this.properties.iconOnly = Toolbar.normalizeBoolean(
-                Toolbar.readDatasetOrAttribute(controlDescr, 'iconOnly', ['icon-only', 'data-icon-only'])
-            );
-            const titleAttr = Toolbar.readDatasetOrAttribute(controlDescr, 'title', ['title', 'data-title']);
-            this.properties.title = titleAttr || controlDescr.textContent?.trim() || '';
-            const actionAttr = Toolbar.readDatasetOrAttribute(controlDescr, 'action', ['action', 'onclick', 'data-action']);
-            this.properties.action = Toolbar.normalizeActionName(actionAttr);
-            const tooltipAttr = Toolbar.readDatasetOrAttribute(controlDescr, 'tooltip', ['tooltip', 'title', 'data-bs-original-title']);
-            this.properties.tooltip = tooltipAttr || '';
-            this.properties.type = Toolbar.readDatasetOrAttribute(controlDescr, 'type', ['type']);
+            const propertyReaders = [
+                { prop: 'id', read: el => el.getAttribute('id') || '' },
+                { prop: 'icon', read: el => Toolbar.readDatasetOrAttribute(el, 'icon', ['icon', 'data-icon']) },
+                {
+                    prop: 'iconOnly',
+                    read: el => Toolbar.readDatasetOrAttribute(el, 'iconOnly', ['icon-only', 'data-icon-only']),
+                    transform: Toolbar.normalizeBoolean
+                },
+                {
+                    prop: 'title',
+                    read: el => readValueFromElement(el, {
+                        datasetKey: 'title',
+                        attributeNames: ['title', 'data-title'],
+                        fallback: node => node.textContent?.trim() || ''
+                    })
+                },
+                {
+                    prop: 'action',
+                    read: el => Toolbar.readDatasetOrAttribute(el, 'action', ['action', 'onclick', 'data-action']),
+                    transform: Toolbar.normalizeActionName
+                },
+                {
+                    prop: 'tooltip',
+                    read: el => Toolbar.readDatasetOrAttribute(el, 'tooltip', ['tooltip', 'title', 'data-bs-original-title'])
+                },
+                { prop: 'type', read: el => Toolbar.readDatasetOrAttribute(el, 'type', ['type']) }
+            ];
+
+            propertyReaders.forEach(({ prop, read, transform }) => {
+                const raw = (typeof read === 'function') ? read(controlDescr) : '';
+                const value = transform ? transform(raw) : raw;
+                this.properties[prop] = (value !== undefined && value !== null) ? value : '';
+            });
+
             this.properties.isDisabled = controlDescr.hasAttribute('disabled');
             this.properties.isInitiallyDisabled = this.properties.isDisabled;
         }
@@ -1417,9 +1495,9 @@ class Toolbar {
     };
 }
 
-Toolbar.registry = new Map();
-Toolbar.pendingToolbars = new Map();
-Toolbar.componentInstances = new Map();
+Toolbar.registry = registryManager.ensureMap('registry');
+Toolbar.pendingToolbars = registryManager.ensureMap('pendingToolbars');
+Toolbar.componentInstances = registryManager.ensureMap('componentInstances');
 
 const buttonFactory = {
     fromProps: props => new Toolbar.Button(Object.assign({}, props)),
