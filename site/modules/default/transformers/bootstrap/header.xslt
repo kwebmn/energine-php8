@@ -49,8 +49,10 @@
                 <button
                         class="navbar-toggler"
                         type="button"
-                        data-bs-toggle="collapse">
+                        data-bs-toggle="collapse"
+                        data-mdb-toggle="collapse">
                     <xsl:attribute name="data-bs-target">#<xsl:value-of select="$NAVBAR_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$NAVBAR_ID"/></xsl:attribute>
                     <xsl:attribute name="aria-controls"><xsl:value-of select="$NAVBAR_ID"/></xsl:attribute>
                     <xsl:attribute name="aria-expanded">false</xsl:attribute>
                     <xsl:attribute name="aria-label">Menu</xsl:attribute>
@@ -108,7 +110,9 @@
             </xsl:attribute>
             <xsl:choose>
                 <xsl:when test="$HAS_CHILDREN">
-                    <a class="nav-link dropdown-toggle" id="{$DROPDOWN_ID}" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" id="{$DROPDOWN_ID}" role="button" data-bs-toggle="dropdown" data-mdb-toggle="dropdown">
+                        <xsl:attribute name="data-mdb-dropdown-init"></xsl:attribute>
+                        <xsl:attribute name="data-mdb-ripple-init"></xsl:attribute>
                         <xsl:attribute name="href">
                             <xsl:choose>
                                 <xsl:when test="string-length(normalize-space(field[@name='Segment'])) &gt; 0">
@@ -187,9 +191,12 @@
                         id="{$DROPDOWN_ID}"
                         role="button"
                         data-bs-toggle="dropdown"
+                        data-mdb-toggle="dropdown"
                         aria-expanded="false"
                         aria-haspopup="true"
                 >
+                    <xsl:attribute name="data-mdb-dropdown-init"></xsl:attribute>
+                    <xsl:attribute name="data-mdb-ripple-init"></xsl:attribute>
                     <xsl:value-of select="//field[@name='lang_id' and text() = $LANG_ID]/../field[@name='lang_name']" />
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="{$DROPDOWN_ID}">
