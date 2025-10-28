@@ -57,6 +57,20 @@ class PageToolbar extends Toolbar {
         this._layoutConfig = config.layout || {};
         this._layoutCleanupFns = [];
         this._boundEditModeUnpressed = this._handleEditModeUnpressed.bind(this);
+        const layoutConfig = this._layoutConfig || {};
+        const uiFrameworkValue = config.uiFramework
+            || PageToolbar._resolveDatasetValue(
+                ['eUiFramework', 'uiFramework', 'ui'],
+                config.properties,
+                layoutConfig.toolbarDataset,
+                layoutConfig.dataset,
+                layoutConfig.rootDataset,
+                layoutConfig.combinedDataset,
+                config.element?.dataset,
+            )
+            || (typeof document !== 'undefined' ? document.documentElement?.dataset?.ui : '');
+        this.uiFramework = PageToolbar._normalizeUIFramework(uiFrameworkValue);
+        this._offcanvasClass = null;
 
         if (config.mode !== 'declarative' && config.shouldDock) {
             this.dock();
@@ -420,11 +434,11 @@ class PageToolbar extends Toolbar {
                 if (this.sidebarOffcanvas) {
                     return this.sidebarOffcanvas;
                 }
-                const bootstrapGlobal = window?.bootstrap;
-                if (!bootstrapGlobal || !bootstrapGlobal.Offcanvas) {
+                const OffcanvasClass = this._getOffcanvasClass();
+                if (!OffcanvasClass || typeof OffcanvasClass.getOrCreateInstance !== 'function') {
                     return null;
                 }
-                this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                this.sidebarOffcanvas = OffcanvasClass.getOrCreateInstance(sidebarFrame, {
                     backdrop: false,
                     scroll: false,
                 });
@@ -432,7 +446,7 @@ class PageToolbar extends Toolbar {
             };
 
             if (initialState) {
-                if (window?.bootstrap?.Offcanvas) {
+                if (this._getOffcanvasClass()) {
                     this._ensureSidebarOffcanvas();
                     if (this.sidebarOffcanvas) {
                         const elementRef = this.sidebarOffcanvas._element || sidebarFrame;
@@ -448,9 +462,6 @@ class PageToolbar extends Toolbar {
 
         if (toggleButtons.length) {
             const handleToggleClick = event => {
-                if (window?.bootstrap?.Offcanvas) {
-                    return;
-                }
                 event.preventDefault();
                 event.stopPropagation();
                 this.toggleSidebar();
@@ -995,17 +1006,17 @@ class PageToolbar extends Toolbar {
             sidebarFrame.addEventListener('shown.bs.offcanvas', handleSidebarShown);
             sidebarFrame.addEventListener('hidden.bs.offcanvas', handleSidebarHidden);
 
-            const bootstrapInitAttempts = { count: 0, max: 40 };
+            const offcanvasInitAttempts = { count: 0, max: 40 };
             const ensureOffcanvas = () => {
                 if (this.sidebarOffcanvas) {
                     return true;
                 }
-                const bootstrapGlobal = window?.bootstrap;
-                if (!bootstrapGlobal || !bootstrapGlobal.Offcanvas) {
+                const OffcanvasClass = this._getOffcanvasClass();
+                if (!OffcanvasClass || typeof OffcanvasClass.getOrCreateInstance !== 'function') {
                     return false;
                 }
 
-                this.sidebarOffcanvas = bootstrapGlobal.Offcanvas.getOrCreateInstance(sidebarFrame, {
+                this.sidebarOffcanvas = OffcanvasClass.getOrCreateInstance(sidebarFrame, {
                     backdrop: false,
                     scroll: false
                 });
@@ -1019,10 +1030,10 @@ class PageToolbar extends Toolbar {
 
             const waitForOffcanvas = () => {
                 if (!ensureOffcanvas()) {
-                    if (bootstrapInitAttempts.count++ < bootstrapInitAttempts.max) {
+                    if (offcanvasInitAttempts.count++ < offcanvasInitAttempts.max) {
                         window.setTimeout(waitForOffcanvas, 50);
                     } else {
-                        console.warn('[PageToolbar] Bootstrap Offcanvas API is not available.');
+                        console.warn('[PageToolbar] Offcanvas API is not available (Bootstrap/MDB).');
                     }
                 }
             };
@@ -1123,6 +1134,7 @@ class PageToolbar extends Toolbar {
             this.sidebarOffcanvas.dispose();
         }
         this.sidebarOffcanvas = null;
+        this._offcanvasClass = null;
 
         if (Array.isArray(this._layoutCleanupFns) && this._layoutCleanupFns.length) {
             this._layoutCleanupFns.forEach(cleanup => {
@@ -1599,6 +1611,64 @@ class PageToolbar extends Toolbar {
         return `#${candidate}`;
     }
 
+    static _normalizeUIFramework(value) {
+        if (typeof value === 'undefined' || value === null) {
+            return '';
+        }
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            if (!normalized) {
+                return '';
+            }
+            if (['mdbootstrap', 'mdb', 'mdb5', 'md'].includes(normalized)) {
+                return 'mdbootstrap';
+            }
+            if (['bootstrap5', 'bootstrap', 'bs5', 'bs'].includes(normalized)) {
+                return 'bootstrap5';
+            }
+            return normalized;
+        }
+        return '';
+    }
+
+    static _resolveOffcanvasClass(uiFramework = '') {
+        const normalized = PageToolbar._normalizeUIFramework(uiFramework);
+        const scope = typeof window !== 'undefined' ? window : {};
+        const candidates = [];
+
+        const pushCandidate = (candidate) => {
+            if (!candidate) {
+                return;
+            }
+            if (typeof candidate === 'function' && (typeof candidate.getOrCreateInstance === 'function' || candidate.prototype)) {
+                candidates.push(candidate);
+                return;
+            }
+            if (typeof candidate === 'object' && typeof candidate.Offcanvas === 'function') {
+                candidates.push(candidate.Offcanvas);
+            }
+        };
+
+        if (normalized === 'mdbootstrap') {
+            pushCandidate(scope?.mdb?.Offcanvas);
+            if (typeof mdb !== 'undefined') {
+                pushCandidate(mdb?.Offcanvas);
+            }
+        }
+
+        pushCandidate(scope?.bootstrap?.Offcanvas);
+        if (typeof bootstrap !== 'undefined') {
+            pushCandidate(bootstrap?.Offcanvas);
+        }
+
+        pushCandidate(scope?.mdb?.Offcanvas);
+        if (typeof mdb !== 'undefined') {
+            pushCandidate(mdb?.Offcanvas);
+        }
+
+        return candidates.find(candidate => candidate && typeof candidate.getOrCreateInstance === 'function') || null;
+    }
+
     static _parseSidebarState(value) {
         if (typeof value === 'undefined' || value === null) {
             return null;
@@ -1638,6 +1708,7 @@ class PageToolbar extends Toolbar {
         const normalizedSelector = selector ? PageToolbar._normalizeSelector(selector) : '';
         if (normalizedSelector && root && typeof root.querySelectorAll === 'function') {
             root.querySelectorAll(`[data-bs-target="${normalizedSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+            root.querySelectorAll(`[data-mdb-target="${normalizedSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
             if (normalizedSelector.startsWith('#')) {
                 root.querySelectorAll(`a[href="${normalizedSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
                 root.querySelectorAll(`button[href="${normalizedSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
@@ -1647,6 +1718,7 @@ class PageToolbar extends Toolbar {
         if (sidebarFrame?.id && root && typeof root.querySelectorAll === 'function') {
             const idSelector = `#${sidebarFrame.id}`;
             root.querySelectorAll(`[data-bs-target="${idSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
+            root.querySelectorAll(`[data-mdb-target="${idSelector}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
             root.querySelectorAll(`[aria-controls="${sidebarFrame.id}"]`).forEach(node => { if (node instanceof HTMLElement) collection.add(node); });
         }
 
@@ -1684,6 +1756,13 @@ class PageToolbar extends Toolbar {
         if (typeof callback === 'function') {
             this._layoutCleanupFns.push(callback);
         }
+    }
+
+    _getOffcanvasClass() {
+        if (!this._offcanvasClass) {
+            this._offcanvasClass = PageToolbar._resolveOffcanvasClass(this.uiFramework);
+        }
+        return this._offcanvasClass;
     }
 
     _handleEditModeUnpressed() {

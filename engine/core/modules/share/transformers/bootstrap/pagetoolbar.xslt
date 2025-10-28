@@ -46,6 +46,25 @@
         <xsl:variable name="COMPONENT_PATH" select="concat($BASE_NORMALIZED, $LANG_SEGMENT, @single_template)"/>
         <xsl:variable name="SIDEBAR_ID" select="concat($TOOLBAR_NAME, '-sidebar')"/>
         <xsl:variable name="SIDEBAR_URL" select="concat($COMPONENT_PATH, 'show/')"/>
+        <xsl:variable name="UI_RAW">
+            <xsl:choose>
+                <xsl:when test="$PT_DOC_PROPS[@name='ui']/@value">
+                    <xsl:value-of select="$PT_DOC_PROPS[@name='ui']/@value"/>
+                </xsl:when>
+                <xsl:when test="$PT_DOC_PROPS[@name='ui']">
+                    <xsl:value-of select="$PT_DOC_PROPS[@name='ui']"/>
+                </xsl:when>
+                <xsl:otherwise>mdbootstrap</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="UI_LOWER" select="translate($UI_RAW, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+        <xsl:variable name="UI_FRAMEWORK">
+            <xsl:choose>
+                <xsl:when test="$UI_LOWER = 'bootstrap5' or $UI_LOWER = 'bootstrap' or $UI_LOWER = 'bs5'">bootstrap5</xsl:when>
+                <xsl:when test="$UI_LOWER = 'mdbootstrap' or $UI_LOWER = 'mdb' or $UI_LOWER = 'mdb5' or $UI_LOWER = 'md'">mdbootstrap</xsl:when>
+                <xsl:otherwise>mdbootstrap</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         <xsl:variable name="SIDEBAR_LABEL">
             <xsl:choose>
                 <xsl:when test="string-length(normalize-space($PT_TRANSLATIONS[@name='TXT_SIDEBAR_TOGGLE'])) &gt; 0">
@@ -92,6 +111,7 @@
             <xsl:attribute name="data-e-offcanvas-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
             <xsl:attribute name="data-e-sidebar-expanded">0</xsl:attribute>
             <xsl:attribute name="data-e-sidebar-state">closed</xsl:attribute>
+            <xsl:attribute name="data-e-ui-framework"><xsl:value-of select="$UI_FRAMEWORK"/></xsl:attribute>
             <xsl:attribute name="data-e-toolbar-dock">
                 <xsl:choose>
                     <xsl:when test="string-length(normalize-space($DOCK_POSITION)) &gt; 0">
@@ -106,6 +126,8 @@
                     <div class="d-flex align-items-center flex-shrink-0" data-role="toolbar-brand">
                         <button type="button" class="btn py-2 btn-sm btn-light d-inline-flex align-items-center gap-2 rounded-1 px-3 flex-shrink-0" data-role="sidebar-toggle" data-bs-toggle="offcanvas">
                             <xsl:attribute name="data-bs-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
+                            <xsl:attribute name="data-mdb-toggle">offcanvas</xsl:attribute>
+                            <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:attribute name="aria-controls"><xsl:value-of select="$SIDEBAR_ID"/></xsl:attribute>
                             <xsl:if test="string-length(normalize-space($SIDEBAR_LABEL)) &gt; 0">
                                 <xsl:attribute name="aria-label"><xsl:value-of select="$SIDEBAR_LABEL"/></xsl:attribute>
@@ -133,6 +155,7 @@
                     <header class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom bg-white" data-role="sidebar-header">
                         <div class="d-flex align-items-center gap-2" data-role="sidebar-actions">
                             <button type="button" class="btn btn-sm btn-light d-inline-flex align-items-center justify-content-center" data-role="sidebar-close" data-bs-dismiss="offcanvas">
+                                <xsl:attribute name="data-mdb-dismiss">offcanvas</xsl:attribute>
                                 <xsl:if test="string-length(normalize-space($CLOSE_LABEL)) &gt; 0">
                                     <xsl:attribute name="aria-label"><xsl:value-of select="$CLOSE_LABEL"/></xsl:attribute>
                                 </xsl:if>
