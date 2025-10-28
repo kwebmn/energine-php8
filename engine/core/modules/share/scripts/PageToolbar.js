@@ -7,7 +7,7 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const SIDEBAR_OFFCANVAS_Z_INDEX = 1030;
+const SIDEBAR_OFFCANVAS_Z_INDEX = 1050;
 const TOOLBAR_Z_INDEX = SIDEBAR_OFFCANVAS_Z_INDEX + 10;
 
 const CONTROL_FALLBACK_ACTIONS = Object.freeze({
