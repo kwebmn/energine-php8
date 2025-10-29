@@ -4,6 +4,60 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const normalizeSegment = (segment = '') => {
+  if (segment === null || typeof segment === 'undefined') return '';
+  return String(segment).trim().replace(/^\/+/g, '').replace(/\/+$/g, '');
+};
+
+const normalizeBase = (base = '') => {
+  if (!base) return '';
+  return String(base).trim().replace(/\/+$/g, '');
+};
+
+const toArray = (value) => (Array.isArray(value) ? value : [value]);
+
+const composeUrl = ({ base = '', segments = [], trailingSlash = true } = {}) => {
+  const normalizedBase = normalizeBase(base);
+  const normalizedSegments = segments
+    .map((segment) => normalizeSegment(segment))
+    .filter(Boolean);
+
+  let url;
+  if (normalizedBase) {
+    url = normalizedSegments.length
+      ? `${normalizedBase}/${normalizedSegments.join('/')}`
+      : normalizedBase;
+  } else if (normalizedSegments.length) {
+    url = `/${normalizedSegments.join('/')}`;
+  } else {
+    url = '/';
+  }
+
+  if (trailingSlash && url[url.length - 1] !== '/') {
+    url += '/';
+  }
+
+  return url;
+};
+
+const buildLangAwareUrl = (segments = [], options = {}) => {
+  const normalizedLang = normalizeSegment(Energine?.lang);
+  const combinedSegments = normalizedLang
+    ? [normalizedLang, ...toArray(segments)]
+    : toArray(segments);
+
+  return composeUrl({ base: Energine?.base, segments: combinedSegments, ...options });
+};
+
+const buildComponentUrl = (singleTemplate, segments = [], options = {}) => {
+  const normalizedSingle = normalizeSegment(singleTemplate);
+  const combinedSegments = normalizedSingle
+    ? [normalizedSingle, ...toArray(segments)]
+    : toArray(segments);
+
+  return buildLangAwareUrl(combinedSegments, options);
+};
+
 class SignIn {
   constructor(element) {
     // element может быть селектором или DOM-узлом
@@ -18,7 +72,14 @@ class SignIn {
       || this.componentElement?.getAttribute('template')
       || '';
 
-    this.singlePath = templateAttr.endsWith('/') ? templateAttr : `${templateAttr}/`;
+    const singleTemplateAttr = dataset.eSingleTemplate
+      || this.componentElement?.getAttribute('data-e-single-template')
+      || this.componentElement?.getAttribute('single_template')
+      || '';
+
+    this.templatePath = templateAttr.endsWith('/') ? templateAttr : `${templateAttr}/`;
+    this.singlePath = this.templatePath;
+    this.singleTemplate = singleTemplateAttr;
 
     // Навешиваем обработчики
     this._bind();
@@ -26,13 +87,13 @@ class SignIn {
 
   _bind() {
     // Быстрая регистрация
-    this._bindForm('#sign_up_fast', () => `${Energine.lang}${this.singlePath}sign-up-fast/`);
+    this._bindForm('#sign_up_fast', () => buildComponentUrl(this.singleTemplate, 'sign-up-fast'));
 
     // Обычная регистрация
-    this._bindForm('#sign_up', () => `${this.singlePath}sign-up/`);
+    this._bindForm('#sign_up', () => buildComponentUrl(this.singleTemplate, 'sign-up'));
 
     // Вход
-    this._bindForm('#sign_in', () => `${this.singlePath}sign-in/`);
+    this._bindForm('#sign_in', () => buildComponentUrl(this.singleTemplate, 'sign-in'));
 
     // Логаут
     this._bindLogout('.btn-logout');
@@ -53,6 +114,9 @@ class SignIn {
 
       try {
         const url = urlBuilder(form);
+        if (url && form.action !== url) {
+          form.setAttribute('action', url);
+        }
         const result = await this._postForm(form, url);
         this._handleResult(result, /*isLogout*/ false, form);
       } catch (err) {
@@ -69,7 +133,7 @@ class SignIn {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
         try {
-          const url = `${Energine.lang}/login/logout/`;
+          const url = buildComponentUrl(this.singleTemplate, 'logout');
           const response = await fetch(url, {
             method: 'POST',
             headers: { Accept: 'application/json' },
@@ -110,8 +174,19 @@ class SignIn {
       if (form) this._clearValidation(form);
       Energine.noticeBox(result.message, 'success', () => {
         const redirect = isLogout
-          ? `/${Energine.lang}/`
-          : `/${Energine.lang}/${result.redirect}`;
+          ? buildLangAwareUrl([], { trailingSlash: true })
+          : (() => {
+              const rawRedirect = typeof result?.redirect === 'string' ? result.redirect : '';
+              const trimmedRedirect = rawRedirect.trim();
+              if (!trimmedRedirect) {
+                return buildLangAwareUrl([], { trailingSlash: true });
+              }
+              const hasTrailingSlash = trimmedRedirect.endsWith('/');
+              return buildLangAwareUrl(
+                trimmedRedirect,
+                { trailingSlash: hasTrailingSlash }
+              );
+            })();
         if (globalScope?.location) {
           globalScope.location.href = redirect;
         }

@@ -4,6 +4,64 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const normalizeSegment = (segment = '') => {
+    if (segment === null || typeof segment === 'undefined') {
+        return '';
+    }
+    return String(segment).trim().replace(/^\/+/g, '').replace(/\/+$/g, '');
+};
+
+const normalizeBase = (base = '') => {
+    if (!base) {
+        return '';
+    }
+    return String(base).trim().replace(/\/+$/g, '');
+};
+
+const toArray = (value) => (Array.isArray(value) ? value : [value]);
+
+const composeUrl = ({ base = '', segments = [], trailingSlash = true } = {}) => {
+    const normalizedBase = normalizeBase(base);
+    const normalizedSegments = segments
+        .map((segment) => normalizeSegment(segment))
+        .filter(Boolean);
+
+    let url;
+    if (normalizedBase) {
+        url = normalizedSegments.length
+            ? `${normalizedBase}/${normalizedSegments.join('/')}`
+            : normalizedBase;
+    } else if (normalizedSegments.length) {
+        url = `/${normalizedSegments.join('/')}`;
+    } else {
+        url = '/';
+    }
+
+    if (trailingSlash && url[url.length - 1] !== '/') {
+        url += '/';
+    }
+
+    return url;
+};
+
+const buildLangAwareUrl = (segments = [], options = {}) => {
+    const normalizedLang = normalizeSegment(Energine?.lang);
+    const combinedSegments = normalizedLang
+        ? [normalizedLang, ...toArray(segments)]
+        : toArray(segments);
+
+    return composeUrl({ base: Energine?.base, segments: combinedSegments, ...options });
+};
+
+const buildComponentUrl = (singleTemplate, segments = [], options = {}) => {
+    const normalizedSingle = normalizeSegment(singleTemplate);
+    const combinedSegments = normalizedSingle
+        ? [normalizedSingle, ...toArray(segments)]
+        : toArray(segments);
+
+    return buildLangAwareUrl(combinedSegments, options);
+};
+
 class RecoverPassword {
     constructor(element) {
         // element — это или селектор, или DOM-элемент
@@ -14,7 +72,7 @@ class RecoverPassword {
         const dataset = this.componentElement?.dataset || {};
 
         // getProperty => getAttribute (если это DOM-элемент)
-        this.singlePath = dataset.eSingleTemplate
+        this.singleTemplate = dataset.eSingleTemplate
             || this.componentElement?.getAttribute('data-e-single-template')
             || this.componentElement?.getAttribute('single_template')
             || '';
@@ -37,7 +95,8 @@ class RecoverPassword {
                     email: emailInput ? emailInput.value : ''
                 });
 
-                this.submitJson(`${Energine.lang}/${this.singlePath}check`, payload)
+                const url = buildComponentUrl(this.singleTemplate, 'check');
+                this.submitJson(url, payload)
                     .then(this.handleResponse.bind(this));
             });
         }
@@ -52,20 +111,22 @@ class RecoverPassword {
                     payload.append(key, String(value));
                 });
 
-                this.submitJson(`${Energine.lang}/${this.singlePath}change`, payload)
+                const url = buildComponentUrl(this.singleTemplate, 'change');
+                this.submitJson(url, payload)
                     .then(this.handleResponse.bind(this));
             });
         }
     }
 
     submitJson(url, payload) {
-        return fetch(`/${url}`, {
+        return fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                 'Accept': 'application/json'
             },
-            body: payload.toString()
+            body: payload.toString(),
+            credentials: 'same-origin'
         })
             .then((response) => {
                 if (!response.ok) {
@@ -82,7 +143,8 @@ class RecoverPassword {
     handleResponse(result) {
         if (result.result) {
             const redirect = () => {
-                globalScope.location.href = `/${Energine.lang}/login/`;
+                const url = buildLangAwareUrl('login', { trailingSlash: true });
+                globalScope.location.href = url;
             };
             if (typeof Energine.noticeBox === 'function') {
                 Energine.noticeBox(result.message, 'success', redirect);
