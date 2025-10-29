@@ -1,5 +1,6 @@
 import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 import ValidForm from '../../share/scripts/ValidForm.js';
+import TabPane from '../../share/scripts/TabPane.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -48,8 +49,18 @@ class UserProfile extends ValidForm {
 
 }
 
-export { UserProfile };
+class UserProfileTabs extends TabPane {
+    /**
+     * @param {HTMLElement|string} element
+     */
+    constructor(element) {
+        super(element);
+    }
+}
+
+export { UserProfile, UserProfileTabs };
 export default UserProfile;
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('UserProfile', UserProfile);
+    registerEnergineBehavior('UserProfileTabs', UserProfileTabs);
 }
