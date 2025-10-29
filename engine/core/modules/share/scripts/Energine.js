@@ -720,13 +720,7 @@ class EnergineCore {
             ? ToastConstructor.getOrCreateInstance(toast, toastOptions)
             : new ToastConstructor(toast, toastOptions);
 
-        let hasDisposed = false;
         const handleHidden = () => {
-            if (hasDisposed) {
-                return;
-            }
-            hasDisposed = true;
-
             if (toastInstance && typeof toastInstance.dispose === 'function') {
                 toastInstance.dispose();
             }

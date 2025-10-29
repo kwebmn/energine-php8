@@ -1,6 +1,5 @@
 import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 import ValidForm from '../../share/scripts/ValidForm.js';
-import TabPane from '../../share/scripts/TabPane.js';
 
 const globalScope = typeof window !== 'undefined'
     ? window
@@ -49,12 +48,30 @@ class UserProfile extends ValidForm {
 
 }
 
-class UserProfileTabs extends TabPane {
+class UserProfileTabs {
     /**
      * @param {HTMLElement|string} element
      */
     constructor(element) {
-        super(element);
+        this.root = typeof element === 'string'
+            ? globalScope?.document?.querySelector(element)
+            : element;
+
+        if (!this.root) {
+            return;
+        }
+
+        this.mdb = globalScope?.mdb;
+        if (!this.mdb || typeof this.mdb.Tab?.getOrCreateInstance !== 'function') {
+            return;
+        }
+
+        this._initTabs();
+    }
+
+    _initTabs() {
+        const triggers = this.root.querySelectorAll('[data-mdb-tab-init], [data-mdb-toggle="tab"]');
+        this.instances = Array.from(triggers, (trigger) => this.mdb.Tab.getOrCreateInstance(trigger));
     }
 }
 
