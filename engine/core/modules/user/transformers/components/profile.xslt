@@ -8,49 +8,34 @@
                 <ul class="nav nav-tabs mb-3" id="user-profile-tabs" data-role="tabs" role="tablist">
                     <li class="nav-item" data-role="tab" role="presentation">
                         <a data-role="tab-link"
-                           data-bs-toggle="tab"
-                           data-mdb-toggle="tab"
-                           data-mdb-tab-init=""
-                           data-bs-target="#tab-1"
-                           data-mdb-target="#tab-1"
                            class="nav-link active"
                            id="ex1-tab-1"
+                           href="#tab-1"
                            role="tab"
                            aria-controls="tab-1"
-                           aria-selected="true"
-                           href="#tab-1">
+                           aria-selected="true">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_MY_DATA']"/>
                         </a>
                     </li>
                     <li class="nav-item" data-role="tab" role="presentation">
                         <a data-role="tab-link"
-                           data-bs-toggle="tab"
-                           data-mdb-toggle="tab"
-                           data-mdb-tab-init=""
-                           data-bs-target="#tab-2"
-                           data-mdb-target="#tab-2"
                            class="nav-link"
                            id="ex1-tab-2"
+                           href="#tab-2"
                            role="tab"
                            aria-controls="tab-2"
-                           aria-selected="false"
-                           href="#tab-2">
+                           aria-selected="false">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
                         </a>
                     </li>
                     <li class="nav-item" data-role="tab" role="presentation">
                         <a data-role="tab-link"
-                           data-bs-toggle="tab"
-                           data-mdb-toggle="tab"
-                           data-mdb-tab-init=""
-                           data-bs-target="#tab-3"
-                           data-mdb-target="#tab-3"
                            class="nav-link"
                            id="ex1-tab-3"
+                           href="#tab-3"
                            role="tab"
                            aria-controls="tab-3"
-                           aria-selected="false"
-                           href="#tab-3">
+                           aria-selected="false">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_EMAIL']"/>
                         </a>
                     </li>
