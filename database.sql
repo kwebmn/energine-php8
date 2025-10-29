@@ -36,7 +36,7 @@ CREATE TABLE `auto_Testfeed` (
   KEY `Testfeed_order_num` (`Testfeed_order_num`),
   KEY `smap_id` (`smap_id`),
   CONSTRAINT `auto_Testfeed_smap_id` FOREIGN KEY (`smap_id`) REFERENCES `share_sitemap` (`smap_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -46,8 +46,8 @@ CREATE TABLE `auto_Testfeed` (
 LOCK TABLES `auto_Testfeed` WRITE;
 /*!40000 ALTER TABLE `auto_Testfeed` DISABLE KEYS */;
 INSERT INTO `auto_Testfeed` VALUES
-(4,3,3730,NULL,NULL,NULL,NULL,NULL),
-(5,2,3741,NULL,NULL,NULL,NULL,'gfhdfghdfgh');
+(4,3,3730,'uploads/public/fast-upload/17605464891809.jpg',NULL,NULL,NULL,NULL),
+(6,1,3730,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `auto_Testfeed` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -185,12 +185,12 @@ INSERT INTO `auto_Testfeed_translation` VALUES
 (4,4,NULL),
 (4,5,NULL),
 (4,9,NULL),
-(5,1,'asd'),
-(5,2,'asd'),
-(5,3,'asd'),
-(5,4,'asd'),
-(5,5,'asd'),
-(5,9,'asd');
+(6,1,NULL),
+(6,2,'111'),
+(6,3,NULL),
+(6,4,NULL),
+(6,5,NULL),
+(6,9,NULL);
 /*!40000 ALTER TABLE `auto_Testfeed_translation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -266,8 +266,14 @@ CREATE TABLE `auto_test` (
   `test_datetime` datetime DEFAULT NULL,
   `test_rtf` text DEFAULT NULL,
   `test_text` text DEFAULT NULL,
+  `u_id` int(10) unsigned DEFAULT NULL,
+  `test_multi` int(10) unsigned DEFAULT NULL,
   PRIMARY KEY (`test_id`),
-  KEY `test_order_num` (`test_order_num`)
+  KEY `test_order_num` (`test_order_num`),
+  KEY `gallery_id` (`u_id`),
+  KEY `test_multi` (`test_multi`),
+  CONSTRAINT `auto_test_ibfk_1` FOREIGN KEY (`u_id`) REFERENCES `user_users` (`u_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `auto_test_ibfk_2` FOREIGN KEY (`test_multi`) REFERENCES `auto_test_category_test` (`test_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -278,14 +284,72 @@ CREATE TABLE `auto_test` (
 LOCK TABLES `auto_test` WRITE;
 /*!40000 ALTER TABLE `auto_test` DISABLE KEYS */;
 INSERT INTO `auto_test` VALUES
-(1,7,NULL,'2025-06-20 00:49:00','2024-11-21 03:16:00','<p>asd</p>\n',NULL),
-(4,4,NULL,NULL,NULL,NULL,'test1'),
-(5,5,NULL,NULL,NULL,NULL,NULL),
-(6,5,NULL,NULL,NULL,'<p>111aaa</p>\n',NULL),
-(7,3,NULL,NULL,NULL,NULL,NULL),
-(8,3,NULL,NULL,NULL,NULL,NULL),
-(9,2,NULL,NULL,NULL,'<p>1234</p>\n',NULL);
+(1,7,NULL,'2025-06-20 00:49:00','2024-11-21 03:16:00','<p>asd</p>\n',NULL,NULL,NULL),
+(4,3,NULL,NULL,NULL,'<p>1111</p>\n','test12',NULL,NULL),
+(5,5,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(6,5,NULL,NULL,NULL,'<p>111aaa</p>\n',NULL,NULL,NULL),
+(7,3,'uploads/public/gallery/17607781644989.png',NULL,NULL,'<p>123456</p>\n',NULL,1658,NULL),
+(8,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `auto_test` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `auto_test_category`
+--
+
+DROP TABLE IF EXISTS `auto_test_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `auto_test_category` (
+  `category_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `category_name` varchar(255) NOT NULL,
+  PRIMARY KEY (`category_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `auto_test_category`
+--
+
+LOCK TABLES `auto_test_category` WRITE;
+/*!40000 ALTER TABLE `auto_test_category` DISABLE KEYS */;
+INSERT INTO `auto_test_category` VALUES
+(1,'test 1'),
+(2,'test 2'),
+(5,'test 3'),
+(7,'тест 4');
+/*!40000 ALTER TABLE `auto_test_category` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `auto_test_category_test`
+--
+
+DROP TABLE IF EXISTS `auto_test_category_test`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `auto_test_category_test` (
+  `test_id` int(10) unsigned NOT NULL,
+  `article_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`test_id`,`article_id`),
+  KEY `article_id` (`article_id`),
+  CONSTRAINT `auto_test_category_test_ibfk_1` FOREIGN KEY (`test_id`) REFERENCES `auto_test` (`test_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `auto_test_category_test_ibfk_2` FOREIGN KEY (`article_id`) REFERENCES `auto_test_category` (`category_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `auto_test_category_test`
+--
+
+LOCK TABLES `auto_test_category_test` WRITE;
+/*!40000 ALTER TABLE `auto_test_category_test` DISABLE KEYS */;
+INSERT INTO `auto_test_category_test` VALUES
+(7,1),
+(7,5),
+(7,7),
+(8,1);
+/*!40000 ALTER TABLE `auto_test_category_test` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -308,7 +372,7 @@ CREATE TABLE `auto_test_filter` (
   KEY `filter_pid` (`filter_pid`),
   KEY `filter_order_num` (`filter_order_num`),
   CONSTRAINT `auto_test_filter_filter_id_pid` FOREIGN KEY (`filter_pid`) REFERENCES `auto_test_filter` (`filter_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -318,8 +382,9 @@ CREATE TABLE `auto_test_filter` (
 LOCK TABLES `auto_test_filter` WRITE;
 /*!40000 ALTER TABLE `auto_test_filter` DISABLE KEYS */;
 INSERT INTO `auto_test_filter` VALUES
-(1,NULL,2,NULL,0,0,NULL,0),
-(2,1,1,NULL,0,0,NULL,0);
+(1,NULL,3,NULL,0,0,NULL,0),
+(2,1,2,NULL,0,0,NULL,0),
+(3,2,2,NULL,1,1,NULL,0);
 /*!40000 ALTER TABLE `auto_test_filter` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -391,7 +456,13 @@ INSERT INTO `auto_test_filter_translation` VALUES
 (2,3,'teste',NULL),
 (2,4,'testd',NULL),
 (2,5,'testp',NULL),
-(2,9,'testu',NULL);
+(2,9,'testu',NULL),
+(3,1,'test',NULL),
+(3,2,'test',NULL),
+(3,3,'test',NULL),
+(3,4,'test',NULL),
+(3,5,'test',NULL),
+(3,9,'test',NULL);
 /*!40000 ALTER TABLE `auto_test_filter_translation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -445,23 +516,17 @@ INSERT INTO `auto_test_translation` VALUES
 (6,5,'p1'),
 (6,9,'u'),
 (7,1,NULL),
-(7,2,NULL),
+(7,2,'uaa'),
 (7,3,NULL),
 (7,4,NULL),
 (7,5,'poland'),
-(7,9,NULL),
+(7,9,'ua'),
 (8,1,NULL),
 (8,2,NULL),
 (8,3,NULL),
 (8,4,NULL),
 (8,5,NULL),
-(8,9,NULL),
-(9,1,NULL),
-(9,2,NULL),
-(9,3,NULL),
-(9,4,NULL),
-(9,5,NULL),
-(9,9,NULL);
+(8,9,NULL);
 /*!40000 ALTER TABLE `auto_test_translation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -483,7 +548,7 @@ CREATE TABLE `auto_test_uploads` (
   KEY `upl_id` (`upl_id`),
   CONSTRAINT `auto_test_uploads_0_test_id` FOREIGN KEY (`test_id`) REFERENCES `auto_test` (`test_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `auto_test_uploads_upl_id` FOREIGN KEY (`upl_id`) REFERENCES `share_uploads` (`upl_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=75 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=78 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -492,6 +557,8 @@ CREATE TABLE `auto_test_uploads` (
 
 LOCK TABLES `auto_test_uploads` WRITE;
 /*!40000 ALTER TABLE `auto_test_uploads` DISABLE KEYS */;
+INSERT INTO `auto_test_uploads` VALUES
+(77,7,32072,32072,'6c0f29096a5d446d2acee6f1bca6e877');
 /*!40000 ALTER TABLE `auto_test_uploads` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -519,6 +586,13 @@ CREATE TABLE `auto_test_uploads_translation` (
 
 LOCK TABLES `auto_test_uploads_translation` WRITE;
 /*!40000 ALTER TABLE `auto_test_uploads_translation` DISABLE KEYS */;
+INSERT INTO `auto_test_uploads_translation` VALUES
+(77,1,NULL),
+(77,2,NULL),
+(77,3,NULL),
+(77,4,NULL),
+(77,5,NULL),
+(77,9,NULL);
 /*!40000 ALTER TABLE `auto_test_uploads_translation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -8522,7 +8596,7 @@ INSERT INTO `share_languages` VALUES
 (3,'','en','English',0,3),
 (4,'','de','Deutsch',0,5),
 (5,NULL,'pl','Poland',0,4),
-(9,NULL,'ts','Test',0,2);
+(9,NULL,'ts','Test11',0,2);
 /*!40000 ALTER TABLE `share_languages` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -8548,7 +8622,7 @@ CREATE TABLE `share_session` (
   KEY `i_session_u_id` (`u_id`),
   KEY `i_session_ip` (`session_ip`),
   KEY `session_expires` (`session_expires`)
-) ENGINE=InnoDB AUTO_INCREMENT=1126 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1140 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -8558,11 +8632,8 @@ CREATE TABLE `share_session` (
 LOCK TABLES `share_session` WRITE;
 /*!40000 ALTER TABLE `share_session` DISABLE KEYS */;
 INSERT INTO `share_session` VALUES
-(1119,'8c10df862a2484d3ac7d929542c92d57',1759904841,1759891752,1760660841,2130706433,NULL,22,'userID|i:22;'),
-(1122,'8db8a96f831ba725a8d3432847d6ea72',1760267261,1759990812,1761023261,2130706433,NULL,22,'userID|i:22;'),
-(1123,'8db6ca9e3348be0c047a31f2c14b04df',1760437962,1760003846,1761193962,2130706433,NULL,22,'userID|i:22;'),
-(1124,'fbc3beb9041c38c507834c4c352d62c5',1760444089,1760438007,1761200089,2130706433,NULL,22,'userID|i:22;'),
-(1125,'21cc20982bf5ba459f75b8782cdac752',1760447583,1760441152,1761203583,2130706433,NULL,22,'userID|i:22;');
+(1130,'e6f15abb8e6ee50c58f29674012f0bbc',1761415170,1760486739,1762171170,2130706433,'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',22,'userID|i:22;_sf2_attributes|a:0:{}_symfony_flashes|a:0:{}_sf2_meta|a:3:{s:1:\"u\";i:1761415170;s:1:\"c\";i:1760486741;s:1:\"l\";i:756000;}'),
+(1139,'fa2adee9f5c504b96b13f3b8ca70c5ef',1761711337,1761691187,1762467337,2130706433,'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',22,'userID|i:22;_sf2_attributes|a:0:{}_symfony_flashes|a:0:{}_sf2_meta|a:3:{s:1:\"u\";i:1761711337;s:1:\"c\";i:1761691189;s:1:\"l\";i:756000;}');
 /*!40000 ALTER TABLE `share_session` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -8601,21 +8672,21 @@ CREATE TABLE `share_sitemap` (
 LOCK TABLES `share_sitemap` WRITE;
 /*!40000 ALTER TABLE `share_sitemap` DISABLE KEYS */;
 INSERT INTO `share_sitemap` VALUES
-(80,1,'default.layout.xml',NULL,'textblock.content.xml',NULL,NULL,'',538,NULL,NULL),
+(80,1,'default.layout.xml',NULL,'share/childs.content.xml',NULL,NULL,'',538,NULL,NULL),
 (330,1,'default.layout.xml',NULL,'sign_in.content.xml',NULL,80,'login',2,NULL,NULL),
 (3625,1,'default.layout.xml',NULL,'recover_password.content.xml',NULL,80,'restore-password',5,NULL,NULL),
 (3675,1,'account.layout.xml',NULL,'childs.content.xml',NULL,80,'my',6,NULL,NULL),
 (3707,1,'google_sitemap.layout.xml',NULL,'google_sitemap.content.xml',NULL,80,'google_sitemap',1,NULL,NULL),
 (3725,1,'account.layout.xml',NULL,'wizard.content.xml',NULL,3675,'wizard',2,NULL,NULL),
-(3727,1,'default.layout.xml',NULL,'test_editor.content.xml',NULL,80,'test',3,NULL,NULL),
+(3727,1,'share/default.layout.xml',NULL,'test_editor.content.xml',NULL,80,'test',3,NULL,NULL),
 (3728,1,'account.layout.xml',NULL,'profile.content.xml',NULL,3675,'persona-data',1,NULL,NULL),
 (3729,1,'default.layout.xml',NULL,'sign_in.content.xml',NULL,3675,'logout',3,NULL,NULL),
-(3730,1,'account.layout.xml',NULL,'Testfeed.content.xml',NULL,80,'test2',4,NULL,NULL),
+(3730,1,'account.layout.xml',NULL,'Testfeed.content.xml',NULL,80,'test22',4,NULL,NULL),
 (3732,1,'account.layout.xml',NULL,'main.content.xml',NULL,3730,'test5',4,NULL,NULL),
-(3733,1,'account.layout.xml',NULL,'main.content.xml',NULL,3730,'test6',1,NULL,NULL),
+(3733,1,'share/default.layout.xml',NULL,'share/textblock.content.xml',NULL,3730,'test6',1,NULL,NULL),
 (3734,1,'account.layout.xml',NULL,'main.content.xml',NULL,3730,'tttest',3,NULL,NULL),
 (3737,1,'account.layout.xml',NULL,'main.content.xml',NULL,3730,'aasdas',5,NULL,NULL),
-(3741,1,'default.layout.xml',NULL,'Testfeed.content.xml',NULL,3730,'5555',2,NULL,NULL);
+(3741,1,'default.layout.xml',NULL,'share/textblock.content.xml',NULL,3730,'5555',2,NULL,NULL);
 /*!40000 ALTER TABLE `share_sitemap` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -8645,7 +8716,6 @@ INSERT INTO `share_sitemap_tags` VALUES
 (3725,2),
 (3727,1),
 (3730,1),
-(3730,6),
 (3731,1),
 (3732,1),
 (3733,1),
@@ -8711,7 +8781,7 @@ INSERT INTO `share_sitemap_translation` VALUES
 (3727,2,'Тест1',NULL,NULL,NULL,NULL,0),
 (3728,2,'Персональні дані',NULL,NULL,NULL,NULL,0),
 (3729,2,'Вийти',NULL,NULL,NULL,NULL,0),
-(3730,2,'Test feed1112',NULL,NULL,NULL,NULL,0),
+(3730,2,'Test feed11123',NULL,NULL,NULL,NULL,0),
 (3732,2,'test5',NULL,NULL,NULL,NULL,0),
 (3733,2,'test5',NULL,NULL,NULL,NULL,0),
 (3734,2,'tttest',NULL,NULL,NULL,NULL,0),
@@ -8804,9 +8874,6 @@ CREATE TABLE `share_sitemap_uploads` (
 
 LOCK TABLES `share_sitemap_uploads` WRITE;
 /*!40000 ALTER TABLE `share_sitemap_uploads` DISABLE KEYS */;
-INSERT INTO `share_sitemap_uploads` VALUES
-(11,3730,32009,2,'74bcf3cadc2ad6fc25076ef3250b0112'),
-(12,3730,32004,2,'fd1266ebd9819a95d8dd816c52091b8c');
 /*!40000 ALTER TABLE `share_sitemap_uploads` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -8946,7 +9013,7 @@ CREATE TABLE `share_tags` (
   `tag_code` char(100) NOT NULL,
   PRIMARY KEY (`tag_id`),
   UNIQUE KEY `tag_code` (`tag_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -8956,6 +9023,7 @@ CREATE TABLE `share_tags` (
 LOCK TABLES `share_tags` WRITE;
 /*!40000 ALTER TABLE `share_tags` DISABLE KEYS */;
 INSERT INTO `share_tags` VALUES
+(7,'aaaa'),
 (6,'fo'),
 (4,'foo'),
 (3,'footer'),
@@ -9025,7 +9093,13 @@ INSERT INTO `share_tags_translation` VALUES
 (6,3,'fo'),
 (6,4,'fo'),
 (6,5,'fo'),
-(6,9,'fo');
+(6,9,'fo'),
+(7,1,'aaa'),
+(7,2,'aaa'),
+(7,3,'aaa'),
+(7,4,'aaa'),
+(7,5,'aaa'),
+(7,9,'aaa');
 /*!40000 ALTER TABLE `share_tags_translation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -9043,7 +9117,7 @@ CREATE TABLE `share_textblocks` (
   PRIMARY KEY (`tb_id`),
   UNIQUE KEY `smap_id` (`smap_id`,`tb_num`),
   CONSTRAINT `share_textblocks_ibfk_1` FOREIGN KEY (`smap_id`) REFERENCES `share_sitemap` (`smap_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -9058,7 +9132,8 @@ INSERT INTO `share_textblocks` VALUES
 (14,330,'1'),
 (12,3730,'1'),
 (13,3737,'1'),
-(16,3741,'1');
+(16,3741,'1'),
+(17,3741,'2');
 /*!40000 ALTER TABLE `share_textblocks` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -9087,20 +9162,21 @@ CREATE TABLE `share_textblocks_translation` (
 LOCK TABLES `share_textblocks_translation` WRITE;
 /*!40000 ALTER TABLE `share_textblocks_translation` DISABLE KEYS */;
 INSERT INTO `share_textblocks_translation` VALUES
-(1,2,'<p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sunt distinctio earum repellat quaerat voluptatibus placeat nam, commodi optio pariatur est quia magnam eum harum corrupti dicta, aliquam sequi voluptate quas.</p>\n'),
+(1,2,'<p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sunt distinctio earum repellat quaerat voluptatibus placeat nam, commodi optio pariatur est quia magnam eum harum corrupti dicta, aliquam sequi voluptate quas.22225555112222</p>\n'),
 (1,3,'<p>123</p>\n'),
 (1,9,'<p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sunt distinctio earum repellat quaerat voluptatibus placeat nam, commodi optio pariatur est quia magnam eum harum corrupti dicta, aliquam sequi voluptate quas.</p>\n'),
-(10,2,'<p style=\"text-align:justify;\">32132321322132122311333123</p>\n\n<p style=\"text-align:justify;\">123123</p>\n\n<p><img align=\"middle\" alt=\"usch3.jpg\" src=\"uploads/public/fast-upload/1759997797589.jpg\" style=\"border-width:0px;border-style:solid;width:500px;height:333px;\" /></p>\n\n<p> </p>\n\n<p> </p>\n\n<p class=\"underline\">as<sup>d</sup><img alt=\"68e694849f30e.webp\" src=\"uploads/public/fast-upload/17599948549665.webp\" style=\"border-width:0px;border-style:solid;width:700px;height:467px;\" /></p>\n\n<h3> </h3>\n\n<p>апр</p>\n\n<p> 1</p>\n\n<p> </p>\n\n<p> 11</p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p>222</p>\n\n<p> </p>\n'),
+(10,2,'<p style=\"text-align:justify;\">3213232132213212231133312351</p>\n\n<p style=\"text-align:justify;\">12312334512</p>\n\n<p style=\"text-align:justify;\"> </p>\n\n<p style=\"text-align:justify;\"><img alt=\"shini.png\" border=\"0\" height=\"433\" src=\"uploads/public/gallery/17607781644989.png\" width=\"640\" /></p>\n\n<p> </p>\n\n<p><img alt=\"shini.png\" src=\"uploads/public/gallery/17607781644989.png\" style=\"border-width:0px;border-style:solid;width:100%;\" /></p>\n\n<p> </p>\n\n<p> </p>\n\n<p class=\"underline\">as</p>\n\n<h3> </h3>\n\n<p>апр</p>\n\n<p> 1</p>\n\n<p> </p>\n\n<p> 11</p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p>222</p>\n\n<p> </p>\n'),
 (10,3,'<p>-- asasasa1</p>\n\n<p> </p>\n'),
 (10,9,'<p>1223<a href=\"uploads/public/gallery/17508596121248.jpg\">11333</a>1</p>\n\n<p>222</p>\n'),
-(12,2,'<p>12345678910</p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n'),
+(12,2,'<p>23456789101</p>\n\n<p>1</p>\n'),
 (12,9,'<p>12345678910</p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n\n<p> </p>\n'),
-(13,2,'<p>123</p>\n'),
+(13,2,'<p>1235555</p>\n'),
 (13,9,'<p>123</p>\n'),
 (14,2,'<p>123</p>\n'),
 (14,9,'<p>123</p>\n'),
 (16,2,'<p>asdadasdasda</p>\n'),
-(16,9,'<p>asdadasdasda</p>\n');
+(16,9,'<p>asdadasdasda</p>\n'),
+(17,2,'<p>222</p>\n');
 /*!40000 ALTER TABLE `share_textblocks_translation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -9147,7 +9223,7 @@ CREATE TABLE `share_uploads` (
   KEY `upl_is_webm` (`upl_is_webm`),
   KEY `upl_is_flv` (`upl_is_flv`),
   CONSTRAINT `share_uploads_ibfk_1` FOREIGN KEY (`upl_pid`) REFERENCES `share_uploads` (`upl_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=32064 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=32073 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -9157,9 +9233,9 @@ CREATE TABLE `share_uploads` (
 LOCK TABLES `share_uploads` WRITE;
 /*!40000 ALTER TABLE `share_uploads` DISABLE KEYS */;
 INSERT INTO `share_uploads` VALUES
-(1,NULL,0,'uploads/public','public','public','Локальный репозиторий',NULL,'2025-10-14 09:41:52',NULL,0,'repo','repo/local',0,0,0,NULL,NULL,1,NULL,1),
-(14,1,NULL,'uploads/public/gallery','gallery','gallery','Gallery',NULL,'2025-10-14 09:41:52',NULL,0,'folder','unknown/mime-type',0,0,0,NULL,NULL,1,NULL,1),
-(19,1,NULL,'uploads/public/fast-upload','fast-upload','fast-upload','Fast Upload',NULL,'2025-10-09 11:16:37',NULL,0,'folder','unknown/mime-type',0,0,0,NULL,NULL,1,NULL,1),
+(1,NULL,0,'uploads/public','public','public','Локальный репозиторий',NULL,'2025-10-28 21:47:30',NULL,0,'repo','repo/local',0,0,0,NULL,NULL,1,NULL,1),
+(14,1,NULL,'uploads/public/gallery','gallery','gallery','Gallery',NULL,'2025-10-18 12:02:44',NULL,0,'folder','unknown/mime-type',0,0,0,NULL,NULL,1,NULL,1),
+(19,1,NULL,'uploads/public/fast-upload','fast-upload','fast-upload','Fast Upload',NULL,'2025-10-28 21:47:30',NULL,0,'folder','unknown/mime-type',0,0,0,NULL,NULL,1,NULL,1),
 (31906,14,NULL,'uploads/public/gallery/17507988994340.webp','17507988994340.webp','credit1.webp','credit1.webp',NULL,'2025-06-25 00:01:39',NULL,0,'image','image/webp',0,0,0,750,400,1,NULL,1),
 (31908,14,NULL,'uploads/public/gallery/1750798900316.webp','1750798900316.webp','volos1.webp','volos1.webp',NULL,'2025-06-25 00:01:40',NULL,0,'image','image/webp',0,0,0,4284,5712,1,NULL,1),
 (31909,14,NULL,'uploads/public/gallery/17507989004361.jpg','17507989004361.jpg','volos2.jpg','volos2.jpg',NULL,'2025-06-25 00:01:40',NULL,0,'image','image/jpeg',0,0,0,1500,2000,1,NULL,1),
@@ -9221,8 +9297,10 @@ INSERT INTO `share_uploads` VALUES
 (32007,14,NULL,'uploads/public/gallery/1750859611573.jpg','1750859611573.jpg','den2.jpg','den2.jpg',NULL,'2025-06-25 16:53:31',NULL,0,'image','image/jpeg',0,0,0,480,320,1,NULL,1),
 (32009,14,NULL,'uploads/public/gallery/17508596121248.jpg','17508596121248.jpg','den4.jpg','den4.jpg',NULL,'2025-06-25 16:53:32',NULL,0,'image','image/jpeg',0,0,0,1280,720,1,NULL,1),
 (32055,14,NULL,'uploads/public/gallery/17578256626468.jpg','17578256626468.jpg','5287567700652059274.jpg','5287567700652059274.jpg',NULL,'2025-09-14 07:54:22',NULL,0,'image','image/jpeg',0,0,0,1280,960,1,NULL,1),
-(32056,14,NULL,'uploads/public/gallery/17578263225043.jpg','17578263225043.jpg','kodinitioner1.jpg','kodinitioner1.jpg',NULL,'2025-09-14 08:05:22',NULL,0,'image','image/jpeg',0,0,0,1200,800,1,NULL,1),
-(32063,14,NULL,'uploads/public/gallery/17604241128814.jpg','17604241128814.jpg','3611.jpg','3611',NULL,'2025-10-14 09:41:52',NULL,0,'image','image/jpeg',0,0,0,1500,1000,1,NULL,1);
+(32068,14,NULL,'uploads/public/gallery/17607781644989.png','17607781644989.png','shini.png','shini.png',NULL,'2025-10-18 12:02:44',NULL,0,'image','image/png',0,0,0,640,433,1,NULL,1),
+(32070,19,NULL,'uploads/public/fast-upload/17615037765974.jpg','17615037765974.jpg','68fa26693a903.jpg','68fa26693a903.jpg',NULL,'2025-10-26 20:36:16',NULL,0,'image','image/jpeg',0,0,0,1766,1012,1,NULL,1),
+(32071,19,NULL,'uploads/public/fast-upload/17615038006241.jpg','17615038006241.jpg','selection2.jpg','selection2.jpg',NULL,'2025-10-26 20:36:40',NULL,0,'image','image/jpeg',0,0,0,602,412,1,NULL,1),
+(32072,19,NULL,'uploads/public/fast-upload/17616808504696.jpg','17616808504696.jpg','0070592.jpg','0070592',NULL,'2025-10-28 21:47:30',NULL,0,'image','image/jpeg',0,0,0,800,560,1,NULL,1);
 /*!40000 ALTER TABLE `share_uploads` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -9250,6 +9328,9 @@ CREATE TABLE `site_gallery` (
 
 LOCK TABLES `site_gallery` WRITE;
 /*!40000 ALTER TABLE `site_gallery` DISABLE KEYS */;
+INSERT INTO `site_gallery` VALUES
+(1,3734,'',1),
+(2,3734,'',2);
 /*!40000 ALTER TABLE `site_gallery` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -9334,7 +9415,7 @@ CREATE TABLE `user_groups` (
   `group_user_default` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`group_id`),
   KEY `group_default` (`group_default`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -9376,7 +9457,6 @@ LOCK TABLES `user_user_groups` WRITE;
 INSERT INTO `user_user_groups` VALUES
 (22,1),
 (1656,1),
-(1656,4),
 (1658,1);
 /*!40000 ALTER TABLE `user_user_groups` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -9391,14 +9471,14 @@ DROP TABLE IF EXISTS `user_users`;
 CREATE TABLE `user_users` (
   `u_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `u_name` varchar(50) NOT NULL,
-  `u_password` varchar(40) NOT NULL,
+  `u_password` varchar(255) NOT NULL,
   `u_is_active` tinyint(1) NOT NULL DEFAULT 1,
   `u_fullname` varchar(250) DEFAULT NULL,
   `u_recovery_code` varchar(255) DEFAULT NULL,
   `u_recovery_date` datetime DEFAULT NULL,
   PRIMARY KEY (`u_id`),
   UNIQUE KEY `u_login` (`u_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=1660 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1664 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -9408,9 +9488,9 @@ CREATE TABLE `user_users` (
 LOCK TABLES `user_users` WRITE;
 /*!40000 ALTER TABLE `user_users` DISABLE KEYS */;
 INSERT INTO `user_users` VALUES
-(22,'demo@energine.org','89e495e7941cf9e40e6980d14a16bf023ccd4c91',1,'Admin1','672d370f6094a672d370f6094c','2024-11-08 23:54:23'),
+(22,'demo@energine.org','$2y$12$ryGa7S6jXDyB8HLY.l73qe99CZTuMdcKNG0uM72H7ZGy8Tju5dl/.',1,'Admin123','672d370f6094a672d370f6094c','2024-11-08 23:54:23'),
 (1656,'a@starter.ooo','91fa2f1978c8d41f69e5dccdb4ab9091c45670f8',1,'a',NULL,NULL),
-(1658,'vitaly.yuzvishen@gmail.com','ac2b9fbafc724b18b48586e89a83176d2f183833',1,'Vitaly Yuzvishen','685a0d1f9820b685a0d1f9820d','2025-06-25 05:27:43');
+(1658,'vitaly.yuzvishen@gmail.com','$2y$12$7ETDIMlVWb5ufWEjlF8ROOA3AldBMRlSqMRCEfn.30JYWQa4ZVCy.',1,'Vitaly Yuzvishen','685a0d1f9820b685a0d1f9820d','2025-06-25 05:27:43');
 /*!40000 ALTER TABLE `user_users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -9498,4 +9578,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-10-14 13:13:08
+-- Dump completed on 2025-10-29  4:20:43
