@@ -138,7 +138,15 @@
                 </span>
             </xsl:if>
             <xsl:if test="not($ICON_ONLY)">
-                <span class="toolbar-control-label"><xsl:value-of select="@title"/></span>
+                <span>
+                    <xsl:attribute name="class">
+                        <xsl:text>toolbar-control-label</xsl:text>
+                        <xsl:if test="$IS_PAGE_TOOLBAR and $HAS_ICON">
+                            <xsl:text> d-none d-sm-inline</xsl:text>
+                        </xsl:if>
+                    </xsl:attribute>
+                    <xsl:value-of select="@title"/>
+                </span>
             </xsl:if>
         </button>
     </xsl:template>
@@ -304,7 +312,15 @@
                 </span>
             </xsl:if>
             <xsl:if test="not($ICON_ONLY)">
-                <span class="toolbar-control-label"><xsl:value-of select="@title"/></span>
+                <span>
+                    <xsl:attribute name="class">
+                        <xsl:text>toolbar-control-label</xsl:text>
+                        <xsl:if test="$IS_PAGE_TOOLBAR and $HAS_ICON">
+                            <xsl:text> d-none d-sm-inline</xsl:text>
+                        </xsl:if>
+                    </xsl:attribute>
+                    <xsl:value-of select="@title"/>
+                </span>
             </xsl:if>
             <xsl:if test="$control-type = 'file'">
                 <input type="file" class="d-none" data-role="toolbar-file-input"/>
@@ -437,7 +453,15 @@
                 </span>
             </xsl:if>
             <xsl:if test="not($ICON_ONLY)">
-                <span class="toolbar-control-label"><xsl:value-of select="@title"/></span>
+                <span>
+                    <xsl:attribute name="class">
+                        <xsl:text>toolbar-control-label</xsl:text>
+                        <xsl:if test="$IS_PAGE_TOOLBAR and $HAS_ICON">
+                            <xsl:text> d-none d-sm-inline</xsl:text>
+                        </xsl:if>
+                    </xsl:attribute>
+                    <xsl:value-of select="@title"/>
+                </span>
             </xsl:if>
         </a>
     </xsl:template>
