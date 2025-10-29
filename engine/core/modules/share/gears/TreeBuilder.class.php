@@ -62,10 +62,13 @@ final class TreeBuilder extends AbstractBuilder
             throw new SystemException('ERR_DEV_NO_TREE_IDENT', SystemException::ERR_DEVELOPER);
         }
 
-        if ($this->tree instanceof TreeNodeList && !$this->data->isEmpty())
-        {
-            $this->result->appendChild($this->buildTree($this->tree));
-        }
+        $canBuild = ($this->tree instanceof TreeNodeList) && ($this->data instanceof Data);
+
+        $root = $canBuild
+            ? $this->buildTree($this->tree)
+            : $this->result->createElement('recordset');
+
+        $this->result->appendChild($root);
     }
 
     /**
