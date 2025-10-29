@@ -9,9 +9,7 @@ from typing import Dict, Iterable, List, Set
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "database.sql"
 
-SHARE_LANG_TAGS_RE = re.compile(r"INSERT INTO `share_lang_tags` VALUES\s*(.*?)\s*;", re.S)
-SHARE_LANG_TAGS_TRANSLATION_RE = re.compile(r"INSERT INTO `share_lang_tags_translation` VALUES\s*(.*?)\s*;", re.S)
-SHARE_LANGUAGES_RE = re.compile(r"INSERT INTO `share_languages` VALUES\s*(.*?)\s*;", re.S)
+INSERT_BLOCK_END_TEMPLATE = "/*!40000 ALTER TABLE `{table}` ENABLE KEYS */;"
 
 UPPER_TOKEN_RE = re.compile(r"[A-Z][A-Z0-9_]{2,}")
 
@@ -53,11 +51,21 @@ def load_db_text() -> str:
         return DB_PATH.read_text(encoding='utf-8', errors='ignore')
 
 
+def extract_insert_block(db_text: str, table: str) -> str:
+    marker = f"INSERT INTO `{table}` VALUES"
+    start = db_text.find(marker)
+    if start == -1:
+        raise RuntimeError(f'Unable to locate INSERT block for {table}')
+    start += len(marker)
+    end_marker = INSERT_BLOCK_END_TEMPLATE.format(table=table)
+    end = db_text.find(end_marker, start)
+    if end == -1:
+        raise RuntimeError(f'Unable to locate end of INSERT block for {table}')
+    return db_text[start:end]
+
+
 def parse_share_lang_tags(db_text: str) -> Dict[int, str]:
-    match = SHARE_LANG_TAGS_RE.search(db_text)
-    if not match:
-        raise RuntimeError('Unable to locate share_lang_tags data block')
-    block = match.group(1)
+    block = extract_insert_block(db_text, 'share_lang_tags')
     result: Dict[int, str] = {}
     for row_id, name in re.findall(r"\((\d+),'([^']+)'\)", block):
         result[int(row_id)] = name
@@ -65,10 +73,7 @@ def parse_share_lang_tags(db_text: str) -> Dict[int, str]:
 
 
 def parse_share_lang_tags_translation(db_text: str) -> Dict[int, Set[int]]:
-    match = SHARE_LANG_TAGS_TRANSLATION_RE.search(db_text)
-    if not match:
-        raise RuntimeError('Unable to locate share_lang_tags_translation data block')
-    block = match.group(1)
+    block = extract_insert_block(db_text, 'share_lang_tags_translation')
     result: Dict[int, Set[int]] = {}
     for row_id, lang_id in re.findall(r"\((\d+),(\d+),'", block):
         result.setdefault(int(row_id), set()).add(int(lang_id))
@@ -76,10 +81,7 @@ def parse_share_lang_tags_translation(db_text: str) -> Dict[int, Set[int]]:
 
 
 def parse_share_languages(db_text: str) -> Dict[int, Dict[str, str]]:
-    match = SHARE_LANGUAGES_RE.search(db_text)
-    if not match:
-        raise RuntimeError('Unable to locate share_languages data block')
-    block = match.group(1)
+    block = extract_insert_block(db_text, 'share_languages')
     languages: Dict[int, Dict[str, str]] = {}
     pattern = re.compile(r"\((\d+),'[^']*','([^']*)','([^']*)'", re.S)
     for lang_id, code, name in pattern.findall(block):
