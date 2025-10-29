@@ -6,7 +6,7 @@
             <div class="card-body">
                 <ul class="nav nav-tabs mb-3" id="user-profile-tabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <a data-mdb-tab-init
+                        <a data-mdb-tab-init="true"
                            class="nav-link active"
                            id="user-profile-tab-1"
                            href="#tab-1"
@@ -17,7 +17,7 @@
                         </a>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <a data-mdb-tab-init
+                        <a data-mdb-tab-init="true"
                            class="nav-link"
                            id="user-profile-tab-2"
                            href="#tab-2"
@@ -28,7 +28,7 @@
                         </a>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <a data-mdb-tab-init
+                        <a data-mdb-tab-init="true"
                            class="nav-link"
                            id="user-profile-tab-3"
                            href="#tab-3"
