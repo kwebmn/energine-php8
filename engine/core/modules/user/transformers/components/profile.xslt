@@ -62,7 +62,18 @@
     </xsl:template>
 
     <xsl:template match="component[@class='UserProfile']">
-        <form method="POST" action="{$BASE}{$LANG_ABBR}{@action}" id ="{generate-id(recordset)}" single_template="{@single_template}" class="justify-content-center">
+        <xsl:variable name="BEHAVIOR" select="normalize-space(javascript/behavior/@name)"/>
+        <form method="post" action="{$BASE}{$LANG_ABBR}{@action}" class="justify-content-center">
+            <xsl:if test="string-length($BEHAVIOR) &gt; 0">
+                <xsl:attribute name="data-e-js"><xsl:value-of select="$BEHAVIOR"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="string-length(normalize-space(@template)) &gt; 0">
+                <xsl:attribute name="data-e-template"><xsl:value-of select="@template"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="string-length(normalize-space(@single_template)) &gt; 0">
+                <xsl:attribute name="data-e-single-template"><xsl:value-of select="@single_template"/></xsl:attribute>
+                <xsl:attribute name="single_template"><xsl:value-of select="@single_template"/></xsl:attribute>
+            </xsl:if>
 
             <xsl:apply-templates />
 
