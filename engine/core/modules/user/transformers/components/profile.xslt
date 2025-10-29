@@ -2,42 +2,39 @@
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
     <xsl:template match="container[@name='profile']">
-        <div class="card">
+        <div class="card" data-e-js="UserProfileTabs">
             <div class="card-body">
-                <ul class="nav nav-tabs mb-3" role="tablist">
-                    <li class="nav-item">
-                        <a data-bs-toggle="tab"
-                           data-bs-target="#tab-1"
-                           class="nav-link active"
-                           id="ex1-tab-1"
+                <ul class="nav nav-tabs mb-3" id="user-profile-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active"
+                           id="user-profile-tab-1"
                            href="#tab-1"
                            role="tab"
                            aria-controls="tab-1"
                            aria-selected="true">
+                            <xsl:attribute name="data-mdb-tab-init">true</xsl:attribute>
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_MY_DATA']"/>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a data-bs-toggle="tab"
-                           data-bs-target="#tab-2"
-                           class="nav-link"
-                           id="ex1-tab-2"
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link"
+                           id="user-profile-tab-2"
                            href="#tab-2"
                            role="tab"
                            aria-controls="tab-2"
                            aria-selected="false">
+                            <xsl:attribute name="data-mdb-tab-init">true</xsl:attribute>
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a data-bs-toggle="tab"
-                           data-bs-target="#tab-3"
-                           class="nav-link"
-                           id="ex1-tab-3"
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link"
+                           id="user-profile-tab-3"
                            href="#tab-3"
                            role="tab"
                            aria-controls="tab-3"
                            aria-selected="false">
+                            <xsl:attribute name="data-mdb-tab-init">true</xsl:attribute>
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_EMAIL']"/>
                         </a>
                     </li>
@@ -45,13 +42,13 @@
                 </ul>
 
                 <div class="tab-content mt-4">
-                    <div role="tabpanel" class="tab-pane fade show active" id="tab-1" aria-labelledby="ex1-tab-1">
+                    <div role="tabpanel" class="tab-pane fade show active" id="tab-1" aria-labelledby="user-profile-tab-1">
                         <xsl:apply-templates select="component[@name='userProfileMain']" />
                     </div>
-                    <div role="tabpanel" class="tab-pane fade" id="tab-2" aria-labelledby="ex1-tab-2">
+                    <div role="tabpanel" class="tab-pane fade" id="tab-2" aria-labelledby="user-profile-tab-2">
                         <xsl:apply-templates select="component[@name='userProfilePassword']" />
                     </div>
-                    <div role="tabpanel" class="tab-pane fade" id="tab-3" aria-labelledby="ex1-tab-3">
+                    <div role="tabpanel" class="tab-pane fade" id="tab-3" aria-labelledby="user-profile-tab-3">
                         <xsl:apply-templates select="component[@name='userProfileEmail']" />
                     </div>
 
