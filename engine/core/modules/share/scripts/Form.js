@@ -850,7 +850,7 @@ class Form {
             iframe.frameBorder = 0;
             iframe.scrolling = 'no';
             iframe.style.width = '99%';
-            iframe.style.height = '89%';
+            iframe.style.height = '99%';
             pane.appendChild(iframe);
             tab.loaded = true;
         }
