@@ -7,7 +7,9 @@
                 <ul class="nav nav-tabs mb-3" role="tablist">
                     <li class="nav-item">
                         <a data-bs-toggle="tab"
+                           data-mdb-toggle="tab"
                            data-bs-target="#tab-1"
+                           data-mdb-target="#tab-1"
                            class="nav-link active"
                            id="ex1-tab-1"
                            href="#tab-1"
@@ -19,7 +21,9 @@
                     </li>
                     <li class="nav-item">
                         <a data-bs-toggle="tab"
+                           data-mdb-toggle="tab"
                            data-bs-target="#tab-2"
+                           data-mdb-target="#tab-2"
                            class="nav-link"
                            id="ex1-tab-2"
                            href="#tab-2"
@@ -31,7 +35,9 @@
                     </li>
                     <li class="nav-item">
                         <a data-bs-toggle="tab"
+                           data-mdb-toggle="tab"
                            data-bs-target="#tab-3"
+                           data-mdb-target="#tab-3"
                            class="nav-link"
                            id="ex1-tab-3"
                            href="#tab-3"
