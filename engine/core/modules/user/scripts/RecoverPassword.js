@@ -1,65 +1,24 @@
 import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+const globalScope = typeof window !== 'undefined' ? window : undefined;
 
-const normalizeSegment = (segment = '') => {
-    if (segment === null || typeof segment === 'undefined') {
-        return '';
-    }
-    return String(segment).trim().replace(/^\/+/g, '').replace(/\/+$/g, '');
+const normalizePath = (value = '') => {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return '';
+    const withoutTrailing = trimmed.replace(/\/+$/g, '');
+    if (!withoutTrailing) return '';
+    return withoutTrailing.startsWith('/') ? withoutTrailing : `/${withoutTrailing}`;
 };
 
-const normalizeBase = (base = '') => {
-    if (!base) {
-        return '';
+const buildComponentUrl = (basePath, segment = '') => {
+    let url = normalizePath(basePath);
+    if (!url) url = '';
+    if (segment) {
+        url = `${url.replace(/\/+$/g, '')}/${segment.replace(/^\/+/g, '')}`;
     }
-    return String(base).trim().replace(/\/+$/g, '');
-};
-
-const toArray = (value) => (Array.isArray(value) ? value : [value]);
-
-const composeUrl = ({ base = '', segments = [], trailingSlash = true } = {}) => {
-    const normalizedBase = normalizeBase(base);
-    const normalizedSegments = segments
-        .map((segment) => normalizeSegment(segment))
-        .filter(Boolean);
-
-    let url;
-    if (normalizedBase) {
-        url = normalizedSegments.length
-            ? `${normalizedBase}/${normalizedSegments.join('/')}`
-            : normalizedBase;
-    } else if (normalizedSegments.length) {
-        url = `/${normalizedSegments.join('/')}`;
-    } else {
-        url = '/';
-    }
-
-    if (trailingSlash && url[url.length - 1] !== '/') {
-        url += '/';
-    }
-
+    if (!url.startsWith('/')) url = `/${url}`;
+    if (!url.endsWith('/')) url += '/';
     return url;
-};
-
-const buildLangAwareUrl = (segments = [], options = {}) => {
-    const normalizedLang = normalizeSegment(Energine?.lang);
-    const combinedSegments = normalizedLang
-        ? [normalizedLang, ...toArray(segments)]
-        : toArray(segments);
-
-    return composeUrl({ base: Energine?.base, segments: combinedSegments, ...options });
-};
-
-const buildComponentUrl = (singleTemplate, segments = [], options = {}) => {
-    const normalizedSingle = normalizeSegment(singleTemplate);
-    const combinedSegments = normalizedSingle
-        ? [normalizedSingle, ...toArray(segments)]
-        : toArray(segments);
-
-    return buildLangAwareUrl(combinedSegments, options);
 };
 
 class RecoverPassword {
@@ -72,14 +31,12 @@ class RecoverPassword {
         const dataset = this.componentElement?.dataset || {};
 
         // getProperty => getAttribute (если это DOM-элемент)
-        this.singleTemplate = dataset.eSingleTemplate
-            || this.componentElement?.getAttribute('data-e-single-template')
-            || this.componentElement?.getAttribute('single_template')
-            || '';
-        this.path = dataset.eTemplate
-            || this.componentElement?.getAttribute('data-e-template')
-            || this.componentElement?.getAttribute('template')
-            || '';
+        this.singleTemplate = normalizePath(
+            dataset.eSingleTemplate
+                || this.componentElement?.getAttribute('data-e-single-template')
+                || this.componentElement?.getAttribute('single_template')
+                || ''
+        );
 
         // Ссылка на this (для вложенных функций, если не использовать стрелочные)
         this.bindFormHandlers();
@@ -143,8 +100,12 @@ class RecoverPassword {
     handleResponse(result) {
         if (result.result) {
             const redirect = () => {
-                const url = buildLangAwareUrl('login', { trailingSlash: true });
-                globalScope.location.href = url;
+                const target = result.redirect && result.redirect.trim()
+                    ? result.redirect.trim()
+                    : buildComponentUrl(this.singleTemplate);
+                if (globalScope?.location) {
+                    globalScope.location.href = target;
+                }
             };
             if (typeof Energine.noticeBox === 'function') {
                 Energine.noticeBox(result.message, 'success', redirect);

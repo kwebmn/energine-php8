@@ -1,69 +1,24 @@
 import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 import ValidForm from '../../share/scripts/ValidForm.js';
 
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
-
-const normalizeSegment = (segment = '') => {
-    if (segment === null || typeof segment === 'undefined') {
-        return '';
-    }
-    return String(segment).trim().replace(/^\/+/g, '').replace(/\/+$/g, '');
+const normalizePath = (value = '') => {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return '';
+    const withoutTrailing = trimmed.replace(/\/+$/g, '');
+    if (!withoutTrailing) return '';
+    return withoutTrailing.startsWith('/') ? withoutTrailing : `/${withoutTrailing}`;
 };
 
-const normalizeBase = (base = '') => {
-    if (!base) {
-        return '';
+const buildComponentUrl = (basePath, segment = '') => {
+    let url = normalizePath(basePath);
+    if (!url) url = '';
+    if (segment) {
+        url = `${url.replace(/\/+$/g, '')}/${segment.replace(/^\/+/g, '')}`;
     }
-    return String(base).trim().replace(/\/+$/g, '');
-};
-
-const toArray = (value) => (Array.isArray(value) ? value : [value]);
-
-const composeUrl = ({ base = '', segments = [], trailingSlash = true } = {}) => {
-    const normalizedBase = normalizeBase(base);
-    const normalizedSegments = segments
-        .map((segment) => normalizeSegment(segment))
-        .filter(Boolean);
-
-    let url;
-    if (normalizedBase) {
-        url = normalizedSegments.length
-            ? `${normalizedBase}/${normalizedSegments.join('/')}`
-            : normalizedBase;
-    } else if (normalizedSegments.length) {
-        url = `/${normalizedSegments.join('/')}`;
-    } else {
-        url = '/';
-    }
-
-    if (trailingSlash && url[url.length - 1] !== '/') {
-        url += '/';
-    }
-
+    if (!url.startsWith('/')) url = `/${url}`;
+    if (!url.endsWith('/')) url += '/';
     return url;
 };
-
-const buildLangAwareUrl = (segments = [], options = {}) => {
-    const normalizedLang = normalizeSegment(Energine?.lang);
-    const combinedSegments = normalizedLang
-        ? [normalizedLang, ...toArray(segments)]
-        : toArray(segments);
-
-    return composeUrl({ base: Energine?.base, segments: combinedSegments, ...options });
-};
-
-const buildComponentUrl = (singleTemplate, segments = [], options = {}) => {
-    const normalizedSingle = normalizeSegment(singleTemplate);
-    const combinedSegments = normalizedSingle
-        ? [normalizedSingle, ...toArray(segments)]
-        : toArray(segments);
-
-    return buildLangAwareUrl(combinedSegments, options);
-};
-
-const $ = globalScope?.jQuery || globalScope?.$;
 
 /**
  * UserProfile (ES6 version)
@@ -74,40 +29,74 @@ class UserProfile extends ValidForm {
      * @param {HTMLElement|string} element
      */
     constructor(element) {
-        if (!$) {
-            throw new Error('UserProfile requires jQuery to be available globally.');
-        }
-
         const elementRef = (typeof element === 'string')
             ? document.querySelector(element)
             : element;
         super(elementRef);
         this.componentElement = elementRef;
         const dataset = this.componentElement?.dataset || {};
-        // Получаем путь для сохранения
-        this.singleTemplate = dataset.eSingleTemplate
-            || this.componentElement.getAttribute('data-e-single-template')
-            || this.componentElement.getAttribute('single_template')
-            || '';
+        this.form = this.componentElement?.closest('form') || this.componentElement || null;
+        this.singleTemplate = normalizePath(
+            dataset.eSingleTemplate
+                || this.componentElement?.getAttribute('data-e-single-template')
+                || this.componentElement?.getAttribute('single_template')
+                || ''
+        );
 
-        // Привязываем обработчик отправки формы через jQuery
-        $(this.componentElement).on('submit', (event) => {
-            event.preventDefault();
-            const data = $(this.componentElement).serialize();
-            const saveUrl = buildComponentUrl(this.singleTemplate, 'save');
-
-            $.post(saveUrl, data, (result) => {
-                if (result.result) {
-                    Energine.noticeBox(result.message, 'success');
-                } else {
-                    Energine.noticeBox(result.message, 'error');
-                }
-            }, 'json');
-
-            return false;
-        });
+        if (this.form) {
+            this.form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                this.saveProfile();
+            });
+        }
     }
 
+    saveProfile() {
+        if (!this.form) {
+            return;
+        }
+
+        const formData = new FormData(this.form);
+        const payload = new URLSearchParams();
+        formData.forEach((value, key) => {
+            payload.append(key, String(value));
+        });
+
+        const url = buildComponentUrl(this.singleTemplate, 'save');
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                Accept: 'application/json'
+            },
+            body: payload.toString(),
+            credentials: 'same-origin'
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((result) => {
+                const message = result?.message || 'Готово';
+                const type = result?.result ? 'success' : 'error';
+                if (typeof Energine.noticeBox === 'function') {
+                    Energine.noticeBox(message, type);
+                } else {
+                    alert(message);
+                }
+            })
+            .catch(() => {
+                const message = 'Не вдалося зберегти дані.';
+                if (typeof Energine.alertBox === 'function') {
+                    Energine.alertBox(message, 'error');
+                } else {
+                    alert(message);
+                }
+            });
+    }
 }
 
 export { UserProfile };

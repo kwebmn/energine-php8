@@ -1,61 +1,24 @@
 import Energine, { registerBehavior as registerEnergineBehavior } from '../../share/scripts/Energine.js';
 
-const globalScope = typeof window !== 'undefined'
-    ? window
-    : (typeof globalThis !== 'undefined' ? globalThis : undefined);
+const globalScope = typeof window !== 'undefined' ? window : undefined;
 
-const normalizeSegment = (segment = '') => {
-  if (segment === null || typeof segment === 'undefined') return '';
-  return String(segment).trim().replace(/^\/+/g, '').replace(/\/+$/g, '');
+const normalizePath = (value = '') => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  const withoutTrailing = trimmed.replace(/\/+$/g, '');
+  if (!withoutTrailing) return '';
+  return withoutTrailing.startsWith('/') ? withoutTrailing : `/${withoutTrailing}`;
 };
 
-const normalizeBase = (base = '') => {
-  if (!base) return '';
-  return String(base).trim().replace(/\/+$/g, '');
-};
-
-const toArray = (value) => (Array.isArray(value) ? value : [value]);
-
-const composeUrl = ({ base = '', segments = [], trailingSlash = true } = {}) => {
-  const normalizedBase = normalizeBase(base);
-  const normalizedSegments = segments
-    .map((segment) => normalizeSegment(segment))
-    .filter(Boolean);
-
-  let url;
-  if (normalizedBase) {
-    url = normalizedSegments.length
-      ? `${normalizedBase}/${normalizedSegments.join('/')}`
-      : normalizedBase;
-  } else if (normalizedSegments.length) {
-    url = `/${normalizedSegments.join('/')}`;
-  } else {
-    url = '/';
+const buildComponentUrl = (basePath, segment = '') => {
+  let url = normalizePath(basePath);
+  if (!url) url = '';
+  if (segment) {
+    url = `${url.replace(/\/+$/g, '')}/${segment.replace(/^\/+/g, '')}`;
   }
-
-  if (trailingSlash && url[url.length - 1] !== '/') {
-    url += '/';
-  }
-
+  if (!url.startsWith('/')) url = `/${url}`;
+  if (!url.endsWith('/')) url += '/';
   return url;
-};
-
-const buildLangAwareUrl = (segments = [], options = {}) => {
-  const normalizedLang = normalizeSegment(Energine?.lang);
-  const combinedSegments = normalizedLang
-    ? [normalizedLang, ...toArray(segments)]
-    : toArray(segments);
-
-  return composeUrl({ base: Energine?.base, segments: combinedSegments, ...options });
-};
-
-const buildComponentUrl = (singleTemplate, segments = [], options = {}) => {
-  const normalizedSingle = normalizeSegment(singleTemplate);
-  const combinedSegments = normalizedSingle
-    ? [normalizedSingle, ...toArray(segments)]
-    : toArray(segments);
-
-  return buildLangAwareUrl(combinedSegments, options);
 };
 
 class SignIn {
@@ -65,21 +28,12 @@ class SignIn {
       typeof element === 'string' ? document.querySelector(element) : element;
 
     const dataset = this.componentElement?.dataset || {};
-
-    // Берём template из атрибута компонента (если есть)
-    const templateAttr = dataset.eTemplate
-      || this.componentElement?.getAttribute('data-e-template')
-      || this.componentElement?.getAttribute('template')
-      || '';
-
-    const singleTemplateAttr = dataset.eSingleTemplate
-      || this.componentElement?.getAttribute('data-e-single-template')
-      || this.componentElement?.getAttribute('single_template')
-      || '';
-
-    this.templatePath = templateAttr.endsWith('/') ? templateAttr : `${templateAttr}/`;
-    this.singlePath = this.templatePath;
-    this.singleTemplate = singleTemplateAttr;
+    this.singleTemplate = normalizePath(
+      dataset.eSingleTemplate
+        || this.componentElement?.getAttribute('data-e-single-template')
+        || this.componentElement?.getAttribute('single_template')
+        || ''
+    );
 
     // Навешиваем обработчики
     this._bind();
@@ -87,19 +41,15 @@ class SignIn {
 
   _bind() {
     // Быстрая регистрация
-    this._bindForm('#sign_up_fast', () => buildComponentUrl(this.singleTemplate, 'sign-up-fast'));
-
-    // Обычная регистрация
-    this._bindForm('#sign_up', () => buildComponentUrl(this.singleTemplate, 'sign-up'));
-
-    // Вход
-    this._bindForm('#sign_in', () => buildComponentUrl(this.singleTemplate, 'sign-in'));
+    this._bindForm('#sign_up_fast', 'sign-up-fast');
+    this._bindForm('#sign_up', 'sign-up');
+    this._bindForm('#sign_in', 'sign-in');
 
     // Логаут
     this._bindLogout('.btn-logout');
   }
 
-  _bindForm(selector, urlBuilder) {
+  _bindForm(selector, segment) {
     const form = this.componentElement?.querySelector(selector);
     if (!form) return;
 
@@ -113,10 +63,8 @@ class SignIn {
       this._clearValidation(form);
 
       try {
-        const url = urlBuilder(form);
-        if (url && form.action !== url) {
-          form.setAttribute('action', url);
-        }
+        const url = buildComponentUrl(this.singleTemplate, segment);
+        form.setAttribute('action', url);
         const result = await this._postForm(form, url);
         this._handleResult(result, /*isLogout*/ false, form);
       } catch (err) {
@@ -173,20 +121,12 @@ class SignIn {
     if (result?.result) {
       if (form) this._clearValidation(form);
       Energine.noticeBox(result.message, 'success', () => {
-        const redirect = isLogout
-          ? buildLangAwareUrl([], { trailingSlash: true })
-          : (() => {
-              const rawRedirect = typeof result?.redirect === 'string' ? result.redirect : '';
-              const trimmedRedirect = rawRedirect.trim();
-              if (!trimmedRedirect) {
-                return buildLangAwareUrl([], { trailingSlash: true });
-              }
-              const hasTrailingSlash = trimmedRedirect.endsWith('/');
-              return buildLangAwareUrl(
-                trimmedRedirect,
-                { trailingSlash: hasTrailingSlash }
-              );
-            })();
+        const redirect = (() => {
+          const raw = typeof result?.redirect === 'string' ? result.redirect.trim() : '';
+          if (raw) return raw;
+          if (isLogout) return '/';
+          return buildComponentUrl(this.singleTemplate);
+        })();
         if (globalScope?.location) {
           globalScope.location.href = redirect;
         }
