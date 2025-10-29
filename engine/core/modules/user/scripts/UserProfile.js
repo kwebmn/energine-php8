@@ -25,14 +25,18 @@ class UserProfile extends ValidForm {
             : element;
         super(elementRef);
         this.componentElement = elementRef;
+        const dataset = this.componentElement?.dataset || {};
         // Получаем путь для сохранения
-        this.url = this.componentElement.getAttribute('single_template');
+        this.singleTemplatePath = dataset.eSingleTemplate
+            || this.componentElement?.getAttribute('data-e-single-template')
+            || this.componentElement?.getAttribute('single_template')
+            || '';
 
         // Привязываем обработчик отправки формы через jQuery
         $(this.componentElement).on('submit', (event) => {
             event.preventDefault();
             const data = $(this.componentElement).serialize();
-            const saveUrl = `${Energine.base}${Energine.lang}/${this.url}save`;
+            const saveUrl = `${Energine.base}${Energine.lang}/${this.singleTemplatePath}save`;
 
             $.post(saveUrl, data, (result) => {
                 if (result.result) {
