@@ -6,35 +6,35 @@
             <div class="card-body">
                 <ul class="nav nav-tabs mb-3" id="user-profile-tabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <a data-mdb-tab-init="true"
-                           class="nav-link active"
+                        <a class="nav-link active"
                            id="user-profile-tab-1"
                            href="#tab-1"
                            role="tab"
                            aria-controls="tab-1"
                            aria-selected="true">
+                            <xsl:attribute name="data-mdb-tab-init">true</xsl:attribute>
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_MY_DATA']"/>
                         </a>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <a data-mdb-tab-init="true"
-                           class="nav-link"
+                        <a class="nav-link"
                            id="user-profile-tab-2"
                            href="#tab-2"
                            role="tab"
                            aria-controls="tab-2"
                            aria-selected="false">
+                            <xsl:attribute name="data-mdb-tab-init">true</xsl:attribute>
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
                         </a>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <a data-mdb-tab-init="true"
-                           class="nav-link"
+                        <a class="nav-link"
                            id="user-profile-tab-3"
                            href="#tab-3"
                            role="tab"
                            aria-controls="tab-3"
                            aria-selected="false">
+                            <xsl:attribute name="data-mdb-tab-init">true</xsl:attribute>
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_EMAIL']"/>
                         </a>
                     </li>
