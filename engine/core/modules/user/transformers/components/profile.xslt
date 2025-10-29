@@ -4,10 +4,11 @@
     <xsl:template match="container[@name='profile']">
         <div class="card">
             <div class="card-body">
-                <ul class="nav nav-tabs mb-3" role="tablist">
+                <ul class="nav nav-tabs mb-3" id="user-profile-tabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <a data-bs-toggle="tab"
                            data-mdb-toggle="tab"
+                           data-mdb-tab-init=""
                            data-bs-target="#tab-1"
                            data-mdb-target="#tab-1"
                            class="nav-link active"
@@ -15,13 +16,14 @@
                            role="tab"
                            aria-controls="tab-1"
                            aria-selected="true"
-                           href="javascript:void(0);">
+                           href="#tab-1">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_MY_DATA']"/>
                         </a>
                     </li>
                     <li class="nav-item" role="presentation">
                         <a data-bs-toggle="tab"
                            data-mdb-toggle="tab"
+                           data-mdb-tab-init=""
                            data-bs-target="#tab-2"
                            data-mdb-target="#tab-2"
                            class="nav-link"
@@ -29,13 +31,14 @@
                            role="tab"
                            aria-controls="tab-2"
                            aria-selected="false"
-                           href="javascript:void(0);">
+                           href="#tab-2">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_PASSWORD']"/>
                         </a>
                     </li>
                     <li class="nav-item" role="presentation">
                         <a data-bs-toggle="tab"
                            data-mdb-toggle="tab"
+                           data-mdb-tab-init=""
                            data-bs-target="#tab-3"
                            data-mdb-target="#tab-3"
                            class="nav-link"
@@ -43,7 +46,7 @@
                            role="tab"
                            aria-controls="tab-3"
                            aria-selected="false"
-                           href="javascript:void(0);">
+                           href="#tab-3">
                             <xsl:value-of select="//translation[@const='TXT_PROFILE_CHANGE_EMAIL']"/>
                         </a>
                     </li>
