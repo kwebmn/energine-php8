@@ -2,8 +2,17 @@
 
 class TemplateHelper extends DBWorker
 {
+    /**
+     * Tracks files created or modified during template generation.
+     * Array path => original contents (null if file did not exist).
+     */
+    private array $fileChanges = [];
+
     public function createTemplate($templateId)
     {
+        $transactionStarted = false;
+        $this->fileChanges = [];
+
         try
         {
             $template = $this->dbh->select(
@@ -14,17 +23,21 @@ class TemplateHelper extends DBWorker
                 ]
             );
 
+            if (!is_array($template) || !count($template))
+            {
+                throw new \RuntimeException('Template with ID ' . $templateId . ' was not found.');
+            }
+
             $template = $template[0];
 
             if ($template['sg_is_disabled'] == '1')
             {
                 $this->log('This template is DISABLED for building.');
-                die();
+                $this->revertFileChanges();
+                return;
             }
 
-
-            //$this->dbh->beginTransaction(true);
-
+            $transactionStarted = $this->dbh->beginTransaction();
 
             $primaryKey = $template['sg_tablename'] . '_id';
 
@@ -38,7 +51,6 @@ class TemplateHelper extends DBWorker
              */
             if ($template['sg_type'] == '1')
             {
-
                 /**
                  * List
                  */
@@ -64,7 +76,6 @@ class TemplateHelper extends DBWorker
             }
             elseif ($template['sg_type'] == '2')
             {
-
                 /**
                  * List
                  */
@@ -88,7 +99,6 @@ class TemplateHelper extends DBWorker
                 $this->createTemplateFile('default_template_feed', $template['sg_template_name'], $template['sg_tablename'], $template['sg_class_name']);
             }
 
-
             /**
              * DB
              */
@@ -105,17 +115,26 @@ class TemplateHelper extends DBWorker
                     'sg_id' => $templateId
                 ]
             );
+
+            if ($transactionStarted)
+            {
+                $this->dbh->commit();
+            }
         }
-        catch (Exception $e)
+        catch (\Throwable $e)
         {
-            //inspect($e);
-            //$this->dbh->rollback();
-            stop($e);
+            if ($transactionStarted)
+            {
+                $this->dbh->rollback();
+            }
+            $this->revertFileChanges();
+            throw $e;
         }
-
-        //$this->dbh->commit();
+        finally
+        {
+            $this->fileChanges = [];
+        }
     }
-
     public function createTemplateXSLTFile($source, $target, $componentName, $parentKey)
     {
         $content = file_get_contents(TemplateWizard::WIZARD_PATH . 'transformers/' . $source.  '.xslt');
@@ -126,7 +145,7 @@ class TemplateHelper extends DBWorker
 
         $file = TemplateWizard::TEMPLATES_PATH . 'transformers/' . $target . '.xslt';
         $this->log('Building XSLT file ' . $file);
-        file_put_contents($file, $content);
+        $this->writeFile($file, $content);
 
         $includeTxt = '<xsl:include href="' . $target. '.xslt"/>';
         $nextTxt = '<!--next-->';
@@ -140,7 +159,7 @@ class TemplateHelper extends DBWorker
                 "\t" . $includeTxt . "\n" . $nextTxt,
                 $content
             );
-            file_put_contents($xsltIncludeFile, $content);
+            $this->writeFile($xsltIncludeFile, $content);
             $this->log('Building XSLT.');
         }
         else
@@ -156,111 +175,46 @@ class TemplateHelper extends DBWorker
 
         $this->dbh->modifyRequest('SET FOREIGN_KEY_CHECKS=0;');
 
-        $tableName = TemplateWizard::TABLE_PREFIX . $template['sg_tablename'];
-        $orderNum = $template['sg_tablename'] . '_order_num';
-        $tableNameTr  = $tableName . '_translation';
-        $tableNameUploads  = $tableName . '_uploads';
-        $tableNameUploadsTr  = $tableName . '_uploads_translation';
-
-        $tableNameFilter  = $tableName . '_filter';
-        $tableNameFilterTr  = $tableName . '_filter_translation';
-        $tableNameFilterData  = $tableName . '_filter_data';
-
-        $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableName .  '`;');
-        $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameTr . '`;');
-        $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameUploads . '`;');
-        $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameUploadsTr . '`;');
-        $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameFilter . '`;');
-        $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameFilterTr . '`;');
-        $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameFilterData . '`;');
-
-        /**
-         * Base table
-         */
-
-        $f = '`' . $pk . '` int(10) UNSIGNED NOT NULL,' . "\n";
-
-        $f .= '`' . $orderNum . '` int(10) UNSIGNED DEFAULT \'1\',' . "\n";
-
-        if ($template['sg_type'] == '2')
+        try
         {
-            $f .= '`smap_id` int(10) UNSIGNED NOT NULL,';
-        }
+            $tableName = TemplateWizard::TABLE_PREFIX . $template['sg_tablename'];
+            $orderNum = $template['sg_tablename'] . '_order_num';
+            $tableNameTr  = $tableName . '_translation';
+            $tableNameUploads  = $tableName . '_uploads';
+            $tableNameUploadsTr  = $tableName . '_uploads_translation';
 
-        if (is_array($fields) and count($fields) > 0)
-        {
-            $array_keys = array_keys($fields);
-            $last_key = end($array_keys);
-            foreach ($fields as $key => $row)
-            {
-                $f .= $row;
-                ;
-                if ($last_key != $key)
-                {
-                    $f .= ",\n";
-                }
-                else
-                {
-                    $f .= '';
-                }
-            }
-        }
-        $sql = 'DROP TABLE IF EXISTS `' . $tableName . '`;
-                CREATE TABLE `' . $tableName . '` (
-                 ' . $f . '
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-        ';
+            $tableNameFilter  = $tableName . '_filter';
+            $tableNameFilterTr  = $tableName . '_filter_translation';
+            $tableNameFilterData  = $tableName . '_filter_data';
 
-        $this->dbh->modifyRequest($sql);
+            $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableName .  '`;');
+            $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameTr . '`;');
+            $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameUploads . '`;');
+            $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameUploadsTr . '`;');
+            $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameFilter . '`;');
+            $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameFilterTr . '`;');
+            $this->dbh->modifyRequest('DROP TABLE IF EXISTS `' . $tableNameFilterData . '`;');
 
-
-        $sql = 'ALTER TABLE `' . $tableName . '`
-                  ADD PRIMARY KEY (`' . $pk .  '`),
-                  ADD KEY `' . $orderNum . '` (`' . $orderNum .'`);';
-
-        $this->dbh->modifyRequest($sql);
-
-        if ($template['sg_type'] == '2')
-        {
-            $sql = 'ALTER TABLE `' . $tableName . '`
-                  ADD KEY `smap_id` (`smap_id`)';
-            $this->dbh->modifyRequest($sql);
-        }
-
-
-        $sql = 'ALTER TABLE `' . $tableName . '`
-                MODIFY `' . $pk .  '` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
-        $this->dbh->modifyRequest($sql);
-
-
-        if ($template['sg_type'] == '2')
-        {
-            $sql = 'ALTER TABLE `' . $tableName . '`
-                      ADD CONSTRAINT `' .$tableName . '_smap_id` FOREIGN KEY (`smap_id`) REFERENCES `share_sitemap` (`smap_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
-
-            $this->dbh->modifyRequest($sql);
-        }
-
-
-        /**
-         * Base table translation
-         */
-        if ($template['sg_is_translation'])
-        {
-
+            /**
+             * Base table
+             */
 
             $f = '`' . $pk . '` int(10) UNSIGNED NOT NULL,' . "\n";
-            $f .= '`lang_id` int(10) UNSIGNED NOT NULL,';
 
-            if (is_array($fieldsTr) and count($fieldsTr) > 0)
+            $f .= '`' . $orderNum . '` int(10) UNSIGNED DEFAULT \'1\',' . "\n";
+
+            if ($template['sg_type'] == '2')
             {
-                $array_keys = array_keys($fieldsTr);
-                $last_key = end($array_keys);
+                $f .= '`smap_id` int(10) UNSIGNED NOT NULL,';
+            }
 
-                foreach ($fieldsTr as $key => $row)
+            if (is_array($fields) && count($fields) > 0)
+            {
+                $array_keys = array_keys($fields);
+                $last_key = end($array_keys);
+                foreach ($fields as $key => $row)
                 {
                     $f .= $row;
-                    ;
                     if ($last_key != $key)
                     {
                         $f .= ",\n";
@@ -271,148 +225,215 @@ class TemplateHelper extends DBWorker
                     }
                 }
             }
+            $sql = 'CREATE TABLE `' . $tableName . '` (
+                     ' . $f . '
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
 
-            $sql = 'DROP TABLE IF EXISTS `' . $tableNameTr . '`;
-                CREATE TABLE `' . $tableNameTr . '` (
-                 ' . $f . '
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
             $this->dbh->modifyRequest($sql);
 
-            $sql = 'ALTER TABLE `' . $tableNameTr . '`
-                      ADD PRIMARY KEY (`' . $pk . '`,`lang_id`),
+
+            $sql = 'ALTER TABLE `' . $tableName . '`
+                      ADD PRIMARY KEY (`' . $pk .  '`),
+                      ADD KEY `' . $orderNum . '` (`' . $orderNum .'`);';
+
+            $this->dbh->modifyRequest($sql);
+
+            if ($template['sg_type'] == '2')
+            {
+                $sql = 'ALTER TABLE `' . $tableName . '`
+                      ADD KEY `smap_id` (`smap_id`)';
+                $this->dbh->modifyRequest($sql);
+            }
+
+
+            $sql = 'ALTER TABLE `' . $tableName . '`
+                    MODIFY `' . $pk .  '` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
+            $this->dbh->modifyRequest($sql);
+
+
+            if ($template['sg_type'] == '2')
+            {
+                $sql = 'ALTER TABLE `' . $tableName . '`
+                          ADD CONSTRAINT `' .$tableName . '_smap_id` FOREIGN KEY (`smap_id`) REFERENCES `share_sitemap` (`smap_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
+
+                $this->dbh->modifyRequest($sql);
+            }
+
+
+            /**
+             * Base table translation
+             */
+            if ($template['sg_is_translation'])
+            {
+
+
+                $f = '`' . $pk . '` int(10) UNSIGNED NOT NULL,' . "\n";
+                $f .= '`lang_id` int(10) UNSIGNED NOT NULL,';
+
+                if (is_array($fieldsTr) && count($fieldsTr) > 0)
+                {
+                    $array_keys = array_keys($fieldsTr);
+                    $last_key = end($array_keys);
+
+                    foreach ($fieldsTr as $key => $row)
+                    {
+                        $f .= $row;
+                        if ($last_key != $key)
+                        {
+                            $f .= ",\n";
+                        }
+                        else
+                        {
+                            $f .= '';
+                        }
+                    }
+                }
+                $sql = 'CREATE TABLE `' . $tableNameTr . '` (
+                     ' . $f . '
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameTr . '`
+                          ADD PRIMARY KEY (`' . $pk . '`,`lang_id`),
+                          ADD KEY `lang_id` (`lang_id`);';
+                $this->dbh->modifyRequest($sql);
+
+
+                $sql = 'ALTER TABLE `' . $tableNameTr . '`
+                          ADD CONSTRAINT `' .$tableNameTr . '_0_' . $pk . '` FOREIGN KEY (`' . $pk .'`) REFERENCES `' . $tableName . '` (`' . $pk . '`) ON DELETE CASCADE ON UPDATE CASCADE,
+                          ADD CONSTRAINT `' .$tableNameTr . '_1_lang_id' . '` FOREIGN KEY (`lang_id`) REFERENCES `share_languages` (`lang_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
+                $this->dbh->modifyRequest($sql);
+
+            }
+
+            /**
+             * Uploads
+             */
+            if ($template['sg_is_uploads'])
+            {
+
+                $sql = 'CREATE TABLE `' . $tableNameUploads . '` (
+                        `au_id` int(10) UNSIGNED NOT NULL,
+                        `' . $pk . '` int(10) UNSIGNED DEFAULT NULL,
+                        `upl_id` int(10) UNSIGNED NOT NULL,
+                        `au_order_num` int(10) UNSIGNED NOT NULL DEFAULT "1",
+                        `session_id` varchar(255) DEFAULT NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameUploads . '`
+                          ADD PRIMARY KEY (`au_id`),
+                          ADD KEY `' . $pk . '` (`' . $pk . '`),
+                          ADD KEY `upl_id` (`upl_id`);';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameUploads . '`
+                    MODIFY `au_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
+                $this->dbh->modifyRequest($sql);
+
+
+                $sql = 'ALTER TABLE `' .$tableNameUploads . '`
+                          ADD CONSTRAINT `' . $tableNameUploads . '_0_' .  $pk . '` FOREIGN KEY (`' . $pk . '`) REFERENCES `' . $tableName . '` (`' . $pk . '`) ON DELETE CASCADE ON UPDATE CASCADE,
+                          ADD CONSTRAINT `' . $tableNameUploads . '_upl_id' . '` FOREIGN KEY (`upl_id`) REFERENCES `share_uploads` (`upl_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
+                $this->dbh->modifyRequest($sql);
+
+
+                $sql = 'CREATE TABLE `' . $tableNameUploadsTr . '` (
+              `au_id` int(10) UNSIGNED NOT NULL,
+              `lang_id` int(10) UNSIGNED NOT NULL,
+              `file_alt` varchar(255) DEFAULT NULL
+               ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameUploadsTr . '`
+                      ADD PRIMARY KEY (`au_id`,`lang_id`),
                       ADD KEY `lang_id` (`lang_id`);';
-            $this->dbh->modifyRequest($sql);
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameUploadsTr . '`
+                      ADD CONSTRAINT `' . $tableNameUploadsTr . '_au_id' . '` FOREIGN KEY (`au_id`) REFERENCES `' . $tableNameUploads . '` (`au_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+                      ADD CONSTRAINT `' . $tableNameUploadsTr . '_lang_id' . '` FOREIGN KEY (`lang_id`) REFERENCES `share_languages` (`lang_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
+                $this->dbh->modifyRequest($sql);
+
+            }
 
 
-            $sql = 'ALTER TABLE `' . $tableNameTr . '`
-                      ADD CONSTRAINT `' .$tableNameTr . '_0_' . $pk . '` FOREIGN KEY (`' . $pk .'`) REFERENCES `' . $tableName . '` (`' . $pk . '`) ON DELETE CASCADE ON UPDATE CASCADE,
-                      ADD CONSTRAINT `' .$tableNameTr . '_1_lang_id' . '` FOREIGN KEY (`lang_id`) REFERENCES `share_languages` (`lang_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
-            $this->dbh->modifyRequest($sql);
+
+
+            /**
+             * Filter
+             */
+            if ($template['sg_is_filter'])
+            {
+
+                $sql = 'CREATE TABLE `' . $tableNameFilter . '` (
+                          `filter_id` int(10) UNSIGNED NOT NULL,
+                          `filter_pid` int(10) UNSIGNED DEFAULT NULL,
+                          `filter_order_num` int(10) NOT NULL DEFAULT \'1\',
+                          `filter_img` varchar(255) DEFAULT NULL,
+                          `filter_is_active` tinyint(1) NOT NULL DEFAULT \'1\',
+                          `filter_is_feature` tinyint(1) NOT NULL DEFAULT \'1\',
+                          `filter_system_name` varchar(255) DEFAULT NULL,
+                          `filter_is_similar_product` tinyint(1) NOT NULL DEFAULT \'0\'
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'CREATE TABLE `' . $tableNameFilterData . '` (
+                          `fd_id` int(10) UNSIGNED NOT NULL,
+                          `filter_id` int(10) UNSIGNED NOT NULL,
+                          `target_id` int(10) UNSIGNED DEFAULT NULL,
+                          `session_id` varchar(255) DEFAULT NULL
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'CREATE TABLE `' . $tableNameFilterTr . '` (
+                          `filter_id` int(10) UNSIGNED NOT NULL,
+                          `lang_id` int(10) UNSIGNED NOT NULL,
+                          `filter_name` varchar(255) NOT NULL,
+                          `filter_descr_rtf` text
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `'. $tableNameFilter . '`
+                          ADD PRIMARY KEY (`filter_id`),
+                          ADD KEY `filter_pid` (`filter_pid`),
+                          ADD KEY `filter_order_num` (`filter_order_num`);';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameFilterData . '`
+                          ADD PRIMARY KEY (`fd_id`),
+                          ADD KEY `filter_id` (`filter_id`),
+                          ADD KEY `target_id` (`target_id`);;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameFilterTr .  '`
+                          ADD PRIMARY KEY (`filter_id`,`lang_id`),
+                          ADD KEY `lang_id` (`lang_id`);';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameFilter . '`
+                          MODIFY `filter_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameFilterData . '`
+                          MODIFY `fd_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameFilter . '`
+                            ADD CONSTRAINT `' . $tableNameFilter . '_filter_id_pid' . '` FOREIGN KEY (`filter_pid`) REFERENCES `' . $tableNameFilter . '` (`filter_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
+                $this->dbh->modifyRequest($sql);
+
+                $sql = 'ALTER TABLE `' . $tableNameFilterData . '`
+                          ADD CONSTRAINT `' . $tableNameFilterData . '_filter_id_id' . '` FOREIGN KEY (`filter_id`) REFERENCES `' . $tableNameFilter. '` (`filter_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+                          ADD CONSTRAINT `' . $tableNameFilterData . '_target_id_id' . '` FOREIGN KEY (`target_id`) REFERENCES `' . $tableName . '` (`' . $pk . '`) ON DELETE CASCADE ON UPDATE CASCADE;';
+                $this->dbh->modifyRequest($sql);
+
+            }
 
         }
-
-        /**
-         * Uploads
-         */
-        if ($template['sg_is_uploads'])
+        finally
         {
-
-            $sql = 'CREATE TABLE `' . $tableNameUploads . '` (
-                    `au_id` int(10) UNSIGNED NOT NULL,
-                    `' . $pk . '` int(10) UNSIGNED DEFAULT NULL,
-                    `upl_id` int(10) UNSIGNED NOT NULL,
-                    `au_order_num` int(10) UNSIGNED NOT NULL DEFAULT "1",
-                    `session_id` varchar(255) DEFAULT NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameUploads . '`
-                      ADD PRIMARY KEY (`au_id`),
-                      ADD KEY `' . $pk . '` (`' . $pk . '`),
-                      ADD KEY `upl_id` (`upl_id`);';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameUploads . '`
-                MODIFY `au_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
-            $this->dbh->modifyRequest($sql);
-
-
-            $sql = 'ALTER TABLE `' .$tableNameUploads . '`
-                      ADD CONSTRAINT `' . $tableNameUploads . '_0_' .  $pk . '` FOREIGN KEY (`' . $pk . '`) REFERENCES `' . $tableName . '` (`' . $pk . '`) ON DELETE CASCADE ON UPDATE CASCADE,
-                      ADD CONSTRAINT `' . $tableNameUploads . '_upl_id' . '` FOREIGN KEY (`upl_id`) REFERENCES `share_uploads` (`upl_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
-            $this->dbh->modifyRequest($sql);
-
-
-            $sql = 'CREATE TABLE `' . $tableNameUploadsTr . '` (
-          `au_id` int(10) UNSIGNED NOT NULL,
-          `lang_id` int(10) UNSIGNED NOT NULL,
-          `file_alt` varchar(255) DEFAULT NULL
-           ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameUploadsTr . '`
-                  ADD PRIMARY KEY (`au_id`,`lang_id`),
-                  ADD KEY `lang_id` (`lang_id`);';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameUploadsTr . '`
-                  ADD CONSTRAINT `' . $tableNameUploadsTr . '_au_id' . '` FOREIGN KEY (`au_id`) REFERENCES `' . $tableNameUploads . '` (`au_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-                  ADD CONSTRAINT `' . $tableNameUploadsTr . '_lang_id' . '` FOREIGN KEY (`lang_id`) REFERENCES `share_languages` (`lang_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
-            $this->dbh->modifyRequest($sql);
-
-        }
-
-
-
-
-        /**
-         * Filter
-         */
-        if ($template['sg_is_filter'])
-        {
-
-            $sql = 'CREATE TABLE `' . $tableNameFilter . '` (
-                      `filter_id` int(10) UNSIGNED NOT NULL,
-                      `filter_pid` int(10) UNSIGNED DEFAULT NULL,
-                      `filter_order_num` int(10) NOT NULL DEFAULT \'1\',
-                      `filter_img` varchar(255) DEFAULT NULL,
-                      `filter_is_active` tinyint(1) NOT NULL DEFAULT \'1\',
-                      `filter_is_feature` tinyint(1) NOT NULL DEFAULT \'1\',
-                      `filter_system_name` varchar(255) DEFAULT NULL,
-                      `filter_is_similar_product` tinyint(1) NOT NULL DEFAULT \'0\'
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'CREATE TABLE `' . $tableNameFilterData . '` (
-                      `fd_id` int(10) UNSIGNED NOT NULL,
-                      `filter_id` int(10) UNSIGNED NOT NULL,
-                      `target_id` int(10) UNSIGNED DEFAULT NULL,
-                      `session_id` varchar(255) DEFAULT NULL
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'CREATE TABLE `' . $tableNameFilterTr . '` (
-                      `filter_id` int(10) UNSIGNED NOT NULL,
-                      `lang_id` int(10) UNSIGNED NOT NULL,
-                      `filter_name` varchar(255) NOT NULL,
-                      `filter_descr_rtf` text
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `'. $tableNameFilter . '`
-                      ADD PRIMARY KEY (`filter_id`),
-                      ADD KEY `filter_pid` (`filter_pid`),
-                      ADD KEY `filter_order_num` (`filter_order_num`);';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameFilterData . '`
-                      ADD PRIMARY KEY (`fd_id`),
-                      ADD KEY `filter_id` (`filter_id`),
-                      ADD KEY `target_id` (`target_id`);;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameFilterTr .  '`
-                      ADD PRIMARY KEY (`filter_id`,`lang_id`),
-                      ADD KEY `lang_id` (`lang_id`);';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameFilter . '`
-                      MODIFY `filter_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameFilterData . '`
-                      MODIFY `fd_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameFilter . '`
-                        ADD CONSTRAINT `' . $tableNameFilter . '_filter_id_pid' . '` FOREIGN KEY (`filter_pid`) REFERENCES `' . $tableNameFilter . '` (`filter_id`) ON DELETE CASCADE ON UPDATE CASCADE;';
-            $this->dbh->modifyRequest($sql);
-
-            $sql = 'ALTER TABLE `' . $tableNameFilterData . '`
-                      ADD CONSTRAINT `' . $tableNameFilterData . '_filter_id_id' . '` FOREIGN KEY (`filter_id`) REFERENCES `' . $tableNameFilter. '` (`filter_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-                      ADD CONSTRAINT `' . $tableNameFilterData . '_target_id_id' . '` FOREIGN KEY (`target_id`) REFERENCES `' . $tableName . '` (`' . $pk . '`) ON DELETE CASCADE ON UPDATE CASCADE;';
-            $this->dbh->modifyRequest($sql);
-
+            $this->dbh->modifyRequest('SET FOREIGN_KEY_CHECKS=1;');
         }
 
     }
@@ -426,7 +447,7 @@ class TemplateHelper extends DBWorker
 
         $file = TemplateWizard::TEMPLATES_PATH . 'templates/content/' . $target . '.content.xml';
         $this->log('Building file ' . $file);
-        file_put_contents($file, $content);
+        $this->writeFile($file, $content);
     }
 
     public function createClassList($source, $className, $tableName)
@@ -438,7 +459,7 @@ class TemplateHelper extends DBWorker
 
         $file = TemplateWizard::TEMPLATES_PATH . 'components/' . $className . '.class.php';
         $this->log('Building file ' . $file);
-        file_put_contents($file, $content);
+        $this->writeFile($file, $content);
     }
 
     public function createClassJs($source, $className)
@@ -449,7 +470,7 @@ class TemplateHelper extends DBWorker
 
         $file = TemplateWizard::TEMPLATES_PATH . 'scripts/' . $className . '.js';
         $this->log('Building file ' . $file);
-        file_put_contents($file, $content);
+        $this->writeFile($file, $content);
     }
 
     public function createClassListConfig($source, $className, $pk, $fields, $fieldsTr, $isTr, $isJs, $isFeed = 0)
@@ -472,7 +493,7 @@ class TemplateHelper extends DBWorker
             $f .= "\t\t\t" . '<field name="smap_id"/>' . "\n";
         }
 
-        if (is_array($fields) > 0 and count($fields))
+        if (is_array($fields) && count($fields))
         {
             foreach ($fields as $key => $row)
             {
@@ -480,7 +501,7 @@ class TemplateHelper extends DBWorker
             }
         }
 
-        if ($isTr and is_array($fields) > 0 and count($fields))
+        if ($isTr && is_array($fieldsTr) && count($fieldsTr))
         {
             foreach ($fieldsTr as $key => $row)
             {
@@ -497,14 +518,14 @@ class TemplateHelper extends DBWorker
 
         $file = TemplateWizard::TEMPLATES_PATH . 'config/' . $className . '.component.xml';
         $this->log('Building file ' . $file);
-        file_put_contents($file, $content);
+        $this->writeFile($file, $content);
     }
 
     public function prepareFields($fields)
     {
 
         $result = [];
-        if (is_string($fields) and strlen($fields) > 0)
+        if (is_string($fields) && strlen($fields) > 0)
         {
             $fields = explode("\n", $fields);
             foreach ($fields as $field)
@@ -518,27 +539,27 @@ class TemplateHelper extends DBWorker
 
                 $result[$field] = $field;
 
-                if (strpos($field, '_id') or strpos($field, '_number'))
+                if (strpos($field, '_id') !== false || strpos($field, '_number') !== false)
                 {
                     $result[$field] = 'INT(10) UNSIGNED DEFAULT NULL';
                 }
-                elseif (strpos($field, '_is_'))
+                elseif (strpos($field, '_is_') !== false)
                 {
                     $result[$field] = 'TINYINT(1) NOT NULL DEFAULT \'0\'';
                 }
-                elseif (strpos($field, '_date'))
+                elseif (strpos($field, '_date') !== false)
                 {
                     $result[$field] = 'DATETIME DEFAULT NULL';
                 }
-                elseif (strpos($field, '_rtf'))
+                elseif (strpos($field, '_rtf') !== false)
                 {
                     $result[$field] = 'TEXT DEFAULT NULL';
                 }
-                elseif (strpos($field, '_text'))
+                elseif (strpos($field, '_text') !== false)
                 {
                     $result[$field] = 'TEXT DEFAULT NULL';
                 }
-                elseif (strpos($field, '_price'))
+                elseif (strpos($field, '_price') !== false)
                 {
                     $result[$field] = 'DECIMAL (10,2) DEFAULT NULL';
                 }
@@ -560,7 +581,7 @@ class TemplateHelper extends DBWorker
         $result = false;
         $query = 'SHOW TABLES LIKE \'' . $tableName . '\'';
         $res = $this->dbh->selectRequest($query);
-        if (is_array($res) and sizoeof($res) > 0)
+        if (is_array($res) && count($res) > 0)
         {
             $result = true;
         }
@@ -571,5 +592,47 @@ class TemplateHelper extends DBWorker
     public function log($message)
     {
         echo $message . "\n";
+    }
+
+    private function writeFile(string $path, string $content): void
+    {
+        if (!array_key_exists($path, $this->fileChanges))
+        {
+            $this->fileChanges[$path] = file_exists($path) ? file_get_contents($path) : null;
+        }
+
+        $directory = dirname($path);
+        if (!is_dir($directory))
+        {
+            if (!mkdir($directory, 0777, true) && !is_dir($directory))
+            {
+                throw new \RuntimeException('Cannot create directory: ' . $directory);
+            }
+        }
+
+        file_put_contents($path, $content);
+    }
+
+    private function revertFileChanges(): void
+    {
+        if (!$this->fileChanges)
+        {
+            return;
+        }
+
+        foreach (array_reverse($this->fileChanges, true) as $path => $originalContent)
+        {
+            if ($originalContent === null)
+            {
+                if (file_exists($path))
+                {
+                    @unlink($path);
+                }
+            }
+            else
+            {
+                file_put_contents($path, $originalContent);
+            }
+        }
     }
 }
