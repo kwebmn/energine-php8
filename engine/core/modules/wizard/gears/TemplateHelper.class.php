@@ -116,16 +116,23 @@ class TemplateHelper extends DBWorker
                 ]
             );
 
-            if ($transactionStarted)
+            if ($transactionStarted && $this->isTransactionActive())
             {
                 $this->dbh->commit();
             }
         }
         catch (\Throwable $e)
         {
-            if ($transactionStarted)
+            if ($transactionStarted && $this->isTransactionActive())
             {
-                $this->dbh->rollback();
+                try
+                {
+                    $this->dbh->rollback();
+                }
+                catch (\Throwable)
+                {
+                    // The transaction might have been implicitly committed by DDL.
+                }
             }
             $this->revertFileChanges();
             throw $e;
@@ -634,5 +641,34 @@ class TemplateHelper extends DBWorker
                 file_put_contents($path, $originalContent);
             }
         }
+    }
+
+    private function isTransactionActive(): bool
+    {
+        try
+        {
+            $pdo = $this->dbh->getPDO();
+            if ($pdo instanceof \PDO && $pdo->inTransaction())
+            {
+                return true;
+            }
+        }
+        catch (\Throwable)
+        {
+        }
+
+        try
+        {
+            $dbal = $this->dbh->getDbal();
+            if ($dbal instanceof \Doctrine\DBAL\Connection && $dbal->isTransactionActive())
+            {
+                return true;
+            }
+        }
+        catch (\Throwable)
+        {
+        }
+
+        return false;
     }
 }
