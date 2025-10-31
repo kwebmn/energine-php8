@@ -725,13 +725,15 @@ class Form {
     }
 
     _registerTranslateShortcut() {
-        window.addEventListener('keypress', async (evt) => {
+        window.addEventListener('keydown', async (evt) => {
             const context = this._extractTranslateContext(evt);
             if (!context) {
                 return;
             }
 
             try {
+                evt.preventDefault();
+                evt.stopPropagation();
                 const translated = await this._fetchTranslation(context);
                 if (translated && 'value' in context.targetField) {
                     context.targetField.value = translated;
@@ -743,15 +745,23 @@ class Form {
     }
 
     _extractTranslateContext(evt) {
+        if (!this._isTranslateShortcut(evt)) {
+            return null;
+        }
+
         if (!(evt?.target instanceof Element)) {
             return null;
         }
 
-        if (evt.code !== 'Digit8' || !evt.shiftKey) {
+        if (evt.repeat) {
             return null;
         }
 
         const targetField = evt.target;
+        if (!this._isTranslatableField(targetField)) {
+            return null;
+        }
+
         const fieldId = targetField.id;
         if (!fieldId || fieldId.length < 2) {
             return null;
@@ -765,11 +775,9 @@ class Form {
         const fieldBase = fieldId.substring(0, separatorIndex);
         const targetLangSuffix = fieldId.substring(separatorIndex + 1);
         const parent = targetField.closest('[data-role="pane-item"]');
-        if (!parent?.id) {
-            return null;
-        }
-
-        const toLangAbbr = this._resolveTargetLanguage(parent.id);
+        const toLangAbbr = parent?.id
+            ? this._resolveTargetLanguage(parent.id)
+            : this._normalizeLanguageAbbr(targetLangSuffix);
         if (!toLangAbbr) {
             return null;
         }
@@ -802,29 +810,43 @@ class Form {
             document
         ].filter(Boolean);
 
-        let defaultTabLink = null;
+        const { defaultTabLink, defaultLanguageId } = this._resolveDefaultLanguageLink(searchRoots);
+
+        const candidateSuffixes = [];
+        const addCandidate = (suffix) => {
+            if (!suffix || suffix === targetLangSuffix || candidateSuffixes.includes(suffix)) {
+                return;
+            }
+            candidateSuffixes.push(suffix);
+        };
+
+        const defaultLangSuffix = defaultTabLink?.getAttribute('lang_abbr');
+        addCandidate(defaultLangSuffix);
+        addCandidate(this._normalizeLanguageAbbr(defaultLangSuffix));
+        addCandidate(defaultLanguageId);
+
+        for (const suffix of candidateSuffixes) {
+            const candidate = this._findFieldBySuffix(fieldBase, suffix);
+            if (candidate && candidate !== targetField && this._isTranslatableField(candidate)) {
+                return candidate;
+            }
+        }
+
+        const bareField = this._findFieldBySuffix(fieldBase, '');
+        if (bareField && bareField !== targetField && this._isTranslatableField(bareField)) {
+            return bareField;
+        }
+
         for (const root of searchRoots) {
-            defaultTabLink = root.querySelector?.('[data-role="tabs"] [data-role="tab-link"][lang_abbr]') || null;
-            if (defaultTabLink) {
-                break;
+            const candidates = Array.from(root.querySelectorAll?.(`[id^="${fieldBase}_"]`) || []);
+            for (const candidate of candidates) {
+                if (candidate !== targetField && this._isTranslatableField(candidate)) {
+                    return candidate;
+                }
             }
         }
 
-        const sourceLangSuffix = defaultTabLink?.getAttribute('lang_abbr');
-
-        if (!sourceLangSuffix || sourceLangSuffix === targetLangSuffix) {
-            return null;
-        }
-
-        let sourceField = document.getElementById(`${fieldBase}_${sourceLangSuffix}`);
-        if (!sourceField) {
-            const normalizedSuffix = this._normalizeLanguageAbbr(sourceLangSuffix);
-            if (normalizedSuffix && normalizedSuffix !== sourceLangSuffix) {
-                sourceField = document.getElementById(`${fieldBase}_${normalizedSuffix}`);
-            }
-        }
-
-        return sourceField;
+        return null;
     }
 
     _resolveTargetLanguage(paneId) {
@@ -841,6 +863,65 @@ class Form {
         }
 
         return lang === 'ua' ? 'uk' : lang;
+    }
+
+    _resolveDefaultLanguageLink(searchRoots) {
+        for (const root of searchRoots) {
+            const defaultTabLink = root.querySelector?.('[data-role="tabs"] [data-role="tab-link"][lang_abbr]') || null;
+            if (defaultTabLink) {
+                return {
+                    defaultTabLink,
+                    defaultLanguageId: this._extractLanguageIdFromTab(defaultTabLink)
+                };
+            }
+        }
+
+        return { defaultTabLink: null, defaultLanguageId: null };
+    }
+
+    _extractLanguageIdFromTab(tabLink) {
+        if (!tabLink) {
+            return null;
+        }
+
+        const metaNode = tabLink.parentElement?.querySelector?.('[data-role="tab-meta"]');
+        if (!metaNode) {
+            return null;
+        }
+
+        const metaText = metaNode.textContent || '';
+        const match = /lang:\s*([\w-]+)/i.exec(metaText);
+        return match ? match[1] : null;
+    }
+
+    _findFieldBySuffix(fieldBase, suffix) {
+        if (!fieldBase || suffix === null || suffix === undefined) {
+            return null;
+        }
+
+        const fieldId = suffix ? `${fieldBase}_${suffix}` : fieldBase;
+        return document.getElementById(fieldId) || null;
+    }
+
+    _isTranslatableField(element) {
+        if (!element) {
+            return false;
+        }
+
+        const tagName = element.tagName?.toLowerCase();
+        return tagName === 'input' || tagName === 'textarea';
+    }
+
+    _isTranslateShortcut(evt) {
+        if (!evt) {
+            return false;
+        }
+
+        const isDigitAsterisk = evt.code === 'Digit8' && evt.shiftKey;
+        const isNumpadMultiply = evt.code === 'NumpadMultiply';
+        const isStarKey = evt.key === '*';
+
+        return (isDigitAsterisk || isNumpadMultiply || isStarKey) && (evt.target instanceof Element);
     }
 
     async _fetchTranslation({ srcText, toLangAbbr }) {
