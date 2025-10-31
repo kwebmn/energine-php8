@@ -90,7 +90,10 @@ final class RoleEditor extends Grid
                 if (!empty($result[0][$fieldName]))
                 {
                     // Снимаем признак у всех перед сохранением текущей записи.
-                    $this->dbh->modify(QAL::UPDATE, $this->getTableName(), [$fieldName => false]);
+                    // Передаём числовое значение, т.к. в строгом SQL-режиме MySQL
+                    // булево "false" интерпретируется как пустая строка, что вызывает ошибку
+                    // "Incorrect integer value" на колонках TINYINT. Используем 0.
+                    $this->dbh->modify(QAL::UPDATE, $this->getTableName(), [$fieldName => 0]);
                 }
             }
         }
