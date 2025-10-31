@@ -725,13 +725,15 @@ class Form {
     }
 
     _registerTranslateShortcut() {
-        window.addEventListener('keypress', async (evt) => {
+        window.addEventListener('keydown', async (evt) => {
             const context = this._extractTranslateContext(evt);
             if (!context) {
                 return;
             }
 
             try {
+                evt.preventDefault();
+                evt.stopPropagation();
                 const translated = await this._fetchTranslation(context);
                 if (translated && 'value' in context.targetField) {
                     context.targetField.value = translated;
@@ -743,32 +745,44 @@ class Form {
     }
 
     _extractTranslateContext(evt) {
+        if (!this._isTranslateShortcut(evt)) {
+            return null;
+        }
+
         if (!(evt?.target instanceof Element)) {
             return null;
         }
 
-        if (evt.code !== 'Digit8' || !evt.shiftKey) {
+        if (evt.repeat) {
             return null;
         }
 
         const targetField = evt.target;
+        if (!this._isTranslatableField(targetField)) {
+            return null;
+        }
+
         const fieldId = targetField.id;
         if (!fieldId || fieldId.length < 2) {
             return null;
         }
 
-        const fieldBase = fieldId.substring(0, fieldId.length - 2);
-        const parent = targetField.closest('[data-role="pane-item"]');
-        if (!parent?.id) {
+        const separatorIndex = fieldId.lastIndexOf('_');
+        if (separatorIndex === -1) {
             return null;
         }
 
-        const toLangAbbr = this._resolveTargetLanguage(parent.id);
+        const fieldBase = fieldId.substring(0, separatorIndex);
+        const targetLangSuffix = fieldId.substring(separatorIndex + 1);
+        const parent = targetField.closest('[data-role="pane-item"]');
+        const toLangAbbr = parent?.id
+            ? this._resolveTargetLanguage(parent.id)
+            : this._normalizeLanguageAbbr(targetLangSuffix);
         if (!toLangAbbr) {
             return null;
         }
 
-        const srcTextElement = document.getElementById(`${fieldBase}_1`);
+        const srcTextElement = this._resolveSourceField(fieldBase, targetLangSuffix, targetField);
         if (!srcTextElement || !('value' in srcTextElement)) {
             return null;
         }
@@ -785,6 +799,81 @@ class Form {
         };
     }
 
+    _resolveSourceField(fieldBase, targetLangSuffix, targetField) {
+        if (!fieldBase || !targetField) {
+            return null;
+        }
+
+        const searchRoots = [
+            targetField.closest('[data-role="pane"]'),
+            targetField.form,
+            document
+        ].filter(Boolean);
+
+        const { defaultTabLink, defaultPane, defaultLanguageId } = this._resolveDefaultLanguageLink(searchRoots);
+
+        const defaultPaneField = this._findFieldInContainer(fieldBase, defaultPane, targetField);
+        if (defaultPaneField) {
+            return defaultPaneField;
+        }
+
+        const candidateSuffixes = [];
+        const addCandidate = (suffix) => {
+            if (!suffix || suffix === targetLangSuffix || candidateSuffixes.includes(suffix)) {
+                return;
+            }
+            candidateSuffixes.push(suffix);
+        };
+
+        const defaultLangSuffix = defaultTabLink?.getAttribute('lang_abbr');
+        addCandidate(defaultLangSuffix);
+        addCandidate(this._normalizeLanguageAbbr(defaultLangSuffix));
+        addCandidate(defaultLanguageId);
+
+        for (const suffix of candidateSuffixes) {
+            const candidate = this._findFieldBySuffix(fieldBase, suffix);
+            if (candidate && candidate !== targetField && this._isTranslatableField(candidate)) {
+                return candidate;
+            }
+        }
+
+        const bareField = this._findFieldBySuffix(fieldBase, '');
+        if (bareField && bareField !== targetField && this._isTranslatableField(bareField)) {
+            return bareField;
+        }
+
+        for (const root of searchRoots) {
+            const candidate = this._findFieldInContainer(fieldBase, root, targetField);
+            if (candidate) {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    _findFieldInContainer(fieldBase, container, excludeField) {
+        if (!fieldBase || !container) {
+            return null;
+        }
+
+        const prefix = `${fieldBase}_`;
+        const selector = 'input[id], textarea[id]';
+        const fields = Array.from(container.querySelectorAll?.(selector) || []);
+
+        for (const field of fields) {
+            if (field === excludeField || !this._isTranslatableField(field)) {
+                continue;
+            }
+
+            if (field.id === fieldBase || field.id.startsWith(prefix)) {
+                return field;
+            }
+        }
+
+        return null;
+    }
+
     _resolveTargetLanguage(paneId) {
         const anchors = document.querySelectorAll('a[lang_abbr]');
         const parentHref = `#${paneId}`;
@@ -799,6 +888,76 @@ class Form {
         }
 
         return lang === 'ua' ? 'uk' : lang;
+    }
+
+    _resolveDefaultLanguageLink(searchRoots) {
+        for (const root of searchRoots) {
+            const tabsContainer = root.querySelector?.('[data-role="tabs"]');
+            if (!tabsContainer) {
+                continue;
+            }
+
+            const defaultTabLink = tabsContainer.querySelector?.('[data-role="tab-link"][lang_abbr]') || null;
+            if (!defaultTabLink) {
+                continue;
+            }
+
+            const paneId = defaultTabLink.getAttribute('href');
+            const defaultPane = paneId ? document.getElementById(paneId.replace(/^#/, '')) : null;
+
+            return {
+                defaultTabLink,
+                defaultPane,
+                defaultLanguageId: this._extractLanguageIdFromTab(defaultTabLink)
+            };
+        }
+
+        return { defaultTabLink: null, defaultPane: null, defaultLanguageId: null };
+    }
+
+    _extractLanguageIdFromTab(tabLink) {
+        if (!tabLink) {
+            return null;
+        }
+
+        const metaNode = tabLink.parentElement?.querySelector?.('[data-role="tab-meta"]');
+        if (!metaNode) {
+            return null;
+        }
+
+        const metaText = metaNode.textContent || '';
+        const match = /lang:\s*([\w-]+)/i.exec(metaText);
+        return match ? match[1] : null;
+    }
+
+    _findFieldBySuffix(fieldBase, suffix) {
+        if (!fieldBase || suffix === null || suffix === undefined) {
+            return null;
+        }
+
+        const fieldId = suffix ? `${fieldBase}_${suffix}` : fieldBase;
+        return document.getElementById(fieldId) || null;
+    }
+
+    _isTranslatableField(element) {
+        if (!element) {
+            return false;
+        }
+
+        const tagName = element.tagName?.toLowerCase();
+        return tagName === 'input' || tagName === 'textarea';
+    }
+
+    _isTranslateShortcut(evt) {
+        if (!evt) {
+            return false;
+        }
+
+        const isDigitAsterisk = evt.code === 'Digit8' && evt.shiftKey;
+        const isNumpadMultiply = evt.code === 'NumpadMultiply';
+        const isStarKey = evt.key === '*';
+
+        return (isDigitAsterisk || isNumpadMultiply || isStarKey) && (evt.target instanceof Element);
     }
 
     async _fetchTranslation({ srcText, toLangAbbr }) {
