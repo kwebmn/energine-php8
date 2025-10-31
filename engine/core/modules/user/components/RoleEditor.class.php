@@ -62,6 +62,29 @@ final class RoleEditor extends Grid
 
         if ($this->getState() === 'save' && is_array($result) && isset($result[0]))
         {
+            foreach ($result as &$row)
+            {
+                if (!is_array($row))
+                {
+                    continue;
+                }
+
+                foreach ($this->uniqueFields as $fieldName)
+                {
+                    if (!array_key_exists($fieldName, $row) || $row[$fieldName] === '' || $row[$fieldName] === null)
+                    {
+                        $row[$fieldName] = 0;
+                        continue;
+                    }
+
+                    $boolValue = filter_var($row[$fieldName], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                    $row[$fieldName] = ($boolValue === null)
+                        ? (int)$row[$fieldName]
+                        : ($boolValue ? 1 : 0);
+                }
+            }
+            unset($row);
+
             foreach ($this->uniqueFields as $fieldName)
             {
                 if (!empty($result[0][$fieldName]))
