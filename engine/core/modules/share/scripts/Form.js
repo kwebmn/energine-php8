@@ -810,7 +810,12 @@ class Form {
             document
         ].filter(Boolean);
 
-        const { defaultTabLink, defaultLanguageId } = this._resolveDefaultLanguageLink(searchRoots);
+        const { defaultTabLink, defaultPane, defaultLanguageId } = this._resolveDefaultLanguageLink(searchRoots);
+
+        const defaultPaneField = this._findFieldInContainer(fieldBase, defaultPane, targetField);
+        if (defaultPaneField) {
+            return defaultPaneField;
+        }
 
         const candidateSuffixes = [];
         const addCandidate = (suffix) => {
@@ -838,11 +843,31 @@ class Form {
         }
 
         for (const root of searchRoots) {
-            const candidates = Array.from(root.querySelectorAll?.(`[id^="${fieldBase}_"]`) || []);
-            for (const candidate of candidates) {
-                if (candidate !== targetField && this._isTranslatableField(candidate)) {
-                    return candidate;
-                }
+            const candidate = this._findFieldInContainer(fieldBase, root, targetField);
+            if (candidate) {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    _findFieldInContainer(fieldBase, container, excludeField) {
+        if (!fieldBase || !container) {
+            return null;
+        }
+
+        const prefix = `${fieldBase}_`;
+        const selector = 'input[id], textarea[id]';
+        const fields = Array.from(container.querySelectorAll?.(selector) || []);
+
+        for (const field of fields) {
+            if (field === excludeField || !this._isTranslatableField(field)) {
+                continue;
+            }
+
+            if (field.id === fieldBase || field.id.startsWith(prefix)) {
+                return field;
             }
         }
 
@@ -867,16 +892,27 @@ class Form {
 
     _resolveDefaultLanguageLink(searchRoots) {
         for (const root of searchRoots) {
-            const defaultTabLink = root.querySelector?.('[data-role="tabs"] [data-role="tab-link"][lang_abbr]') || null;
-            if (defaultTabLink) {
-                return {
-                    defaultTabLink,
-                    defaultLanguageId: this._extractLanguageIdFromTab(defaultTabLink)
-                };
+            const tabsContainer = root.querySelector?.('[data-role="tabs"]');
+            if (!tabsContainer) {
+                continue;
             }
+
+            const defaultTabLink = tabsContainer.querySelector?.('[data-role="tab-link"][lang_abbr]') || null;
+            if (!defaultTabLink) {
+                continue;
+            }
+
+            const paneId = defaultTabLink.getAttribute('href');
+            const defaultPane = paneId ? document.getElementById(paneId.replace(/^#/, '')) : null;
+
+            return {
+                defaultTabLink,
+                defaultPane,
+                defaultLanguageId: this._extractLanguageIdFromTab(defaultTabLink)
+            };
         }
 
-        return { defaultTabLink: null, defaultLanguageId: null };
+        return { defaultTabLink: null, defaultPane: null, defaultLanguageId: null };
     }
 
     _extractLanguageIdFromTab(tabLink) {
