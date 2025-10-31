@@ -757,7 +757,13 @@ class Form {
             return null;
         }
 
-        const fieldBase = fieldId.substring(0, fieldId.length - 2);
+        const separatorIndex = fieldId.lastIndexOf('_');
+        if (separatorIndex === -1) {
+            return null;
+        }
+
+        const fieldBase = fieldId.substring(0, separatorIndex);
+        const targetLangSuffix = fieldId.substring(separatorIndex + 1);
         const parent = targetField.closest('[data-role="pane-item"]');
         if (!parent?.id) {
             return null;
@@ -768,7 +774,7 @@ class Form {
             return null;
         }
 
-        const srcTextElement = document.getElementById(`${fieldBase}_1`);
+        const srcTextElement = this._resolveSourceField(fieldBase, targetLangSuffix, targetField);
         if (!srcTextElement || !('value' in srcTextElement)) {
             return null;
         }
@@ -783,6 +789,42 @@ class Form {
             toLangAbbr,
             srcText
         };
+    }
+
+    _resolveSourceField(fieldBase, targetLangSuffix, targetField) {
+        if (!fieldBase || !targetField) {
+            return null;
+        }
+
+        const searchRoots = [
+            targetField.closest('[data-role="pane"]'),
+            targetField.form,
+            document
+        ].filter(Boolean);
+
+        let defaultTabLink = null;
+        for (const root of searchRoots) {
+            defaultTabLink = root.querySelector?.('[data-role="tabs"] [data-role="tab-link"][lang_abbr]') || null;
+            if (defaultTabLink) {
+                break;
+            }
+        }
+
+        const sourceLangSuffix = defaultTabLink?.getAttribute('lang_abbr');
+
+        if (!sourceLangSuffix || sourceLangSuffix === targetLangSuffix) {
+            return null;
+        }
+
+        let sourceField = document.getElementById(`${fieldBase}_${sourceLangSuffix}`);
+        if (!sourceField) {
+            const normalizedSuffix = this._normalizeLanguageAbbr(sourceLangSuffix);
+            if (normalizedSuffix && normalizedSuffix !== sourceLangSuffix) {
+                sourceField = document.getElementById(`${fieldBase}_${normalizedSuffix}`);
+            }
+        }
+
+        return sourceField;
     }
 
     _resolveTargetLanguage(paneId) {
