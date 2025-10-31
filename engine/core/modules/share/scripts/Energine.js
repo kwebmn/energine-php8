@@ -4,6 +4,12 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const existingRuntime = (globalScope && globalScope.Energine && typeof globalScope.Energine === 'object'
+    && typeof globalScope.Energine.createConfigFromScriptDataset === 'function'
+    && typeof globalScope.Energine.consumeTranslationScripts === 'function')
+    ? globalScope.Energine
+    : null;
+
 const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
 
 const Config = {
@@ -357,6 +363,8 @@ class EnergineCore {
         this.forceJSON = false;
         this.supportContentEdit = true;
 
+        this.__isEnergineRuntime = true;
+
         this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
             ? import.meta.url
             : '';
@@ -403,25 +411,38 @@ class EnergineCore {
         if (this.moduleScriptElement && document.contains(this.moduleScriptElement)) {
             return this.moduleScriptElement;
         }
-        if (!this.moduleUrl) {
-            return null;
+        if (this.moduleUrl) {
+            const scripts = document.getElementsByTagName('script');
+            for (let i = scripts.length - 1; i >= 0; i -= 1) {
+                const script = scripts[i];
+                if (script.type !== 'module' || !script.src) {
+                    continue;
+                }
+
+                try {
+                    const normalizedSrc = new URL(script.src, document.baseURI).href;
+                    if (normalizedSrc === this.moduleUrl) {
+                        this.moduleScriptElement = script;
+                        return script;
+                    }
+                } catch {
+                    // ignore malformed URLs
+                }
+            }
         }
 
-        const scripts = document.getElementsByTagName('script');
-        for (let i = scripts.length - 1; i >= 0; i -= 1) {
-            const script = scripts[i];
-            if (script.type !== 'module' || !script.src) {
-                continue;
-            }
-
-            try {
-                const normalizedSrc = new URL(script.src, document.baseURI).href;
-                if (normalizedSrc === this.moduleUrl) {
-                    this.moduleScriptElement = script;
-                    return script;
+        if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+            const fallback = document.querySelector('script[type="module"][data-run][data-base]');
+            if (fallback) {
+                this.moduleScriptElement = fallback;
+                if (fallback.src) {
+                    try {
+                        this.moduleUrl = new URL(fallback.src, document.baseURI).href;
+                    } catch {
+                        // ignore malformed URLs
+                    }
                 }
-            } catch {
-                // ignore malformed URLs
+                return fallback;
             }
         }
 
@@ -943,7 +964,9 @@ class EnergineCore {
 
 }
 
-const Energine = new EnergineCore(globalScope);
+const Energine = existingRuntime && existingRuntime.__isEnergineRuntime
+    ? existingRuntime
+    : new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
 
