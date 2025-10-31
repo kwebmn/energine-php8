@@ -999,7 +999,7 @@ class Form {
     async _fetchTranslation({ srcText, toLangAbbr }) {
         const params = new URLSearchParams({
             client: 'gtx',
-            sl: 'ru',
+            sl: 'auto',
             tl: toLangAbbr,
             dt: 't',
             q: srcText
