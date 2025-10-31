@@ -1,24 +1,11 @@
 import 'vendor/ckeditor/ckeditor/ckeditor.js';
 
-const normalizeBasePath = (basePath) => {
-    if (typeof window === 'undefined' || !basePath) {
-        return basePath || '';
-    }
-
-    try {
-        const normalized = new URL(basePath, window.location.href).toString();
-        return normalized.endsWith('/') ? normalized : `${normalized}/`;
-    } catch {
-        return basePath;
-    }
-};
-
 const ensureBasePath = () => {
     if (typeof window === 'undefined') {
         return '';
     }
 
-    let basePath = window.CKEDITOR_BASEPATH || (window.CKEDITOR && window.CKEDITOR.basePath) || '';
+    let basePath = window.CKEDITOR_BASEPATH || '';
 
     if (!basePath) {
         const currentScript = document.currentScript;
@@ -31,25 +18,6 @@ const ensureBasePath = () => {
             }
         }
     }
-
-    if (!basePath) {
-        const scripts = document.getElementsByTagName('script');
-        for (let index = scripts.length - 1; index >= 0; index -= 1) {
-            const script = scripts[index];
-            if (!script?.src) {
-                continue;
-            }
-            try {
-                const scriptUrl = new URL(script.src, window.location.href);
-                basePath = new URL('./ckeditor/', scriptUrl).toString();
-                break;
-            } catch {
-                // Continue searching the remaining script tags.
-            }
-        }
-    }
-
-    basePath = normalizeBasePath(basePath);
 
     if (basePath) {
         window.CKEDITOR_BASEPATH = basePath;
@@ -65,10 +33,7 @@ const registerExternalPlugins = (basePath) => {
     if (typeof window === 'undefined' || !window.CKEDITOR) {
         return;
     }
-    const pluginBase = normalizeBasePath(basePath
-        || window.CKEDITOR_BASEPATH
-        || (window.CKEDITOR && window.CKEDITOR.basePath)
-        || '');
+    const pluginBase = basePath || window.CKEDITOR_BASEPATH || '';
     if (!pluginBase) {
         return;
     }

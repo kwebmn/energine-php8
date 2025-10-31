@@ -9,30 +9,6 @@ const globalScope = typeof window !== 'undefined'
 
 const SIDEBAR_OFFCANVAS_Z_INDEX = 1050;
 const TOOLBAR_Z_INDEX = SIDEBAR_OFFCANVAS_Z_INDEX + 10;
-const DEFAULT_SAVE_CONFIRM_MESSAGE = 'Are you sure you want to save changes?';
-
-const normalizeConfirmMessageValue = (value) => {
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-
-        if (!trimmed) {
-            return '';
-        }
-
-        const lowerCase = trimmed.toLowerCase();
-        if (lowerCase === 'null' || lowerCase === 'undefined') {
-            return '';
-        }
-
-        return trimmed;
-    }
-
-    if (value === null || typeof value === 'undefined') {
-        return '';
-    }
-
-    return `${value}`;
-};
 
 const CONTROL_FALLBACK_ACTIONS = Object.freeze({
     editMode: 'editMode',
@@ -2324,75 +2300,34 @@ class PageToolbar extends Toolbar {
         }
     }
 
-    _resolveSaveConfirmMessage() {
+    _handleEditModeUnpressed() {
+        const editor = window.nrgPageEditor;
         const translationSource = Energine?.translations;
-        const translationKeys = ['TXT_ARE_YOU_SURE_SAVE', 'MSG_CONFIRM_SAVE'];
-
-        const resolveFromTranslations = () => {
-            if (!translationSource || typeof translationSource.get !== 'function') {
+        const sanitizeMessage = (value) => {
+            if (typeof value !== 'string') {
                 return '';
             }
 
-            for (const key of translationKeys) {
-                if (!key) continue;
-                const value = normalizeConfirmMessageValue(translationSource.get(key));
-                if (value) {
-                    return value;
-                }
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return '';
             }
 
-            return '';
+            const normalized = trimmed.toLowerCase();
+            if (normalized === 'null' || normalized === 'undefined') {
+                return '';
+            }
+
+            return trimmed;
         };
 
-        let message = resolveFromTranslations();
+        let confirmMessage = translationSource && typeof translationSource.get === 'function'
+            ? sanitizeMessage(translationSource.get('TXT_ARE_YOU_SURE_SAVE'))
+            : '';
 
-        if (!message && typeof Energine?.processPendingTranslationScripts === 'function') {
-            try {
-                const stagedCount = Energine.processPendingTranslationScripts();
-                if (stagedCount) {
-                    message = resolveFromTranslations();
-                }
-            } catch (error) {
-                const reporter = (typeof Energine?.safeConsoleError === 'function')
-                    ? Energine.safeConsoleError.bind(Energine)
-                    : (typeof console !== 'undefined' && console.warn ? console.warn.bind(console) : null);
-
-                if (reporter) {
-                    reporter(error, '[PageToolbar] Failed to process translation scripts for save confirm message');
-                }
-            }
+        if (!confirmMessage) {
+            confirmMessage = 'Are you sure you want to save changes?';
         }
-
-        if (!message) {
-            const dataset = this.element?.dataset || {};
-            const datasetCandidates = [
-                dataset.eTxtAreYouSureSave,
-                dataset.eTxtSaveConfirm,
-                dataset.eTxtConfirm,
-                this.element?.getAttribute?.('data-e-txt-are-you-sure-save'),
-                this.element?.getAttribute?.('data-e-txt-save-confirm'),
-                this.element?.getAttribute?.('data-e-txt-confirm'),
-            ];
-
-            for (const candidate of datasetCandidates) {
-                const normalized = normalizeConfirmMessageValue(candidate);
-                if (normalized) {
-                    message = normalized;
-                    break;
-                }
-            }
-        }
-
-        if (!message) {
-            message = DEFAULT_SAVE_CONFIRM_MESSAGE;
-        }
-
-        return message;
-    }
-
-    _handleEditModeUnpressed() {
-        const editor = window.nrgPageEditor;
-        const confirmMessage = this._resolveSaveConfirmMessage();
 
         if (editor) {
             if (confirm(confirmMessage)) {

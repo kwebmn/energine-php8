@@ -4,8 +4,6 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
-const TRANSLATION_SCRIPT_SELECTOR = 'script[type="application/json"][data-energine-translations]';
-
 const Config = {
     allowedKeys: [
         'debug',
@@ -368,115 +366,22 @@ class EnergineCore {
 
     createTranslationsFacade() {
         const store = this.translationStore;
-
-        const facade = {
+        return {
             get(constant) {
-                if (typeof constant !== 'string') {
-                    return null;
-                }
-
                 return Object.prototype.hasOwnProperty.call(store, constant)
                     ? store[constant]
                     : null;
             },
             set(constant, value) {
-                if (typeof constant !== 'string') {
-                    return;
-                }
-
                 store[constant] = value;
             },
             extend(values) {
                 if (!values || typeof values !== 'object') {
                     return;
                 }
-
-                Object.keys(values).forEach((key) => {
-                    if (typeof key !== 'string') {
-                        return;
-                    }
-
-                    const value = values[key];
-                    if (typeof value === 'undefined') {
-                        delete store[key];
-                    } else {
-                        store[key] = value;
-                    }
-                });
+                Object.assign(store, values);
             },
         };
-
-        if (typeof Proxy === 'function') {
-            const handler = {
-                get(target, prop, receiver) {
-                    if (typeof prop === 'string' && !(prop in target)) {
-                        if (Object.prototype.hasOwnProperty.call(store, prop)) {
-                            return store[prop];
-                        }
-
-                        if (prop === 'toJSON') {
-                            return () => ({ ...store });
-                        }
-                    }
-
-                    if (prop === Symbol.iterator) {
-                        return function* iterator() {
-                            const keys = Object.keys(store);
-                            for (let i = 0; i < keys.length; i += 1) {
-                                yield [keys[i], store[keys[i]]];
-                            }
-                        };
-                    }
-
-                    return Reflect.get(target, prop, receiver);
-                },
-                set(target, prop, value) {
-                    if (typeof prop === 'string' && !(prop in target)) {
-                        if (typeof value === 'undefined') {
-                            delete store[prop];
-                        } else {
-                            store[prop] = value;
-                        }
-                        return true;
-                    }
-
-                    target[prop] = value;
-                    return true;
-                },
-                has(target, prop) {
-                    if (typeof prop === 'string' && Object.prototype.hasOwnProperty.call(store, prop)) {
-                        return true;
-                    }
-
-                    return prop in target;
-                },
-                ownKeys(target) {
-                    const targetKeys = Reflect.ownKeys(target);
-                    const storeKeys = Object.keys(store);
-                    return Array.from(new Set([...targetKeys, ...storeKeys]));
-                },
-                getOwnPropertyDescriptor(target, prop) {
-                    if (typeof prop === 'string' && Object.prototype.hasOwnProperty.call(store, prop)) {
-                        return {
-                            enumerable: true,
-                            configurable: true,
-                            writable: true,
-                            value: store[prop],
-                        };
-                    }
-
-                    return Object.getOwnPropertyDescriptor(target, prop);
-                },
-            };
-
-            try {
-                return new Proxy(facade, handler);
-            } catch (error) {
-                this.safeConsoleError(error, '[Energine.translations] Failed to create proxy facade');
-            }
-        }
-
-        return Object.assign(facade, store);
     }
 
     resolveModuleScriptElement() {
@@ -534,6 +439,10 @@ class EnergineCore {
                 config[key] = value;
             }
         });
+
+        if (typeof scriptEl.dataset.translations !== 'undefined') {
+            config.translations = scriptEl.dataset.translations;
+        }
 
         return config;
     }
@@ -858,77 +767,38 @@ class EnergineCore {
         this.mergeConfigValues(rest);
 
         if (translationsConfig) {
-            this.translations.extend(translationsConfig);
+            this.stageTranslations(translationsConfig);
         }
 
         return this;
     }
 
     stageTranslations(values) {
-        if (!values || typeof values !== 'object') {
+        if (values === null || typeof values === 'undefined') {
             return;
         }
 
-        this.translations.extend(values);
-    }
+        let normalized = values;
 
-    processPendingTranslationScripts(options = {}) {
-        if (typeof document === 'undefined') {
-            return 0;
-        }
-
-        const {
-            selector = TRANSLATION_SCRIPT_SELECTOR,
-            markProcessed = true,
-        } = options;
-
-        const scripts = document.querySelectorAll(selector);
-        if (!scripts || !scripts.length) {
-            return 0;
-        }
-
-        let stagedCount = 0;
-
-        scripts.forEach((script) => {
-            if (!script) {
-                return;
-            }
-
-            const { dataset } = script;
-            if (markProcessed && dataset && dataset.energineTranslationsProcessed === '1') {
-                return;
-            }
-
-            const payload = script.textContent ? script.textContent.trim() : '';
+        if (typeof normalized === 'string') {
+            const payload = normalized.trim();
             if (!payload) {
-                if (markProcessed && dataset) {
-                    dataset.energineTranslationsProcessed = '1';
-                }
                 return;
             }
 
             try {
-                const parsed = JSON.parse(payload);
-                this.stageTranslations(parsed);
-                stagedCount += 1;
-
-                if (markProcessed && dataset) {
-                    dataset.energineTranslationsProcessed = '1';
-                }
-
-                if (markProcessed) {
-                    if (typeof script.remove === 'function') {
-                        script.remove();
-                    } else {
-                        script.textContent = '';
-                    }
-                }
+                normalized = JSON.parse(payload);
             } catch (error) {
-                this.safeConsoleError(error, '[Energine.translations] Failed to parse staged translations');
+                this.safeConsoleError(error, '[Energine.translations] Failed to parse staged translations payload');
+                return;
             }
-        });
+        }
 
-        return stagedCount;
+        if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) {
+            return;
+        }
+
+        this.translations.extend(normalized);
     }
 
     createConfigFromProps(props = {}) {
@@ -1020,12 +890,46 @@ const Energine = new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
 
+const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
+
 const applyTranslationsFromScripts = (runtime) => {
-    if (!runtime || typeof runtime.processPendingTranslationScripts !== 'function') {
+    if (typeof document === 'undefined' || !runtime || typeof runtime.stageTranslations !== 'function') {
         return;
     }
 
-    runtime.processPendingTranslationScripts();
+    const scripts = document.querySelectorAll(translationScriptSelector);
+    if (!scripts || !scripts.length) {
+        return;
+    }
+
+    scripts.forEach((script) => {
+        if (!script || (script.dataset && script.dataset.energineTranslationsProcessed === '1')) {
+            return;
+        }
+
+        const payload = script.textContent ? script.textContent.trim() : '';
+        if (!payload) {
+            if (script.dataset) {
+                script.dataset.energineTranslationsProcessed = '1';
+            }
+            return;
+        }
+
+        try {
+            const parsed = JSON.parse(payload);
+            runtime.stageTranslations(parsed);
+            if (script.dataset) {
+                script.dataset.energineTranslationsProcessed = '1';
+            }
+            if (typeof script.remove === 'function') {
+                script.remove();
+            } else {
+                script.textContent = '';
+            }
+        } catch (error) {
+            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse staged translations');
+        }
+    });
 };
 
 const scheduleRetry = (task, options = {}) => {

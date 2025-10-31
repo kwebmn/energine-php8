@@ -1,48 +1,16 @@
 const BUNDLE_FILENAME = 'energine.ckeditor.js';
 
-const ensureTrailingSlash = (value) => {
-    if (!value) {
-        return value;
-    }
-    return value.endsWith('/') ? value : `${value}/`;
-};
-
-const toAbsoluteUrl = (value) => {
-    if (!value) {
-        return '';
-    }
-    try {
-        return new URL(value, window.location.href).toString();
-    } catch (error) {
-        return value;
-    }
-};
-
-const resolveStaticBase = () => {
-    const staticBase = window?.Energine?.static;
+const getAssetsBase = () => {
+    const staticBase = window?.Energine?.static || '';
     if (!staticBase) {
-        return '';
+        return './assets/';
     }
-    return ensureTrailingSlash(toAbsoluteUrl(staticBase));
+    return staticBase.endsWith('/') ? `${staticBase}assets/` : `${staticBase}/assets/`;
 };
 
-const getBundleUrl = () => {
-    const staticBase = resolveStaticBase();
-    if (staticBase) {
-        return `${staticBase}assets/${BUNDLE_FILENAME}`;
-    }
+const getBundleUrl = () => `${getAssetsBase()}${BUNDLE_FILENAME}`;
 
-    return toAbsoluteUrl(`/assets/${BUNDLE_FILENAME}`);
-};
-
-const getCkeditorAssetsUrl = (bundleUrl) => {
-    try {
-        const normalizedBundleUrl = new URL(bundleUrl || getBundleUrl(), window.location.href);
-        return ensureTrailingSlash(new URL('./ckeditor/', normalizedBundleUrl).toString());
-    } catch (error) {
-        return ensureTrailingSlash(toAbsoluteUrl('/assets/ckeditor/'));
-    }
-};
+const getCkeditorAssetsUrl = () => `${getAssetsBase()}ckeditor/`;
 
 let ckeditorPromise = null;
 
@@ -58,7 +26,7 @@ export const loadCKEditor = () => {
     }
 
     const scriptUrl = getBundleUrl();
-    const basePath = getCkeditorAssetsUrl(scriptUrl);
+    const basePath = getCkeditorAssetsUrl();
 
     window.CKEDITOR_BASEPATH = basePath;
 
@@ -67,10 +35,8 @@ export const loadCKEditor = () => {
         script.src = scriptUrl;
         script.async = true;
         script.onload = () => {
-            const resolvedBasePath = getCkeditorAssetsUrl(script.src);
             if (window.CKEDITOR) {
-                window.CKEDITOR.basePath = resolvedBasePath;
-                window.CKEDITOR_BASEPATH = resolvedBasePath;
+                window.CKEDITOR.basePath = basePath;
                 resolve(window.CKEDITOR);
             } else {
                 reject(new Error('CKEDITOR failed to initialize'));
