@@ -77,9 +77,10 @@ class GroupForm extends Form {
             });
         }
 
-        if (!handled) {
-            radio.checked = false;
-        }
+        // Верхняя радиокнопка служит только триггером группового выбора,
+        // поэтому возвращаем её в невыбранное состояние, даже если в столбце
+        // ничего не изменилось.
+        radio.checked = false;
     }
 
     _checkRadio(radio) {
