@@ -4,6 +4,8 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const TRANSLATION_SCRIPT_SELECTOR = 'script[type="application/json"][data-energine-translations]';
+
 const Config = {
     allowedKeys: [
         'debug',
@@ -777,6 +779,65 @@ class EnergineCore {
         this.translations.extend(values);
     }
 
+    processPendingTranslationScripts(options = {}) {
+        if (typeof document === 'undefined') {
+            return 0;
+        }
+
+        const {
+            selector = TRANSLATION_SCRIPT_SELECTOR,
+            markProcessed = true,
+        } = options;
+
+        const scripts = document.querySelectorAll(selector);
+        if (!scripts || !scripts.length) {
+            return 0;
+        }
+
+        let stagedCount = 0;
+
+        scripts.forEach((script) => {
+            if (!script) {
+                return;
+            }
+
+            const { dataset } = script;
+            if (markProcessed && dataset && dataset.energineTranslationsProcessed === '1') {
+                return;
+            }
+
+            const payload = script.textContent ? script.textContent.trim() : '';
+            if (!payload) {
+                if (markProcessed && dataset) {
+                    dataset.energineTranslationsProcessed = '1';
+                }
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(payload);
+                this.stageTranslations(parsed);
+                stagedCount += 1;
+
+                if (markProcessed && dataset) {
+                    dataset.energineTranslationsProcessed = '1';
+                }
+
+                if (markProcessed) {
+                    if (typeof script.remove === 'function') {
+                        script.remove();
+                    } else {
+                        script.textContent = '';
+                    }
+                }
+            } catch (error) {
+                this.safeConsoleError(error, '[Energine.translations] Failed to parse staged translations');
+            }
+        });
+
+        return stagedCount;
+    }
+
     createConfigFromProps(props = {}) {
         const config = { ...props };
 
@@ -866,46 +927,12 @@ const Energine = new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
 
-const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
-
 const applyTranslationsFromScripts = (runtime) => {
-    if (typeof document === 'undefined' || !runtime || typeof runtime.stageTranslations !== 'function') {
+    if (!runtime || typeof runtime.processPendingTranslationScripts !== 'function') {
         return;
     }
 
-    const scripts = document.querySelectorAll(translationScriptSelector);
-    if (!scripts || !scripts.length) {
-        return;
-    }
-
-    scripts.forEach((script) => {
-        if (!script || (script.dataset && script.dataset.energineTranslationsProcessed === '1')) {
-            return;
-        }
-
-        const payload = script.textContent ? script.textContent.trim() : '';
-        if (!payload) {
-            if (script.dataset) {
-                script.dataset.energineTranslationsProcessed = '1';
-            }
-            return;
-        }
-
-        try {
-            const parsed = JSON.parse(payload);
-            runtime.stageTranslations(parsed);
-            if (script.dataset) {
-                script.dataset.energineTranslationsProcessed = '1';
-            }
-            if (typeof script.remove === 'function') {
-                script.remove();
-            } else {
-                script.textContent = '';
-            }
-        } catch (error) {
-            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse staged translations');
-        }
-    });
+    runtime.processPendingTranslationScripts();
 };
 
 const scheduleRetry = (task, options = {}) => {
