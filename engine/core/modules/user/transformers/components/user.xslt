@@ -188,7 +188,12 @@
                 <tr class="table-secondary">
                     <th scope="row" class="fw-semibold align-middle"><xsl:value-of select="field[@name='Site']"/></th>
                     <xsl:for-each select="field[@name='RightsId']/options/option">
-                        <td class="text-center"><input type="radio" class="form-check-input" name=""></input></td>
+                        <td class="text-center">
+                            <xsl:attribute name="data-column"><xsl:value-of select="@id"/></xsl:attribute>
+                            <input type="radio" class="form-check-input groupRadio" name="">
+                                <xsl:attribute name="data-column"><xsl:value-of select="@id"/></xsl:attribute>
+                            </input>
+                        </td>
                     </xsl:for-each>
                 </tr>
             </xsl:if>
@@ -209,6 +214,7 @@
                 </td>
                 <xsl:for-each select="field[@name='RightsId']/options/option">
                     <td class="text-center">
+                        <xsl:attribute name="data-column"><xsl:value-of select="@id"/></xsl:attribute>
                         <input type="radio" class="form-check-input" name="div_right[{../../../field[@name='Id']}]" value="{@id}">
                             <xsl:if test="@selected">
                                 <xsl:attribute name="checked">checked</xsl:attribute>

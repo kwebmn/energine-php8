@@ -39,15 +39,26 @@ class GroupForm extends Form {
      */
     checkAllRadioInColumn(event) {
         const radio = event.target;
-        const td = radio.closest('td');
-        if (!td) return;
-        const columnClass = td.className;
-        const tbody = td.closest('tbody');
-        if (!tbody || !columnClass) return;
+        const tbody = radio.closest('tbody');
+        if (!tbody) {
+            return;
+        }
+
+        const columnId = radio.dataset.column || radio.closest('td')?.dataset.column;
+        if (!columnId) {
+            return;
+        }
 
         // Получаем все radio в этом столбце
-        tbody.querySelectorAll(`td.${columnClass} input[type="radio"]`).forEach(r => {
+        tbody.querySelectorAll(`td[data-column="${columnId}"] input[type="radio"]`).forEach(r => {
+            if (r.disabled) {
+                return;
+            }
+
             r.checked = true;
+
+            // Сообщить другим обработчикам об изменении значения
+            r.dispatchEvent(new Event('change', { bubbles: true }));
         });
     }
 
