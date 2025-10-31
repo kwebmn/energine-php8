@@ -207,6 +207,11 @@
                     <xsl:otherwise>false</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
+            <xsl:if test="string-length(normalize-space(/document/translations/@json)) &gt; 0">
+                <xsl:attribute name="data-translations">
+                    <xsl:value-of select="/document/translations/@json"/>
+                </xsl:attribute>
+            </xsl:if>
         </script>
         <xsl:if test="/document/@debug != '0'">
             <xsl:for-each select="//javascript/library[not(@loader='classic')][generate-id() = generate-id(key('js-library', concat(@loader,'|',@src,'|',@path))[1])]">

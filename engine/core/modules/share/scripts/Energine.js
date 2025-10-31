@@ -4,6 +4,14 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const existingRuntime = (globalScope && globalScope.Energine && typeof globalScope.Energine === 'object'
+    && typeof globalScope.Energine.createConfigFromScriptDataset === 'function'
+    && typeof globalScope.Energine.consumeTranslationScripts === 'function')
+    ? globalScope.Energine
+    : null;
+
+const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
+
 const Config = {
     allowedKeys: [
         'debug',
@@ -355,6 +363,8 @@ class EnergineCore {
         this.forceJSON = false;
         this.supportContentEdit = true;
 
+        this.__isEnergineRuntime = true;
+
         this.moduleUrl = (typeof import.meta !== 'undefined' && import.meta && import.meta.url)
             ? import.meta.url
             : '';
@@ -366,11 +376,21 @@ class EnergineCore {
 
     createTranslationsFacade() {
         const store = this.translationStore;
+        const runtime = this;
         return {
             get(constant) {
-                return Object.prototype.hasOwnProperty.call(store, constant)
-                    ? store[constant]
-                    : null;
+                if (Object.prototype.hasOwnProperty.call(store, constant)) {
+                    return store[constant];
+                }
+
+                if (runtime && typeof runtime.consumeTranslationScripts === 'function') {
+                    const loaded = runtime.consumeTranslationScripts();
+                    if (loaded && Object.prototype.hasOwnProperty.call(store, constant)) {
+                        return store[constant];
+                    }
+                }
+
+                return null;
             },
             set(constant, value) {
                 store[constant] = value;
@@ -391,25 +411,38 @@ class EnergineCore {
         if (this.moduleScriptElement && document.contains(this.moduleScriptElement)) {
             return this.moduleScriptElement;
         }
-        if (!this.moduleUrl) {
-            return null;
+        if (this.moduleUrl) {
+            const scripts = document.getElementsByTagName('script');
+            for (let i = scripts.length - 1; i >= 0; i -= 1) {
+                const script = scripts[i];
+                if (script.type !== 'module' || !script.src) {
+                    continue;
+                }
+
+                try {
+                    const normalizedSrc = new URL(script.src, document.baseURI).href;
+                    if (normalizedSrc === this.moduleUrl) {
+                        this.moduleScriptElement = script;
+                        return script;
+                    }
+                } catch {
+                    // ignore malformed URLs
+                }
+            }
         }
 
-        const scripts = document.getElementsByTagName('script');
-        for (let i = scripts.length - 1; i >= 0; i -= 1) {
-            const script = scripts[i];
-            if (script.type !== 'module' || !script.src) {
-                continue;
-            }
-
-            try {
-                const normalizedSrc = new URL(script.src, document.baseURI).href;
-                if (normalizedSrc === this.moduleUrl) {
-                    this.moduleScriptElement = script;
-                    return script;
+        if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+            const fallback = document.querySelector('script[type="module"][data-run][data-base]');
+            if (fallback) {
+                this.moduleScriptElement = fallback;
+                if (fallback.src) {
+                    try {
+                        this.moduleUrl = new URL(fallback.src, document.baseURI).href;
+                    } catch {
+                        // ignore malformed URLs
+                    }
                 }
-            } catch {
-                // ignore malformed URLs
+                return fallback;
             }
         }
 
@@ -439,6 +472,10 @@ class EnergineCore {
                 config[key] = value;
             }
         });
+
+        if (typeof scriptEl.dataset.translations !== 'undefined') {
+            config.translations = scriptEl.dataset.translations;
+        }
 
         return config;
     }
@@ -763,18 +800,83 @@ class EnergineCore {
         this.mergeConfigValues(rest);
 
         if (translationsConfig) {
-            this.translations.extend(translationsConfig);
+            this.stageTranslations(translationsConfig);
         }
 
         return this;
     }
 
     stageTranslations(values) {
-        if (!values || typeof values !== 'object') {
+        if (values === null || typeof values === 'undefined') {
             return;
         }
 
-        this.translations.extend(values);
+        let normalized = values;
+
+        if (typeof normalized === 'string') {
+            const payload = normalized.trim();
+            if (!payload) {
+                return;
+            }
+
+            try {
+                normalized = JSON.parse(payload);
+            } catch (error) {
+                this.safeConsoleError(error, '[Energine.translations] Failed to parse staged translations payload');
+                return;
+            }
+        }
+
+        if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) {
+            return;
+        }
+
+        this.translations.extend(normalized);
+    }
+
+    consumeTranslationScripts() {
+        if (typeof document === 'undefined') {
+            return false;
+        }
+
+        const scripts = document.querySelectorAll(translationScriptSelector);
+        if (!scripts || !scripts.length) {
+            return false;
+        }
+
+        let consumed = false;
+
+        scripts.forEach((script) => {
+            if (!script || (script.dataset && script.dataset.energineTranslationsProcessed === '1')) {
+                return;
+            }
+
+            const payload = script.textContent ? script.textContent.trim() : '';
+            if (!payload) {
+                if (script.dataset) {
+                    script.dataset.energineTranslationsProcessed = '1';
+                }
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(payload);
+                this.stageTranslations(parsed);
+                consumed = true;
+                if (script.dataset) {
+                    script.dataset.energineTranslationsProcessed = '1';
+                }
+                if (typeof script.remove === 'function') {
+                    script.remove();
+                } else {
+                    script.textContent = '';
+                }
+            } catch (error) {
+                this.safeConsoleError(error, '[Energine.translations] Failed to parse staged translations payload');
+            }
+        });
+
+        return consumed;
     }
 
     createConfigFromProps(props = {}) {
@@ -862,50 +964,18 @@ class EnergineCore {
 
 }
 
-const Energine = new EnergineCore(globalScope);
+const Energine = existingRuntime && existingRuntime.__isEnergineRuntime
+    ? existingRuntime
+    : new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
 
-const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
-
 const applyTranslationsFromScripts = (runtime) => {
-    if (typeof document === 'undefined' || !runtime || typeof runtime.stageTranslations !== 'function') {
+    if (!runtime || typeof runtime.consumeTranslationScripts !== 'function') {
         return;
     }
 
-    const scripts = document.querySelectorAll(translationScriptSelector);
-    if (!scripts || !scripts.length) {
-        return;
-    }
-
-    scripts.forEach((script) => {
-        if (!script || (script.dataset && script.dataset.energineTranslationsProcessed === '1')) {
-            return;
-        }
-
-        const payload = script.textContent ? script.textContent.trim() : '';
-        if (!payload) {
-            if (script.dataset) {
-                script.dataset.energineTranslationsProcessed = '1';
-            }
-            return;
-        }
-
-        try {
-            const parsed = JSON.parse(payload);
-            runtime.stageTranslations(parsed);
-            if (script.dataset) {
-                script.dataset.energineTranslationsProcessed = '1';
-            }
-            if (typeof script.remove === 'function') {
-                script.remove();
-            } else {
-                script.textContent = '';
-            }
-        } catch (error) {
-            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse staged translations');
-        }
-    });
+    runtime.consumeTranslationScripts();
 };
 
 const scheduleRetry = (task, options = {}) => {
