@@ -54,10 +54,17 @@ class GroupForm extends Form {
 
         const columnId = radio.dataset.column || td.dataset.column;
         const rows = Array.from(tbody.querySelectorAll('tr'));
+        const headerRow = td.parentElement;
 
         this._isBulkUpdating = true;
 
         try {
+            if (headerRow) {
+                headerRow.querySelectorAll('.groupRadio').forEach(groupRadio => {
+                    groupRadio.checked = groupRadio === radio;
+                });
+            }
+
             if (columnId) {
                 rows.forEach(row => {
                     row.querySelectorAll(`td[data-column="${columnId}"] input[type="radio"]`).forEach(r => {
