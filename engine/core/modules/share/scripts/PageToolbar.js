@@ -2303,31 +2303,9 @@ class PageToolbar extends Toolbar {
     _handleEditModeUnpressed() {
         const editor = window.nrgPageEditor;
         const translationSource = Energine?.translations;
-        const sanitizeMessage = (value) => {
-            if (typeof value !== 'string') {
-                return '';
-            }
-
-            const trimmed = value.trim();
-            if (!trimmed) {
-                return '';
-            }
-
-            const normalized = trimmed.toLowerCase();
-            if (normalized === 'null' || normalized === 'undefined') {
-                return '';
-            }
-
-            return trimmed;
-        };
-
-        let confirmMessage = translationSource && typeof translationSource.get === 'function'
-            ? sanitizeMessage(translationSource.get('TXT_ARE_YOU_SURE_SAVE'))
-            : '';
-
-        if (!confirmMessage) {
-            confirmMessage = 'Are you sure you want to save changes?';
-        }
+        const confirmMessage = translationSource && typeof translationSource.get === 'function'
+            ? translationSource.get('TXT_ARE_YOU_SURE_SAVE')
+            : undefined;
 
         if (editor) {
             if (confirm(confirmMessage)) {

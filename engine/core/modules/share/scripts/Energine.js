@@ -4,6 +4,8 @@ const globalScope = typeof window !== 'undefined'
     ? window
     : (typeof globalThis !== 'undefined' ? globalThis : undefined);
 
+const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
+
 const Config = {
     allowedKeys: [
         'debug',
@@ -366,11 +368,21 @@ class EnergineCore {
 
     createTranslationsFacade() {
         const store = this.translationStore;
+        const runtime = this;
         return {
             get(constant) {
-                return Object.prototype.hasOwnProperty.call(store, constant)
-                    ? store[constant]
-                    : null;
+                if (Object.prototype.hasOwnProperty.call(store, constant)) {
+                    return store[constant];
+                }
+
+                if (runtime && typeof runtime.consumeTranslationScripts === 'function') {
+                    const loaded = runtime.consumeTranslationScripts();
+                    if (loaded && Object.prototype.hasOwnProperty.call(store, constant)) {
+                        return store[constant];
+                    }
+                }
+
+                return null;
             },
             set(constant, value) {
                 store[constant] = value;
@@ -801,6 +813,51 @@ class EnergineCore {
         this.translations.extend(normalized);
     }
 
+    consumeTranslationScripts() {
+        if (typeof document === 'undefined') {
+            return false;
+        }
+
+        const scripts = document.querySelectorAll(translationScriptSelector);
+        if (!scripts || !scripts.length) {
+            return false;
+        }
+
+        let consumed = false;
+
+        scripts.forEach((script) => {
+            if (!script || (script.dataset && script.dataset.energineTranslationsProcessed === '1')) {
+                return;
+            }
+
+            const payload = script.textContent ? script.textContent.trim() : '';
+            if (!payload) {
+                if (script.dataset) {
+                    script.dataset.energineTranslationsProcessed = '1';
+                }
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(payload);
+                this.stageTranslations(parsed);
+                consumed = true;
+                if (script.dataset) {
+                    script.dataset.energineTranslationsProcessed = '1';
+                }
+                if (typeof script.remove === 'function') {
+                    script.remove();
+                } else {
+                    script.textContent = '';
+                }
+            } catch (error) {
+                this.safeConsoleError(error, '[Energine.translations] Failed to parse staged translations payload');
+            }
+        });
+
+        return consumed;
+    }
+
     createConfigFromProps(props = {}) {
         const config = { ...props };
 
@@ -890,46 +947,12 @@ const Energine = new EnergineCore(globalScope);
 
 exposeRuntimeToGlobal(Energine, globalScope);
 
-const translationScriptSelector = 'script[type="application/json"][data-energine-translations]';
-
 const applyTranslationsFromScripts = (runtime) => {
-    if (typeof document === 'undefined' || !runtime || typeof runtime.stageTranslations !== 'function') {
+    if (!runtime || typeof runtime.consumeTranslationScripts !== 'function') {
         return;
     }
 
-    const scripts = document.querySelectorAll(translationScriptSelector);
-    if (!scripts || !scripts.length) {
-        return;
-    }
-
-    scripts.forEach((script) => {
-        if (!script || (script.dataset && script.dataset.energineTranslationsProcessed === '1')) {
-            return;
-        }
-
-        const payload = script.textContent ? script.textContent.trim() : '';
-        if (!payload) {
-            if (script.dataset) {
-                script.dataset.energineTranslationsProcessed = '1';
-            }
-            return;
-        }
-
-        try {
-            const parsed = JSON.parse(payload);
-            runtime.stageTranslations(parsed);
-            if (script.dataset) {
-                script.dataset.energineTranslationsProcessed = '1';
-            }
-            if (typeof script.remove === 'function') {
-                script.remove();
-            } else {
-                script.textContent = '';
-            }
-        } catch (error) {
-            Energine.safeConsoleError(error, '[Energine.autoBootstrap] Failed to parse staged translations');
-        }
-    });
+    runtime.consumeTranslationScripts();
 };
 
 const scheduleRetry = (task, options = {}) => {
