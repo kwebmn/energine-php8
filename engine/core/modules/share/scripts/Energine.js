@@ -368,22 +368,115 @@ class EnergineCore {
 
     createTranslationsFacade() {
         const store = this.translationStore;
-        return {
+
+        const facade = {
             get(constant) {
+                if (typeof constant !== 'string') {
+                    return null;
+                }
+
                 return Object.prototype.hasOwnProperty.call(store, constant)
                     ? store[constant]
                     : null;
             },
             set(constant, value) {
+                if (typeof constant !== 'string') {
+                    return;
+                }
+
                 store[constant] = value;
             },
             extend(values) {
                 if (!values || typeof values !== 'object') {
                     return;
                 }
-                Object.assign(store, values);
+
+                Object.keys(values).forEach((key) => {
+                    if (typeof key !== 'string') {
+                        return;
+                    }
+
+                    const value = values[key];
+                    if (typeof value === 'undefined') {
+                        delete store[key];
+                    } else {
+                        store[key] = value;
+                    }
+                });
             },
         };
+
+        if (typeof Proxy === 'function') {
+            const handler = {
+                get(target, prop, receiver) {
+                    if (typeof prop === 'string' && !(prop in target)) {
+                        if (Object.prototype.hasOwnProperty.call(store, prop)) {
+                            return store[prop];
+                        }
+
+                        if (prop === 'toJSON') {
+                            return () => ({ ...store });
+                        }
+                    }
+
+                    if (prop === Symbol.iterator) {
+                        return function* iterator() {
+                            const keys = Object.keys(store);
+                            for (let i = 0; i < keys.length; i += 1) {
+                                yield [keys[i], store[keys[i]]];
+                            }
+                        };
+                    }
+
+                    return Reflect.get(target, prop, receiver);
+                },
+                set(target, prop, value) {
+                    if (typeof prop === 'string' && !(prop in target)) {
+                        if (typeof value === 'undefined') {
+                            delete store[prop];
+                        } else {
+                            store[prop] = value;
+                        }
+                        return true;
+                    }
+
+                    target[prop] = value;
+                    return true;
+                },
+                has(target, prop) {
+                    if (typeof prop === 'string' && Object.prototype.hasOwnProperty.call(store, prop)) {
+                        return true;
+                    }
+
+                    return prop in target;
+                },
+                ownKeys(target) {
+                    const targetKeys = Reflect.ownKeys(target);
+                    const storeKeys = Object.keys(store);
+                    return Array.from(new Set([...targetKeys, ...storeKeys]));
+                },
+                getOwnPropertyDescriptor(target, prop) {
+                    if (typeof prop === 'string' && Object.prototype.hasOwnProperty.call(store, prop)) {
+                        return {
+                            enumerable: true,
+                            configurable: true,
+                            writable: true,
+                            value: store[prop],
+                        };
+                    }
+
+                    return Object.getOwnPropertyDescriptor(target, prop);
+                },
+            };
+
+            try {
+                return new Proxy(facade, handler);
+            } catch (error) {
+                this.safeConsoleError(error, '[Energine.translations] Failed to create proxy facade');
+            }
+        }
+
+        return Object.assign(facade, store);
     }
 
     resolveModuleScriptElement() {

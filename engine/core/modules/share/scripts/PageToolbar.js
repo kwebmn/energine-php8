@@ -11,6 +11,29 @@ const SIDEBAR_OFFCANVAS_Z_INDEX = 1050;
 const TOOLBAR_Z_INDEX = SIDEBAR_OFFCANVAS_Z_INDEX + 10;
 const DEFAULT_SAVE_CONFIRM_MESSAGE = 'Are you sure you want to save changes?';
 
+const normalizeConfirmMessageValue = (value) => {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+
+        if (!trimmed) {
+            return '';
+        }
+
+        const lowerCase = trimmed.toLowerCase();
+        if (lowerCase === 'null' || lowerCase === 'undefined') {
+            return '';
+        }
+
+        return trimmed;
+    }
+
+    if (value === null || typeof value === 'undefined') {
+        return '';
+    }
+
+    return `${value}`;
+};
+
 const CONTROL_FALLBACK_ACTIONS = Object.freeze({
     editMode: 'editMode',
     transEditor: 'showTransEditor',
@@ -2312,7 +2335,7 @@ class PageToolbar extends Toolbar {
 
             for (const key of translationKeys) {
                 if (!key) continue;
-                const value = translationSource.get(key);
+                const value = normalizeConfirmMessageValue(translationSource.get(key));
                 if (value) {
                     return value;
                 }
@@ -2342,13 +2365,22 @@ class PageToolbar extends Toolbar {
 
         if (!message) {
             const dataset = this.element?.dataset || {};
-            message = dataset.eTxtAreYouSureSave
-                || dataset.eTxtSaveConfirm
-                || dataset.eTxtConfirm
-                || this.element?.getAttribute?.('data-e-txt-are-you-sure-save')
-                || this.element?.getAttribute?.('data-e-txt-save-confirm')
-                || this.element?.getAttribute?.('data-e-txt-confirm')
-                || '';
+            const datasetCandidates = [
+                dataset.eTxtAreYouSureSave,
+                dataset.eTxtSaveConfirm,
+                dataset.eTxtConfirm,
+                this.element?.getAttribute?.('data-e-txt-are-you-sure-save'),
+                this.element?.getAttribute?.('data-e-txt-save-confirm'),
+                this.element?.getAttribute?.('data-e-txt-confirm'),
+            ];
+
+            for (const candidate of datasetCandidates) {
+                const normalized = normalizeConfirmMessageValue(candidate);
+                if (normalized) {
+                    message = normalized;
+                    break;
+                }
+            }
         }
 
         if (!message) {
