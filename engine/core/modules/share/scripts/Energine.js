@@ -30,11 +30,31 @@ const Config = {
 
 const Notifications = {
     iconMap: {
-        success: { variant: 'success', icon: 'fa-circle-check' },
-        error: { variant: 'danger', icon: 'fa-circle-xmark' },
-        warning: { variant: 'warning', icon: 'fa-triangle-exclamation' },
-        info: { variant: 'info', icon: 'fa-circle-info' },
-        question: { variant: 'primary', icon: 'fa-circle-question' },
+        success: {
+            variant: 'success',
+            icon: 'fa-circle-check',
+            toastClasses: ['bg-success', 'text-white'],
+        },
+        error: {
+            variant: 'danger',
+            icon: 'fa-circle-xmark',
+            toastClasses: ['bg-danger', 'text-white'],
+        },
+        warning: {
+            variant: 'warning',
+            icon: 'fa-triangle-exclamation',
+            toastClasses: ['bg-warning', 'text-dark'],
+        },
+        info: {
+            variant: 'info',
+            icon: 'fa-circle-info',
+            toastClasses: ['bg-info', 'text-white'],
+        },
+        question: {
+            variant: 'primary',
+            icon: 'fa-circle-question',
+            toastClasses: ['bg-primary', 'text-white'],
+        },
     },
     resolveIconConfig(icon) {
         return this.iconMap[icon] || this.iconMap.info;
@@ -85,8 +105,8 @@ const Dataset = {
     },
 };
 
-const BootstrapHelpers = {
-    resolve(scope) {
+const UIHelpers = {
+    resolveBootstrap(scope) {
         if (scope && scope.bootstrap) {
             return scope.bootstrap;
         }
@@ -98,20 +118,57 @@ const BootstrapHelpers = {
         return null;
     },
 
-    ensureModalElement(id, template) {
+    resolveMDB(scope) {
+        if (scope && scope.mdb) {
+            return scope.mdb;
+        }
+
+        if (typeof mdb !== 'undefined') {
+            return mdb;
+        }
+
+        return null;
+    },
+
+    resolveLibrary(scope) {
+        const bootstrapLib = this.resolveBootstrap(scope);
+        if (bootstrapLib) {
+            return { type: 'bootstrap', lib: bootstrapLib };
+        }
+
+        const mdbLib = this.resolveMDB(scope);
+        if (mdbLib) {
+            return { type: 'mdb', lib: mdbLib };
+        }
+
+        return { type: null, lib: null };
+    },
+
+    ensureModalElement(id, template, templateId) {
         if (typeof document === 'undefined') {
             return null;
         }
 
         let element = document.getElementById(id);
         if (element) {
-            return element;
+            if (templateId && element.dataset.energineTemplate !== templateId) {
+                element.remove();
+                element = null;
+            } else {
+                if (templateId) {
+                    element.dataset.energineTemplate = templateId;
+                }
+                return element;
+            }
         }
 
         const wrapper = document.createElement('div');
         wrapper.innerHTML = template.trim();
         element = wrapper.firstElementChild;
         if (element) {
+            if (templateId) {
+                element.dataset.energineTemplate = templateId;
+            }
             document.body.appendChild(element);
         }
 
@@ -135,23 +192,40 @@ const BootstrapHelpers = {
         return container;
     },
 
-    renderModal({ scope, id, template, onShow, fallback }) {
-        const bootstrapLib = this.resolve(scope);
-        if (!bootstrapLib || typeof document === 'undefined') {
+    renderModal({ scope, id, template, templateId, onShow, fallback }) {
+        const { lib, type } = this.resolveLibrary(scope);
+        if (!lib || typeof document === 'undefined') {
             return typeof fallback === 'function' ? fallback() : null;
         }
 
-        const modal = this.ensureModalElement(id, template);
+        const modal = this.ensureModalElement(id, template, templateId);
         if (!modal) {
             return typeof fallback === 'function' ? fallback() : null;
         }
 
-        const instance = bootstrapLib.Modal.getOrCreateInstance(modal, { backdrop: 'static' });
-        if (typeof onShow === 'function') {
-            onShow({ modal, instance, bootstrap: bootstrapLib });
+        if (!lib.Modal) {
+            return typeof fallback === 'function' ? fallback() : null;
         }
 
-        instance.show();
+        const ModalConstructor = lib.Modal;
+        let instance = null;
+
+        if (typeof ModalConstructor.getOrCreateInstance === 'function') {
+            instance = ModalConstructor.getOrCreateInstance(modal, { backdrop: 'static', focus: true });
+        } else {
+            instance = new ModalConstructor(modal, { backdrop: 'static', focus: true });
+        }
+
+        if (typeof onShow === 'function') {
+            onShow({ modal, instance, library: lib, framework: type });
+        }
+
+        if (instance && typeof instance.show === 'function') {
+            instance.show();
+        } else if (instance && typeof instance.open === 'function') {
+            instance.open();
+        }
+
         return modal;
     },
 };
@@ -447,30 +521,25 @@ class EnergineCore {
             }
         };
 
-        const modal = BootstrapHelpers.renderModal({
+        const modal = UIHelpers.renderModal({
             scope: this.globalScope,
             id: 'energine-confirm-modal',
+            templateId: 'swal-confirm-v1',
             template: `
-            <div class="modal fade" id="energine-confirm-modal" tabindex="-1" aria-hidden="true">
+            <div class="modal fade" id="energine-confirm-modal" data-energine-template="swal-confirm-v1" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="energine-confirm-modal-title" aria-describedby="energine-confirm-modal-message">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header bg-warning text-dark">
-                            <h5 class="modal-title">
-                                <i class="fa-solid fa-triangle-exclamation me-2"></i>
-                                <span data-role="title">Подтверждение</span>
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="modal-header border-0 pb-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation text-warning fs-3"></i>
+                                <h5 class="modal-title mb-0" id="energine-confirm-modal-title" data-role="title">Подтверждение</h5>
+                            </div>
+                            <button type="button" class="btn-close" data-role="close" data-bs-dismiss="modal" data-mdb-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div class="modal-body">
-                            <p class="mb-0" data-role="message"></p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-role="cancel" data-bs-dismiss="modal">
-                                <i class="fa-solid fa-circle-xmark me-2"></i>Нет
-                            </button>
-                            <button type="button" class="btn btn-primary" data-role="confirm" data-bs-dismiss="modal">
-                                <i class="fa-solid fa-circle-check me-2"></i>Да
-                            </button>
+                        <div class="modal-body" id="energine-confirm-modal-message" data-role="message"></div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-outline-secondary" data-role="cancel" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="dark">Нет</button>
+                            <button type="button" class="btn btn-primary" data-role="confirm" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="light">Да</button>
                         </div>
                     </div>
                 </div>
@@ -485,6 +554,7 @@ class EnergineCore {
 
                 const confirmBtn = modal.querySelector('[data-role="confirm"]');
                 const cancelBtn = modal.querySelector('[data-role="cancel"]');
+                const closeBtn = modal.querySelector('[data-role="close"]');
                 let resolved = false;
 
                 const handleConfirm = () => {
@@ -499,15 +569,28 @@ class EnergineCore {
                 if (confirmBtn) {
                     confirmBtn.addEventListener('click', handleConfirm, { once: true });
                 }
-                if (cancelBtn) {
-                    cancelBtn.addEventListener('click', handleCancel, { once: true });
-                }
+                [cancelBtn, closeBtn].forEach((btn) => {
+                    if (btn) {
+                        btn.addEventListener('click', handleCancel, { once: true });
+                    }
+                });
 
-                modal.addEventListener('hidden.bs.modal', () => {
+                const handleHidden = () => {
                     if (!resolved && no) {
+                        resolved = true;
                         no();
                     }
-                }, { once: true });
+                };
+
+                ['hidden.bs.modal', 'hidden.mdb.modal'].forEach((eventName) => {
+                    modal.addEventListener(eventName, handleHidden, { once: true });
+                });
+
+                setTimeout(() => {
+                    if (confirmBtn && typeof confirmBtn.focus === 'function') {
+                        confirmBtn.focus();
+                    }
+                }, 120);
             },
         });
 
@@ -521,27 +604,24 @@ class EnergineCore {
             alert(message);
         };
 
-        const modal = BootstrapHelpers.renderModal({
+        const modal = UIHelpers.renderModal({
             scope: this.globalScope,
             id: 'energine-alert-modal',
+            templateId: 'swal-alert-v1',
             template: `
-            <div class="modal fade" id="energine-alert-modal" tabindex="-1" aria-hidden="true">
+            <div class="modal fade" id="energine-alert-modal" data-energine-template="swal-alert-v1" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="energine-alert-modal-title" aria-describedby="energine-alert-modal-message">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title">
-                                <i class="fa-solid fa-circle-exclamation me-2"></i>
-                                <span data-role="title">Внимание</span>
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="modal-header border-0 pb-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-circle-exclamation text-danger fs-3"></i>
+                                <h5 class="modal-title mb-0" id="energine-alert-modal-title" data-role="title">Внимание</h5>
+                            </div>
+                            <button type="button" class="btn-close" data-role="close" data-bs-dismiss="modal" data-mdb-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div class="modal-body">
-                            <p class="mb-0" data-role="message"></p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                                <i class="fa-solid fa-circle-check me-2"></i>Ок
-                            </button>
+                        <div class="modal-body" id="energine-alert-modal-message" data-role="message"></div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-primary" data-role="confirm" data-bs-dismiss="modal" data-mdb-dismiss="modal" data-mdb-ripple-color="light">Ок</button>
                         </div>
                     </div>
                 </div>
@@ -553,6 +633,22 @@ class EnergineCore {
                 if (messageContainer) {
                     messageContainer.textContent = message;
                 }
+
+                const closeBtn = modal.querySelector('[data-role="close"]');
+                const confirmBtn = modal.querySelector('[data-role="confirm"]');
+
+                if (closeBtn && confirmBtn) {
+                    const syncClick = () => {
+                        confirmBtn.click();
+                    };
+                    closeBtn.addEventListener('click', syncClick, { once: true });
+                }
+
+                setTimeout(() => {
+                    if (confirmBtn && typeof confirmBtn.focus === 'function') {
+                        confirmBtn.focus();
+                    }
+                }, 120);
             },
         });
 
@@ -562,53 +658,85 @@ class EnergineCore {
     }
 
     noticeBox(message, icon, callback) {
-        const bootstrapLib = BootstrapHelpers.resolve(this.globalScope);
-        if (!bootstrapLib || typeof document === 'undefined') {
+        const { lib } = UIHelpers.resolveLibrary(this.globalScope);
+        if (!lib || typeof document === 'undefined') {
             alert(message);
             if (callback) callback();
             return;
         }
 
-        const container = BootstrapHelpers.getToastContainer();
+        if (!lib.Toast) {
+            alert(message);
+            if (callback) callback();
+            return;
+        }
+
+        const container = UIHelpers.getToastContainer();
         if (!container) {
             alert(message);
             if (callback) callback();
             return;
         }
 
-        const { variant, icon: iconClass } = Notifications.resolveIconConfig(icon);
+        const { variant, icon: iconClass, toastClasses = [] } = Notifications.resolveIconConfig(icon);
 
         const toast = document.createElement('div');
-        toast.className = `toast align-items-center text-bg-${variant} border-0`;
+        toast.className = 'toast fade shadow border-0';
+        toast.dataset.variant = variant;
         toast.setAttribute('role', 'alert');
         toast.setAttribute('aria-live', 'assertive');
         toast.setAttribute('aria-atomic', 'true');
         toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body d-flex align-items-center">
-                    <i class="fa-solid ${iconClass} me-2"></i>
-                    <span>${message}</span>
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            <div class="d-flex align-items-center gap-3 px-3 py-2">
+                <span class="fs-5"><i class="fa-solid ${iconClass}"></i></span>
+                <span class="flex-grow-1" data-role="message"></span>
+                <button type="button" class="btn-close" data-role="close" data-bs-dismiss="toast" data-mdb-dismiss="toast" aria-label="Close"></button>
             </div>
         `;
 
-        container.appendChild(toast);
-
-        const toastInstance = bootstrapLib.Toast.getOrCreateInstance(toast, {
-            delay: 1500,
-            autohide: true,
+        toastClasses.forEach((className) => {
+            toast.classList.add(className);
         });
 
-        toast.addEventListener('hidden.bs.toast', () => {
-            toastInstance.dispose();
+        if (!toastClasses.some((className) => className.startsWith('text-'))) {
+            toast.classList.add('text-white');
+        }
+
+        const messageContainer = toast.querySelector('[data-role="message"]');
+        if (messageContainer) {
+            messageContainer.textContent = message;
+        }
+
+        const closeButton = toast.querySelector('[data-role="close"]');
+        if (closeButton && !toast.classList.contains('text-dark')) {
+            closeButton.classList.add('btn-close-white');
+        }
+
+        container.appendChild(toast);
+
+        const ToastConstructor = lib.Toast;
+        const toastOptions = { delay: 2000, autohide: true };
+        const toastInstance = typeof ToastConstructor.getOrCreateInstance === 'function'
+            ? ToastConstructor.getOrCreateInstance(toast, toastOptions)
+            : new ToastConstructor(toast, toastOptions);
+
+        const handleHidden = () => {
+            if (toastInstance && typeof toastInstance.dispose === 'function') {
+                toastInstance.dispose();
+            }
             toast.remove();
             if (callback) {
                 callback();
             }
-        }, { once: true });
+        };
 
-        toastInstance.show();
+        ['hidden.bs.toast', 'hidden.mdb.toast'].forEach((eventName) => {
+            toast.addEventListener(eventName, handleHidden, { once: true });
+        });
+
+        if (toastInstance && typeof toastInstance.show === 'function') {
+            toastInstance.show();
+        }
     }
 
     createDatePicker() {

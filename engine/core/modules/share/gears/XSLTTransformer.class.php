@@ -19,11 +19,18 @@ class XSLTTransformer extends BaseObject implements ITransformer
     /** @var string Полный путь к XSLT-файлу */
     private string $fileName = '';
 
+    /** @var string Активный UI-фреймворк. */
+    private string $uiFramework = self::DEFAULT_UI_FRAMEWORK;
+    
+    /** @var bool Whether setFileName already adjusted for UI. */
+    private bool $fileNameAdjustedForUi = false;
+
     /** @var DOMDocument|null Входной XML-документ */
     private ?DOMDocument $document = null;
 
     public function __construct()
     {
+        $this->setUiFramework(self::resolveUiFramework());
         $this->setFileName((string)$this->getConfigValue('document.transformer'));
     }
 
@@ -45,6 +52,12 @@ class XSLTTransformer extends BaseObject implements ITransformer
                 $siteFolder
             ) . $transformerFilename;
         }
+        
+        if (!$this->fileNameAdjustedForUi)
+        {
+            $transformerFilename = $this->resolveUiAwareTransformerPath($transformerFilename);
+            $this->fileNameAdjustedForUi = true;
+        }
 
         if (!is_file($transformerFilename))
         {
@@ -64,6 +77,54 @@ class XSLTTransformer extends BaseObject implements ITransformer
     public function setDocument(DOMDocument $document): void
     {
         $this->document = $document;
+    }
+
+    /**
+     * Получить активный UI-фреймворк.
+     */
+    public function getUiFramework(): string
+    {
+        return $this->uiFramework;
+    }
+
+    /**
+     * Установить UI-фреймворк вручную.
+     */
+    public function setUiFramework(string $framework): void
+    {
+        $this->uiFramework = self::normaliseUiFramework($framework);
+        $this->fileNameAdjustedForUi = false;
+    }
+
+    /**
+     * Resolve transformer filename with ui-specific variant if available.
+     */
+    private function resolveUiAwareTransformerPath(string $transformerFilename): string
+    {
+        $framework = $this->getUiFramework();
+
+        // Only swap include.xslt main template references.
+        $baseDir = dirname($transformerFilename);
+        $baseName = basename($transformerFilename);
+
+        if (strtolower($baseName) === 'include.xslt')
+        {
+            $candidate = $baseDir . DIRECTORY_SEPARATOR . $framework . DIRECTORY_SEPARATOR . 'include.xslt';
+            if (is_file($candidate))
+            {
+                return $candidate;
+            }
+        }
+        elseif ($framework === self::UI_FRAMEWORK_MDBOOTSTRAP && str_contains($baseName, '.xslt'))
+        {
+            $mdVariant = $baseDir . DIRECTORY_SEPARATOR . str_replace('.xslt', '_md.xslt', $baseName);
+            if (is_file($mdVariant))
+            {
+                return $mdVariant;
+            }
+        }
+
+        return $transformerFilename;
     }
 
     /**

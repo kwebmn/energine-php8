@@ -49,17 +49,38 @@ const removeSamplesDirectory = (directory) => {
     }
 };
 
-const targets = [
-    { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
-    { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
+const uiFramework = (process.env.UI_FRAMEWORK || '').toLowerCase();
+const isBootstrapOnly = uiFramework === 'bootstrap5';
+const isMdOnly = uiFramework === 'mdbootstrap';
+
+const allTargets = [
+    { name: 'energine.vendor', entry: 'energine.vendor.entry.js', ui: 'bootstrap5', vendor: true },
+    { name: 'energine.mdvendor', entry: 'energine.mdvendor.entry.js', ui: 'mdbootstrap', vendor: true },
+    { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js', vendor: true },
     { name: 'energine.ckeditor', entry: 'energine.ckeditor.entry.js' },
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
 
+const targets = allTargets.filter((target) => {
+    if (!target.ui) {
+        return true;
+    }
+    if (isBootstrapOnly) {
+        return target.ui === 'bootstrap5';
+    }
+    if (isMdOnly) {
+        return target.ui === 'mdbootstrap';
+    }
+    return true;
+});
+
 for (let index = 0; index < targets.length; index += 1) {
     const { name, entry } = targets[index];
-    const isVendor = name === 'energine.vendor' || name === 'energine.extended.vendor';
+    const isVendor = targets[index].vendor === true
+        || name === 'energine.vendor'
+        || name === 'energine.mdvendor'
+        || name === 'energine.extended.vendor';
     await build({
         root: rootDir,
         publicDir: false,

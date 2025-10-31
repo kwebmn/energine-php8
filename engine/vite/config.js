@@ -9,13 +9,31 @@ export const engineDir = resolve(repoRoot, 'engine');
 export const siteDir = resolve(repoRoot, 'site');
 export const vendorDir = resolve(repoRoot, 'vendor');
 
-export const buildTargets = [
-    { name: 'energine.vendor', entry: 'energine.vendor.entry.js' },
+const uiFramework = (process.env.UI_FRAMEWORK || '').toLowerCase();
+const isBootstrapOnly = uiFramework === 'bootstrap5';
+const isMdOnly = uiFramework === 'mdbootstrap';
+
+export const allBuildTargets = [
+    { name: 'energine.vendor', entry: 'energine.vendor.entry.js', ui: 'bootstrap5' },
+    { name: 'energine.mdvendor', entry: 'energine.mdvendor.entry.js', ui: 'mdbootstrap' },
     { name: 'energine.extended.vendor', entry: 'energine.extended.vendor.entry.js' },
     { name: 'energine.ckeditor', entry: 'energine.ckeditor.entry.js' },
     { name: 'energine', entry: 'energine.entry.js' },
     { name: 'energine.extended', entry: 'energine.extended.entry.js' },
 ];
+
+export const buildTargets = allBuildTargets.filter((target) => {
+    if (!target.ui) {
+        return true;
+    }
+    if (isBootstrapOnly) {
+        return target.ui === 'bootstrap5';
+    }
+    if (isMdOnly) {
+        return target.ui === 'mdbootstrap';
+    }
+    return true;
+});
 
 export const createBuildConfig = (name, entry, emptyOutDir = false, target = 'es2022') =>
     defineConfig({
@@ -46,4 +64,9 @@ export const createBuildConfig = (name, entry, emptyOutDir = false, target = 'es
         },
     });
 
-export default createBuildConfig(buildTargets[0].name, buildTargets[0].entry, true);
+const [firstTarget] = buildTargets;
+export default createBuildConfig(
+    firstTarget?.name ?? allBuildTargets[0].name,
+    firstTarget?.entry ?? allBuildTargets[0].entry,
+    true,
+);

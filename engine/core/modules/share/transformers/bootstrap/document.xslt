@@ -150,7 +150,15 @@
         <meta name="keywords" content="{$DOC_PROPS[@name='keywords']}"/>
         <meta name="description" content="{$DOC_PROPS[@name='description']}"/>
         <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.css')}"/>
-        <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.vendor.css')}"/>
+        <xsl:choose>
+            <xsl:when test="$DOC_PROPS[@name='ui']/@value = 'mdbootstrap' or $DOC_PROPS[@name='ui'] = 'mdbootstrap'">
+                <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.mdvendor.css')}"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.vendor.css')}"/>
+            </xsl:otherwise>
+        </xsl:choose>
+
         <xsl:if test="$DOC_PROPS[@name='robots']!=''">
             <meta name="robots" content="{$DOC_PROPS[@name='robots']}"/>
         </xsl:if>        
@@ -163,7 +171,14 @@
         <xsl:if test="//property[@name='is_user'] = '1'">
             <script defer="defer" src="{concat($ASSETS_BASE, 'energine.extended.vendor.js')}"></script>
         </xsl:if>
-        <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
+        <xsl:choose>
+            <xsl:when test="$DOC_PROPS[@name='ui']/@value = 'mdbootstrap' or $DOC_PROPS[@name='ui'] = 'mdbootstrap'">
+                <script defer="defer" src="{concat($ASSETS_BASE, 'energine.mdvendor.js')}"></script>
+            </xsl:when>
+            <xsl:otherwise>
+                <script defer="defer" src="{concat($ASSETS_BASE, 'energine.vendor.js')}"></script>
+            </xsl:otherwise>
+        </xsl:choose>
         <xsl:if test="//property[@name='is_user'] = '1'">
             <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.vendor.css')}"/>
             <link rel="stylesheet" href="{concat($ASSETS_BASE, 'energine.extended.css')}"/>

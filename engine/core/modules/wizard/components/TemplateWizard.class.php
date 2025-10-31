@@ -48,7 +48,7 @@ class TemplateWizard extends Grid
                 $this->templateHelper->createTemplate($id[0]);
             }
         }
-        catch (Exception $e)
+        catch (\Throwable $e)
         {
             stop($e);
         }

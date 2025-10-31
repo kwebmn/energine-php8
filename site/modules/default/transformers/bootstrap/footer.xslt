@@ -54,21 +54,23 @@
     <xsl:template match="component/recordset/record" mode="footer-link">
         <xsl:variable name="NAME" select="normalize-space(field[@name='Name'])"/>
         <xsl:variable name="DESCRIPTION" select="field[@name='Description']"/>
+        <xsl:variable name="RAW_URL" select="normalize-space(field[@name='Url'])"/>
+        <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
+        <xsl:variable name="LINK_TARGET">
+            <xsl:choose>
+                <xsl:when test="string-length($RAW_URL) &gt; 0">
+                    <xsl:value-of select="$RAW_URL"/>
+                </xsl:when>
+                <xsl:when test="string-length($SEGMENT) &gt; 0">
+                    <xsl:value-of select="$SEGMENT"/>
+                </xsl:when>
+                <xsl:otherwise>#</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
 
         <xsl:if test="string-length($NAME) &gt; 0">
             <li class="mb-2">
-                <a class="link-secondary text-decoration-none">
-                    <xsl:attribute name="href">
-                        <xsl:choose>
-                            <xsl:when test="string-length(normalize-space(field[@name='Url'])) &gt; 0">
-                                <xsl:value-of select="field[@name='Url']"/>
-                            </xsl:when>
-                            <xsl:when test="string-length(normalize-space(field[@name='Segment'])) &gt; 0">
-                                <xsl:value-of select="field[@name='Segment']"/>
-                            </xsl:when>
-                            <xsl:otherwise>#</xsl:otherwise>
-                        </xsl:choose>
-                    </xsl:attribute>
+                <a class="link-secondary text-decoration-none" href="{$LINK_TARGET}">
                     <xsl:value-of select="$NAME"/>
                 </a>
                 <xsl:if test="string-length(normalize-space($DESCRIPTION)) &gt; 0">

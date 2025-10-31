@@ -25,14 +25,18 @@ class UserProfile extends ValidForm {
             : element;
         super(elementRef);
         this.componentElement = elementRef;
+        const dataset = this.componentElement?.dataset || {};
         // Получаем путь для сохранения
-        this.url = this.componentElement.getAttribute('single_template');
+        this.singleTemplatePath = dataset.eSingleTemplate
+            || this.componentElement?.getAttribute('data-e-single-template')
+            || this.componentElement?.getAttribute('single_template')
+            || '';
 
         // Привязываем обработчик отправки формы через jQuery
         $(this.componentElement).on('submit', (event) => {
             event.preventDefault();
             const data = $(this.componentElement).serialize();
-            const saveUrl = `${Energine.base}${Energine.lang}/${this.url}save`;
+            const saveUrl = `${Energine.base}${Energine.lang}/${this.singleTemplatePath}save`;
 
             $.post(saveUrl, data, (result) => {
                 if (result.result) {
@@ -48,8 +52,36 @@ class UserProfile extends ValidForm {
 
 }
 
-export { UserProfile };
+class UserProfileTabs {
+    /**
+     * @param {HTMLElement|string} element
+     */
+    constructor(element) {
+        this.root = typeof element === 'string'
+            ? globalScope?.document?.querySelector(element)
+            : element;
+
+        if (!this.root) {
+            return;
+        }
+
+        this.mdb = globalScope?.mdb;
+        if (!this.mdb || typeof this.mdb.Tab?.getOrCreateInstance !== 'function') {
+            return;
+        }
+
+        this._initTabs();
+    }
+
+    _initTabs() {
+        const triggers = this.root.querySelectorAll('[data-mdb-tab-init], [data-mdb-toggle="tab"]');
+        this.instances = Array.from(triggers, (trigger) => this.mdb.Tab.getOrCreateInstance(trigger));
+    }
+}
+
+export { UserProfile, UserProfileTabs };
 export default UserProfile;
 if (typeof registerEnergineBehavior === 'function') {
     registerEnergineBehavior('UserProfile', UserProfile);
+    registerEnergineBehavior('UserProfileTabs', UserProfileTabs);
 }

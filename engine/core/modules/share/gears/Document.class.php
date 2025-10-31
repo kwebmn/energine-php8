@@ -122,6 +122,7 @@ final class Document extends DBWorker implements IDocument
         $this->setProperty('robots', (string)($this->documentInfo['MetaRobots'] ?? ''));
         $this->setProperty('ID', (string)$this->getID());
         $this->setProperty('default', (string)((int)($this->sitemap->getDefault() == $this->getID())));
+        $this->setProperty('ui', self::resolveUiFramework());
 
         // Flags: admin / user
         if (in_array('1', E()->getAUser()->getGroups(), true))
@@ -207,6 +208,10 @@ final class Document extends DBWorker implements IDocument
             if ($name === 'title')
             {
                 $prop->setAttribute('alt', (string)($this->documentInfo['HtmlTitle'] ?? ''));
+            }
+            if ($name === 'ui')
+            {
+                $prop->setAttribute('value', (string)($value ?? ''));
             }
             $prop->appendChild($this->doc->createTextNode((string)($value ?? '')));
             $propsNode->appendChild($prop);

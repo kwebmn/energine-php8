@@ -49,8 +49,10 @@
                 <button
                         class="navbar-toggler"
                         type="button"
-                        data-bs-toggle="collapse">
+                        data-bs-toggle="collapse"
+                        data-mdb-toggle="collapse">
                     <xsl:attribute name="data-bs-target">#<xsl:value-of select="$NAVBAR_ID"/></xsl:attribute>
+                    <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$NAVBAR_ID"/></xsl:attribute>
                     <xsl:attribute name="aria-controls"><xsl:value-of select="$NAVBAR_ID"/></xsl:attribute>
                     <xsl:attribute name="aria-expanded">false</xsl:attribute>
                     <xsl:attribute name="aria-label">Menu</xsl:attribute>
@@ -98,6 +100,24 @@
         <xsl:variable name="HAS_CHILDREN" select="count(recordset/record) &gt; 0"/>
         <xsl:variable name="IS_ACTIVE" select="field[@name='Id'] = $ID or recordset/record[field[@name='Id'] = $ID]"/>
         <xsl:variable name="DROPDOWN_ID" select="concat('mainNavDropdown-', generate-id(.))"/>
+        <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
+        <xsl:variable name="LINK_TARGET">
+            <xsl:choose>
+                <xsl:when test="string-length($SEGMENT) &gt; 0">
+                    <xsl:value-of select="$SEGMENT"/>
+                </xsl:when>
+                <xsl:otherwise>#</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="LINK_CLASSES">
+            <xsl:text>nav-link</xsl:text>
+            <xsl:if test="$HAS_CHILDREN">
+                <xsl:text> dropdown-toggle</xsl:text>
+            </xsl:if>
+            <xsl:if test="$IS_ACTIVE">
+                <xsl:text> active</xsl:text>
+            </xsl:if>
+        </xsl:variable>
 
         <li>
             <xsl:attribute name="class">
@@ -108,15 +128,13 @@
             </xsl:attribute>
             <xsl:choose>
                 <xsl:when test="$HAS_CHILDREN">
-                    <a class="nav-link dropdown-toggle" id="{$DROPDOWN_ID}" role="button" data-bs-toggle="dropdown">
-                        <xsl:attribute name="href">
-                            <xsl:choose>
-                                <xsl:when test="string-length(normalize-space(field[@name='Segment'])) &gt; 0">
-                                    <xsl:value-of select="field[@name='Segment']"/>
-                                </xsl:when>
-                                <xsl:otherwise>#</xsl:otherwise>
-                            </xsl:choose>
+                    <a id="{$DROPDOWN_ID}" role="button" data-bs-toggle="dropdown" data-mdb-toggle="dropdown">
+                        <xsl:attribute name="class">
+                            <xsl:value-of select="normalize-space($LINK_CLASSES)"/>
                         </xsl:attribute>
+                        <xsl:attribute name="data-mdb-dropdown-init"/>
+                        <xsl:attribute name="data-mdb-ripple-init"/>
+                        <xsl:attribute name="href">{$LINK_TARGET}</xsl:attribute>
                         <xsl:attribute name="aria-expanded">
                             <xsl:choose>
                                 <xsl:when test="$IS_ACTIVE">true</xsl:when>
@@ -124,7 +142,6 @@
                             </xsl:choose>
                         </xsl:attribute>
                         <xsl:if test="$IS_ACTIVE">
-                            <xsl:attribute name="class">nav-link dropdown-toggle active</xsl:attribute>
                             <xsl:attribute name="aria-current">page</xsl:attribute>
                         </xsl:if>
                         <xsl:value-of select="field[@name='Name']" />
@@ -134,17 +151,11 @@
                     </ul>
                 </xsl:when>
                 <xsl:otherwise>
-                    <a class="nav-link">
-                        <xsl:attribute name="href">
-                            <xsl:choose>
-                                <xsl:when test="string-length(normalize-space(field[@name='Segment'])) &gt; 0">
-                                    <xsl:value-of select="field[@name='Segment']"/>
-                                </xsl:when>
-                                <xsl:otherwise>#</xsl:otherwise>
-                            </xsl:choose>
+                    <a href="{$LINK_TARGET}">
+                        <xsl:attribute name="class">
+                            <xsl:value-of select="normalize-space($LINK_CLASSES)"/>
                         </xsl:attribute>
                         <xsl:if test="$IS_ACTIVE">
-                            <xsl:attribute name="class">nav-link active</xsl:attribute>
                             <xsl:attribute name="aria-current">page</xsl:attribute>
                         </xsl:if>
                         <xsl:value-of select="field[@name='Name']" />
@@ -156,18 +167,28 @@
 
     <xsl:template match="component[@name='mainMenu']/recordset/record/recordset/record" mode="main-nav-child">
         <xsl:variable name="IS_ACTIVE" select="field[@name='Id'] = $ID"/>
+        <xsl:variable name="SEGMENT" select="normalize-space(field[@name='Segment'])"/>
+        <xsl:variable name="LINK_TARGET">
+            <xsl:choose>
+                <xsl:when test="string-length($SEGMENT) &gt; 0">
+                    <xsl:value-of select="$SEGMENT"/>
+                </xsl:when>
+                <xsl:otherwise>#</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="LINK_CLASSES">
+            <xsl:text>dropdown-item</xsl:text>
+            <xsl:if test="$IS_ACTIVE">
+                <xsl:text> active</xsl:text>
+            </xsl:if>
+        </xsl:variable>
+
         <li>
-            <a class="dropdown-item">
-                <xsl:attribute name="href">
-                    <xsl:choose>
-                        <xsl:when test="string-length(normalize-space(field[@name='Segment'])) &gt; 0">
-                            <xsl:value-of select="field[@name='Segment']"/>
-                        </xsl:when>
-                        <xsl:otherwise>#</xsl:otherwise>
-                    </xsl:choose>
+            <a href="{$LINK_TARGET}">
+                <xsl:attribute name="class">
+                    <xsl:value-of select="normalize-space($LINK_CLASSES)"/>
                 </xsl:attribute>
                 <xsl:if test="$IS_ACTIVE">
-                    <xsl:attribute name="class">dropdown-item active</xsl:attribute>
                     <xsl:attribute name="aria-current">page</xsl:attribute>
                 </xsl:if>
                 <xsl:value-of select="field[@name='Name']" />
@@ -187,9 +208,12 @@
                         id="{$DROPDOWN_ID}"
                         role="button"
                         data-bs-toggle="dropdown"
+                        data-mdb-toggle="dropdown"
                         aria-expanded="false"
                         aria-haspopup="true"
                 >
+                    <xsl:attribute name="data-mdb-dropdown-init"></xsl:attribute>
+                    <xsl:attribute name="data-mdb-ripple-init"></xsl:attribute>
                     <xsl:value-of select="//field[@name='lang_id' and text() = $LANG_ID]/../field[@name='lang_name']" />
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="{$DROPDOWN_ID}">

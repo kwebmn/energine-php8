@@ -40,10 +40,12 @@
             <xsl:attribute name="data-e-single-template"><xsl:value-of select="concat($BASE, $LANG_ABBR, ../@single_template)"/></xsl:attribute>
             <xsl:attribute name="data-e-toolbar-component"><xsl:value-of select="generate-id(.)"/></xsl:attribute>
             <div class="card-header" data-pane-part="header">
-                <ul class="nav nav-tabs card-header-tabs" data-role="tabs">
+                <ul class="nav nav-tabs" data-role="tabs">
                     <li class="nav-item" data-role="tab">
                         <a href="#{$IDD}" data-role="tab-link">
                             <xsl:attribute name="class">nav-link active</xsl:attribute>
+                            <xsl:attribute name="data-mdb-toggle">tab</xsl:attribute>
+                            <xsl:attribute name="data-mdb-target">#<xsl:value-of select="$IDD"/></xsl:attribute>
                             <xsl:attribute name="data-bs-toggle">tab</xsl:attribute>
                             <xsl:attribute name="data-bs-target">#<xsl:value-of select="$IDD"/></xsl:attribute>
                             <xsl:value-of select="$TRANSLATION[@const='TXT_IMG_MANAGER']"/>

@@ -12,6 +12,9 @@ return array(
     // название проекта
     'project' => 'Energine 2.11.4',
 
+    // используемый UI-фреймворк (bootstrap5 или mdbootstrap)
+    'ui_framework' => 'mdbootstrap',
+
     // путь к директории setup текущего используемого ядра
     'setup_dir' => ($energine_release = $_SERVER['DOCUMENT_ROOT'] . '/engine') . '/setup',
 
