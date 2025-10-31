@@ -782,7 +782,7 @@ class Form {
             return null;
         }
 
-        const srcTextElement = this._resolveSourceField(fieldBase, targetLangSuffix, targetField);
+        const srcTextElement = this._resolveSourceField(fieldBase, targetLangSuffix, targetField, parent);
         if (!srcTextElement || !('value' in srcTextElement)) {
             return null;
         }
@@ -799,7 +799,7 @@ class Form {
         };
     }
 
-    _resolveSourceField(fieldBase, targetLangSuffix, targetField) {
+    _resolveSourceField(fieldBase, targetLangSuffix, targetField, targetPane) {
         if (!fieldBase || !targetField) {
             return null;
         }
@@ -810,7 +810,7 @@ class Form {
             document
         ].filter(Boolean);
 
-        const { defaultTabLink, defaultPane, defaultLanguageId } = this._resolveDefaultLanguageLink(searchRoots);
+        const { defaultTabLink, defaultPane, defaultLanguageId } = this._resolveDefaultLanguageLink(searchRoots, targetPane);
 
         const defaultPaneField = this._findFieldInContainer(fieldBase, defaultPane, targetField);
         if (defaultPaneField) {
@@ -875,9 +875,7 @@ class Form {
     }
 
     _resolveTargetLanguage(paneId) {
-        const anchors = document.querySelectorAll('a[lang_abbr]');
-        const parentHref = `#${paneId}`;
-        const anchor = Array.from(anchors).find((link) => link.getAttribute('href') === parentHref);
+        const anchor = this._findTabLinkForPane(paneId);
         const lang = anchor?.getAttribute('lang_abbr');
         return this._normalizeLanguageAbbr(lang);
     }
@@ -890,7 +888,30 @@ class Form {
         return lang === 'ua' ? 'uk' : lang;
     }
 
-    _resolveDefaultLanguageLink(searchRoots) {
+    _resolveDefaultLanguageLink(searchRoots, targetPane) {
+        const targetPaneId = targetPane?.id;
+        if (targetPaneId) {
+            const currentTabLink = this._findTabLinkForPane(targetPaneId);
+            const tabsContainer = currentTabLink?.closest?.('[data-role="tabs"]') || null;
+            if (tabsContainer) {
+                const defaultTabLink = tabsContainer.querySelector?.('[data-role="tab-link"][lang_abbr]') || null;
+                if (defaultTabLink) {
+                    const paneId = defaultTabLink.getAttribute('href')
+                        || defaultTabLink.getAttribute('data-bs-target')
+                        || defaultTabLink.getAttribute('data-mdb-target');
+                    const defaultPane = paneId
+                        ? document.getElementById(paneId.replace(/^#/, ''))
+                        : null;
+
+                    return {
+                        defaultTabLink,
+                        defaultPane,
+                        defaultLanguageId: this._extractLanguageIdFromTab(defaultTabLink)
+                    };
+                }
+            }
+        }
+
         for (const root of searchRoots) {
             const tabsContainer = root.querySelector?.('[data-role="tabs"]');
             if (!tabsContainer) {
@@ -913,6 +934,21 @@ class Form {
         }
 
         return { defaultTabLink: null, defaultPane: null, defaultLanguageId: null };
+    }
+
+    _findTabLinkForPane(paneId) {
+        if (!paneId) {
+            return null;
+        }
+
+        const targetRef = `#${paneId}`;
+        const anchors = document.querySelectorAll('[data-role="tab-link"][href], [data-role="tab-link"][data-bs-target], [data-role="tab-link"][data-mdb-target]');
+        return Array.from(anchors).find((link) => {
+            const href = link.getAttribute('href');
+            const bsTarget = link.getAttribute('data-bs-target');
+            const mdbTarget = link.getAttribute('data-mdb-target');
+            return href === targetRef || bsTarget === targetRef || mdbTarget === targetRef;
+        }) || null;
     }
 
     _extractLanguageIdFromTab(tabLink) {
@@ -963,7 +999,7 @@ class Form {
     async _fetchTranslation({ srcText, toLangAbbr }) {
         const params = new URLSearchParams({
             client: 'gtx',
-            sl: 'ru',
+            sl: 'auto',
             tl: toLangAbbr,
             dt: 't',
             q: srcText
