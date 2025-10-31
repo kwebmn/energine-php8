@@ -39,27 +39,60 @@ class GroupForm extends Form {
      */
     checkAllRadioInColumn(event) {
         const radio = event.target;
-        const tbody = radio.closest('tbody');
-        if (!tbody) {
+        const td = radio.closest('td');
+        const tbody = td?.closest('tbody');
+
+        if (!td || !tbody) {
             return;
         }
 
-        const columnId = radio.dataset.column || radio.closest('td')?.dataset.column;
-        if (!columnId) {
-            return;
-        }
+        const columnId = radio.dataset.column || td.dataset.column;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        let handled = false;
 
-        // Получаем все radio в этом столбце
-        tbody.querySelectorAll(`td[data-column="${columnId}"] input[type="radio"]`).forEach(r => {
-            if (r.disabled) {
+        if (columnId) {
+            rows.forEach(row => {
+                row.querySelectorAll(`td[data-column="${columnId}"] input[type="radio"]`).forEach(r => {
+                    handled = this._checkRadio(r) || handled;
+                });
+            });
+        } else {
+            const cells = Array.from(td.parentElement?.children || []);
+            const columnIndex = cells.indexOf(td);
+
+            if (columnIndex === -1) {
                 return;
             }
 
-            r.checked = true;
+            rows.forEach(row => {
+                const cell = row.children[columnIndex];
+                if (!cell) {
+                    return;
+                }
 
-            // Сообщить другим обработчикам об изменении значения
-            r.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+                const targetRadio = cell.querySelector('input[type="radio"]');
+                if (targetRadio) {
+                    handled = this._checkRadio(targetRadio) || handled;
+                }
+            });
+        }
+
+        if (!handled) {
+            radio.checked = false;
+        }
+    }
+
+    _checkRadio(radio) {
+        if (!radio || radio.disabled) {
+            return false;
+        }
+
+        if (!radio.checked) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        return true;
     }
 
     /**
