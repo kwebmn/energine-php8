@@ -94,12 +94,36 @@ class GroupForm extends Form {
             return false;
         }
 
+        this._uncheckRadioGroup(radio);
+
         if (!radio.checked) {
             radio.checked = true;
             radio.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
         return true;
+    }
+
+    _uncheckRadioGroup(radio) {
+        if (!radio || !radio.name) {
+            return;
+        }
+
+        const selector = `input[type="radio"][name="${radio.name.replace(/"/g, '\\"')}"]`;
+        const groupRadios = this.componentElement?.querySelectorAll(selector);
+
+        if (!groupRadios) {
+            return;
+        }
+
+        groupRadios.forEach(groupRadio => {
+            if (groupRadio === radio || groupRadio.disabled || !groupRadio.checked) {
+                return;
+            }
+
+            groupRadio.checked = false;
+            groupRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        });
     }
 
     /**
