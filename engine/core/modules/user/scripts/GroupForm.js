@@ -16,6 +16,15 @@ class GroupForm extends Form {
     constructor(element) {
         super(element);
 
+        /**
+         * Флаг, показывающий, что идёт массовое обновление значений
+         * (для того, чтобы не снимать отметку с групповых радиокнопок
+         * во время программного выбора).
+         * @type {boolean}
+         * @private
+         */
+        this._isBulkUpdating = false;
+
         // Найти все .groupRadio и навесить обработчик
         this.componentElement
             .querySelectorAll('.groupRadio')
@@ -23,14 +32,11 @@ class GroupForm extends Form {
                 radio.addEventListener('click', this.checkAllRadioInColumn.bind(this));
             });
 
-        // Если нужно — разблокируй и реализуй второй обработчик ниже (см. комментарий)
-        /*
         this.componentElement
             .querySelectorAll('input[type=radio]')
             .forEach(radio => {
                 radio.addEventListener('change', this.uncheckGroupRadio.bind(this));
             });
-        */
     }
 
     /**
@@ -48,39 +54,39 @@ class GroupForm extends Form {
 
         const columnId = radio.dataset.column || td.dataset.column;
         const rows = Array.from(tbody.querySelectorAll('tr'));
-        let handled = false;
 
-        if (columnId) {
-            rows.forEach(row => {
-                row.querySelectorAll(`td[data-column="${columnId}"] input[type="radio"]`).forEach(r => {
-                    handled = this._checkRadio(r) || handled;
+        this._isBulkUpdating = true;
+
+        try {
+            if (columnId) {
+                rows.forEach(row => {
+                    row.querySelectorAll(`td[data-column="${columnId}"] input[type="radio"]`).forEach(r => {
+                        this._checkRadio(r);
+                    });
                 });
-            });
-        } else {
-            const cells = Array.from(td.parentElement?.children || []);
-            const columnIndex = cells.indexOf(td);
+            } else {
+                const cells = Array.from(td.parentElement?.children || []);
+                const columnIndex = cells.indexOf(td);
 
-            if (columnIndex === -1) {
-                return;
-            }
-
-            rows.forEach(row => {
-                const cell = row.children[columnIndex];
-                if (!cell) {
+                if (columnIndex === -1) {
                     return;
                 }
 
-                const targetRadio = cell.querySelector('input[type="radio"]');
-                if (targetRadio) {
-                    handled = this._checkRadio(targetRadio) || handled;
-                }
-            });
-        }
+                rows.forEach(row => {
+                    const cell = row.children[columnIndex];
+                    if (!cell) {
+                        return;
+                    }
 
-        // Верхняя радиокнопка служит только триггером группового выбора,
-        // поэтому возвращаем её в невыбранное состояние, даже если в столбце
-        // ничего не изменилось.
-        radio.checked = false;
+                    const targetRadio = cell.querySelector('input[type="radio"]');
+                    if (targetRadio) {
+                        this._checkRadio(targetRadio);
+                    }
+                });
+            }
+        } finally {
+            this._isBulkUpdating = false;
+        }
     }
 
     _checkRadio(radio) {
@@ -102,20 +108,26 @@ class GroupForm extends Form {
      */
     uncheckGroupRadio(event) {
         const radio = event.target;
-        if (!radio.classList.contains('groupRadio')) {
-            const td = radio.closest('td');
-            const columnClass = td.className;
-            const tbody = td.closest('tbody');
-            if (!tbody || !columnClass) return;
 
-            // Найти radio в .section_name, снять checked
-            const tr = tbody.querySelector('tr.section_name');
-            if (tr) {
-                const groupTd = tr.querySelector(`td.${columnClass} input[type="radio"]`);
-                if (groupTd) {
-                    groupTd.checked = false;
-                }
-            }
+        if (this._isBulkUpdating || radio.classList.contains('groupRadio')) {
+            return;
+        }
+
+        const td = radio.closest('td[data-column]');
+        const tbody = td?.closest('tbody');
+
+        if (!td || !tbody) {
+            return;
+        }
+
+        const columnId = td.dataset.column;
+        if (!columnId) {
+            return;
+        }
+
+        const groupRadio = Array.from(tbody.querySelectorAll('.groupRadio')).find(r => r.dataset.column === columnId);
+        if (groupRadio) {
+            groupRadio.checked = false;
         }
     }
 }
